@@ -1,6 +1,7 @@
 use dioxus::prelude::*;
 use crate::models::{WorkoutSession, ExerciseLog};
 use crate::services::{exercise_db, storage};
+use crate::components::AnalyticsPanel;
 use crate::Route;
 use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -16,6 +17,7 @@ pub fn ActiveSessionPage() -> Element {
     let mut weight_input = use_signal(|| String::new());
     let mut reps_input = use_signal(|| String::new());
     let mut distance_input = use_signal(|| String::new());
+    let mut panel_open = use_signal(|| false);
     
     // Get current time for display
     let get_current_time = || {
@@ -166,11 +168,20 @@ pub fn ActiveSessionPage() -> Element {
             format!("{:02}:{:02}", minutes, secs)
         }
     };
+    
+    // Compute panel transform value
+    let panel_transform = if *panel_open.read() { "translateX(0)" } else { "translateX(100%)" };
 
     rsx! {
         div {
-            class: "container",
-            style: "font-family: system-ui, -apple-system, sans-serif;",
+            class: "session-container",
+            style: "
+                font-family: system-ui, -apple-system, sans-serif;
+                display: flex;
+                flex-direction: column;
+                height: 100vh;
+                position: relative;
+            ",
             
             // Sticky timer header
             div {
@@ -213,8 +224,26 @@ pub fn ActiveSessionPage() -> Element {
                 }
             }
             
+            // Main content area with panel
             div {
-                style: "padding: 20px; max-width: 800px; margin: 0 auto;",
+                style: "
+                    flex: 1;
+                    display: flex;
+                    overflow: hidden;
+                    position: relative;
+                ",
+                
+                // Main content
+                div {
+                    class: "main-content",
+                    style: "
+                        flex: 1;
+                        overflow-y: auto;
+                        padding: 20px;
+                        max-width: 800px;
+                        margin: 0 auto;
+                        width: 100%;
+                    ",
                 
                 // Exercise search and selection
                 if current_exercise_id.read().is_none() {
@@ -480,6 +509,86 @@ pub fn ActiveSessionPage() -> Element {
                         ",
                         "+ Add Custom Exercise"
                     }
+                }
+            }
+        }
+        
+        // Analytics Panel (right side on desktop, slide on mobile)
+            div {
+                class: "analytics-panel-container",
+                style: "
+                    position: fixed;
+                    top: 0;
+                    right: 0;
+                    width: 400px;
+                    height: 100vh;
+                    background: white;
+                    box-shadow: -2px 0 10px rgba(0,0,0,0.1);
+                    transform: {panel_transform};
+                    transition: transform 0.3s ease-in-out;
+                    z-index: 200;
+                ",
+                AnalyticsPanel {}
+            }
+            
+            // Bottom bar with tab (visible on mobile and smaller screens)
+            div {
+                class: "bottom-bar",
+                style: "
+                    position: fixed;
+                    bottom: 0;
+                    left: 0;
+                    right: 0;
+                    background: white;
+                    border-top: 2px solid #e0e0e0;
+                    display: flex;
+                    justify-content: center;
+                    padding: 10px;
+                    z-index: 150;
+                ",
+                button {
+                    onclick: move |_| {
+                        let is_open = *panel_open.read();
+                        panel_open.set(!is_open);
+                    },
+                    style: "
+                        padding: 12px 24px;
+                        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                        color: white;
+                        border: none;
+                        border-radius: 8px;
+                        font-size: 1em;
+                        font-weight: bold;
+                        cursor: pointer;
+                        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+                        display: flex;
+                        align-items: center;
+                        gap: 8px;
+                    ",
+                    span {
+                        "📊 Analytics"
+                    }
+                    span {
+                        style: "font-size: 0.8em;",
+                        if *panel_open.read() { "▼" } else { "▲" }
+                    }
+                }
+            }
+            
+            // Overlay for mobile when panel is open
+            if *panel_open.read() {
+                div {
+                    class: "overlay",
+                    onclick: move |_| panel_open.set(false),
+                    style: "
+                        position: fixed;
+                        top: 0;
+                        left: 0;
+                        right: 0;
+                        bottom: 0;
+                        background: rgba(0,0,0,0.5);
+                        z-index: 190;
+                    ",
                 }
             }
         }
