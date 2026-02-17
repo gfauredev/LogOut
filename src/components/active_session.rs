@@ -1,5 +1,5 @@
 use dioxus::prelude::*;
-use crate::models::{WorkoutSession, ExerciseLog, CustomExercise};
+use crate::models::{WorkoutSession, ExerciseLog};
 use crate::services::{exercise_db, storage};
 use crate::Route;
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -12,22 +12,28 @@ pub fn ActiveSessionPage() -> Element {
     
     let mut search_query = use_signal(|| String::new());
     let mut current_exercise_id = use_signal(|| None::<String>);
+    let mut current_exercise_start = use_signal(|| None::<u64>);
     let mut weight_input = use_signal(|| String::new());
     let mut reps_input = use_signal(|| String::new());
     let mut distance_input = use_signal(|| String::new());
-    let mut session_time = use_signal(|| 0u64);
     
-    // Timer effect - updates every second
-    use_effect(move || {
-        let current_session = session.read().clone();
+    // Get current time for display
+    let get_current_time = || {
+        SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap()
+            .as_secs()
+    };
+    
+    // Calculate session duration
+    let session_duration = {
+        let current_session = session.read();
         if current_session.is_active() {
-            let now = SystemTime::now()
-                .duration_since(UNIX_EPOCH)
-                .unwrap()
-                .as_secs();
-            session_time.set(now - current_session.start_time);
+            get_current_time() - current_session.start_time
+        } else {
+            0
         }
-    });
+    };
     
     let search_results = use_memo(move || {
         let query = search_query.read();
@@ -54,7 +60,7 @@ pub fn ActiveSessionPage() -> Element {
         }
     });
     
-    let mut start_exercise = move |exercise_id: String, exercise_name: String, _category: String| {
+    let mut start_exercise = move |exercise_id: String, _exercise_name: String, _category: String| {
         // Look up last values for prefilling
         if let Some(last_log) = storage::get_last_exercise_log(&exercise_id) {
             if let Some(weight) = last_log.weight {
@@ -74,6 +80,7 @@ pub fn ActiveSessionPage() -> Element {
         }
         
         current_exercise_id.set(Some(exercise_id.clone()));
+        current_exercise_start.set(Some(get_current_time()));
         search_query.set(String::new());
     };
     
@@ -81,6 +88,11 @@ pub fn ActiveSessionPage() -> Element {
         let exercise_id = match current_exercise_id.read().as_ref() {
             Some(id) => id.clone(),
             None => return,
+        };
+        
+        let start_time = match current_exercise_start.read().as_ref() {
+            Some(time) => *time,
+            None => get_current_time(), // Fallback to current time
         };
         
         let mut current_session = session.read().clone();
@@ -98,10 +110,7 @@ pub fn ActiveSessionPage() -> Element {
             }
         };
         
-        let now = SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .unwrap()
-            .as_secs();
+        let end_time = get_current_time();
         
         let weight = weight_input.read().parse().ok();
         let reps = if category.to_lowercase() == "cardio" {
@@ -119,8 +128,8 @@ pub fn ActiveSessionPage() -> Element {
             exercise_id: exercise_id.clone(),
             exercise_name,
             category,
-            start_time: now,  // For simplicity, using current time as both start and end
-            end_time: Some(now),
+            start_time,
+            end_time: Some(end_time),
             weight,
             reps,
             distance,
@@ -131,6 +140,7 @@ pub fn ActiveSessionPage() -> Element {
         session.set(current_session);
         
         current_exercise_id.set(None);
+        current_exercise_start.set(None);
         weight_input.set(String::new());
         reps_input.set(String::new());
         distance_input.set(String::new());
@@ -138,10 +148,7 @@ pub fn ActiveSessionPage() -> Element {
     
     let finish_session = move |_| {
         let mut current_session = session.read().clone();
-        let now = SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .unwrap()
-            .as_secs();
+        let now = get_current_time();
         current_session.end_time = Some(now);
         storage::save_session(current_session.clone());
         
@@ -186,7 +193,7 @@ pub fn ActiveSessionPage() -> Element {
                     }
                     p {
                         style: "margin: 5px 0 0 0; font-size: 1.8em; font-weight: bold;",
-                        "{format_time(session_time())}"
+                        "{format_time(session_duration)}"
                     }
                 }
                 button {
@@ -390,6 +397,7 @@ pub fn ActiveSessionPage() -> Element {
                                             button {
                                                 onclick: move |_| {
                                                     current_exercise_id.set(None);
+                                                    current_exercise_start.set(None);
                                                     weight_input.set(String::new());
                                                     reps_input.set(String::new());
                                                     distance_input.set(String::new());
