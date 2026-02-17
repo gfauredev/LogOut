@@ -1,12 +1,14 @@
 use crate::models::Exercise;
 use std::sync::OnceLock;
 
+// Include the generated exercises data from build.rs
+include!(concat!(env!("OUT_DIR"), "/exercises_data.rs"));
+
 static EXERCISES: OnceLock<Vec<Exercise>> = OnceLock::new();
 
 pub fn get_exercises() -> &'static Vec<Exercise> {
     EXERCISES.get_or_init(|| {
-        let exercises_json = include_str!("../../assets/exercises.json");
-        serde_json::from_str(exercises_json).unwrap_or_else(|e| {
+        serde_json::from_str(EXERCISES_JSON).unwrap_or_else(|e| {
             eprintln!("Failed to parse exercises: {}", e);
             vec![]
         })
