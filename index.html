@@ -29,17 +29,6 @@
     <script type="module">
         import init from './dist/logout.js';
         init();
-        
-        // Register service worker for offline image caching
-        if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.register('/sw.js')
-                .then(registration => {
-                    console.log('Service Worker registered:', registration);
-                })
-                .catch(error => {
-                    console.error('Service Worker registration failed:', error);
-                });
-        }
     </script>
 </body>
 </html>

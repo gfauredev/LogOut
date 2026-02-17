@@ -28,6 +28,9 @@ fn main() {
     // Initialize logger
     dioxus_logger::init(dioxus_logger::tracing::Level::INFO).expect("failed to init logger");
 
+    // Register service worker for offline image caching
+    services::service_worker::register_service_worker();
+
     launch(App);
 }
 

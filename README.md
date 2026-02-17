@@ -66,6 +66,11 @@ Exercise images are not stored locally. Instead, they are loaded on-demand from 
 - Images use lazy loading for optimal performance
 - Service Worker caching provides offline functionality for previously viewed images
 
+**Note on Service Worker Implementation:**
+- The Service Worker registration is implemented in Rust (`src/services/service_worker.rs`) following Dioxus best practices
+- The Service Worker script itself (`sw.js`) must remain as JavaScript because Service Workers run in a separate browser context outside the WASM application
+- This is a browser architecture limitation, not a framework choice
+
 ## Exercise Database
 
 The app uses the excellent [free-exercise-db](https://github.com/yuhonas/free-exercise-db) which provides:
@@ -76,5 +81,14 @@ The app uses the excellent [free-exercise-db](https://github.com/yuhonas/free-ex
 - Equipment requirements
 - Difficulty levels
 
-The database is downloaded at build time and embedded into the application binary for optimal performance. Images are loaded on-demand from the GitHub CDN with Service Worker caching for offline functionality.
+The database is downloaded at build time and embedded into the application binary for optimal performance. Images are loaded on-demand from the GitHub CDN.
+
+### Service Worker Architecture
+
+The Service Worker (`sw.js`) provides offline caching for exercise images:
+- **Registration**: Implemented in Rust (`src/services/service_worker.rs`) following Dioxus best practices
+- **Worker Script**: Must be JavaScript due to browser architecture - Service Workers run in a separate context outside the WASM application
+- **Functionality**: Caches images from the GitHub CDN for offline access
+
+This hybrid approach maximizes the use of Rust while respecting browser API limitations.
 

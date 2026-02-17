@@ -1,4 +1,17 @@
 // Service Worker for caching exercise images
+//
+// IMPORTANT: This file must remain as JavaScript
+//
+// Service Workers run in a separate browser context and must be JavaScript files.
+// While Dioxus recommends implementing logic in Rust, Service Workers are a special case:
+// - They run in a separate worker context (not in the main WASM module)
+// - They intercept network requests before they reach the WASM application
+// - They use Service Worker-specific APIs only available in the worker context
+// - They must be standalone JavaScript files that the browser can execute independently
+//
+// The registration of this Service Worker is handled in Rust (src/services/service_worker.rs)
+// following Dioxus best practices - only the worker script itself must be JavaScript.
+
 const CACHE_NAME = 'workout-images-v1';
 const IMAGE_BASE_URL = 'https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/';
 
