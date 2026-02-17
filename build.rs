@@ -56,8 +56,9 @@ fn main() {
     // Check if we already have images by checking if directory has content
     let has_images = if exercises_dir.exists() {
         fs::read_dir(&exercises_dir)
-            .map(|mut entries| entries.next().is_some())
-            .unwrap_or(false)
+            .ok()
+            .and_then(|mut entries| entries.next())
+            .is_some()
     } else {
         false
     };
@@ -161,7 +162,4 @@ pub const EXERCISES_JSON: &str = r####"{}"####;
     // Write the generated code to a file
     fs::write(&dest_path, generated_code)
         .expect("Failed to write generated exercises data");
-    
-    // Tell cargo to rerun if the assets directory changes
-    println!("cargo:rerun-if-changed=assets/");
 }
