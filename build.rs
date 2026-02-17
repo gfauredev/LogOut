@@ -53,9 +53,16 @@ fn main() {
     }
     
     // Download and extract exercise images if not already present
-    // Check if we already have images
-    let sample_exercise_dir = exercises_dir.join("3_4_Sit-Up");
-    if !sample_exercise_dir.exists() {
+    // Check if we already have images by checking if directory has content
+    let has_images = if exercises_dir.exists() {
+        fs::read_dir(&exercises_dir)
+            .map(|mut entries| entries.next().is_some())
+            .unwrap_or(false)
+    } else {
+        false
+    };
+    
+    if !has_images {
         println!("cargo:warning=Downloading exercise images from {}", REPO_ZIP_URL);
         
         // Download the repository zip
@@ -91,6 +98,9 @@ fn main() {
                 if source_exercises.exists() {
                     // Copy all exercise image directories
                     if let Ok(entries) = fs::read_dir(&source_exercises) {
+                        let mut copied_count = 0;
+                        let mut failed_count = 0;
+                        
                         for entry in entries.flatten() {
                             let path = entry.path();
                             if path.is_dir() {
@@ -98,7 +108,11 @@ fn main() {
                                 let dest = exercises_dir.join(dir_name);
                                 
                                 // Create destination directory
-                                fs::create_dir_all(&dest).ok();
+                                if let Err(e) = fs::create_dir_all(&dest) {
+                                    println!("cargo:warning=Failed to create directory {:?}: {}", dest, e);
+                                    failed_count += 1;
+                                    continue;
+                                }
                                 
                                 // Copy image files
                                 if let Ok(files) = fs::read_dir(&path) {
@@ -107,14 +121,21 @@ fn main() {
                                         if file_path.is_file() {
                                             let file_name = file_path.file_name().unwrap();
                                             let dest_file = dest.join(file_name);
-                                            fs::copy(&file_path, &dest_file).ok();
+                                            if let Err(e) = fs::copy(&file_path, &dest_file) {
+                                                println!("cargo:warning=Failed to copy {:?}: {}", file_path, e);
+                                                failed_count += 1;
+                                            } else {
+                                                copied_count += 1;
+                                            }
                                         }
                                     }
                                 }
                             }
                         }
-                        println!("cargo:warning=Successfully copied exercise images to assets/exercises/");
+                        println!("cargo:warning=Successfully copied {} exercise images to assets/exercises/ ({} failures)", copied_count, failed_count);
                     }
+                } else {
+                    println!("cargo:warning=Could not find exercises directory in extracted repository");
                 }
             } else {
                 println!("cargo:warning=Failed to extract zip. Images will be loaded from CDN.");
