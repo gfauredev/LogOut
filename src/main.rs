@@ -4,7 +4,7 @@ mod components;
 mod models;
 mod services;
 
-use components::{ExerciseListPage, HomePage, WorkoutLogPage};
+use components::{ExerciseListPage, HomePage, WorkoutLogPage, ActiveSessionPage, AddCustomExercisePage};
 
 #[derive(Clone, Routable, Debug, PartialEq)]
 #[rustfmt::skip]
@@ -15,6 +15,10 @@ enum Route {
     ExerciseListPage {},
     #[route("/workout")]
     WorkoutLogPage {},
+    #[route("/session")]
+    ActiveSessionPage {},
+    #[route("/add-exercise")]
+    AddCustomExercisePage {},
 }
 
 fn main() {
