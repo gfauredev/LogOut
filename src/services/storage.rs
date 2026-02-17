@@ -33,8 +33,9 @@ pub fn init_storage() {
                             // Validate exercise references
                             validate_workout_exercises(&mut workouts);
                             
+                            let count = workouts.len();
                             *WORKOUTS.lock().unwrap_or_else(|e| e.into_inner()) = workouts;
-                            info!("Loaded {} workouts from storage", WORKOUTS.lock().unwrap_or_else(|e| e.into_inner()).len());
+                            info!("Loaded {} workouts from storage", count);
                         }
                         Err(e) => {
                             error!("Failed to parse workouts from localStorage: {}. Data may be corrupted.", e);
@@ -52,8 +53,9 @@ pub fn init_storage() {
                                 info!("Migrated {} sessions to current version", sessions.len());
                             }
                             
+                            let count = sessions.len();
                             *SESSIONS.lock().unwrap_or_else(|e| e.into_inner()) = sessions;
-                            info!("Loaded {} sessions from storage", SESSIONS.lock().unwrap_or_else(|e| e.into_inner()).len());
+                            info!("Loaded {} sessions from storage", count);
                         }
                         Err(e) => {
                             error!("Failed to parse sessions from localStorage: {}. Data may be corrupted.", e);
@@ -65,8 +67,9 @@ pub fn init_storage() {
                 if let Ok(Some(data)) = storage.get_item(CUSTOM_EXERCISES_KEY) {
                     match serde_json::from_str::<Vec<CustomExercise>>(&data) {
                         Ok(exercises) => {
+                            let count = exercises.len();
                             *CUSTOM_EXERCISES.lock().unwrap_or_else(|e| e.into_inner()) = exercises;
-                            info!("Loaded {} custom exercises from storage", CUSTOM_EXERCISES.lock().unwrap_or_else(|e| e.into_inner()).len());
+                            info!("Loaded {} custom exercises from storage", count);
                         }
                         Err(e) => {
                             error!("Failed to parse custom exercises from localStorage: {}. Data may be corrupted.", e);
