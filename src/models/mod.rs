@@ -78,7 +78,9 @@ pub fn parse_weight_kg(input: &str) -> Option<u16> {
 pub fn parse_distance_km(input: &str) -> Option<u32> {
     let val: f64 = input.parse().ok()?;
     if !val.is_finite() || val <= 0.0 { return None; }
-    Some((val * 1000.0).round() as u32)
+    let m = (val * 1000.0).round();
+    if m > u32::MAX as f64 { return None; }
+    Some(m as u32)
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
