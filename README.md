@@ -64,7 +64,7 @@ This approach provides:
 Exercise images are not stored locally. Instead, they are loaded on-demand from the free-exercise-db GitHub repository:
 - Base URL: `https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/`
 - Images use lazy loading for optimal performance
-- Browser caching provides offline functionality for previously viewed images
+- Service Worker caching provides offline functionality for previously viewed images
 
 ## Exercise Database
 
@@ -76,5 +76,5 @@ The app uses the excellent [free-exercise-db](https://github.com/yuhonas/free-ex
 - Equipment requirements
 - Difficulty levels
 
-The database is downloaded at build time and embedded into the application binary for optimal performance. Images are loaded on-demand from the GitHub CDN with browser caching for offline functionality.
+The database is downloaded at build time and embedded into the application binary for optimal performance. Images are loaded on-demand from the GitHub CDN with Service Worker caching for offline functionality.
 
