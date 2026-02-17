@@ -286,6 +286,6 @@ The LogOut application has **good foundational code quality** with a clear archi
 
 ## Version History
 
-- **v1.0** (2024): Initial implementation with schema versioning and migration logic
+- **v1.0** (2026-02-17): Initial implementation with schema versioning and migration logic
 - Exercise database downloads from upstream at build time
 - localStorage-based persistence with JSON serialization
