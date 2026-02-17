@@ -7,12 +7,28 @@ A cross-platform workout logging application built with Dioxus 0.7. The app incl
 
 - 🏋️ Browse 873+ exercises with search functionality
 - 💪 Log workouts with sets, reps, and weights
+- 📊 **Analytics panel** with line charts to track progress over time
 - 📱 Mobile-first responsive design
 - 🌐 Cross-platform (Web, with Blitz support planned)
 - 💾 Exercise database downloaded and embedded at build time for optimal performance
 - 🖼️ Exercise images loaded from remote CDN with lazy loading
 - 🎨 Modern, gradient-based UI
 - 🔌 **Blitz-Ready**: Can run without JavaScript for native platforms
+
+## GitHub Pages Deployment
+
+The app can be deployed to GitHub Pages automatically via GitHub Actions.
+
+### Setup
+
+1. Go to your repository Settings → Pages
+2. Under "Build and deployment", select "GitHub Actions" as the source
+3. Push to the `main` branch to trigger deployment
+
+The workflow will automatically:
+- Build the Rust WASM binary
+- Generate JavaScript bindings
+- Deploy to GitHub Pages
 
 ## Building
 
@@ -32,7 +48,15 @@ cargo build --target wasm32-unknown-unknown --release
 # Generate wasm bindings
 wasm-bindgen --target web --out-dir dist target/wasm32-unknown-unknown/release/logout.wasm
 
+# Copy static files to dist
+cp index.html dist/
+cp sw.js dist/
+
+# Fix import path in index.html (change './dist/logout.js' to './logout.js')
+sed -i "s|import init from './dist/logout.js';|import init from './logout.js';|g" dist/index.html
+
 # Serve the app (requires a local web server)
+cd dist
 python3 -m http.server 8000
 # Then open http://localhost:8000 in your browser
 ```
