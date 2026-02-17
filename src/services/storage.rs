@@ -1,5 +1,8 @@
-use crate::models::{Workout, WorkoutSession, ExerciseLog, CustomExercise};
+use crate::models::{Workout, WorkoutSession, ExerciseLog, CustomExercise, DATA_VERSION};
 use std::sync::Mutex;
+
+#[cfg(target_arch = "wasm32")]
+use log::{error, warn, info};
 
 static WORKOUTS: Mutex<Vec<Workout>> = Mutex::new(Vec::new());
 static SESSIONS: Mutex<Vec<WorkoutSession>> = Mutex::new(Vec::new());
@@ -15,24 +18,63 @@ pub fn init_storage() {
     {
         if let Some(window) = web_sys::window() {
             if let Ok(Some(storage)) = window.local_storage() {
-                // Load workouts
+                info!("Initializing storage from localStorage");
+                
+                // Load workouts with validation
                 if let Ok(Some(data)) = storage.get_item(WORKOUTS_KEY) {
-                    if let Ok(workouts) = serde_json::from_str::<Vec<Workout>>(&data) {
-                        *WORKOUTS.lock().unwrap_or_else(|e| e.into_inner()) = workouts;
+                    match serde_json::from_str::<Vec<Workout>>(&data) {
+                        Ok(mut workouts) => {
+                            // Migrate old data if needed
+                            let migrated = migrate_workouts(&mut workouts);
+                            if migrated {
+                                info!("Migrated {} workouts to current version", workouts.len());
+                            }
+                            
+                            // Validate exercise references
+                            validate_workout_exercises(&mut workouts);
+                            
+                            *WORKOUTS.lock().unwrap_or_else(|e| e.into_inner()) = workouts;
+                            info!("Loaded {} workouts from storage", WORKOUTS.lock().unwrap_or_else(|e| e.into_inner()).len());
+                        }
+                        Err(e) => {
+                            error!("Failed to parse workouts from localStorage: {}. Data may be corrupted.", e);
+                        }
                     }
                 }
-                // Load sessions
+                
+                // Load sessions with validation
                 if let Ok(Some(data)) = storage.get_item(SESSIONS_KEY) {
-                    if let Ok(sessions) = serde_json::from_str::<Vec<WorkoutSession>>(&data) {
-                        *SESSIONS.lock().unwrap_or_else(|e| e.into_inner()) = sessions;
+                    match serde_json::from_str::<Vec<WorkoutSession>>(&data) {
+                        Ok(mut sessions) => {
+                            // Migrate old data if needed
+                            let migrated = migrate_sessions(&mut sessions);
+                            if migrated {
+                                info!("Migrated {} sessions to current version", sessions.len());
+                            }
+                            
+                            *SESSIONS.lock().unwrap_or_else(|e| e.into_inner()) = sessions;
+                            info!("Loaded {} sessions from storage", SESSIONS.lock().unwrap_or_else(|e| e.into_inner()).len());
+                        }
+                        Err(e) => {
+                            error!("Failed to parse sessions from localStorage: {}. Data may be corrupted.", e);
+                        }
                     }
                 }
+                
                 // Load custom exercises
                 if let Ok(Some(data)) = storage.get_item(CUSTOM_EXERCISES_KEY) {
-                    if let Ok(exercises) = serde_json::from_str::<Vec<CustomExercise>>(&data) {
-                        *CUSTOM_EXERCISES.lock().unwrap_or_else(|e| e.into_inner()) = exercises;
+                    match serde_json::from_str::<Vec<CustomExercise>>(&data) {
+                        Ok(exercises) => {
+                            *CUSTOM_EXERCISES.lock().unwrap_or_else(|e| e.into_inner()) = exercises;
+                            info!("Loaded {} custom exercises from storage", CUSTOM_EXERCISES.lock().unwrap_or_else(|e| e.into_inner()).len());
+                        }
+                        Err(e) => {
+                            error!("Failed to parse custom exercises from localStorage: {}. Data may be corrupted.", e);
+                        }
                     }
                 }
+            } else {
+                warn!("localStorage is not available");
             }
         }
     }
@@ -43,8 +85,15 @@ fn save_workouts(workouts: &[Workout]) {
     {
         if let Some(window) = web_sys::window() {
             if let Ok(Some(storage)) = window.local_storage() {
-                if let Ok(data) = serde_json::to_string(workouts) {
-                    let _ = storage.set_item(WORKOUTS_KEY, &data);
+                match serde_json::to_string(workouts) {
+                    Ok(data) => {
+                        if let Err(e) = storage.set_item(WORKOUTS_KEY, &data) {
+                            error!("Failed to save workouts to localStorage: {:?}", e);
+                        }
+                    }
+                    Err(e) => {
+                        error!("Failed to serialize workouts: {}", e);
+                    }
                 }
             }
         }
@@ -56,8 +105,15 @@ fn save_sessions(sessions: &[WorkoutSession]) {
     {
         if let Some(window) = web_sys::window() {
             if let Ok(Some(storage)) = window.local_storage() {
-                if let Ok(data) = serde_json::to_string(sessions) {
-                    let _ = storage.set_item(SESSIONS_KEY, &data);
+                match serde_json::to_string(sessions) {
+                    Ok(data) => {
+                        if let Err(e) = storage.set_item(SESSIONS_KEY, &data) {
+                            error!("Failed to save sessions to localStorage: {:?}", e);
+                        }
+                    }
+                    Err(e) => {
+                        error!("Failed to serialize sessions: {}", e);
+                    }
                 }
             }
         }
@@ -69,8 +125,15 @@ fn save_custom_exercises(exercises: &[CustomExercise]) {
     {
         if let Some(window) = web_sys::window() {
             if let Ok(Some(storage)) = window.local_storage() {
-                if let Ok(data) = serde_json::to_string(exercises) {
-                    let _ = storage.set_item(CUSTOM_EXERCISES_KEY, &data);
+                match serde_json::to_string(exercises) {
+                    Ok(data) => {
+                        if let Err(e) = storage.set_item(CUSTOM_EXERCISES_KEY, &data) {
+                            error!("Failed to save custom exercises to localStorage: {:?}", e);
+                        }
+                    }
+                    Err(e) => {
+                        error!("Failed to serialize custom exercises: {}", e);
+                    }
                 }
             }
         }
@@ -145,4 +208,77 @@ pub fn get_last_exercise_log(exercise_id: &str) -> Option<ExerciseLog> {
         }
     }
     None
+}
+
+/// Migrate workouts to current data version
+/// Returns true if any migrations were performed
+#[cfg(target_arch = "wasm32")]
+fn migrate_workouts(workouts: &mut Vec<Workout>) -> bool {
+    let mut migrated = false;
+    
+    for workout in workouts.iter_mut() {
+        if workout.version == 0 {
+            // Migration from version 0 to 1
+            workout.version = DATA_VERSION;
+            migrated = true;
+        }
+        // Future migrations can be added here
+        // if workout.version == 1 { ... }
+    }
+    
+    migrated
+}
+
+/// Migrate workout sessions to current data version
+/// Returns true if any migrations were performed
+#[cfg(target_arch = "wasm32")]
+fn migrate_sessions(sessions: &mut Vec<WorkoutSession>) -> bool {
+    let mut migrated = false;
+    
+    for session in sessions.iter_mut() {
+        if session.version == 0 {
+            // Migration from version 0 to 1
+            session.version = DATA_VERSION;
+            migrated = true;
+        }
+        // Future migrations can be added here
+    }
+    
+    migrated
+}
+
+/// Validate that all exercise references in workouts exist in the exercise database
+/// or in custom exercises. Log warnings for orphaned references.
+#[cfg(target_arch = "wasm32")]
+fn validate_workout_exercises(workouts: &mut Vec<Workout>) {
+    use crate::services::exercise_db;
+    
+    let custom_exercises = CUSTOM_EXERCISES.lock().unwrap_or_else(|e| e.into_inner());
+    let mut orphaned_count = 0;
+    
+    for workout in workouts.iter() {
+        for exercise in workout.exercises.iter() {
+            let exists_in_db = exercise_db::get_exercise_by_id(&exercise.exercise_id).is_some();
+            let exists_in_custom = custom_exercises.iter().any(|ce| ce.id == exercise.exercise_id);
+            
+            if !exists_in_db && !exists_in_custom {
+                warn!(
+                    "Workout '{}' references non-existent exercise '{}' (ID: {}). \
+                    This may happen if an exercise was removed from the database after you logged it. \
+                    Your workout data is safe and the exercise name '{}' is preserved.",
+                    workout.id, exercise.exercise_name, exercise.exercise_id, exercise.exercise_name
+                );
+                orphaned_count += 1;
+            }
+        }
+    }
+    
+    if orphaned_count > 0 {
+        warn!(
+            "Found {} orphaned exercise reference(s) in workouts. \
+            These exercises may have been removed or renamed in the exercise database. \
+            Your workout history is preserved with the original exercise names.",
+            orphaned_count
+        );
+    }
 }
