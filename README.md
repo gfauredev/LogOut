@@ -39,15 +39,15 @@ python3 -m http.server 8000
 
 ### Build for Blitz/Native (without JavaScript)
 
+When Blitz becomes production-ready, it will use native targets instead of WASM. For now, to test Blitz-compatible mode (without Service Worker):
+
 ```bash
-# Build without Service Worker for Blitz compatibility
+# Build without Service Worker for Blitz compatibility testing
 cargo build --target wasm32-unknown-unknown --release --no-default-features
 
-# Generate wasm bindings
-wasm-bindgen --target web --out-dir dist target/wasm32-unknown-unknown/release/logout.wasm
-
-# Note: When Blitz becomes production-ready, the target will change
-# Example: cargo build --release --features blitz
+# When Blitz is production-ready, the command will be similar to:
+# cargo build --release --no-default-features
+# (using native target instead of wasm32-unknown-unknown)
 ```
 
 The `--no-default-features` flag disables the `web-platform` feature, which removes Service Worker registration. The app runs perfectly fine without it - images are simply fetched from the network without offline caching.
@@ -108,17 +108,18 @@ The Service Worker (`sw.js`) provides offline caching for exercise images:
 
 This hybrid approach maximizes the use of Rust while respecting browser API limitations.
 
-## Platform Compatibility
+### Platform Compatibility
 
 ### Web Platform (Default)
 - Full functionality including Service Worker for offline caching
 - Build with: `cargo build --target wasm32-unknown-unknown --release`
 
-### Blitz/Native Platforms
+### Blitz/Native Platforms (Future)
 - **Blitz-Ready**: The app can run without JavaScript
 - Service Worker is disabled via feature flags
 - Images are fetched from network (no offline caching)
-- Build with: `cargo build --no-default-features --release`
+- Build for testing Blitz-compatible mode: `cargo build --target wasm32-unknown-unknown --release --no-default-features`
+- When Blitz is production-ready: `cargo build --release --no-default-features` (using native target)
 
 **Note**: Blitz is a new Dioxus renderer for native desktop/mobile that doesn't use JavaScript. This app is architecturally ready for Blitz - the Service Worker is the only JavaScript dependency and is already optional.
 
