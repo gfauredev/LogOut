@@ -312,10 +312,16 @@ fn ChartView(data: Vec<(String, Vec<(f64, f64)>)>, metric: Metric, colors: Vec<&
     
     // Format date from timestamp
     let format_date = |timestamp: f64| -> String {
-        let days_ago = ((std::time::SystemTime::now()
+        #[cfg(target_arch = "wasm32")]
+        let current_time = js_sys::Date::now() / 1000.0;
+        
+        #[cfg(not(target_arch = "wasm32"))]
+        let current_time = std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
             .unwrap()
-            .as_secs() as f64 - timestamp) / 86400.0) as i64;
+            .as_secs() as f64;
+        
+        let days_ago = ((current_time - timestamp) / 86400.0) as i64;
         
         if days_ago == 0 {
             "Today".to_string()

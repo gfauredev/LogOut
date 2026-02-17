@@ -99,11 +99,7 @@ pub struct WorkoutSession {
 impl WorkoutSession {
     /// Create a new workout session
     pub fn new() -> Self {
-        use std::time::{SystemTime, UNIX_EPOCH};
-        let timestamp = SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .unwrap()
-            .as_secs();
+        let timestamp = get_current_timestamp();
         
         Self {
             id: format!("session_{}", timestamp),
@@ -132,4 +128,21 @@ pub struct CustomExercise {
     pub force: Option<String>,
     pub equipment: Option<String>,
     pub primary_muscles: Vec<String>,
+}
+
+// Helper function to get current timestamp compatible with WASM
+fn get_current_timestamp() -> u64 {
+    #[cfg(target_arch = "wasm32")]
+    {
+        (js_sys::Date::now() / 1000.0) as u64
+    }
+    
+    #[cfg(not(target_arch = "wasm32"))]
+    {
+        use std::time::{SystemTime, UNIX_EPOCH};
+        SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap()
+            .as_secs()
+    }
 }

@@ -1660,6 +1660,7 @@ version = "0.1.0"
 dependencies = [
  "dioxus",
  "dioxus-logger",
+ "js-sys",
  "log",
  "serde",
  "serde_json",
