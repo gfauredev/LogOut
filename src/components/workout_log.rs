@@ -5,6 +5,7 @@ use crate::Route;
 
 #[component]
 pub fn WorkoutLogPage() -> Element {
+    let all_exercises = exercise_db::use_exercises();
     let mut workout_exercises = use_signal(|| Vec::<WorkoutExercise>::new());
     let mut search_query = use_signal(|| String::new());
     let mut selected_exercise = use_signal(|| None::<String>);
@@ -16,10 +17,10 @@ pub fn WorkoutLogPage() -> Element {
         if query.is_empty() {
             vec![]
         } else {
-            exercise_db::search_exercises(&query)
+            let all = all_exercises.read();
+            exercise_db::search_exercises(&all, &query)
                 .into_iter()
                 .take(10)
-                .cloned()
                 .collect::<Vec<_>>()
         }
     });
