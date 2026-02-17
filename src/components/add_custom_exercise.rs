@@ -1,7 +1,6 @@
 use dioxus::prelude::*;
 use crate::models::CustomExercise;
 use crate::services::{exercise_db, storage};
-use crate::Route;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 #[component]
