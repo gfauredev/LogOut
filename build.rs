@@ -41,6 +41,4 @@ pub const EXERCISES_JSON: &str = r####"{}"####;
     // Write the generated code to a file
     fs::write(&dest_path, generated_code)
         .expect("Failed to write generated exercises data");
-
-    println!("cargo:warning=Generated exercises data at {:?}", dest_path);
 }
