@@ -76,6 +76,22 @@ pub fn ExerciseListPage() -> Element {
                             "{exercise.name}" 
                         }
                         
+                        // Display the first exercise image if available
+                        if let Some(image_url) = exercise.get_first_image_url() {
+                            img {
+                                src: "{image_url}",
+                                alt: "{exercise.name}",
+                                loading: "lazy",
+                                style: "
+                                    width: 100%;
+                                    max-width: 300px;
+                                    height: auto;
+                                    border-radius: 8px;
+                                    margin-bottom: 10px;
+                                ",
+                            }
+                        }
+                        
                         div {
                             style: "display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 8px;",
                             

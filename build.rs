@@ -1,21 +1,64 @@
 use std::env;
 use std::fs;
 use std::path::Path;
+use std::process::Command;
 
 fn main() {
     // Get the output directory for generated files
     let out_dir = env::var("OUT_DIR").unwrap();
     let dest_path = Path::new(&out_dir).join("exercises_data.rs");
+    let download_path = Path::new(&out_dir).join("exercises.json");
 
-    // Path to the exercises.json file in assets/
-    let exercises_json_path = "assets/exercises.json";
+    // URL to download the exercises.json from
+    const EXERCISES_JSON_URL: &str = "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/dist/exercises.json";
 
-    // Tell Cargo to rerun this build script if the exercises.json changes
-    println!("cargo:rerun-if-changed={}", exercises_json_path);
+    println!("cargo:warning=Downloading exercises.json from {}", EXERCISES_JSON_URL);
 
-    // Read the JSON file
-    let exercises_json = fs::read_to_string(exercises_json_path)
-        .expect("Failed to read exercises.json file");
+    // Try to download the JSON file using curl or wget
+    let download_success = if Command::new("curl")
+        .args(&[
+            "-L",
+            "-o",
+            download_path.to_str().unwrap(),
+            EXERCISES_JSON_URL,
+        ])
+        .status()
+        .map(|s| s.success())
+        .unwrap_or(false)
+    {
+        true
+    } else if Command::new("wget")
+        .args(&[
+            "-O",
+            download_path.to_str().unwrap(),
+            EXERCISES_JSON_URL,
+        ])
+        .status()
+        .map(|s| s.success())
+        .unwrap_or(false)
+    {
+        true
+    } else {
+        false
+    };
+
+    // Read the exercises JSON
+    let exercises_json = if download_success && download_path.exists() {
+        println!("cargo:warning=Successfully downloaded exercises.json");
+        fs::read_to_string(&download_path)
+            .expect("Failed to read downloaded exercises.json file")
+    } else {
+        // If download fails, check if there's a cached version in assets/ as fallback
+        println!("cargo:warning=Failed to download exercises.json. Checking for local fallback...");
+        let fallback_path = "assets/exercises.json";
+        if Path::new(fallback_path).exists() {
+            println!("cargo:warning=Using fallback local file: {}", fallback_path);
+            fs::read_to_string(fallback_path)
+                .expect("Failed to read fallback exercises.json file")
+        } else {
+            panic!("Failed to download exercises.json and no local fallback found. Please ensure curl or wget is installed.");
+        }
+    };
 
     // Parse the JSON to validate it's correct
     let exercises: serde_json::Value = serde_json::from_str(&exercises_json)
@@ -34,6 +77,9 @@ fn main() {
 // Do not edit manually
 
 pub const EXERCISES_JSON: &str = r####"{}"####;
+
+// Base URL for exercise images
+pub const EXERCISES_IMAGE_BASE_URL: &str = "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/";
 "#####,
         exercises_json
     );
