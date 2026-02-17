@@ -3,12 +3,31 @@
 /// This module handles the registration of the Service Worker (sw.js) which provides
 /// offline caching for exercise images loaded from the GitHub CDN.
 /// 
-/// Note: The actual Service Worker implementation (sw.js) must remain as a JavaScript file
-/// because Service Workers run in a separate browser context and use Web APIs that are only
-/// available in that context. However, the registration logic is implemented in Rust
-/// following Dioxus best practices.
+/// ## Platform Compatibility
+/// 
+/// **Web Platform (with JavaScript):**
+/// - Service Worker is registered to cache images for offline use
+/// - Uses browser Cache API through sw.js JavaScript file
+/// - Progressive enhancement: app works without it
+/// 
+/// **Blitz/Native Platforms (no JavaScript):**
+/// - Service Worker is disabled (requires JavaScript engine)
+/// - App runs without offline caching
+/// - Images are fetched from network as needed
+/// - Future: Could implement native caching using platform-specific APIs
+/// 
+/// ## Feature Flags
+/// 
+/// The Service Worker is only enabled when both conditions are met:
+/// 1. Compiled for WASM (`target_arch = "wasm32"`)
+/// 2. `web-platform` feature is enabled (default)
+/// 
+/// To build for Blitz without Service Worker:
+/// ```bash
+/// cargo build --no-default-features
+/// ```
 
-#[cfg(target_arch = "wasm32")]
+#[cfg(all(target_arch = "wasm32", feature = "web-platform"))]
 pub fn register_service_worker() {
     use web_sys::window;
 
@@ -25,17 +44,19 @@ pub fn register_service_worker() {
         let _ = wasm_bindgen_futures::spawn_local(async move {
             match wasm_bindgen_futures::JsFuture::from(registration).await {
                 Ok(_) => {
-                    log::info!("Service Worker registered successfully");
+                    log::info!("Service Worker registered successfully for offline image caching");
                 }
                 Err(err) => {
-                    log::error!("Service Worker registration failed: {:?}", err);
+                    log::warn!("Service Worker registration failed (app will work without it): {:?}", err);
                 }
             }
         });
     }
 }
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(not(all(target_arch = "wasm32", feature = "web-platform")))]
 pub fn register_service_worker() {
-    // No-op on non-WASM targets
+    // No-op on non-web platforms (Blitz, native desktop, etc.)
+    // The app works perfectly fine without offline caching
+    log::info!("Service Worker disabled: running on non-web platform (Blitz-compatible mode)");
 }
