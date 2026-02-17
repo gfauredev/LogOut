@@ -10,34 +10,28 @@
 
 #[cfg(target_arch = "wasm32")]
 pub fn register_service_worker() {
-    use wasm_bindgen::JsValue;
     use web_sys::window;
 
     if let Some(window) = window() {
-        if let Ok(navigator) = js_sys::Reflect::get(&window, &JsValue::from_str("navigator")) {
-            if let Ok(service_worker) = js_sys::Reflect::get(&navigator, &JsValue::from_str("serviceWorker")) {
-                // Check if service worker is supported
-                if !service_worker.is_undefined() {
-                    let navigator = window.navigator();
-                    let sw_container = navigator.service_worker();
-                    
-                    // Register the service worker
-                    let registration = sw_container.register("/sw.js");
-                    
-                    // Handle the registration promise
-                    let _ = wasm_bindgen_futures::spawn_local(async move {
-                        match wasm_bindgen_futures::JsFuture::from(registration).await {
-                            Ok(_) => {
-                                log::info!("Service Worker registered successfully");
-                            }
-                            Err(err) => {
-                                log::error!("Service Worker registration failed: {:?}", err);
-                            }
-                        }
-                    });
+        let navigator = window.navigator();
+        let sw_container = navigator.service_worker();
+        
+        // Register the service worker
+        let registration = sw_container.register("/sw.js");
+        
+        // Handle the registration promise asynchronously
+        // Note: spawn_local failure is acceptable here as service worker registration
+        // is a progressive enhancement feature - the app works without it
+        let _ = wasm_bindgen_futures::spawn_local(async move {
+            match wasm_bindgen_futures::JsFuture::from(registration).await {
+                Ok(_) => {
+                    log::info!("Service Worker registered successfully");
+                }
+                Err(err) => {
+                    log::error!("Service Worker registration failed: {:?}", err);
                 }
             }
-        }
+        });
     }
 }
 
