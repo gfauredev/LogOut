@@ -36,7 +36,8 @@ pub fn register_service_worker() {
         let sw_container = navigator.service_worker();
         
         // Register the service worker
-        let registration = sw_container.register("/sw.js");
+        // Use relative path for GitHub Pages compatibility
+        let registration = sw_container.register("./sw.js");
         
         // Handle the registration promise asynchronously
         // Note: spawn_local failure is acceptable here as service worker registration
