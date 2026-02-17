@@ -77,6 +77,7 @@ fn save_custom_exercises(exercises: &[CustomExercise]) {
     }
 }
 
+#[allow(dead_code)]
 pub fn get_all_workouts() -> Vec<Workout> {
     WORKOUTS.lock().unwrap_or_else(|e| e.into_inner()).clone()
 }
@@ -87,6 +88,7 @@ pub fn add_workout(workout: Workout) {
     save_workouts(&workouts);
 }
 
+#[allow(dead_code)]
 pub fn delete_workout(id: &str) {
     let mut workouts = WORKOUTS.lock().unwrap_or_else(|e| e.into_inner());
     workouts.retain(|workout| workout.id != id);
@@ -115,6 +117,7 @@ pub fn save_session(session: WorkoutSession) {
     save_sessions(&sessions);
 }
 
+#[allow(dead_code)]
 pub fn delete_session(id: &str) {
     let mut sessions = SESSIONS.lock().unwrap_or_else(|e| e.into_inner());
     sessions.retain(|s| s.id != id);

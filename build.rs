@@ -77,9 +77,6 @@ fn main() {
 // Do not edit manually
 
 pub const EXERCISES_JSON: &str = r####"{}"####;
-
-// Base URL for exercise images
-pub const EXERCISES_IMAGE_BASE_URL: &str = "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/";
 "#####,
         exercises_json
     );

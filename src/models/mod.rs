@@ -25,6 +25,7 @@ pub struct Exercise {
 
 impl Exercise {
     /// Get full URLs for exercise images
+    #[allow(dead_code)]
     pub fn get_image_urls(&self) -> Vec<String> {
         self.images
             .iter()
@@ -110,6 +111,7 @@ impl WorkoutSession {
     }
 
     /// Get total duration in seconds
+    #[allow(dead_code)]
     pub fn duration_seconds(&self) -> Option<u64> {
         self.end_time.map(|end| end.saturating_sub(self.start_time))
     }

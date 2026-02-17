@@ -34,6 +34,7 @@ pub fn get_exercise_by_id(id: &str) -> Option<&Exercise> {
     get_exercises().iter().find(|e| e.id == id)
 }
 
+#[allow(dead_code)]
 pub fn get_categories() -> Vec<String> {
     let mut categories: Vec<String> = get_exercises()
         .iter()

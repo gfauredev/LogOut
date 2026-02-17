@@ -432,7 +432,7 @@ fn ChartView(data: Vec<(String, Vec<(f64, f64)>)>, metric: Metric, colors: Vec<&
                 }
                 
                 // Plot lines
-                for (idx, (exercise_name, points)) in data.iter().enumerate() {
+                for (idx, (_exercise_name, points)) in data.iter().enumerate() {
                     {
                         if points.len() >= 2 {
                             let path_data = points

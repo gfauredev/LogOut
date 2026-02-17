@@ -40,7 +40,6 @@ jobs:
       - name: Copy static files
         run: |
           cp index.html dist/
-          cp sw.js dist/ || true
           # Fix the import path in index.html for GitHub Pages
           sed -i "s|import init from './dist/logout.js';|import init from './logout.js';|g" dist/index.html
 
