@@ -1,7 +1,7 @@
 # LogOut
 Turn off your computer, Log your workOut
 
-A cross-platform workout logging application built with Dioxus 0.7. The app includes an embedded exercise database with 800+ exercises from [free-exercise-db](https://github.com/yuhonas/free-exercise-db).
+A cross-platform workout logging application built with Dioxus 0.7. The app includes an exercise database with 873+ exercises from [free-exercise-db](https://github.com/yuhonas/free-exercise-db), processed at build time for optimal performance.
 
 ## Features
 
@@ -39,7 +39,23 @@ python3 -m http.server 8000
 - `src/models/` - Data models for exercises and workouts
 - `src/services/` - Business logic (exercise database, storage)
 - `src/components/` - UI components (home, exercise list, workout log)
-- `assets/` - Exercise database JSON (embedded at compile time)
+- `assets/` - Exercise database JSON (processed at build time)
+- `build.rs` - Build script that generates Rust code from the exercise database
+
+## Build Process
+
+The exercise database is processed at build time using a Cargo build script (`build.rs`):
+
+1. The build script reads `assets/exercises.json`
+2. Validates the JSON format
+3. Generates Rust code with the JSON embedded as a static string constant
+4. The generated code is included in `src/services/exercise_db.rs` at compile time
+
+This approach provides:
+- Cleaner separation between data and code
+- Build-time validation of the exercise database
+- Ability to update the database without modifying source code
+- Same performance as direct embedding (data is still compiled into the binary)
 
 ## Exercise Database
 
