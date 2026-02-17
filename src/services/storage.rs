@@ -38,7 +38,7 @@ pub fn use_custom_exercises() -> Signal<Vec<CustomExercise>> {
 // ──────────────────────────────────────────
 
 #[cfg(target_arch = "wasm32")]
-mod idb {
+pub(crate) mod idb {
     use wasm_bindgen::prelude::*;
     use wasm_bindgen::JsCast;
     use web_sys::{IdbDatabase, IdbOpenDbRequest, IdbRequest, IdbTransactionMode};
@@ -47,11 +47,12 @@ mod idb {
     use std::rc::Rc;
 
     const DB_NAME: &str = "logout_db";
-    const DB_VERSION: u32 = 1;
+    const DB_VERSION: u32 = 2;
 
     pub const STORE_WORKOUTS: &str = "workouts";
     pub const STORE_SESSIONS: &str = "sessions";
     pub const STORE_CUSTOM_EXERCISES: &str = "custom_exercises";
+    pub const STORE_EXERCISES: &str = "exercises";
 
     /// Open (or create) the IndexedDB database and return it via a Future.
     pub async fn open_db() -> Result<IdbDatabase, JsValue> {
@@ -68,7 +69,7 @@ mod idb {
             let req: IdbOpenDbRequest = target.unchecked_into();
             let db: IdbDatabase = req.result().unwrap().unchecked_into();
 
-            for store_name in &[STORE_WORKOUTS, STORE_SESSIONS, STORE_CUSTOM_EXERCISES] {
+            for store_name in &[STORE_WORKOUTS, STORE_SESSIONS, STORE_CUSTOM_EXERCISES, STORE_EXERCISES] {
                 let names = db.object_store_names();
                 let mut found = false;
                 for i in 0..names.length() {
@@ -372,4 +373,28 @@ pub fn get_active_session() -> Option<WorkoutSession> {
     let sessions = sessions.read();
     let result = sessions.iter().find(|s| s.is_active()).cloned();
     result
+}
+
+// ──────────────────────────────────────────
+// Exercise IndexedDB helpers (used by exercise_db)
+// ──────────────────────────────────────────
+
+#[cfg(target_arch = "wasm32")]
+pub mod idb_exercises {
+    use crate::models::Exercise;
+    use super::idb;
+
+    pub async fn get_all_exercises() -> Result<Vec<Exercise>, String> {
+        idb::get_all::<Exercise>(idb::STORE_EXERCISES)
+            .await
+            .map_err(|e| format!("{:?}", e))
+    }
+
+    pub async fn store_all_exercises(exercises: &[Exercise]) {
+        for ex in exercises {
+            if let Err(e) = idb::put_item(idb::STORE_EXERCISES, ex).await {
+                log::error!("Failed to store exercise {}: {:?}", ex.id, e);
+            }
+        }
+    }
 }

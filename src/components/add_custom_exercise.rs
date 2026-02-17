@@ -22,8 +22,10 @@ pub fn AddCustomExercisePage() -> Element {
     ];
     
     let force_types = vec!["", "pull", "push", "static"];
-    let equipment_types = exercise_db::get_equipment_types();
-    let muscle_groups = exercise_db::get_muscle_groups();
+    let all_exercises = exercise_db::use_exercises();
+    let all = all_exercises.read();
+    let equipment_types = exercise_db::get_equipment_types(&all);
+    let muscle_groups = exercise_db::get_muscle_groups(&all);
     
     let add_muscle = move |_| {
         let muscle = muscle_input.read().trim().to_string();

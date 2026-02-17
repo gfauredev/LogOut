@@ -4,19 +4,22 @@ use crate::Route;
 
 #[component]
 pub fn ExerciseListPage() -> Element {
+    let all_exercises = exercise_db::use_exercises();
     let mut search_query = use_signal(|| String::new());
     let exercises = use_memo(move || {
         let query = search_query.read();
+        let all = all_exercises.read();
         if query.is_empty() {
-            exercise_db::get_exercises().iter().take(50).cloned().collect::<Vec<_>>()
+            all.iter().take(50).cloned().collect::<Vec<_>>()
         } else {
-            exercise_db::search_exercises(&query)
+            exercise_db::search_exercises(&all, &query)
                 .into_iter()
                 .take(50)
-                .cloned()
                 .collect::<Vec<_>>()
         }
     });
+
+    let total = all_exercises.read().len();
 
     rsx! {
         div {
@@ -31,7 +34,7 @@ pub fn ExerciseListPage() -> Element {
                 }
                 h1 { class: "page-title", "Exercise Database" }
                 p { class: "page-subtitle",
-                    "Browse {exercise_db::get_exercises().len()} exercises"
+                    "Browse {total} exercises"
                 }
             }
             

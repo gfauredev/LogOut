@@ -35,6 +35,7 @@ fn main() {
 fn App() -> Element {
     // Provide shared state signals via context
     services::storage::provide_app_state();
+    services::exercise_db::provide_exercises();
 
     rsx! {
         Router::<Route> {}

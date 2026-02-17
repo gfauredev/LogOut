@@ -40,6 +40,7 @@ pub fn ActiveSessionPage() -> Element {
     };
 
     let custom_exercises = storage::use_custom_exercises();
+    let all_exercises = exercise_db::use_exercises();
     
     let search_results = use_memo(move || {
         let query = search_query.read();
@@ -48,8 +49,9 @@ pub fn ActiveSessionPage() -> Element {
         } else {
             let mut results = Vec::new();
             
-            let db_exercises = exercise_db::search_exercises(&query);
-            for ex in db_exercises.iter().take(10) {
+            let all = all_exercises.read();
+            let db_results = exercise_db::search_exercises(&all, &query);
+            for ex in db_results.iter().take(10) {
                 results.push((ex.id.clone(), ex.name.clone(), ex.category.clone()));
             }
             
@@ -99,14 +101,17 @@ pub fn ActiveSessionPage() -> Element {
         
         let mut current_session = session.read().clone();
         
-        let (exercise_name, category) = if let Some(ex) = exercise_db::get_exercise_by_id(&exercise_id) {
-            (ex.name.clone(), ex.category.clone())
-        } else {
-            let custom = custom_exercises.read();
-            if let Some(ex) = custom.iter().find(|e| e.id == exercise_id) {
+        let (exercise_name, category) = {
+            let all = all_exercises.read();
+            if let Some(ex) = exercise_db::get_exercise_by_id(&all, &exercise_id) {
                 (ex.name.clone(), ex.category.clone())
             } else {
-                return;
+                let custom = custom_exercises.read();
+                if let Some(ex) = custom.iter().find(|e| e.id == exercise_id) {
+                    (ex.name.clone(), ex.category.clone())
+                } else {
+                    return;
+                }
             }
         };
         
@@ -208,14 +213,17 @@ pub fn ActiveSessionPage() -> Element {
                             class: "exercise-form",
                             
                             {
-                                let (exercise_name, category) = if let Some(ex) = exercise_db::get_exercise_by_id(exercise_id) {
-                                    (ex.name.clone(), ex.category.clone())
-                                } else {
-                                    let custom = custom_exercises.read();
-                                    if let Some(ex) = custom.iter().find(|e| &e.id == exercise_id) {
+                                let (exercise_name, category) = {
+                                    let all = all_exercises.read();
+                                    if let Some(ex) = exercise_db::get_exercise_by_id(&all, exercise_id) {
                                         (ex.name.clone(), ex.category.clone())
                                     } else {
-                                        ("Unknown".to_string(), "unknown".to_string())
+                                        let custom = custom_exercises.read();
+                                        if let Some(ex) = custom.iter().find(|e| &e.id == exercise_id) {
+                                            (ex.name.clone(), ex.category.clone())
+                                        } else {
+                                            ("Unknown".to_string(), "unknown".to_string())
+                                        }
                                     }
                                 };
                                 
