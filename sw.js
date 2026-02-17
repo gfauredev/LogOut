@@ -1,5 +1,5 @@
 // Service Worker for caching exercise images
-const CACHE_NAME = 'logout-images-v1';
+const CACHE_NAME = 'workout-images-v1';
 const IMAGE_BASE_URL = 'https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/';
 
 // Install event - set up the cache
