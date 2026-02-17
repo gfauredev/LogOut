@@ -256,7 +256,8 @@ fn migrate_sessions(sessions: &mut Vec<WorkoutSession>) -> bool {
 fn validate_workout_exercises(workouts: &mut Vec<Workout>) {
     use crate::services::exercise_db;
     
-    let custom_exercises = CUSTOM_EXERCISES.lock().unwrap_or_else(|e| e.into_inner());
+    // Clone custom exercises to avoid holding the lock during validation
+    let custom_exercises = CUSTOM_EXERCISES.lock().unwrap_or_else(|e| e.into_inner()).clone();
     let mut orphaned_count = 0;
     
     for workout in workouts.iter() {
