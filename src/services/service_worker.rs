@@ -47,7 +47,8 @@ pub fn register_service_worker() {
                     log::info!("Service Worker registered successfully for offline image caching");
                 }
                 Err(err) => {
-                    log::warn!("Service Worker registration failed (app will work without it): {:?}", err);
+                    log::error!("Service Worker registration failed: {:?}", err);
+                    log::warn!("App will continue to work, but without offline image caching");
                 }
             }
         });
