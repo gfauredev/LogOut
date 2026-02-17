@@ -5,7 +5,7 @@ A cross-platform workout logging application built with Dioxus 0.7. The app incl
 
 ## Features
 
-- 🏋️ Browse 800+ exercises with search functionality
+- 🏋️ Browse 873+ exercises with search functionality
 - 💪 Log workouts with sets, reps, and weights
 - 📱 Mobile-first responsive design
 - 🌐 Cross-platform (Web, with Android support planned)
@@ -44,7 +44,7 @@ python3 -m http.server 8000
 ## Exercise Database
 
 The app uses the excellent [free-exercise-db](https://github.com/yuhonas/free-exercise-db) which provides:
-- 800+ exercises with detailed instructions
+- 873+ exercises with detailed instructions
 - Exercise categories (strength, stretching, cardio, etc.)
 - Primary and secondary muscle groups
 - Equipment requirements

@@ -47,6 +47,6 @@ For a better mobile experience without native builds, consider adding:
 
 ## Notes
 
-- The exercise database is embedded at compile time, ensuring offline functionality
-- Current web build is ~2MB (including all 873 exercises)
+- The exercise database (873+ exercises) is embedded at compile time, ensuring offline functionality
+- Current web build is ~2MB (including all exercises)
 - For production, consider optimizing WASM size with `wasm-opt`
