@@ -394,11 +394,11 @@ fn ChartView(data: Vec<(String, Vec<(f64, f64)>)>, metric: Metric, colors: Vec<&
                 
                 // X-axis labels
                 {
-                    let num_labels = 4.min(data.iter().map(|(_, points)| points.len()).max().unwrap_or(0));
+                    let num_labels = 4.min(data.iter().map(|(_, points)| points.len()).max().unwrap_or(0)).max(2);
                     rsx! {
                         for i in 0..num_labels {
                             {
-                                let x_val = min_x + (max_x - min_x) * (i as f64 / (num_labels - 1).max(1) as f64);
+                                let x_val = min_x + (max_x - min_x) * (i as f64 / (num_labels - 1) as f64);
                                 let x_pos = scale_x(x_val);
                                 
                                 rsx! {
