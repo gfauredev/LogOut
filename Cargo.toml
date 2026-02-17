@@ -3,6 +3,10 @@ name = "logout"
 version = "0.1.0"
 edition = "2021"
 
+[features]
+default = ["web-platform"]
+web-platform = []  # Enable web-specific features like Service Worker
+
 [dependencies]
 dioxus = { version = "0.7", features = ["web", "router"] }
 dioxus-logger = "0.7"

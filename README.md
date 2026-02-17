@@ -8,10 +8,11 @@ A cross-platform workout logging application built with Dioxus 0.7. The app incl
 - 🏋️ Browse 873+ exercises with search functionality
 - 💪 Log workouts with sets, reps, and weights
 - 📱 Mobile-first responsive design
-- 🌐 Cross-platform (Web, with Android support planned)
+- 🌐 Cross-platform (Web, with Blitz support planned)
 - 💾 Exercise database downloaded and embedded at build time for optimal performance
 - 🖼️ Exercise images loaded from remote CDN with lazy loading
 - 🎨 Modern, gradient-based UI
+- 🔌 **Blitz-Ready**: Can run without JavaScript for native platforms
 
 ## Building
 
@@ -22,10 +23,10 @@ A cross-platform workout logging application built with Dioxus 0.7. The app incl
 - wasm32 target: `rustup target add wasm32-unknown-unknown`
 - curl or wget (for downloading exercise database during build)
 
-### Build for Web
+### Build for Web (with Service Worker)
 
 ```bash
-# Build the wasm binary
+# Build the wasm binary with default features (includes Service Worker)
 cargo build --target wasm32-unknown-unknown --release
 
 # Generate wasm bindings
@@ -35,6 +36,21 @@ wasm-bindgen --target web --out-dir dist target/wasm32-unknown-unknown/release/l
 python3 -m http.server 8000
 # Then open http://localhost:8000 in your browser
 ```
+
+### Build for Blitz/Native (without JavaScript)
+
+```bash
+# Build without Service Worker for Blitz compatibility
+cargo build --target wasm32-unknown-unknown --release --no-default-features
+
+# Generate wasm bindings
+wasm-bindgen --target web --out-dir dist target/wasm32-unknown-unknown/release/logout.wasm
+
+# Note: When Blitz becomes production-ready, the target will change
+# Example: cargo build --release --features blitz
+```
+
+The `--no-default-features` flag disables the `web-platform` feature, which removes Service Worker registration. The app runs perfectly fine without it - images are simply fetched from the network without offline caching.
 
 ## Project Structure
 
@@ -91,4 +107,26 @@ The Service Worker (`sw.js`) provides offline caching for exercise images:
 - **Functionality**: Caches images from the GitHub CDN for offline access
 
 This hybrid approach maximizes the use of Rust while respecting browser API limitations.
+
+## Platform Compatibility
+
+### Web Platform (Default)
+- Full functionality including Service Worker for offline caching
+- Build with: `cargo build --target wasm32-unknown-unknown --release`
+
+### Blitz/Native Platforms
+- **Blitz-Ready**: The app can run without JavaScript
+- Service Worker is disabled via feature flags
+- Images are fetched from network (no offline caching)
+- Build with: `cargo build --no-default-features --release`
+
+**Note**: Blitz is a new Dioxus renderer for native desktop/mobile that doesn't use JavaScript. This app is architecturally ready for Blitz - the Service Worker is the only JavaScript dependency and is already optional.
+
+### Future Native Enhancements
+When targeting Blitz or native platforms, offline caching could be implemented using:
+- Platform-specific HTTP caching
+- Local file system storage
+- Native image caching libraries
+
+These would replace the Service Worker functionality without requiring JavaScript.
 

@@ -11,6 +11,11 @@
 //
 // The registration of this Service Worker is handled in Rust (src/services/service_worker.rs)
 // following Dioxus best practices - only the worker script itself must be JavaScript.
+//
+// BLITZ COMPATIBILITY NOTE:
+// This file is NOT used when building for Dioxus Blitz or other non-web platforms.
+// Blitz doesn't have a JavaScript engine, so Service Worker functionality is disabled
+// via feature flags. The app works perfectly fine without offline caching.
 
 const CACHE_NAME = 'workout-images-v1';
 const IMAGE_BASE_URL = 'https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/';
