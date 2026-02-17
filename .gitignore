@@ -23,6 +23,9 @@ target
 # WebAssembly build output
 dist/
 
+# Exercise images (downloaded at build time)
+assets/exercises/
+
 
 # Added by cargo
 

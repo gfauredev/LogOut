@@ -40,6 +40,8 @@ jobs:
       - name: Copy static files
         run: |
           cp index.html dist/
+          # Copy bundled exercise images
+          cp -r assets dist/
           # Fix the import path in index.html for GitHub Pages
           sed -i "s|import init from './dist/logout.js';|import init from './logout.js';|g" dist/index.html
 

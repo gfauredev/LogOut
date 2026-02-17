@@ -1,8 +1,5 @@
 use serde::{Deserialize, Serialize};
 
-// Base URL for exercise images from the free-exercise-db repository
-const EXERCISES_IMAGE_BASE_URL: &str = "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/";
-
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct Exercise {
     pub id: String,
@@ -24,20 +21,20 @@ pub struct Exercise {
 }
 
 impl Exercise {
-    /// Get full URLs for exercise images
+    /// Get full URLs for exercise images (bundled locally)
     #[allow(dead_code)]
     pub fn get_image_urls(&self) -> Vec<String> {
         self.images
             .iter()
-            .map(|img| format!("{}{}", EXERCISES_IMAGE_BASE_URL, img))
+            .map(|img| format!("assets/exercises/{}", img))
             .collect()
     }
 
-    /// Get the first image URL if available
+    /// Get the first image URL if available (bundled locally)
     pub fn get_first_image_url(&self) -> Option<String> {
         self.images
             .first()
-            .map(|img| format!("{}{}", EXERCISES_IMAGE_BASE_URL, img))
+            .map(|img| format!("assets/exercises/{}", img))
     }
 }
 
