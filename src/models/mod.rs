@@ -68,7 +68,7 @@ pub fn format_distance(metres: u32) -> String {
 /// Parse a user-entered kg string into decagrams.
 pub fn parse_weight_kg(input: &str) -> Option<u16> {
     let val: f64 = input.parse().ok()?;
-    if val <= 0.0 { return None; }
+    if !val.is_finite() || val <= 0.0 { return None; }
     let dg = (val * 100.0).round() as u32;
     if dg > u16::MAX as u32 { return None; }
     Some(dg as u16)
@@ -77,7 +77,7 @@ pub fn parse_weight_kg(input: &str) -> Option<u16> {
 /// Parse a user-entered km string into metres.
 pub fn parse_distance_km(input: &str) -> Option<u32> {
     let val: f64 = input.parse().ok()?;
-    if val <= 0.0 { return None; }
+    if !val.is_finite() || val <= 0.0 { return None; }
     Some((val * 1000.0).round() as u32)
 }
 

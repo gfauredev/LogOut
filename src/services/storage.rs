@@ -160,7 +160,7 @@ pub(crate) mod idb {
                 let js_val = array.get(i);
                 match serde_wasm_bindgen::from_value::<T>(js_val) {
                     Ok(item) => items.push(item),
-                    Err(_) => {} // skip corrupt entries
+                    Err(e) => log::warn!("Skipping corrupt IndexedDB entry at index {}: {}", i, e),
                 }
             }
             if let Some(sender) = tx_ok.borrow_mut().take() {

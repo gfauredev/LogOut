@@ -19,7 +19,7 @@ pub fn ActiveSessionPage() -> Element {
     let mut panel_open = use_signal(|| false);
 
     // Tick signal for live timer – updated every second by a coroutine
-    let mut now_tick = use_signal(get_current_timestamp);
+    let mut now_tick = use_signal(|| get_current_timestamp());
 
     use_coroutine(move |_: UnboundedReceiver<()>| async move {
         loop {
