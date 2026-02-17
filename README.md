@@ -59,6 +59,9 @@ sed -i "s|import init from './dist/logout.js';|import init from './logout.js';|g
 cd dist
 python3 -m http.server 8000
 # Then open http://localhost:8000 in your browser
+# Note: The app is configured for GitHub Pages deployment with base_path="LogOut"
+# For local development, you may need to access it at http://localhost:8000/LogOut/
+# or temporarily change base_path to "." in Dioxus.toml
 ```
 
 ### Build for Blitz/Native (without JavaScript)
