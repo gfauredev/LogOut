@@ -3,6 +3,9 @@ use serde::{Deserialize, Serialize};
 // Base URL for exercise images from the free-exercise-db repository
 const EXERCISES_IMAGE_BASE_URL: &str = "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/";
 
+// Version control for data structures to handle migrations
+pub const DATA_VERSION: u32 = 1;
+
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct Exercise {
     pub id: String,
@@ -61,6 +64,8 @@ pub struct Workout {
     pub date: String,
     pub exercises: Vec<WorkoutExercise>,
     pub notes: Option<String>,
+    #[serde(default)]
+    pub version: u32,
 }
 
 // New models for active session tracking
@@ -94,6 +99,8 @@ pub struct WorkoutSession {
     pub start_time: u64,  // Unix timestamp in seconds
     pub end_time: Option<u64>,  // Unix timestamp in seconds
     pub exercise_logs: Vec<ExerciseLog>,
+    #[serde(default)]
+    pub version: u32,
 }
 
 impl WorkoutSession {
@@ -106,6 +113,7 @@ impl WorkoutSession {
             start_time: timestamp,
             end_time: None,
             exercise_logs: Vec::new(),
+            version: DATA_VERSION,
         }
     }
 

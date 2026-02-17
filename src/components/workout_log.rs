@@ -1,5 +1,5 @@
 use dioxus::prelude::*;
-use crate::models::{Workout, WorkoutExercise, WorkoutSet};
+use crate::models::{Workout, WorkoutExercise, WorkoutSet, DATA_VERSION};
 use crate::services::{exercise_db, storage};
 use crate::Route;
 
@@ -65,6 +65,7 @@ pub fn WorkoutLogPage() -> Element {
                 date: format!("{}", timestamp),
                 exercises,
                 notes: None,
+                version: DATA_VERSION,
             };
             storage::add_workout(workout);
             workout_exercises.set(vec![]);
