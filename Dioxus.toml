@@ -1,0 +1,16 @@
+[application]
+name = "LogOut"
+default_platform = "web"
+
+[bundle]
+identifier = "com.gfaure.logout"
+publisher = "gfaure"
+
+[web.app]
+title = "LogOut - Workout Logger"
+base_path = "."
+
+[web.watcher]
+reload_html = true
+index_on_404 = true
+
