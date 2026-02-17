@@ -24,7 +24,7 @@ pub fn HomePage() -> Element {
                 style: "display: flex; flex-direction: column; gap: 15px; max-width: 400px; margin: 0 auto;",
                 
                 Link {
-                    to: Route::WorkoutLogPage {},
+                    to: Route::ActiveSessionPage {},
                     style: "
                         display: block;
                         padding: 20px;
