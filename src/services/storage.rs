@@ -1,208 +1,362 @@
-use crate::models::{Workout, WorkoutSession, ExerciseLog, CustomExercise, DATA_VERSION};
-use std::sync::Mutex;
+use dioxus::prelude::*;
+use crate::models::{Workout, WorkoutSession, ExerciseLog, CustomExercise};
 
 #[cfg(target_arch = "wasm32")]
-use log::{error, warn, info};
+use log::{error, info};
 
-static WORKOUTS: Mutex<Vec<Workout>> = Mutex::new(Vec::new());
-static SESSIONS: Mutex<Vec<WorkoutSession>> = Mutex::new(Vec::new());
-static CUSTOM_EXERCISES: Mutex<Vec<CustomExercise>> = Mutex::new(Vec::new());
+// ──────────────────────────────────────────
+// Dioxus context-based state (replaces static Mutex)
+// ──────────────────────────────────────────
 
-const WORKOUTS_KEY: &str = "logout_workouts";
-const SESSIONS_KEY: &str = "logout_sessions";
-const CUSTOM_EXERCISES_KEY: &str = "logout_custom_exercises";
+/// Provide shared signals at the top of the component tree.
+/// Call once inside the root `App` component.
+pub fn provide_app_state() {
+    use_context_provider(|| Signal::new(Vec::<Workout>::new()));
+    use_context_provider(|| Signal::new(Vec::<WorkoutSession>::new()));
+    use_context_provider(|| Signal::new(Vec::<CustomExercise>::new()));
 
-pub fn init_storage() {
-    // Load from localStorage on web
+    // Load persisted data into the signals
+    load_from_storage();
+}
+
+// ── helpers to obtain the signals from any component ──
+
+pub fn use_workouts() -> Signal<Vec<Workout>> {
+    use_context::<Signal<Vec<Workout>>>()
+}
+
+pub fn use_sessions() -> Signal<Vec<WorkoutSession>> {
+    use_context::<Signal<Vec<WorkoutSession>>>()
+}
+
+pub fn use_custom_exercises() -> Signal<Vec<CustomExercise>> {
+    use_context::<Signal<Vec<CustomExercise>>>()
+}
+
+// ──────────────────────────────────────────
+// IndexedDB persistence  (wasm32 only)
+// ──────────────────────────────────────────
+
+#[cfg(target_arch = "wasm32")]
+mod idb {
+    use wasm_bindgen::prelude::*;
+    use wasm_bindgen::JsCast;
+    use web_sys::{IdbDatabase, IdbOpenDbRequest, IdbRequest, IdbTransactionMode};
+    use js_sys::Array;
+    use std::cell::RefCell;
+    use std::rc::Rc;
+
+    const DB_NAME: &str = "logout_db";
+    const DB_VERSION: u32 = 1;
+
+    pub const STORE_WORKOUTS: &str = "workouts";
+    pub const STORE_SESSIONS: &str = "sessions";
+    pub const STORE_CUSTOM_EXERCISES: &str = "custom_exercises";
+
+    /// Open (or create) the IndexedDB database and return it via a Future.
+    pub async fn open_db() -> Result<IdbDatabase, JsValue> {
+        let window = web_sys::window().ok_or_else(|| JsValue::from_str("no window"))?;
+        let idb_factory = window
+            .indexed_db()?
+            .ok_or_else(|| JsValue::from_str("indexedDB not available"))?;
+
+        let open_req: IdbOpenDbRequest = idb_factory.open_with_u32(DB_NAME, DB_VERSION)?;
+
+        // Handle upgrade (create object stores)
+        let on_upgrade = Closure::wrap(Box::new(move |event: web_sys::Event| {
+            let target = event.target().unwrap();
+            let req: IdbOpenDbRequest = target.unchecked_into();
+            let db: IdbDatabase = req.result().unwrap().unchecked_into();
+
+            for store_name in &[STORE_WORKOUTS, STORE_SESSIONS, STORE_CUSTOM_EXERCISES] {
+                let names = db.object_store_names();
+                let mut found = false;
+                for i in 0..names.length() {
+                    if let Some(name) = names.get(i) {
+                        if name == *store_name {
+                            found = true;
+                            break;
+                        }
+                    }
+                }
+                if !found {
+                    let params = web_sys::IdbObjectStoreParameters::new();
+                    params.set_key_path(&JsValue::from_str("id"));
+                    let _ = db.create_object_store_with_optional_parameters(store_name, &params);
+                }
+            }
+        }) as Box<dyn FnMut(_)>);
+        open_req.set_onupgradeneeded(Some(on_upgrade.as_ref().unchecked_ref()));
+        on_upgrade.forget();
+
+        // Wrap open request into a Future
+        let (tx, rx) = futures_channel::oneshot::channel::<Result<IdbDatabase, JsValue>>();
+        let tx = Rc::new(RefCell::new(Some(tx)));
+
+        let tx_ok = tx.clone();
+        let on_success = Closure::once(Box::new(move |event: web_sys::Event| {
+            let target = event.target().unwrap();
+            let req: IdbRequest = target.unchecked_into();
+            let db: IdbDatabase = req.result().unwrap().unchecked_into();
+            if let Some(sender) = tx_ok.borrow_mut().take() {
+                let _ = sender.send(Ok(db));
+            }
+        }));
+        open_req.set_onsuccess(Some(on_success.as_ref().unchecked_ref()));
+        on_success.forget();
+
+        let tx_err = tx;
+        let on_error = Closure::once(Box::new(move |_event: web_sys::Event| {
+            if let Some(sender) = tx_err.borrow_mut().take() {
+                let _ = sender.send(Err(JsValue::from_str("IndexedDB open error")));
+            }
+        }));
+        open_req.set_onerror(Some(on_error.as_ref().unchecked_ref()));
+        on_error.forget();
+
+        rx.await.unwrap_or(Err(JsValue::from_str("channel closed")))
+    }
+
+    /// Put a single serialisable item into a store (upsert by key).
+    pub async fn put_item<T: serde::Serialize>(store_name: &str, item: &T) -> Result<(), JsValue> {
+        let db = open_db().await?;
+        let tx = db.transaction_with_str_and_mode(store_name, IdbTransactionMode::Readwrite)?;
+        let store = tx.object_store(store_name)?;
+
+        let js_val = serde_wasm_bindgen::to_value(item)?;
+        store.put(&js_val)?;
+
+        Ok(())
+    }
+
+    /// Delete an item from a store by its key.
+    pub async fn delete_item(store_name: &str, key: &str) -> Result<(), JsValue> {
+        let db = open_db().await?;
+        let tx = db.transaction_with_str_and_mode(store_name, IdbTransactionMode::Readwrite)?;
+        let store = tx.object_store(store_name)?;
+        store.delete(&JsValue::from_str(key))?;
+        Ok(())
+    }
+
+    /// Load all items from a store.
+    pub async fn get_all<T: serde::de::DeserializeOwned + 'static>(store_name: &str) -> Result<Vec<T>, JsValue> {
+        let db = open_db().await?;
+        let tx = db.transaction_with_str_and_mode(store_name, IdbTransactionMode::Readonly)?;
+        let store = tx.object_store(store_name)?;
+        let req = store.get_all()?;
+
+        let (tx_ch, rx_ch) = futures_channel::oneshot::channel::<Result<Vec<T>, JsValue>>();
+        let tx_ch = Rc::new(RefCell::new(Some(tx_ch)));
+
+        let tx_ok = tx_ch.clone();
+        let on_success = Closure::once(Box::new(move |event: web_sys::Event| {
+            let target = event.target().unwrap();
+            let req: IdbRequest = target.unchecked_into();
+            let result = req.result().unwrap();
+            let array: Array = result.unchecked_into();
+            let mut items = Vec::new();
+            for i in 0..array.length() {
+                let js_val = array.get(i);
+                match serde_wasm_bindgen::from_value::<T>(js_val) {
+                    Ok(item) => items.push(item),
+                    Err(_) => {} // skip corrupt entries
+                }
+            }
+            if let Some(sender) = tx_ok.borrow_mut().take() {
+                let _ = sender.send(Ok(items));
+            }
+        }));
+        req.set_onsuccess(Some(on_success.as_ref().unchecked_ref()));
+        on_success.forget();
+
+        let tx_err = tx_ch;
+        let on_error = Closure::once(Box::new(move |_event: web_sys::Event| {
+            if let Some(sender) = tx_err.borrow_mut().take() {
+                let _ = sender.send(Err(JsValue::from_str("getAll error")));
+            }
+        }));
+        req.set_onerror(Some(on_error.as_ref().unchecked_ref()));
+        on_error.forget();
+
+        rx_ch.await.unwrap_or(Err(JsValue::from_str("channel closed")))
+    }
+}
+
+// ──────────────────────────────────────────
+// Load persisted data into context signals
+// ──────────────────────────────────────────
+
+fn load_from_storage() {
     #[cfg(target_arch = "wasm32")]
     {
-        if let Some(window) = web_sys::window() {
-            if let Ok(Some(storage)) = window.local_storage() {
-                info!("Initializing storage from localStorage");
-                
-                // Load workouts with validation
-                if let Ok(Some(data)) = storage.get_item(WORKOUTS_KEY) {
-                    match serde_json::from_str::<Vec<Workout>>(&data) {
-                        Ok(mut workouts) => {
-                            // Migrate old data if needed
-                            let migrated = migrate_workouts(&mut workouts);
-                            if migrated {
-                                info!("Migrated {} workouts to current version", workouts.len());
-                            }
-                            
-                            // Validate exercise references
-                            validate_workout_exercises(&mut workouts);
-                            
-                            let count = workouts.len();
-                            *WORKOUTS.lock().unwrap_or_else(|e| e.into_inner()) = workouts;
-                            info!("Loaded {} workouts from storage", count);
-                        }
-                        Err(e) => {
-                            error!("Failed to parse workouts from localStorage: {}. Data may be corrupted.", e);
-                        }
-                    }
+        let mut workouts_sig = use_workouts();
+        let mut sessions_sig = use_sessions();
+        let mut custom_sig = use_custom_exercises();
+
+        // First try IndexedDB, then fall back to localStorage for migration
+        spawn(async move {
+            // Try IndexedDB first
+            let mut from_idb = false;
+
+            if let Ok(workouts) = idb::get_all::<Workout>(idb::STORE_WORKOUTS).await {
+                if !workouts.is_empty() {
+                    info!("Loaded {} workouts from IndexedDB", workouts.len());
+                    workouts_sig.set(workouts);
+                    from_idb = true;
                 }
-                
-                // Load sessions with validation
-                if let Ok(Some(data)) = storage.get_item(SESSIONS_KEY) {
-                    match serde_json::from_str::<Vec<WorkoutSession>>(&data) {
-                        Ok(mut sessions) => {
-                            // Migrate old data if needed
-                            let migrated = migrate_sessions(&mut sessions);
-                            if migrated {
-                                info!("Migrated {} sessions to current version", sessions.len());
-                            }
-                            
-                            let count = sessions.len();
-                            *SESSIONS.lock().unwrap_or_else(|e| e.into_inner()) = sessions;
-                            info!("Loaded {} sessions from storage", count);
-                        }
-                        Err(e) => {
-                            error!("Failed to parse sessions from localStorage: {}. Data may be corrupted.", e);
-                        }
-                    }
-                }
-                
-                // Load custom exercises
-                if let Ok(Some(data)) = storage.get_item(CUSTOM_EXERCISES_KEY) {
-                    match serde_json::from_str::<Vec<CustomExercise>>(&data) {
-                        Ok(exercises) => {
-                            let count = exercises.len();
-                            *CUSTOM_EXERCISES.lock().unwrap_or_else(|e| e.into_inner()) = exercises;
-                            info!("Loaded {} custom exercises from storage", count);
-                        }
-                        Err(e) => {
-                            error!("Failed to parse custom exercises from localStorage: {}. Data may be corrupted.", e);
-                        }
-                    }
-                }
-            } else {
-                warn!("localStorage is not available");
             }
+            if let Ok(sessions) = idb::get_all::<WorkoutSession>(idb::STORE_SESSIONS).await {
+                if !sessions.is_empty() {
+                    info!("Loaded {} sessions from IndexedDB", sessions.len());
+                    sessions_sig.set(sessions);
+                    from_idb = true;
+                }
+            }
+            if let Ok(custom) = idb::get_all::<CustomExercise>(idb::STORE_CUSTOM_EXERCISES).await {
+                if !custom.is_empty() {
+                    info!("Loaded {} custom exercises from IndexedDB", custom.len());
+                    custom_sig.set(custom);
+                    from_idb = true;
+                }
+            }
+
+            // Fall back to localStorage (one-time migration)
+            if !from_idb {
+                migrate_from_local_storage(workouts_sig, sessions_sig, custom_sig).await;
+            }
+        });
+    }
+}
+
+#[cfg(target_arch = "wasm32")]
+async fn migrate_from_local_storage(
+    mut workouts_sig: Signal<Vec<Workout>>,
+    mut sessions_sig: Signal<Vec<WorkoutSession>>,
+    mut custom_sig: Signal<Vec<CustomExercise>>,
+) {
+    let window = match web_sys::window() {
+        Some(w) => w,
+        None => return,
+    };
+    let storage = match window.local_storage() {
+        Ok(Some(s)) => s,
+        _ => return,
+    };
+
+    // Workouts
+    if let Ok(Some(data)) = storage.get_item("logout_workouts") {
+        if let Ok(workouts) = serde_json::from_str::<Vec<Workout>>(&data) {
+            info!("Migrating {} workouts from localStorage → IndexedDB", workouts.len());
+            for w in &workouts {
+                let _ = idb::put_item(idb::STORE_WORKOUTS, w).await;
+            }
+            workouts_sig.set(workouts);
+            let _ = storage.remove_item("logout_workouts");
+        }
+    }
+
+    // Sessions
+    if let Ok(Some(data)) = storage.get_item("logout_sessions") {
+        if let Ok(sessions) = serde_json::from_str::<Vec<WorkoutSession>>(&data) {
+            info!("Migrating {} sessions from localStorage → IndexedDB", sessions.len());
+            for s in &sessions {
+                let _ = idb::put_item(idb::STORE_SESSIONS, s).await;
+            }
+            sessions_sig.set(sessions);
+            let _ = storage.remove_item("logout_sessions");
+        }
+    }
+
+    // Custom exercises
+    if let Ok(Some(data)) = storage.get_item("logout_custom_exercises") {
+        if let Ok(custom) = serde_json::from_str::<Vec<CustomExercise>>(&data) {
+            info!("Migrating {} custom exercises from localStorage → IndexedDB", custom.len());
+            for c in &custom {
+                let _ = idb::put_item(idb::STORE_CUSTOM_EXERCISES, c).await;
+            }
+            custom_sig.set(custom);
+            let _ = storage.remove_item("logout_custom_exercises");
         }
     }
 }
 
-fn save_workouts(workouts: &[Workout]) {
-    #[cfg(target_arch = "wasm32")]
-    {
-        if let Some(window) = web_sys::window() {
-            if let Ok(Some(storage)) = window.local_storage() {
-                match serde_json::to_string(workouts) {
-                    Ok(data) => {
-                        if let Err(e) = storage.set_item(WORKOUTS_KEY, &data) {
-                            error!("Failed to save workouts to localStorage: {:?}", e);
-                        }
-                    }
-                    Err(e) => {
-                        error!("Failed to serialize workouts: {}", e);
-                    }
-                }
-            }
-        }
-    }
-}
-
-fn save_sessions(sessions: &[WorkoutSession]) {
-    #[cfg(target_arch = "wasm32")]
-    {
-        if let Some(window) = web_sys::window() {
-            if let Ok(Some(storage)) = window.local_storage() {
-                match serde_json::to_string(sessions) {
-                    Ok(data) => {
-                        if let Err(e) = storage.set_item(SESSIONS_KEY, &data) {
-                            error!("Failed to save sessions to localStorage: {:?}", e);
-                        }
-                    }
-                    Err(e) => {
-                        error!("Failed to serialize sessions: {}", e);
-                    }
-                }
-            }
-        }
-    }
-}
-
-fn save_custom_exercises(exercises: &[CustomExercise]) {
-    #[cfg(target_arch = "wasm32")]
-    {
-        if let Some(window) = web_sys::window() {
-            if let Ok(Some(storage)) = window.local_storage() {
-                match serde_json::to_string(exercises) {
-                    Ok(data) => {
-                        if let Err(e) = storage.set_item(CUSTOM_EXERCISES_KEY, &data) {
-                            error!("Failed to save custom exercises to localStorage: {:?}", e);
-                        }
-                    }
-                    Err(e) => {
-                        error!("Failed to serialize custom exercises: {}", e);
-                    }
-                }
-            }
-        }
-    }
-}
-
-pub fn get_all_workouts() -> Vec<Workout> {
-    WORKOUTS.lock().unwrap_or_else(|e| e.into_inner()).clone()
-}
+// ──────────────────────────────────────────
+// Public mutation helpers (granular IDB writes)
+// ──────────────────────────────────────────
 
 pub fn add_workout(workout: Workout) {
-    let mut workouts = WORKOUTS.lock().unwrap_or_else(|e| e.into_inner());
-    workouts.push(workout.clone());
-    save_workouts(&workouts);
+    let mut sig = use_workouts();
+    sig.write().push(workout.clone());
+
+    #[cfg(target_arch = "wasm32")]
+    spawn(async move {
+        if let Err(e) = idb::put_item(idb::STORE_WORKOUTS, &workout).await {
+            error!("Failed to persist workout: {:?}", e);
+        }
+    });
 }
 
 pub fn delete_workout(id: &str) {
-    let mut workouts = WORKOUTS.lock().unwrap_or_else(|e| e.into_inner());
-    workouts.retain(|workout| workout.id != id);
-    save_workouts(&workouts);
-}
+    let mut sig = use_workouts();
+    sig.write().retain(|w| w.id != id);
 
-// Session management
-pub fn get_all_sessions() -> Vec<WorkoutSession> {
-    SESSIONS.lock().unwrap_or_else(|e| e.into_inner()).clone()
-}
-
-pub fn get_active_session() -> Option<WorkoutSession> {
-    SESSIONS.lock().unwrap_or_else(|e| e.into_inner())
-        .iter()
-        .find(|s| s.is_active())
-        .cloned()
+    #[cfg(target_arch = "wasm32")]
+    {
+        let id = id.to_owned();
+        spawn(async move {
+            let _ = idb::delete_item(idb::STORE_WORKOUTS, &id).await;
+        });
+    }
 }
 
 pub fn save_session(session: WorkoutSession) {
-    let mut sessions = SESSIONS.lock().unwrap_or_else(|e| e.into_inner());
-    if let Some(pos) = sessions.iter().position(|s| s.id == session.id) {
-        sessions[pos] = session;
-    } else {
-        sessions.push(session);
+    let mut sig = use_sessions();
+    {
+        let mut sessions = sig.write();
+        if let Some(pos) = sessions.iter().position(|s| s.id == session.id) {
+            sessions[pos] = session.clone();
+        } else {
+            sessions.push(session.clone());
+        }
     }
-    save_sessions(&sessions);
+
+    #[cfg(target_arch = "wasm32")]
+    spawn(async move {
+        if let Err(e) = idb::put_item(idb::STORE_SESSIONS, &session).await {
+            error!("Failed to persist session: {:?}", e);
+        }
+    });
 }
 
 pub fn delete_session(id: &str) {
-    let mut sessions = SESSIONS.lock().unwrap_or_else(|e| e.into_inner());
-    sessions.retain(|s| s.id != id);
-    save_sessions(&sessions);
-}
+    let mut sig = use_sessions();
+    sig.write().retain(|s| s.id != id);
 
-// Custom exercises management
-pub fn get_custom_exercises() -> Vec<CustomExercise> {
-    CUSTOM_EXERCISES.lock().unwrap_or_else(|e| e.into_inner()).clone()
+    #[cfg(target_arch = "wasm32")]
+    {
+        let id = id.to_owned();
+        spawn(async move {
+            let _ = idb::delete_item(idb::STORE_SESSIONS, &id).await;
+        });
+    }
 }
 
 pub fn add_custom_exercise(exercise: CustomExercise) {
-    let mut exercises = CUSTOM_EXERCISES.lock().unwrap_or_else(|e| e.into_inner());
-    exercises.push(exercise);
-    save_custom_exercises(&exercises);
+    let mut sig = use_custom_exercises();
+    sig.write().push(exercise.clone());
+
+    #[cfg(target_arch = "wasm32")]
+    spawn(async move {
+        if let Err(e) = idb::put_item(idb::STORE_CUSTOM_EXERCISES, &exercise).await {
+            error!("Failed to persist custom exercise: {:?}", e);
+        }
+    });
 }
 
 // Helper to get last values for an exercise (for prefilling)
 pub fn get_last_exercise_log(exercise_id: &str) -> Option<ExerciseLog> {
-    let sessions = SESSIONS.lock().unwrap_or_else(|e| e.into_inner());
-    
-    // Search through sessions in reverse order (most recent first)
+    let sessions = use_sessions();
+    let sessions = sessions.read();
     for session in sessions.iter().rev() {
         for log in session.exercise_logs.iter().rev() {
             if log.exercise_id == exercise_id && log.is_complete() {
@@ -213,76 +367,9 @@ pub fn get_last_exercise_log(exercise_id: &str) -> Option<ExerciseLog> {
     None
 }
 
-/// Migrate workouts to current data version
-/// Returns true if any migrations were performed
-#[cfg(target_arch = "wasm32")]
-fn migrate_workouts(workouts: &mut Vec<Workout>) -> bool {
-    let mut migrated = false;
-    
-    for workout in workouts.iter_mut() {
-        if workout.version == 0 {
-            // Migration from version 0 to 1
-            workout.version = DATA_VERSION;
-            migrated = true;
-        }
-        // Future migrations can be added here
-        // if workout.version == 1 { ... }
-    }
-    
-    migrated
-}
-
-/// Migrate workout sessions to current data version
-/// Returns true if any migrations were performed
-#[cfg(target_arch = "wasm32")]
-fn migrate_sessions(sessions: &mut Vec<WorkoutSession>) -> bool {
-    let mut migrated = false;
-    
-    for session in sessions.iter_mut() {
-        if session.version == 0 {
-            // Migration from version 0 to 1
-            session.version = DATA_VERSION;
-            migrated = true;
-        }
-        // Future migrations can be added here
-    }
-    
-    migrated
-}
-
-/// Validate that all exercise references in workouts exist in the exercise database
-/// or in custom exercises. Log warnings for orphaned references.
-#[cfg(target_arch = "wasm32")]
-fn validate_workout_exercises(workouts: &mut Vec<Workout>) {
-    use crate::services::exercise_db;
-    
-    // Clone custom exercises to avoid holding the lock during validation
-    let custom_exercises = CUSTOM_EXERCISES.lock().unwrap_or_else(|e| e.into_inner()).clone();
-    let mut orphaned_count = 0;
-    
-    for workout in workouts.iter() {
-        for exercise in workout.exercises.iter() {
-            let exists_in_db = exercise_db::get_exercise_by_id(&exercise.exercise_id).is_some();
-            let exists_in_custom = custom_exercises.iter().any(|ce| ce.id == exercise.exercise_id);
-            
-            if !exists_in_db && !exists_in_custom {
-                warn!(
-                    "Workout '{}' references non-existent exercise '{}' (ID: {}). \
-                    This may happen if an exercise was removed from the database after you logged it. \
-                    Your workout data is safe and the exercise name '{}' is preserved.",
-                    workout.id, exercise.exercise_name, exercise.exercise_id, exercise.exercise_name
-                );
-                orphaned_count += 1;
-            }
-        }
-    }
-    
-    if orphaned_count > 0 {
-        warn!(
-            "Found {} orphaned exercise reference(s) in workouts. \
-            These exercises may have been removed or renamed in the exercise database. \
-            Your workout history is preserved with the original exercise names.",
-            orphaned_count
-        );
-    }
+pub fn get_active_session() -> Option<WorkoutSession> {
+    let sessions = use_sessions();
+    let sessions = sessions.read();
+    let result = sessions.iter().find(|s| s.is_active()).cloned();
+    result
 }
