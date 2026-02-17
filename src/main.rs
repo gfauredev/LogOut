@@ -22,9 +22,6 @@ enum Route {
 }
 
 fn main() {
-    // Initialize storage
-    services::storage::init_storage();
-
     // Initialize logger
     dioxus_logger::init(dioxus_logger::tracing::Level::INFO).expect("failed to init logger");
 
@@ -36,6 +33,9 @@ fn main() {
 
 #[component]
 fn App() -> Element {
+    // Provide shared state signals via context
+    services::storage::provide_app_state();
+
     rsx! {
         Router::<Route> {}
     }
