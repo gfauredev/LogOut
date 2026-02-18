@@ -279,6 +279,23 @@ pub fn add_custom_exercise(exercise: CustomExercise) {
     });
 }
 
+pub fn update_custom_exercise(exercise: CustomExercise) {
+    let mut sig = use_custom_exercises();
+    {
+        let mut exercises = sig.write();
+        if let Some(pos) = exercises.iter().position(|e| e.id == exercise.id) {
+            exercises[pos] = exercise.clone();
+        }
+    }
+
+    #[cfg(target_arch = "wasm32")]
+    spawn_local(async move {
+        if let Err(e) = idb::put_item(idb::STORE_CUSTOM_EXERCISES, &exercise).await {
+            error!("Failed to persist updated custom exercise: {e}");
+        }
+    });
+}
+
 // Helper to get last values for an exercise (for prefilling)
 pub fn get_last_exercise_log(exercise_id: &str) -> Option<ExerciseLog> {
     let sessions = use_sessions();

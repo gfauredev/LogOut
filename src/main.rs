@@ -5,7 +5,7 @@ mod models;
 mod services;
 pub mod utils;
 
-use components::{ExerciseListPage, HomePage, AnalyticsPage, AddCustomExercisePage};
+use components::{ExerciseListPage, HomePage, AnalyticsPage, AddCustomExercisePage, EditCustomExercisePage};
 
 #[derive(Clone, Routable, Debug, PartialEq)]
 #[rustfmt::skip]
@@ -18,6 +18,8 @@ enum Route {
     AnalyticsPage {},
     #[route("/add-exercise")]
     AddCustomExercisePage {},
+    #[route("/edit-exercise/:id")]
+    EditCustomExercisePage { id: String },
 }
 
 fn main() {
