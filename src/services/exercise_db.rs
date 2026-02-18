@@ -1,15 +1,11 @@
 use dioxus::prelude::*;
 use crate::models::Exercise;
 
-// Include the generated exercises data from build.rs as a fallback
-include!(concat!(env!("OUT_DIR"), "/exercises_data.rs"));
-
 const EXERCISES_JSON_URL: &str = "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/dist/exercises.json";
 
 /// Provide the exercises signal in the Dioxus context.
 /// On first launch, downloads exercises from the API and stores them in IndexedDB.
 /// On subsequent launches, loads from IndexedDB.
-/// Falls back to the embedded copy if both fail.
 pub fn provide_exercises() {
     let sig: Signal<Vec<Exercise>> = use_context_provider(|| Signal::new(Vec::new()));
 
@@ -49,25 +45,8 @@ async fn load_exercises(mut sig: Signal<Vec<Exercise>>) {
         }
     }
 
-    // 3. Fallback to embedded data
-    log::info!("Using embedded exercises as fallback");
-    let exercises = parse_embedded_exercises();
-
-    #[cfg(target_arch = "wasm32")]
-    {
-        use crate::services::storage::idb_exercises;
-        // Store embedded exercises so next load is from IDB
-        idb_exercises::store_all_exercises(&exercises).await;
-    }
-
-    sig.set(exercises);
-}
-
-fn parse_embedded_exercises() -> Vec<Exercise> {
-    serde_json::from_str(EXERCISES_JSON).unwrap_or_else(|e| {
-        log::error!("Failed to parse embedded exercises: {}", e);
-        vec![]
-    })
+    // No exercises available: database will remain empty until next launch or network becomes available
+    log::warn!("No exercises available: failed to load from IndexedDB and download from API");
 }
 
 #[cfg(target_arch = "wasm32")]
