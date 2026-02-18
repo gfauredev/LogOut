@@ -3,7 +3,7 @@ name = "LogOut"
 default_platform = "web"
 
 [bundle]
-identifier = "com.gfaure.logout"
+identifier = "com.gfaure.log-workout"
 publisher = "gfaure"
 
 [web.app]

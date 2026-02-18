@@ -46,7 +46,7 @@ pub(crate) mod idb {
     use std::cell::RefCell;
     use std::rc::Rc;
 
-    const DB_NAME: &str = "logout_db";
+    const DB_NAME: &str = "log_workout_db";
     const DB_VERSION: u32 = 2;
 
     pub const STORE_WORKOUTS: &str = "workouts";
