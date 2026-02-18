@@ -3,13 +3,14 @@ use dioxus::prelude::*;
 use crate::models::{Exercise, Level};
 use crate::services::{exercise_db, storage};
 use crate::components::{BottomNav, ActiveTab, ExerciseCard};
+use crate::Route;
 
 #[component]
 pub fn ExerciseListPage() -> Element {
     let all_exercises = exercise_db::use_exercises();
     let custom_exercises = storage::use_custom_exercises();
     let mut search_query = use_signal(|| String::new());
-    let instructions_open = use_signal(|| HashMap::<String, bool>::new());
+    let mut instructions_open = use_signal(|| HashMap::<String, bool>::new());
     let image_indices = use_signal(|| HashMap::<String, usize>::new());
 
     // Merge DB exercises and custom exercises into a unified list
@@ -91,12 +92,31 @@ pub fn ExerciseListPage() -> Element {
                                         key: "{exercise.id}",
                                         class: "exercise-card",
                                         div {
-                                            class: "exercise-card__custom-badge",
-                                            "Custom"
+                                            class: "exercise-card__custom-header",
+                                            div {
+                                                class: "exercise-card__custom-badge",
+                                                "Custom"
+                                            }
+                                            Link {
+                                                to: Route::EditCustomExercisePage { id: exercise.id.clone() },
+                                                class: "exercise-card__edit-btn",
+                                                "✏️ Edit"
+                                            }
                                         }
-                                        h3 { class: "exercise-card__title", "{exercise.name}" }
+                                        h3 {
+                                            class: "exercise-card__title",
+                                            onclick: {
+                                                let id = exercise.id.clone();
+                                                move |_| {
+                                                    let mut map = instructions_open.write();
+                                                    let entry = map.entry(id.clone()).or_insert(false);
+                                                    *entry = !*entry;
+                                                }
+                                            },
+                                            "{exercise.name}"
+                                        }
 
-                                        if !exercise.instructions.is_empty() {
+                                        if *instructions_open.read().get(&exercise.id).unwrap_or(&false) && !exercise.instructions.is_empty() {
                                             ol { class: "exercise-card__instructions",
                                                 for instruction in &exercise.instructions {
                                                     li { "{instruction}" }
