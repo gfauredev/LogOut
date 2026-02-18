@@ -2,6 +2,9 @@ use dioxus::prelude::*;
 use crate::models::{Workout, WorkoutSession, ExerciseLog, CustomExercise};
 
 #[cfg(target_arch = "wasm32")]
+use wasm_bindgen_futures::spawn_local;
+
+#[cfg(target_arch = "wasm32")]
 use log::{error, info};
 
 // ──────────────────────────────────────────
@@ -22,15 +25,15 @@ pub fn provide_app_state() {
 // ── helpers to obtain the signals from any component ──
 
 pub fn use_workouts() -> Signal<Vec<Workout>> {
-    use_context::<Signal<Vec<Workout>>>()
+    consume_context::<Signal<Vec<Workout>>>()
 }
 
 pub fn use_sessions() -> Signal<Vec<WorkoutSession>> {
-    use_context::<Signal<Vec<WorkoutSession>>>()
+    consume_context::<Signal<Vec<WorkoutSession>>>()
 }
 
 pub fn use_custom_exercises() -> Signal<Vec<CustomExercise>> {
-    use_context::<Signal<Vec<CustomExercise>>>()
+    consume_context::<Signal<Vec<CustomExercise>>>()
 }
 
 // ──────────────────────────────────────────
@@ -208,7 +211,7 @@ pub fn add_workout(workout: Workout) {
     sig.write().push(workout.clone());
 
     #[cfg(target_arch = "wasm32")]
-    spawn(async move {
+    spawn_local(async move {
         if let Err(e) = idb::put_item(idb::STORE_WORKOUTS, &workout).await {
             error!("Failed to persist workout: {e}");
         }
@@ -223,7 +226,7 @@ pub fn delete_workout(id: &str) {
     #[cfg(target_arch = "wasm32")]
     {
         let id = id.to_owned();
-        spawn(async move {
+        spawn_local(async move {
             let _ = idb::delete_item(idb::STORE_WORKOUTS, &id).await;
         });
     }
@@ -258,7 +261,7 @@ pub fn delete_session(id: &str) {
     #[cfg(target_arch = "wasm32")]
     {
         let id = id.to_owned();
-        spawn(async move {
+        spawn_local(async move {
             let _ = idb::delete_item(idb::STORE_SESSIONS, &id).await;
         });
     }
@@ -269,7 +272,7 @@ pub fn add_custom_exercise(exercise: CustomExercise) {
     sig.write().push(exercise.clone());
 
     #[cfg(target_arch = "wasm32")]
-    spawn(async move {
+    spawn_local(async move {
         if let Err(e) = idb::put_item(idb::STORE_CUSTOM_EXERCISES, &exercise).await {
             error!("Failed to persist custom exercise: {e}");
         }
