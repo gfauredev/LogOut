@@ -2,15 +2,17 @@
 .container {
   padding: 20px;
   font-family: system-ui, -apple-system, sans-serif;
+  max-width: 500px;
+  margin: 0 auto;
 }
 
 .container--narrow {
-  max-width: 800px;
+  max-width: 500px;
   margin: 0 auto;
 }
 
 .container--form {
-  max-width: 600px;
+  max-width: 500px;
   margin: 0 auto;
 }
 
@@ -21,6 +23,8 @@
   flex-direction: column;
   min-height: 100vh;
   position: relative;
+  max-width: 500px;
+  margin: 0 auto;
 }
 
 /* ===== Page Layout (exercise, analytics pages) ===== */
@@ -29,6 +33,8 @@
   min-height: 100vh;
   display: flex;
   flex-direction: column;
+  max-width: 500px;
+  margin: 0 auto;
 }
 
 .page-content {
@@ -164,12 +170,10 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 2px;
   flex: 1;
   padding: 6px 0;
   text-decoration: none;
   color: #aaa;
-  font-size: 0.75em;
   transition: color 0.2s;
 }
 
@@ -178,13 +182,8 @@
 }
 
 .bottom-nav__icon {
-  font-size: 1.4em;
+  font-size: 1.8em;
   line-height: 1;
-}
-
-.bottom-nav__label {
-  font-size: 0.7em;
-  font-weight: 500;
 }
 
 /* ===== Search Input ===== */
@@ -219,6 +218,11 @@
 .exercise-card__title {
   margin: 0 0 8px 0;
   font-size: 1.2em;
+  cursor: pointer;
+}
+
+.exercise-card__title:hover {
+  color: #667eea;
 }
 
 .exercise-card__image {
@@ -227,25 +231,37 @@
   height: auto;
   border-radius: 8px;
   margin-bottom: 10px;
+  cursor: pointer;
 }
 
 .tag-row {
   display: flex;
-  gap: 10px;
+  gap: 6px;
   flex-wrap: wrap;
-  margin-bottom: 8px;
+  margin-bottom: 6px;
 }
 
 .tag {
-  padding: 4px 10px;
+  padding: 3px 8px;
   color: white;
   border-radius: 12px;
-  font-size: 0.85em;
+  font-size: 0.8em;
 }
 
 .tag--category { background: #667eea; }
-.tag--level    { background: #f5576c; }
+.tag--force    { background: #764ba2; }
 .tag--equipment { background: #4facfe; }
+.tag--level    { background: #f5576c; }
+.tag--muscle-primary { background: #43e97b; color: #1a3a1a; }
+.tag--muscle-secondary { background: #a8edea; color: #1a3a3a; }
+
+.exercise-card__instructions {
+  margin: 10px 0;
+  padding-left: 20px;
+  color: #555;
+  font-size: 0.9em;
+  line-height: 1.5;
+}
 
 .exercise-card__muscles {
   color: #666;
@@ -448,6 +464,8 @@
   flex-direction: column;
   height: 100vh;
   position: relative;
+  max-width: 500px;
+  margin: 0 auto;
 }
 
 .session-header {
@@ -486,7 +504,7 @@
   overflow-y: auto;
   padding: 20px;
   padding-bottom: 80px;
-  max-width: 800px;
+  max-width: 500px;
   margin: 0 auto;
   width: 100%;
 }
@@ -497,10 +515,20 @@
   border-radius: 12px;
   background: #f8f9ff;
   margin-bottom: 20px;
+  position: relative;
 }
 
 .exercise-form__title {
   margin-top: 0;
+}
+
+.exercise-form__last-duration {
+  position: absolute;
+  top: 8px;
+  left: 12px;
+  font-size: 0.8em;
+  color: #667eea;
+  font-weight: 500;
 }
 
 .exercise-form__fields {

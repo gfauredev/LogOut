@@ -117,6 +117,7 @@ pub fn get_exercise_by_id<'a>(exercises: &'a [Exercise], id: &str) -> Option<&'a
     exercises.iter().find(|e| e.id == id)
 }
 
+#[allow(dead_code)]
 pub fn get_equipment_types(exercises: &[Exercise]) -> Vec<Equipment> {
     let mut equipment: Vec<Equipment> = exercises
         .iter()
@@ -127,6 +128,7 @@ pub fn get_equipment_types(exercises: &[Exercise]) -> Vec<Equipment> {
     equipment
 }
 
+#[allow(dead_code)]
 pub fn get_muscle_groups(exercises: &[Exercise]) -> Vec<Muscle> {
     let mut muscles: Vec<Muscle> = exercises
         .iter()
