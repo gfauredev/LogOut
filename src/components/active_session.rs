@@ -233,18 +233,21 @@ pub fn SessionView() -> Element {
     
     let finish_session = move |_| {
         let mut current_session = session.read().clone();
+        if current_session.is_cancelled() {
+            // No exercises logged: discard the session entirely
+            storage::delete_session(&current_session.id);
+            return;
+        }
         current_session.end_time = Some(get_current_timestamp());
         storage::save_session(current_session.clone());
         // Show congratulatory snackbar if exercises were completed
-        if !current_session.exercise_logs.is_empty() {
-            show_snackbar.set(true);
-            #[cfg(target_arch = "wasm32")]
-            {
-                spawn(async move {
-                    gloo_timers::future::TimeoutFuture::new(3_000).await;
-                    show_snackbar.set(false);
-                });
-            }
+        show_snackbar.set(true);
+        #[cfg(target_arch = "wasm32")]
+        {
+            spawn(async move {
+                gloo_timers::future::TimeoutFuture::new(3_000).await;
+                show_snackbar.set(false);
+            });
         }
     };
 

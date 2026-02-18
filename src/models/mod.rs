@@ -414,6 +414,12 @@ impl WorkoutSession {
     pub fn is_active(&self) -> bool {
         self.end_time.is_none()
     }
+
+    /// Returns true when the session was cancelled (no exercises logged).
+    /// Cancelled sessions should be deleted, not stored.
+    pub fn is_cancelled(&self) -> bool {
+        self.exercise_logs.is_empty()
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -624,6 +630,88 @@ mod tests {
         assert!(session.is_active());
         session.end_time = Some(2000);
         assert!(!session.is_active());
+    }
+
+    #[test]
+    fn workout_session_is_cancelled_when_no_exercises() {
+        let session = WorkoutSession {
+            id: "s1".into(),
+            start_time: 1000,
+            end_time: None,
+            exercise_logs: vec![],
+            version: DATA_VERSION,
+        };
+        assert!(session.is_cancelled());
+    }
+
+    #[test]
+    fn workout_session_is_not_cancelled_when_has_exercises() {
+        let log = ExerciseLog {
+            exercise_id: "ex1".into(),
+            exercise_name: "Push-up".into(),
+            category: Category::Strength,
+            start_time: 1000,
+            end_time: Some(1060),
+            weight_dg: None,
+            reps: Some(10),
+            distance_dam: None,
+            force: Some(Force::Push),
+        };
+        let session = WorkoutSession {
+            id: "s1".into(),
+            start_time: 1000,
+            end_time: None,
+            exercise_logs: vec![log],
+            version: DATA_VERSION,
+        };
+        assert!(!session.is_cancelled());
+    }
+
+    /// A session with no exercises is cancelled and must be deleted (not saved).
+    /// finish_session uses is_cancelled() to decide between delete_session and save_session.
+    #[test]
+    fn finish_session_cancelled_session_is_not_stored() {
+        let session = WorkoutSession {
+            id: "s1".into(),
+            start_time: 1000,
+            end_time: None,
+            exercise_logs: vec![],
+            version: DATA_VERSION,
+        };
+        // The predicate that guards save vs. delete must return true for empty sessions.
+        assert!(
+            session.is_cancelled(),
+            "Session with no exercises must be treated as cancelled"
+        );
+    }
+
+    /// A session that has exercises is not cancelled and must be saved with an end_time.
+    /// finish_session uses is_cancelled() to decide between delete_session and save_session.
+    #[test]
+    fn finish_session_with_exercises_is_stored() {
+        let log = ExerciseLog {
+            exercise_id: "ex1".into(),
+            exercise_name: "Squat".into(),
+            category: Category::Strength,
+            start_time: 1000,
+            end_time: Some(1120),
+            weight_dg: None,
+            reps: Some(5),
+            distance_dam: None,
+            force: Some(Force::Push),
+        };
+        let session = WorkoutSession {
+            id: "s1".into(),
+            start_time: 1000,
+            end_time: None,
+            exercise_logs: vec![log],
+            version: DATA_VERSION,
+        };
+        // The predicate must return false so the session is saved, not deleted.
+        assert!(
+            !session.is_cancelled(),
+            "Session with exercises must not be treated as cancelled"
+        );
     }
 
     #[test]
