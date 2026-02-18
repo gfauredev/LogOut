@@ -1,5 +1,5 @@
 [package]
-name = "logout"
+name = "log-workout"
 version = "0.1.0"
 edition = "2021"
 
@@ -31,5 +31,5 @@ futures-channel = "0.3"
 gloo-timers = "0.3"
 
 [[bin]]
-name = "logout"
+name = "log-workout"
 path = "src/main.rs"
