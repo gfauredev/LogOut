@@ -1,5 +1,5 @@
 use dioxus::prelude::*;
-use crate::models::{Workout, WorkoutExercise, WorkoutSet, DATA_VERSION, get_current_timestamp, format_weight, parse_weight_kg};
+use crate::models::{Workout, WorkoutExercise, WorkoutSet, DATA_VERSION, get_current_timestamp, parse_weight_kg};
 use crate::services::{exercise_db, storage};
 use crate::Route;
 
@@ -131,7 +131,7 @@ pub fn WorkoutLogPage() -> Element {
                                             class: "set-line",
                                             "Set {idx + 1}: {set.reps} reps"
                                             if let Some(w) = set.weight_dg {
-                                                " @ {format_weight(w)}"
+                                                " @ {w}"
                                             }
                                         }
                                     }
