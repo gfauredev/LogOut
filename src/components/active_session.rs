@@ -6,8 +6,13 @@ use crate::Route;
 
 #[component]
 pub fn ActiveSessionPage() -> Element {
-    let mut session = use_signal(|| {
-        storage::get_active_session().unwrap_or_else(WorkoutSession::new)
+    // use_sessions() must be called at the top level of the component, not inside
+    // use_signal's initializer. Calling use_context (via use_sessions) inside another
+    // use_hook's initializer causes a double-borrow of the hooks RefCell → panic.
+    let sessions = storage::use_sessions();
+    let mut session = use_signal(move || {
+        sessions.read().iter().find(|s| s.is_active()).cloned()
+            .unwrap_or_else(WorkoutSession::new)
     });
     
     let mut search_query = use_signal(|| String::new());
