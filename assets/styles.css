@@ -14,87 +14,177 @@
   margin: 0 auto;
 }
 
-/* ===== Header / Navigation ===== */
-.page-header {
-  margin-bottom: 20px;
+/* ===== App Layout (bottom-nav pages) ===== */
+.app-container {
+  font-family: system-ui, -apple-system, sans-serif;
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  position: relative;
 }
 
-.back-link {
-  text-decoration: none;
-  color: #667eea;
+/* ===== Page Layout (exercise, analytics pages) ===== */
+.page-container {
+  font-family: system-ui, -apple-system, sans-serif;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.page-content {
+  flex: 1;
+  padding-bottom: 70px;
+}
+
+/* ===== Sessions Tab (center tab home page) ===== */
+.sessions-tab {
+  padding: 20px;
+  padding-bottom: 80px;
+}
+
+.sessions-tab__header {
+  text-align: center;
+  margin-bottom: 30px;
+}
+
+.app-title {
+  font-size: 2.2em;
+  margin-bottom: 8px;
+}
+
+.app-tagline {
   font-size: 1.1em;
-}
-
-.back-btn {
-  background: none;
-  border: none;
-  color: #667eea;
-  font-size: 1.1em;
-  cursor: pointer;
-  padding: 0;
-}
-
-.page-title {
-  margin: 15px 0;
-}
-
-.page-subtitle {
   color: #666;
 }
 
-/* ===== Home Page ===== */
-.home-header {
+.sessions-empty {
   text-align: center;
-  margin-bottom: 40px;
+  color: #999;
+  margin-top: 60px;
+  font-size: 1.1em;
 }
 
-.home-title {
-  font-size: 2.5em;
+.sessions-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* ===== Session Card ===== */
+.session-card {
+  padding: 16px;
+  border: 1px solid #e0e0e0;
+  border-radius: 12px;
+  background: white;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.06);
+}
+
+.session-card__date {
+  font-size: 0.85em;
+  color: #999;
+  margin-bottom: 8px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.session-card__stats {
+  display: flex;
+  gap: 16px;
   margin-bottom: 10px;
 }
 
-.home-tagline {
-  font-size: 1.2em;
-  color: #666;
+.session-card__stat {
+  font-size: 1em;
+  font-weight: 600;
+  color: #333;
 }
 
-.home-nav {
+.session-card__exercises {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.session-card__exercise-name {
+  padding: 3px 10px;
+  background: #f0f2ff;
+  color: #667eea;
+  border-radius: 12px;
+  font-size: 0.85em;
+}
+
+.session-card__more {
+  padding: 3px 10px;
+  background: #f5f5f5;
+  color: #999;
+  border-radius: 12px;
+  font-size: 0.85em;
+}
+
+/* ===== FAB (+ Start Session button) ===== */
+.fab {
+  position: fixed;
+  bottom: 76px;
+  right: 20px;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  font-size: 2em;
+  border: none;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 500;
+  line-height: 1;
+}
+
+/* ===== Bottom Navigation ===== */
+.bottom-nav {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 60px;
+  background: white;
+  border-top: 1px solid #e0e0e0;
+  display: flex;
+  justify-content: space-around;
+  align-items: stretch;
+  z-index: 1000;
+  box-shadow: 0 -2px 10px rgba(0,0,0,0.07);
+}
+
+.bottom-nav__tab {
   display: flex;
   flex-direction: column;
-  gap: 15px;
-  max-width: 400px;
-  margin: 0 auto;
-}
-
-.nav-link {
-  display: block;
-  padding: 20px;
-  color: white;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  flex: 1;
+  padding: 6px 0;
   text-decoration: none;
-  border-radius: 10px;
-  text-align: center;
-  font-size: 1.2em;
-  font-weight: bold;
-  box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+  color: #aaa;
+  font-size: 0.75em;
+  transition: color 0.2s;
 }
 
-.nav-link--primary {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-}
-
-.nav-link--secondary {
-  background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
-}
-
-.home-footer {
-  text-align: center;
-  margin-top: 60px;
-  color: #999;
-  font-size: 0.9em;
-}
-
-.home-footer a {
+.bottom-nav__tab--active {
   color: #667eea;
+}
+
+.bottom-nav__icon {
+  font-size: 1.4em;
+  line-height: 1;
+}
+
+.bottom-nav__label {
+  font-size: 0.7em;
+  font-weight: 500;
 }
 
 /* ===== Search Input ===== */
@@ -395,6 +485,7 @@
   flex: 1;
   overflow-y: auto;
   padding: 20px;
+  padding-bottom: 80px;
   max-width: 800px;
   margin: 0 auto;
   width: 100%;
@@ -520,62 +611,34 @@
   flex: 1;
 }
 
-/* ===== Slide Panel / Overlay ===== */
-.slide-panel {
-  position: fixed;
-  top: 0;
-  right: 0;
-  width: 400px;
-  height: 100vh;
-  background: white;
-  box-shadow: -2px 0 10px rgba(0,0,0,0.1);
-  transition: transform 0.3s ease-in-out;
-  z-index: 200;
+/* ===== Slide Panel / Overlay (kept for potential future use) ===== */
+
+/* ===== Header / Navigation (used by exercise list and other pages) ===== */
+.page-header {
+  margin-bottom: 20px;
 }
 
-.slide-panel--open  { transform: translateX(0); }
-.slide-panel--closed { transform: translateX(100%); }
-
-.bottom-bar {
-  position: fixed;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  background: white;
-  border-top: 2px solid #e0e0e0;
-  display: flex;
-  justify-content: center;
-  padding: 10px;
-  z-index: 150;
+.back-link {
+  text-decoration: none;
+  color: #667eea;
+  font-size: 1.1em;
 }
 
-.bottom-bar__btn {
-  padding: 12px 24px;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: white;
+.back-btn {
+  background: none;
   border: none;
-  border-radius: 8px;
-  font-size: 1em;
-  font-weight: bold;
+  color: #667eea;
+  font-size: 1.1em;
   cursor: pointer;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-  display: flex;
-  align-items: center;
-  gap: 8px;
+  padding: 0;
 }
 
-.bottom-bar__arrow {
-  font-size: 0.8em;
+.page-title {
+  margin: 15px 0;
 }
 
-.overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0,0,0,0.5);
-  z-index: 190;
+.page-subtitle {
+  color: #666;
 }
 
 /* ===== Muscle Tags (Add Custom Exercise) ===== */

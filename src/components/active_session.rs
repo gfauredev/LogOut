@@ -1,11 +1,10 @@
 use dioxus::prelude::*;
 use crate::models::{WorkoutSession, ExerciseLog, get_current_timestamp, format_time, format_weight, format_distance, parse_weight_kg, parse_distance_km};
 use crate::services::{exercise_db, storage};
-use crate::components::AnalyticsPanel;
 use crate::Route;
 
 #[component]
-pub fn ActiveSessionPage() -> Element {
+pub fn SessionView() -> Element {
     // use_sessions() must be called at the top level of the component, not inside
     // use_signal's initializer. Calling use_context (via use_sessions) inside another
     // use_hook's initializer causes a double-borrow of the hooks RefCell → panic.
@@ -21,7 +20,6 @@ pub fn ActiveSessionPage() -> Element {
     let mut weight_input = use_signal(|| String::new());
     let mut reps_input = use_signal(|| String::new());
     let mut distance_input = use_signal(|| String::new());
-    let mut panel_open = use_signal(|| false);
 
     // Tick signal for live timer – updated every second by a coroutine
     let mut now_tick = use_signal(|| get_current_timestamp());
@@ -159,10 +157,9 @@ pub fn ActiveSessionPage() -> Element {
         let mut current_session = session.read().clone();
         current_session.end_time = Some(get_current_timestamp());
         storage::save_session(current_session.clone());
-        navigator().push(Route::HomePage {});
+        // Parent (HomePage) reacts to the session becoming inactive
     };
     
-    let panel_class = if *panel_open.read() { "slide-panel slide-panel--open" } else { "slide-panel slide-panel--closed" };
 
     rsx! {
         div {
@@ -182,7 +179,7 @@ pub fn ActiveSessionPage() -> Element {
                 }
             }
             
-            // Main content area with panel
+            // Main content area
             div {
                 class: "session-body",
                 
@@ -353,37 +350,6 @@ pub fn ActiveSessionPage() -> Element {
                 }
             }
         }
-        
-        // Analytics Panel
-            div {
-                class: "{panel_class}",
-                AnalyticsPanel {}
-            }
-            
-            // Bottom bar
-            div {
-                class: "bottom-bar",
-                button {
-                    onclick: move |_| {
-                        let is_open = *panel_open.read();
-                        panel_open.set(!is_open);
-                    },
-                    class: "bottom-bar__btn",
-                    span { "📊 Analytics" }
-                    span {
-                        class: "bottom-bar__arrow",
-                        if *panel_open.read() { "▼" } else { "▲" }
-                    }
-                }
-            }
-            
-            // Overlay for mobile when panel is open
-            if *panel_open.read() {
-                div {
-                    class: "overlay",
-                    onclick: move |_| panel_open.set(false),
-                }
-            }
         }
     }
 }
