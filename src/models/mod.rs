@@ -368,6 +368,50 @@ mod tests {
         assert_eq!(session.version, DATA_VERSION);
     }
 
+    #[test]
+    fn find_active_session_returns_first_without_end_time() {
+        let sessions = vec![
+            WorkoutSession {
+                id: "s1".into(),
+                start_time: 1000,
+                end_time: Some(2000),
+                exercise_logs: vec![],
+                version: DATA_VERSION,
+            },
+            WorkoutSession {
+                id: "s2".into(),
+                start_time: 3000,
+                end_time: None,
+                exercise_logs: vec![],
+                version: DATA_VERSION,
+            },
+        ];
+        let active = sessions.iter().find(|s| s.is_active()).cloned();
+        assert_eq!(active.unwrap().id, "s2");
+    }
+
+    #[test]
+    fn find_active_session_returns_none_when_all_finished() {
+        let sessions = vec![
+            WorkoutSession {
+                id: "s1".into(),
+                start_time: 1000,
+                end_time: Some(2000),
+                exercise_logs: vec![],
+                version: DATA_VERSION,
+            },
+        ];
+        let active = sessions.iter().find(|s| s.is_active()).cloned();
+        assert!(active.is_none());
+    }
+
+    #[test]
+    fn find_active_session_returns_none_for_empty_list() {
+        let sessions: Vec<WorkoutSession> = vec![];
+        let active = sessions.iter().find(|s| s.is_active()).cloned();
+        assert!(active.is_none());
+    }
+
     // ── Exercise ──────────────────────────────────────────────────────────────
 
     #[test]
