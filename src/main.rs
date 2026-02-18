@@ -4,7 +4,7 @@ mod components;
 mod models;
 mod services;
 
-use components::{ExerciseListPage, HomePage, WorkoutLogPage, ActiveSessionPage, AddCustomExercisePage};
+use components::{ExerciseListPage, HomePage, AnalyticsPage, AddCustomExercisePage};
 
 #[derive(Clone, Routable, Debug, PartialEq)]
 #[rustfmt::skip]
@@ -13,10 +13,8 @@ enum Route {
     HomePage {},
     #[route("/exercises")]
     ExerciseListPage {},
-    #[route("/workout")]
-    WorkoutLogPage {},
-    #[route("/session")]
-    ActiveSessionPage {},
+    #[route("/analytics")]
+    AnalyticsPage {},
     #[route("/add-exercise")]
     AddCustomExercisePage {},
 }
