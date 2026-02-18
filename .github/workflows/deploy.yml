@@ -2,7 +2,7 @@ name: Deploy to GitHub Pages
 
 on:
   push:
-    branches: [ main ]
+    branches: [main]
   workflow_dispatch:
 
 permissions:
@@ -28,21 +28,13 @@ jobs:
           target: wasm32-unknown-unknown
           override: true
 
-      - name: Install wasm-bindgen-cli
-        run: cargo install wasm-bindgen-cli --version 0.2.108
+      - name: Install Dioxus CLI
+        uses: taiki-e/install-action@v2
+        with:
+          tool: dioxus-cli, wasm-bindgen-cli
 
       - name: Build
-        run: cargo build --target wasm32-unknown-unknown --release
-
-      - name: Generate bindings
-        run: wasm-bindgen --target web --out-dir dist target/wasm32-unknown-unknown/release/logout.wasm
-
-      - name: Copy static files
-        run: |
-          cp index.html dist/
-          cp sw.js dist/ || true
-          # Fix the import path in index.html for GitHub Pages
-          sed -i "s|import init from './dist/logout.js';|import init from './logout.js';|g" dist/index.html
+        run: dx build --release --platform web
 
       - name: Setup Pages
         uses: actions/configure-pages@v4
@@ -50,7 +42,7 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: './dist'
+          path: "./dist"
 
   deploy:
     environment:
