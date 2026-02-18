@@ -1,6 +1,7 @@
 use dioxus::prelude::*;
 use crate::models::Exercise;
 
+#[cfg(target_arch = "wasm32")]
 const EXERCISES_JSON_URL: &str = "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/dist/exercises.json";
 
 /// Provide the exercises signal in the Dioxus context.
@@ -18,6 +19,7 @@ pub fn use_exercises() -> Signal<Vec<Exercise>> {
     use_context::<Signal<Vec<Exercise>>>()
 }
 
+#[allow(unused_mut, unused_variables)]
 async fn load_exercises(mut sig: Signal<Vec<Exercise>>) {
     // 1. Try IndexedDB
     #[cfg(target_arch = "wasm32")]
