@@ -18,17 +18,14 @@ log = "0.4"
 web-sys = { version = "0.3", features = [
     "Window", "Storage", "Navigator",
     "ServiceWorkerContainer", "ServiceWorkerRegistration",
-    "IdbFactory", "IdbDatabase", "IdbOpenDbRequest", "IdbRequest",
-    "IdbTransaction", "IdbTransactionMode", "IdbObjectStore",
-    "IdbObjectStoreParameters", "DomStringList",
     "Request", "RequestInit", "Response",
 ] }
 wasm-bindgen = "0.2"
 wasm-bindgen-futures = "0.4"
 js-sys = "0.3"
 serde-wasm-bindgen = "0.6"
-futures-channel = "0.3"
 gloo-timers = "0.3"
+rexie = "0.6"
 
 [[bin]]
 name = "log-workout"
