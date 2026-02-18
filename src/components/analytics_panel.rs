@@ -22,9 +22,9 @@ impl Metric {
 
     fn extract_value(&self, log: &ExerciseLog) -> Option<f64> {
         match self {
-            Metric::Weight => log.weight_dg.map(|w| w as f64 / 100.0),
+            Metric::Weight => log.weight_dg.map(|w| w.0 as f64 / 100.0),
             Metric::Reps => log.reps.map(|r| r as f64),
-            Metric::Distance => log.distance_m.map(|d| d as f64 / 1000.0),
+            Metric::Distance => log.distance_dam.map(|d| d.0 as f64 / 100.0),
             Metric::Duration => log.duration_seconds().map(|d| d as f64 / 60.0),
         }
     }
@@ -42,19 +42,28 @@ pub fn AnalyticsPanel() -> Element {
     
     let sessions = storage::use_sessions();
     
-    // Get unique exercise IDs and names
-    let available_exercises: Vec<(String, String)> = {
+    // Get unique exercise IDs and names, filtered by selected metric
+    let available_exercises = use_memo(move || {
         let sessions = sessions.read();
-        let mut exercises = std::collections::HashMap::new();
+        let metric = *selected_metric.read();
+        let mut exercises = std::collections::HashMap::<String, String>::new();
         for session in sessions.iter() {
             for log in &session.exercise_logs {
-                exercises.insert(log.exercise_id.clone(), log.exercise_name.clone());
+                let tracks_metric = match metric {
+                    Metric::Weight => log.weight_dg.is_some(),
+                    Metric::Reps => log.reps.is_some(),
+                    Metric::Distance => log.distance_dam.is_some(),
+                    Metric::Duration => true,
+                };
+                if tracks_metric {
+                    exercises.insert(log.exercise_id.clone(), log.exercise_name.clone());
+                }
             }
         }
         let mut list: Vec<_> = exercises.into_iter().collect();
         list.sort_by(|a, b| a.1.cmp(&b.1));
         list
-    };
+    });
 
     // Collect data points for each selected exercise
     let chart_data: Vec<(String, Vec<(f64, f64)>)> = {
@@ -78,7 +87,7 @@ pub fn AnalyticsPanel() -> Element {
                 
                 points.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap());
                 
-                let exercise_name = available_exercises
+                let exercise_name = available_exercises.read()
                     .iter()
                     .find(|(id, _)| id == exercise_id)
                     .map(|(_, name)| name.clone())
@@ -152,7 +161,7 @@ pub fn AnalyticsPanel() -> Element {
                                             },
                                             class: "form-select form-select--chart",
                                             option { value: "", "-- Select Exercise --" }
-                                            for (id, name) in available_exercises.iter() {
+                                            for (id, name) in available_exercises.read().iter() {
                                                 option { value: "{id}", "{name}" }
                                             }
                                         }
