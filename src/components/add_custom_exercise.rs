@@ -1,45 +1,31 @@
 use dioxus::prelude::*;
-use crate::models::{CustomExercise, get_current_timestamp};
-use crate::services::{exercise_db, storage};
+use crate::models::{CustomExercise, Category, Force, Equipment, Muscle, get_current_timestamp};
+use crate::services::storage;
 
 #[component]
 pub fn AddCustomExercisePage() -> Element {
     let mut name_input = use_signal(|| String::new());
-    let mut category_input = use_signal(|| String::from("strength"));
-    let mut force_input = use_signal(|| String::from(""));
-    let mut equipment_input = use_signal(|| String::from(""));
+    let mut category_input = use_signal(|| Category::Strength);
+    let mut force_input: Signal<Option<Force>> = use_signal(|| None);
+    let mut equipment_input: Signal<Option<Equipment>> = use_signal(|| None);
     let mut muscle_input = use_signal(|| String::new());
-    let mut muscles_list = use_signal(|| Vec::<String>::new());
-    
-    let categories = vec![
-        "strength",
-        "cardio",
-        "stretching",
-        "powerlifting",
-        "strongman",
-        "plyometrics",
-        "olympic weightlifting",
-    ];
-    
-    let force_types = vec!["", "pull", "push", "static"];
-    let all_exercises = exercise_db::use_exercises();
-    let all = all_exercises.read();
-    let equipment_types = exercise_db::get_equipment_types(&all);
-    let muscle_groups = exercise_db::get_muscle_groups(&all);
+    let mut muscles_list = use_signal(|| Vec::<Muscle>::new());
     
     let add_muscle = move |_| {
-        let muscle = muscle_input.read().trim().to_string();
-        if !muscle.is_empty() {
-            let mut muscles = muscles_list.read().clone();
-            if !muscles.contains(&muscle) {
-                muscles.push(muscle);
-                muscles_list.set(muscles);
-                muscle_input.set(String::new());
+        let value = muscle_input.read().trim().to_string();
+        if !value.is_empty() {
+            if let Ok(muscle) = serde_json::from_str::<Muscle>(&format!("\"{}\"", value)) {
+                let mut muscles = muscles_list.read().clone();
+                if !muscles.contains(&muscle) {
+                    muscles.push(muscle);
+                    muscles_list.set(muscles);
+                    muscle_input.set(String::new());
+                }
             }
         }
     };
     
-    let mut remove_muscle = move |muscle: String| {
+    let mut remove_muscle = move |muscle: Muscle| {
         let mut muscles = muscles_list.read().clone();
         muscles.retain(|m| m != &muscle);
         muscles_list.set(muscles);
@@ -50,15 +36,13 @@ pub fn AddCustomExercisePage() -> Element {
         if name.is_empty() { return; }
         
         let timestamp = get_current_timestamp();
-        let force = force_input.read().trim().to_string();
-        let equipment = equipment_input.read().trim().to_string();
         
         let exercise = CustomExercise {
             id: format!("custom_{}", timestamp),
             name,
-            category: category_input.read().clone(),
-            force: if force.is_empty() { None } else { Some(force) },
-            equipment: if equipment.is_empty() { None } else { Some(equipment) },
+            category: *category_input.read(),
+            force: *force_input.read(),
+            equipment: *equipment_input.read(),
             primary_muscles: muscles_list.read().clone(),
         };
         
@@ -99,10 +83,14 @@ pub fn AddCustomExercisePage() -> Element {
                 div {
                     label { class: "form-label", "Category *" }
                     select {
-                        value: "{category_input}",
-                        oninput: move |evt| category_input.set(evt.value()),
+                        value: "{category_input.read()}",
+                        oninput: move |evt| {
+                            if let Ok(cat) = serde_json::from_str::<Category>(&format!("\"{}\"", evt.value())) {
+                                category_input.set(cat);
+                            }
+                        },
                         class: "form-select",
-                        for category in categories {
+                        for category in Category::ALL {
                             option { value: "{category}", "{category}" }
                         }
                     }
@@ -112,14 +100,19 @@ pub fn AddCustomExercisePage() -> Element {
                 div {
                     label { class: "form-label", "Force Type" }
                     select {
-                        value: "{force_input}",
-                        oninput: move |evt| force_input.set(evt.value()),
-                        class: "form-select",
-                        for force_type in force_types {
-                            option {
-                                value: "{force_type}",
-                                if force_type.is_empty() { "None" } else { "{force_type}" }
+                        value: if let Some(f) = *force_input.read() { f.to_string() } else { String::new() },
+                        oninput: move |evt| {
+                            let val = evt.value();
+                            if val.is_empty() {
+                                force_input.set(None);
+                            } else if let Ok(f) = serde_json::from_str::<Force>(&format!("\"{}\"", val)) {
+                                force_input.set(Some(f));
                             }
+                        },
+                        class: "form-select",
+                        option { value: "", "None" }
+                        for force_type in Force::ALL {
+                            option { value: "{force_type}", "{force_type}" }
                         }
                     }
                 }
@@ -128,11 +121,18 @@ pub fn AddCustomExercisePage() -> Element {
                 div {
                     label { class: "form-label", "Equipment" }
                     select {
-                        value: "{equipment_input}",
-                        oninput: move |evt| equipment_input.set(evt.value()),
+                        value: if let Some(e) = *equipment_input.read() { e.to_string() } else { String::new() },
+                        oninput: move |evt| {
+                            let val = evt.value();
+                            if val.is_empty() {
+                                equipment_input.set(None);
+                            } else if let Ok(e) = serde_json::from_str::<Equipment>(&format!("\"{}\"", val)) {
+                                equipment_input.set(Some(e));
+                            }
+                        },
                         class: "form-select",
                         option { value: "", "None" }
-                        for equipment in equipment_types.iter() {
+                        for equipment in Equipment::ALL {
                             option { value: "{equipment}", "{equipment}" }
                         }
                     }
@@ -149,7 +149,7 @@ pub fn AddCustomExercisePage() -> Element {
                             oninput: move |evt| muscle_input.set(evt.value()),
                             class: "muscle-select",
                             option { value: "", "Select muscle..." }
-                            for muscle in muscle_groups.iter() {
+                            for muscle in Muscle::ALL {
                                 option { value: "{muscle}", "{muscle}" }
                             }
                         }
@@ -170,8 +170,8 @@ pub fn AddCustomExercisePage() -> Element {
                                     span { "{muscle}" }
                                     button {
                                         onclick: {
-                                            let m = muscle.clone();
-                                            move |_| remove_muscle(m.clone())
+                                            let m = *muscle;
+                                            move |_| remove_muscle(m)
                                         },
                                         class: "muscle-tag__remove",
                                         "×"

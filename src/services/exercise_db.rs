@@ -1,5 +1,5 @@
 use dioxus::prelude::*;
-use crate::models::Exercise;
+use crate::models::{Exercise, Equipment, Muscle};
 
 #[cfg(target_arch = "wasm32")]
 const EXERCISES_JSON_URL: &str = "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/dist/exercises.json";
@@ -95,8 +95,19 @@ pub fn search_exercises(exercises: &[Exercise], query: &str) -> Vec<Exercise> {
                 || exercise
                     .primary_muscles
                     .iter()
-                    .any(|m| m.to_lowercase().contains(&query_lower))
-                || exercise.category.to_lowercase().contains(&query_lower)
+                    .any(|m| m.to_string().to_lowercase().contains(&query_lower))
+                || exercise.category.to_string().to_lowercase().contains(&query_lower)
+                || exercise
+                    .force
+                    .as_ref()
+                    .map(|f| f.to_string().to_lowercase().contains(&query_lower))
+                    .unwrap_or(false)
+                || exercise
+                    .equipment
+                    .as_ref()
+                    .map(|e| e.to_string().to_lowercase().contains(&query_lower))
+                    .unwrap_or(false)
+                || exercise.level.to_string().to_lowercase().contains(&query_lower)
         })
         .cloned()
         .collect()
@@ -106,22 +117,22 @@ pub fn get_exercise_by_id<'a>(exercises: &'a [Exercise], id: &str) -> Option<&'a
     exercises.iter().find(|e| e.id == id)
 }
 
-pub fn get_equipment_types(exercises: &[Exercise]) -> Vec<String> {
-    let mut equipment: Vec<String> = exercises
+pub fn get_equipment_types(exercises: &[Exercise]) -> Vec<Equipment> {
+    let mut equipment: Vec<Equipment> = exercises
         .iter()
-        .filter_map(|e| e.equipment.clone())
+        .filter_map(|e| e.equipment)
         .collect();
-    equipment.sort();
+    equipment.sort_by(|a, b| a.to_string().cmp(&b.to_string()));
     equipment.dedup();
     equipment
 }
 
-pub fn get_muscle_groups(exercises: &[Exercise]) -> Vec<String> {
-    let mut muscles: Vec<String> = exercises
+pub fn get_muscle_groups(exercises: &[Exercise]) -> Vec<Muscle> {
+    let mut muscles: Vec<Muscle> = exercises
         .iter()
-        .flat_map(|e| e.primary_muscles.clone())
+        .flat_map(|e| e.primary_muscles.iter().copied())
         .collect();
-    muscles.sort();
+    muscles.sort_by(|a, b| a.to_string().cmp(&b.to_string()));
     muscles.dedup();
     muscles
 }
