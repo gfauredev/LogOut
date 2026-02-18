@@ -240,8 +240,11 @@ pub fn save_session(session: WorkoutSession) {
         }
     }
 
+    // Use wasm_bindgen_futures::spawn_local instead of Dioxus spawn so that the
+    // IndexedDB write is not cancelled when the calling component unmounts
+    // (e.g. when finishing a session causes SessionView to be removed).
     #[cfg(target_arch = "wasm32")]
-    spawn(async move {
+    wasm_bindgen_futures::spawn_local(async move {
         if let Err(e) = idb::put_item(idb::STORE_SESSIONS, &session).await {
             error!("Failed to persist session: {e}");
         }
