@@ -38,6 +38,7 @@ fn App() -> Element {
     services::exercise_db::provide_exercises();
 
     rsx! {
+        Stylesheet { href: asset!("/assets/styles.css") }
         Router::<Route> {}
     }
 }

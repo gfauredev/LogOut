@@ -195,3 +195,217 @@ pub fn format_time(seconds: u64) -> String {
         format!("{:02}:{:02}", minutes, secs)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // ── format_weight ─────────────────────────────────────────────────────────
+
+    #[test]
+    fn format_weight_whole_kg() {
+        assert_eq!(format_weight(100), "1 kg");
+        assert_eq!(format_weight(200), "2 kg");
+        assert_eq!(format_weight(10000), "100 kg");
+    }
+
+    #[test]
+    fn format_weight_fractional_kg() {
+        assert_eq!(format_weight(150), "1.5 kg");
+        assert_eq!(format_weight(175), "1.8 kg");
+        assert_eq!(format_weight(1), "0.0 kg");
+    }
+
+    #[test]
+    fn format_weight_zero() {
+        assert_eq!(format_weight(0), "0 kg");
+    }
+
+    // ── parse_weight_kg ───────────────────────────────────────────────────────
+
+    #[test]
+    fn parse_weight_kg_valid() {
+        assert_eq!(parse_weight_kg("1"), Some(100));
+        assert_eq!(parse_weight_kg("1.5"), Some(150));
+        assert_eq!(parse_weight_kg("100"), Some(10000));
+        assert_eq!(parse_weight_kg("0.01"), Some(1));
+    }
+
+    #[test]
+    fn parse_weight_kg_invalid() {
+        assert_eq!(parse_weight_kg(""), None);
+        assert_eq!(parse_weight_kg("abc"), None);
+        assert_eq!(parse_weight_kg("-1"), None);
+        assert_eq!(parse_weight_kg("0"), None);
+        assert_eq!(parse_weight_kg("nan"), None);
+    }
+
+    // ── format_distance ───────────────────────────────────────────────────────
+
+    #[test]
+    fn format_distance_metres() {
+        assert_eq!(format_distance(0), "0 m");
+        assert_eq!(format_distance(500), "500 m");
+        assert_eq!(format_distance(999), "999 m");
+    }
+
+    #[test]
+    fn format_distance_whole_km() {
+        assert_eq!(format_distance(1000), "1 km");
+        assert_eq!(format_distance(5000), "5 km");
+    }
+
+    #[test]
+    fn format_distance_fractional_km() {
+        assert_eq!(format_distance(1500), "1.50 km");
+        assert_eq!(format_distance(2750), "2.75 km");
+    }
+
+    // ── parse_distance_km ─────────────────────────────────────────────────────
+
+    #[test]
+    fn parse_distance_km_valid() {
+        assert_eq!(parse_distance_km("1"), Some(1000));
+        assert_eq!(parse_distance_km("0.5"), Some(500));
+        assert_eq!(parse_distance_km("10"), Some(10000));
+    }
+
+    #[test]
+    fn parse_distance_km_invalid() {
+        assert_eq!(parse_distance_km(""), None);
+        assert_eq!(parse_distance_km("abc"), None);
+        assert_eq!(parse_distance_km("-1"), None);
+        assert_eq!(parse_distance_km("0"), None);
+    }
+
+    // ── format_time ───────────────────────────────────────────────────────────
+
+    #[test]
+    fn format_time_minutes_seconds() {
+        assert_eq!(format_time(0), "00:00");
+        assert_eq!(format_time(59), "00:59");
+        assert_eq!(format_time(60), "01:00");
+        assert_eq!(format_time(3599), "59:59");
+    }
+
+    #[test]
+    fn format_time_hours() {
+        assert_eq!(format_time(3600), "01:00:00");
+        assert_eq!(format_time(3661), "01:01:01");
+        assert_eq!(format_time(7322), "02:02:02");
+    }
+
+    // ── ExerciseLog ───────────────────────────────────────────────────────────
+
+    #[test]
+    fn exercise_log_is_complete() {
+        let mut log = ExerciseLog {
+            exercise_id: "ex1".into(),
+            exercise_name: "Push-up".into(),
+            category: "strength".into(),
+            start_time: 1000,
+            end_time: None,
+            weight_dg: None,
+            reps: None,
+            distance_m: None,
+        };
+        assert!(!log.is_complete());
+        log.end_time = Some(1060);
+        assert!(log.is_complete());
+    }
+
+    #[test]
+    fn exercise_log_duration_seconds() {
+        let log = ExerciseLog {
+            exercise_id: "ex1".into(),
+            exercise_name: "Push-up".into(),
+            category: "strength".into(),
+            start_time: 1000,
+            end_time: Some(1060),
+            weight_dg: None,
+            reps: None,
+            distance_m: None,
+        };
+        assert_eq!(log.duration_seconds(), Some(60));
+    }
+
+    #[test]
+    fn exercise_log_duration_seconds_none_when_incomplete() {
+        let log = ExerciseLog {
+            exercise_id: "ex1".into(),
+            exercise_name: "Push-up".into(),
+            category: "strength".into(),
+            start_time: 1000,
+            end_time: None,
+            weight_dg: None,
+            reps: None,
+            distance_m: None,
+        };
+        assert_eq!(log.duration_seconds(), None);
+    }
+
+    // ── WorkoutSession ────────────────────────────────────────────────────────
+
+    #[test]
+    fn workout_session_is_active() {
+        let mut session = WorkoutSession {
+            id: "s1".into(),
+            start_time: 1000,
+            end_time: None,
+            exercise_logs: vec![],
+            version: DATA_VERSION,
+        };
+        assert!(session.is_active());
+        session.end_time = Some(2000);
+        assert!(!session.is_active());
+    }
+
+    #[test]
+    fn workout_session_new_has_no_end_time() {
+        let session = WorkoutSession::new();
+        assert!(session.is_active());
+        assert!(session.id.starts_with("session_"));
+        assert_eq!(session.version, DATA_VERSION);
+    }
+
+    // ── Exercise ──────────────────────────────────────────────────────────────
+
+    #[test]
+    fn exercise_get_first_image_url_some() {
+        let ex = Exercise {
+            id: "ex1".into(),
+            name: "Squat".into(),
+            force: None,
+            level: "beginner".into(),
+            mechanic: None,
+            equipment: None,
+            primary_muscles: vec![],
+            secondary_muscles: vec![],
+            instructions: vec![],
+            category: "strength".into(),
+            images: vec!["Squat/0.jpg".into()],
+        };
+        assert_eq!(
+            ex.get_first_image_url(),
+            Some("https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Squat/0.jpg".into())
+        );
+    }
+
+    #[test]
+    fn exercise_get_first_image_url_none() {
+        let ex = Exercise {
+            id: "ex1".into(),
+            name: "Squat".into(),
+            force: None,
+            level: "beginner".into(),
+            mechanic: None,
+            equipment: None,
+            primary_muscles: vec![],
+            secondary_muscles: vec![],
+            instructions: vec![],
+            category: "strength".into(),
+            images: vec![],
+        };
+        assert_eq!(ex.get_first_image_url(), None);
+    }
+}

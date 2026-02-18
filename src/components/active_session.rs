@@ -23,7 +23,13 @@ pub fn ActiveSessionPage() -> Element {
 
     use_coroutine(move |_: UnboundedReceiver<()>| async move {
         loop {
+            #[cfg(target_arch = "wasm32")]
             gloo_timers::future::TimeoutFuture::new(1_000).await;
+            // On non-wasm targets (e.g. native test builds) this coroutine is
+            // never executed – components only run in the Dioxus web runtime.
+            // The pending() call is only here so the code compiles on all targets.
+            #[cfg(not(target_arch = "wasm32"))]
+            std::future::pending::<()>().await;
             now_tick.set(get_current_timestamp());
         }
     });
