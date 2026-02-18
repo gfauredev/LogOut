@@ -769,4 +769,34 @@ mod tests {
         // 655.35 km = 65535 dam fits in u16
         assert_eq!(parse_distance_km("655.35"), Some(Distance(65535)));
     }
+
+    // ── CustomExercise ────────────────────────────────────────────────────────
+
+    #[test]
+    fn custom_exercise_serialization_with_new_fields() {
+        let exercise = CustomExercise {
+            id: "custom_123".into(),
+            name: "Test Exercise".into(),
+            category: Category::Strength,
+            force: Some(Force::Push),
+            equipment: Some(Equipment::Barbell),
+            primary_muscles: vec![Muscle::Chest],
+            secondary_muscles: vec![Muscle::Triceps, Muscle::Shoulders],
+            instructions: vec!["Step 1".into(), "Step 2".into()],
+        };
+        let json = serde_json::to_string(&exercise).unwrap();
+        let deserialized: CustomExercise = serde_json::from_str(&json).unwrap();
+        assert_eq!(exercise, deserialized);
+        assert_eq!(deserialized.secondary_muscles.len(), 2);
+        assert_eq!(deserialized.instructions.len(), 2);
+    }
+
+    #[test]
+    fn custom_exercise_backward_compat_missing_new_fields() {
+        // Old format without secondary_muscles and instructions
+        let json = r#"{"id":"custom_1","name":"Old Exercise","category":"strength","force":"push","equipment":"barbell","primary_muscles":["chest"]}"#;
+        let exercise: CustomExercise = serde_json::from_str(json).unwrap();
+        assert_eq!(exercise.secondary_muscles, Vec::<Muscle>::new());
+        assert_eq!(exercise.instructions, Vec::<String>::new());
+    }
 }
