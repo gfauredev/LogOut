@@ -2,6 +2,7 @@ use dioxus::prelude::*;
 use crate::models::{WorkoutSession, format_time};
 use crate::services::storage;
 use crate::components::{SessionView, BottomNav, ActiveTab};
+use crate::utils::format_session_date;
 
 #[component]
 pub fn HomePage() -> Element {
@@ -28,12 +29,12 @@ pub fn HomePage() -> Element {
 
     rsx! {
         div { class: "app-container",
-            div { class: "app-content",
+            main { class: "app-content",
                 if *has_active.read() {
                     SessionView {}
                 } else {
-                    div { class: "sessions-tab",
-                        div { class: "sessions-tab__header",
+                    section { class: "sessions-tab",
+                        header { class: "sessions-tab__header",
                             h1 { class: "app-title", "💪 LogOut" }
                             p { class: "app-tagline", "Turn off your computer, Log your workOut" }
                         }
@@ -67,6 +68,9 @@ pub fn HomePage() -> Element {
 
 #[component]
 fn SessionCard(session: WorkoutSession) -> Element {
+    let mut show_delete_confirm = use_signal(|| false);
+    let session_id = session.id.clone();
+
     let duration = session
         .end_time
         .map(|end| end.saturating_sub(session.start_time))
@@ -80,8 +84,16 @@ fn SessionCard(session: WorkoutSession) -> Element {
     };
 
     rsx! {
-        div { class: "session-card",
-            div { class: "session-card__date", "{date_str}" }
+        article { class: "session-card",
+            div { class: "session-card__header",
+                div { class: "session-card__date", "{date_str}" }
+                button {
+                    onclick: move |_| show_delete_confirm.set(true),
+                    class: "session-card__delete-btn",
+                    title: "Delete session",
+                    "🗑️"
+                }
+            }
             div { class: "session-card__stats",
                 span { class: "session-card__stat", "⏱ {format_time(duration)}" }
                 span { class: "session-card__stat", "🏋️ {exercise_label}" }
@@ -98,24 +110,38 @@ fn SessionCard(session: WorkoutSession) -> Element {
                     }
                 }
             }
+
+            // Delete confirmation modal
+            if *show_delete_confirm.read() {
+                div {
+                    class: "delete-modal-overlay",
+                    onclick: move |_| show_delete_confirm.set(false),
+                    div {
+                        class: "delete-modal",
+                        onclick: move |evt| evt.stop_propagation(),
+                        p { "Delete this session?" }
+                        div { class: "delete-modal__buttons",
+                            button {
+                                onclick: {
+                                    let id = session_id.clone();
+                                    move |_| {
+                                        storage::delete_session(&id);
+                                        show_delete_confirm.set(false);
+                                    }
+                                },
+                                class: "btn btn--danger",
+                                "Delete"
+                            }
+                            button {
+                                onclick: move |_| show_delete_confirm.set(false),
+                                class: "btn--cancel",
+                                "Cancel"
+                            }
+                        }
+                    }
+                }
+            }
         }
-    }
-}
-
-fn format_session_date(timestamp: u64) -> String {
-    #[cfg(target_arch = "wasm32")]
-    let current_time = js_sys::Date::now() / 1000.0;
-    #[cfg(not(target_arch = "wasm32"))]
-    let current_time = std::time::SystemTime::now()
-        .duration_since(std::time::UNIX_EPOCH)
-        .unwrap()
-        .as_secs() as f64;
-
-    let days_ago = ((current_time - timestamp as f64) / 86400.0) as i64;
-    match days_ago {
-        0 => "Today".to_string(),
-        1 => "Yesterday".to_string(),
-        n => format!("{} days ago", n),
     }
 }
 

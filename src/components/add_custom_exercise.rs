@@ -10,6 +10,10 @@ pub fn AddCustomExercisePage() -> Element {
     let mut equipment_input: Signal<Option<Equipment>> = use_signal(|| None);
     let mut muscle_input = use_signal(|| String::new());
     let mut muscles_list = use_signal(|| Vec::<Muscle>::new());
+    let mut secondary_muscle_input = use_signal(|| String::new());
+    let mut secondary_muscles_list = use_signal(|| Vec::<Muscle>::new());
+    let mut instructions_input = use_signal(|| String::new());
+    let mut instructions_list = use_signal(|| Vec::<String>::new());
     
     let add_muscle = move |_| {
         let value = muscle_input.read().trim().to_string();
@@ -30,6 +34,44 @@ pub fn AddCustomExercisePage() -> Element {
         muscles.retain(|m| m != &muscle);
         muscles_list.set(muscles);
     };
+
+    let add_secondary_muscle = move |_| {
+        let value = secondary_muscle_input.read().trim().to_string();
+        if !value.is_empty() {
+            if let Ok(muscle) = serde_json::from_value::<Muscle>(serde_json::Value::String(value)) {
+                let mut muscles = secondary_muscles_list.read().clone();
+                if !muscles.contains(&muscle) {
+                    muscles.push(muscle);
+                    secondary_muscles_list.set(muscles);
+                    secondary_muscle_input.set(String::new());
+                }
+            }
+        }
+    };
+
+    let mut remove_secondary_muscle = move |muscle: Muscle| {
+        let mut muscles = secondary_muscles_list.read().clone();
+        muscles.retain(|m| m != &muscle);
+        secondary_muscles_list.set(muscles);
+    };
+
+    let add_instruction = move |_| {
+        let value = instructions_input.read().trim().to_string();
+        if !value.is_empty() {
+            let mut instructions = instructions_list.read().clone();
+            instructions.push(value);
+            instructions_list.set(instructions);
+            instructions_input.set(String::new());
+        }
+    };
+
+    let mut remove_instruction = move |idx: usize| {
+        let mut instructions = instructions_list.read().clone();
+        if idx < instructions.len() {
+            instructions.remove(idx);
+            instructions_list.set(instructions);
+        }
+    };
     
     let save_exercise = move |_| {
         let name = name_input.read().trim().to_string();
@@ -44,6 +86,8 @@ pub fn AddCustomExercisePage() -> Element {
             force: *force_input.read(),
             equipment: *equipment_input.read(),
             primary_muscles: muscles_list.read().clone(),
+            secondary_muscles: secondary_muscles_list.read().clone(),
+            instructions: instructions_list.read().clone(),
         };
         
         storage::add_custom_exercise(exercise);
@@ -173,6 +217,90 @@ pub fn AddCustomExercisePage() -> Element {
                                             let m = *muscle;
                                             move |_| remove_muscle(m)
                                         },
+                                        class: "muscle-tag__remove",
+                                        "×"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // Secondary muscles
+                div {
+                    label { class: "form-label", "Secondary Muscles" }
+                    
+                    div {
+                        class: "muscle-row",
+                        select {
+                            value: "{secondary_muscle_input}",
+                            oninput: move |evt| secondary_muscle_input.set(evt.value()),
+                            class: "muscle-select",
+                            option { value: "", "Select muscle..." }
+                            for muscle in Muscle::ALL {
+                                option { value: "{muscle}", "{muscle}" }
+                            }
+                        }
+                        button {
+                            onclick: add_secondary_muscle,
+                            class: "btn btn--accent-lg",
+                            "Add"
+                        }
+                    }
+                    
+                    if !secondary_muscles_list.read().is_empty() {
+                        div {
+                            class: "muscle-tags",
+                            for muscle in secondary_muscles_list.read().iter() {
+                                div {
+                                    key: "{muscle}",
+                                    class: "muscle-tag muscle-tag--secondary",
+                                    span { "{muscle}" }
+                                    button {
+                                        onclick: {
+                                            let m = *muscle;
+                                            move |_| remove_secondary_muscle(m)
+                                        },
+                                        class: "muscle-tag__remove",
+                                        "×"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // Instructions
+                div {
+                    label { class: "form-label", "Instructions" }
+                    
+                    div {
+                        class: "muscle-row",
+                        input {
+                            r#type: "text",
+                            placeholder: "Add an instruction step...",
+                            value: "{instructions_input}",
+                            oninput: move |evt| instructions_input.set(evt.value()),
+                            class: "form-input",
+                            style: "flex: 1;",
+                        }
+                        button {
+                            onclick: add_instruction,
+                            class: "btn btn--accent-lg",
+                            "Add"
+                        }
+                    }
+                    
+                    if !instructions_list.read().is_empty() {
+                        ol {
+                            class: "instructions-list",
+                            for (idx, instruction) in instructions_list.read().iter().enumerate() {
+                                li {
+                                    key: "{idx}",
+                                    class: "instruction-item",
+                                    span { "{instruction}" }
+                                    button {
+                                        onclick: move |_| remove_instruction(idx),
                                         class: "muscle-tag__remove",
                                         "×"
                                     }

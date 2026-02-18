@@ -85,7 +85,7 @@ pub fn AnalyticsPanel() -> Element {
                     }
                 }
                 
-                points.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap());
+                points.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap_or(std::cmp::Ordering::Equal));
                 
                 let exercise_name = available_exercises.read()
                     .iter()
@@ -242,7 +242,7 @@ fn ChartView(data: Vec<(String, Vec<(f64, f64)>)>, metric: Metric, colors: Vec<&
         let current_time = js_sys::Date::now() / 1000.0;
         #[cfg(not(target_arch = "wasm32"))]
         let current_time = std::time::SystemTime::now()
-            .duration_since(std::time::UNIX_EPOCH).unwrap().as_secs() as f64;
+            .duration_since(std::time::UNIX_EPOCH).unwrap_or_default().as_secs() as f64;
         
         let days_ago = ((current_time - timestamp) / 86400.0) as i64;
         match days_ago {

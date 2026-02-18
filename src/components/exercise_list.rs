@@ -1,32 +1,65 @@
 use std::collections::HashMap;
 use dioxus::prelude::*;
-use crate::services::exercise_db;
-use crate::components::{BottomNav, ActiveTab};
+use crate::models::{Exercise, Level};
+use crate::services::{exercise_db, storage};
+use crate::components::{BottomNav, ActiveTab, ExerciseCard};
 
 #[component]
 pub fn ExerciseListPage() -> Element {
     let all_exercises = exercise_db::use_exercises();
+    let custom_exercises = storage::use_custom_exercises();
     let mut search_query = use_signal(|| String::new());
-    let mut instructions_open = use_signal(|| HashMap::<String, bool>::new());
-    let mut image_indices = use_signal(|| HashMap::<String, usize>::new());
+    let instructions_open = use_signal(|| HashMap::<String, bool>::new());
+    let image_indices = use_signal(|| HashMap::<String, usize>::new());
+
+    // Merge DB exercises and custom exercises into a unified list
     let exercises = use_memo(move || {
         let query = search_query.read();
         let all = all_exercises.read();
-        if query.is_empty() {
-            all.iter().take(50).cloned().collect::<Vec<_>>()
-        } else {
-            exercise_db::search_exercises(&all, &query)
-                .into_iter()
-                .take(50)
-                .collect::<Vec<_>>()
+        let custom = custom_exercises.read();
+
+        let mut results: Vec<Exercise> = Vec::new();
+
+        // Add custom exercises (converted to Exercise for uniform display)
+        for ce in custom.iter() {
+            let matches = query.is_empty()
+                || ce.name.to_lowercase().contains(&query.to_lowercase());
+            if matches {
+                results.push(Exercise {
+                    id: ce.id.clone(),
+                    name: ce.name.clone(),
+                    force: ce.force,
+                    level: Level::Beginner,
+                    mechanic: None,
+                    equipment: ce.equipment,
+                    primary_muscles: ce.primary_muscles.clone(),
+                    secondary_muscles: ce.secondary_muscles.clone(),
+                    instructions: ce.instructions.clone(),
+                    category: ce.category,
+                    images: vec![], // Custom exercises have no images
+                });
+            }
         }
+
+        // Add DB exercises
+        if query.is_empty() {
+            results.extend(all.iter().take(50).cloned());
+        } else {
+            results.extend(
+                exercise_db::search_exercises(&all, &query)
+                    .into_iter()
+                    .take(50),
+            );
+        }
+
+        results
     });
 
-    let total = all_exercises.read().len();
+    let total = all_exercises.read().len() + custom_exercises.read().len();
 
     rsx! {
         div { class: "page-container",
-            div { class: "page-content container container--narrow",
+            main { class: "page-content container container--narrow",
             
                 header {
                     class: "page-header",
@@ -47,82 +80,62 @@ pub fn ExerciseListPage() -> Element {
                     }
                 }
                 
-                div {
+                section {
                     class: "exercise-list",
                     for exercise in exercises() {
                         {
-                            let id = exercise.id.clone();
-                            let id_for_img = exercise.id.clone();
-                            let show_instructions = *instructions_open.read().get(&id).unwrap_or(&false);
-                            let img_index = *image_indices.read().get(&id_for_img).unwrap_or(&0);
-                            let image_count = exercise.images.len();
+                            let is_custom = exercise.id.starts_with("custom_");
                             rsx! {
-                                div {
-                                    key: "{exercise.id}",
-                                    class: "exercise-card",
-
-                                    h3 {
-                                        class: "exercise-card__title",
-                                        onclick: move |_| {
-                                            let mut map = instructions_open.write();
-                                            let entry = map.entry(id.clone()).or_insert(false);
-                                            *entry = !*entry;
-                                        },
-                                        "{exercise.name}"
-                                    }
-
-                                    if show_instructions && !exercise.instructions.is_empty() {
-                                        ol { class: "exercise-card__instructions",
-                                            for instruction in &exercise.instructions {
-                                                li { "{instruction}" }
-                                            }
+                                if is_custom {
+                                    article {
+                                        key: "{exercise.id}",
+                                        class: "exercise-card",
+                                        div {
+                                            class: "exercise-card__custom-badge",
+                                            "Custom"
                                         }
-                                    }
+                                        h3 { class: "exercise-card__title", "{exercise.name}" }
 
-                                    if let Some(image_url) = exercise.get_image_url(img_index) {
-                                        img {
-                                            src: "{image_url}",
-                                            alt: "{exercise.name}",
-                                            loading: "lazy",
-                                            class: "exercise-card__image",
-                                            onclick: move |_| {
-                                                if image_count > 1 {
-                                                    let mut map = image_indices.write();
-                                                    let entry = map.entry(id_for_img.clone()).or_insert(0);
-                                                    *entry = (*entry + 1) % image_count;
+                                        if !exercise.instructions.is_empty() {
+                                            ol { class: "exercise-card__instructions",
+                                                for instruction in &exercise.instructions {
+                                                    li { "{instruction}" }
                                                 }
-                                            },
+                                            }
                                         }
-                                    }
 
-                                    div {
-                                        class: "tag-row",
-                                        span { class: "tag tag--category", "{exercise.category}" }
-                                        if let Some(force) = &exercise.force {
-                                            span { class: "tag tag--force", "{force}" }
-                                        }
-                                        if let Some(equipment) = &exercise.equipment {
-                                            span { class: "tag tag--equipment", "{equipment}" }
-                                        }
-                                        span { class: "tag tag--level", "{exercise.level}" }
-                                    }
-
-                                    if !exercise.primary_muscles.is_empty() {
                                         div {
                                             class: "tag-row",
-                                            for muscle in &exercise.primary_muscles {
-                                                span { class: "tag tag--muscle-primary", "{muscle}" }
+                                            span { class: "tag tag--category", "{exercise.category}" }
+                                            if let Some(force) = &exercise.force {
+                                                span { class: "tag tag--force", "{force}" }
+                                            }
+                                            if let Some(equipment) = &exercise.equipment {
+                                                span { class: "tag tag--equipment", "{equipment}" }
+                                            }
+                                        }
+                                        if !exercise.primary_muscles.is_empty() {
+                                            div {
+                                                class: "tag-row",
+                                                for muscle in &exercise.primary_muscles {
+                                                    span { class: "tag tag--muscle-primary", "{muscle}" }
+                                                }
+                                            }
+                                        }
+                                        if !exercise.secondary_muscles.is_empty() {
+                                            div {
+                                                class: "tag-row",
+                                                for muscle in &exercise.secondary_muscles {
+                                                    span { class: "tag tag--muscle-secondary", "{muscle}" }
+                                                }
                                             }
                                         }
                                     }
-
-                                    if !exercise.secondary_muscles.is_empty() {
-                                        div {
-                                            class: "tag-row",
-                                            for muscle in &exercise.secondary_muscles {
-                                                span { class: "tag tag--muscle-secondary", "{muscle}" }
-                                            }
-                                        }
+                                } else {
+                                    ExerciseCard {
+                                        exercise: exercise.clone(),
+                                        instructions_open: instructions_open,
+                                        image_indices: image_indices,
                                     }
                                 }
                             }

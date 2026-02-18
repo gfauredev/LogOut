@@ -4,6 +4,7 @@
   font-family: system-ui, -apple-system, sans-serif;
   max-width: 500px;
   margin: 0 auto;
+  color: #e0e0e0;
 }
 
 .container--narrow {
@@ -25,6 +26,7 @@
   position: relative;
   max-width: 500px;
   margin: 0 auto;
+  color: #e0e0e0;
 }
 
 /* ===== Page Layout (exercise, analytics pages) ===== */
@@ -35,6 +37,7 @@
   flex-direction: column;
   max-width: 500px;
   margin: 0 auto;
+  color: #e0e0e0;
 }
 
 .page-content {
@@ -56,16 +59,17 @@
 .app-title {
   font-size: 2.2em;
   margin-bottom: 8px;
+  color: #fff;
 }
 
 .app-tagline {
   font-size: 1.1em;
-  color: #666;
+  color: #999;
 }
 
 .sessions-empty {
   text-align: center;
-  color: #999;
+  color: #777;
   margin-top: 60px;
   font-size: 1.1em;
 }
@@ -79,19 +83,40 @@
 /* ===== Session Card ===== */
 .session-card {
   padding: 16px;
-  border: 1px solid #e0e0e0;
+  border: 1px solid #333;
   border-radius: 12px;
-  background: white;
-  box-shadow: 0 2px 6px rgba(0,0,0,0.06);
+  background: #111;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+}
+
+.session-card__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
 }
 
 .session-card__date {
   font-size: 0.85em;
   color: #999;
-  margin-bottom: 8px;
   font-weight: 500;
   text-transform: uppercase;
   letter-spacing: 0.04em;
+}
+
+.session-card__delete-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 1.1em;
+  padding: 4px 8px;
+  border-radius: 4px;
+  opacity: 0.6;
+  transition: opacity 0.2s;
+}
+
+.session-card__delete-btn:hover {
+  opacity: 1;
 }
 
 .session-card__stats {
@@ -103,7 +128,7 @@
 .session-card__stat {
   font-size: 1em;
   font-weight: 600;
-  color: #333;
+  color: #ccc;
 }
 
 .session-card__exercises {
@@ -114,7 +139,7 @@
 
 .session-card__exercise-name {
   padding: 3px 10px;
-  background: #f0f2ff;
+  background: #1a1a2e;
   color: #667eea;
   border-radius: 12px;
   font-size: 0.85em;
@@ -122,10 +147,55 @@
 
 .session-card__more {
   padding: 3px 10px;
-  background: #f5f5f5;
-  color: #999;
+  background: #222;
+  color: #777;
   border-radius: 12px;
   font-size: 0.85em;
+}
+
+/* ===== Delete Confirmation Modal ===== */
+.delete-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2000;
+}
+
+.delete-modal {
+  background: #1a1a1a;
+  border: 1px solid #333;
+  border-radius: 12px;
+  padding: 24px;
+  text-align: center;
+  min-width: 260px;
+}
+
+.delete-modal p {
+  margin-bottom: 20px;
+  font-size: 1.1em;
+  color: #e0e0e0;
+}
+
+.delete-modal__buttons {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+}
+
+.btn--danger {
+  padding: 10px 20px;
+  background: #e74c3c;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-weight: bold;
+  cursor: pointer;
 }
 
 /* ===== FAB (+ Start Session button) ===== */
@@ -156,13 +226,13 @@
   left: 0;
   right: 0;
   height: 60px;
-  background: white;
-  border-top: 1px solid #e0e0e0;
+  background: #111;
+  border-top: 1px solid #333;
   display: flex;
   justify-content: space-around;
   align-items: stretch;
   z-index: 1000;
-  box-shadow: 0 -2px 10px rgba(0,0,0,0.07);
+  box-shadow: 0 -2px 10px rgba(0,0,0,0.3);
 }
 
 .bottom-nav__tab {
@@ -173,7 +243,7 @@
   flex: 1;
   padding: 6px 0;
   text-decoration: none;
-  color: #aaa;
+  color: #666;
   transition: color 0.2s;
 }
 
@@ -195,9 +265,11 @@
   width: 100%;
   padding: 12px;
   font-size: 16px;
-  border: 2px solid #e0e0e0;
+  border: 2px solid #333;
   border-radius: 8px;
   box-sizing: border-box;
+  background: #111;
+  color: #e0e0e0;
 }
 
 /* ===== Exercise List ===== */
@@ -209,20 +281,33 @@
 
 .exercise-card {
   padding: 15px;
-  border: 1px solid #e0e0e0;
+  border: 1px solid #333;
   border-radius: 8px;
-  background: white;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+  background: #111;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.2);
 }
 
 .exercise-card__title {
   margin: 0 0 8px 0;
   font-size: 1.2em;
   cursor: pointer;
+  color: #fff;
 }
 
 .exercise-card__title:hover {
   color: #667eea;
+}
+
+.exercise-card__custom-badge {
+  display: inline-block;
+  padding: 2px 10px;
+  background: #764ba2;
+  color: white;
+  border-radius: 4px;
+  font-size: 0.75em;
+  font-weight: bold;
+  text-transform: uppercase;
+  margin-bottom: 8px;
 }
 
 .exercise-card__image {
@@ -252,28 +337,28 @@
 .tag--force    { background: #764ba2; }
 .tag--equipment { background: #4facfe; }
 .tag--level    { background: #f5576c; }
-.tag--muscle-primary { background: #43e97b; color: #1a3a1a; }
-.tag--muscle-secondary { background: #a8edea; color: #1a3a3a; }
+.tag--muscle-primary { background: #2d7a3a; color: #c8f7d0; }
+.tag--muscle-secondary { background: #1a4a4a; color: #a8edea; }
 
 .exercise-card__instructions {
   margin: 10px 0;
   padding-left: 20px;
-  color: #555;
+  color: #aaa;
   font-size: 0.9em;
   line-height: 1.5;
 }
 
 .exercise-card__muscles {
-  color: #666;
+  color: #999;
   font-size: 0.9em;
 }
 
 /* ===== Search Results Dropdown ===== */
 .search-results {
   margin-top: 10px;
-  border: 1px solid #e0e0e0;
+  border: 1px solid #333;
   border-radius: 8px;
-  background: white;
+  background: #111;
   max-height: 200px;
   overflow-y: auto;
 }
@@ -285,7 +370,8 @@
 .search-result-item {
   padding: 10px;
   cursor: pointer;
-  border-bottom: 1px solid #f0f0f0;
+  border-bottom: 1px solid #222;
+  color: #e0e0e0;
 }
 
 .search-result-item--flex {
@@ -293,6 +379,10 @@
   justify-content: space-between;
   align-items: center;
   padding: 12px;
+}
+
+.search-result-item:hover {
+  background: #1a1a2e;
 }
 
 /* ===== Form Controls ===== */
@@ -310,50 +400,60 @@
   display: block;
   margin-bottom: 5px;
   font-weight: bold;
+  color: #ccc;
 }
 
 .form-label--color {
-  color: #333;
+  color: #ccc;
   margin-bottom: 8px;
 }
 
 .form-input {
   width: 100%;
   padding: 10px;
-  border: 1px solid #e0e0e0;
+  border: 1px solid #333;
   border-radius: 6px;
   font-size: 16px;
   box-sizing: border-box;
+  background: #111;
+  color: #e0e0e0;
 }
 
 .form-select {
   width: 100%;
   padding: 10px;
-  border: 1px solid #e0e0e0;
+  border: 1px solid #333;
   border-radius: 6px;
   font-size: 16px;
   box-sizing: border-box;
+  background: #111;
+  color: #e0e0e0;
 }
 
 .form-select--chart {
   border-width: 2px;
   font-size: 14px;
-  background: white;
+  background: #111;
   cursor: pointer;
+  color: #e0e0e0;
 }
 
 .input-small {
   padding: 8px;
-  border: 1px solid #e0e0e0;
+  border: 1px solid #333;
   border-radius: 4px;
   width: 80px;
+  background: #111;
+  color: #e0e0e0;
 }
 
 .input-medium {
   padding: 8px;
-  border: 1px solid #e0e0e0;
+  border: 1px solid #333;
   border-radius: 4px;
   width: 100px;
+  background: #111;
+  color: #e0e0e0;
 }
 
 /* ===== Buttons ===== */
@@ -407,8 +507,8 @@
 
 .btn--cancel {
   padding: 15px 25px;
-  background: #e0e0e0;
-  color: #666;
+  background: #333;
+  color: #ccc;
   border: none;
   border-radius: 8px;
   font-size: 1.1em;
@@ -418,14 +518,26 @@
 
 .btn--finish {
   padding: 12px 24px;
-  background: white;
+  background: #1a1a2e;
   color: #667eea;
   border: none;
   border-radius: 8px;
   font-size: 1.1em;
   font-weight: bold;
   cursor: pointer;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+}
+
+.btn--cancel-session {
+  padding: 12px 24px;
+  background: #2a1a1a;
+  color: #e74c3c;
+  border: none;
+  border-radius: 8px;
+  font-size: 1.1em;
+  font-weight: bold;
+  cursor: pointer;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.3);
 }
 
 .btn-row {
@@ -442,19 +554,20 @@
 
 .set-line {
   padding: 5px 0;
-  color: #666;
+  color: #999;
 }
 
 .workout-exercise-card {
   padding: 15px;
   margin-bottom: 15px;
-  border: 1px solid #e0e0e0;
+  border: 1px solid #333;
   border-radius: 8px;
-  background: white;
+  background: #111;
 }
 
 .workout-exercise-card__title {
   margin: 0 0 10px 0;
+  color: #fff;
 }
 
 /* ===== Active Session ===== */
@@ -466,6 +579,7 @@
   position: relative;
   max-width: 500px;
   margin: 0 auto;
+  color: #e0e0e0;
 }
 
 .session-header {
@@ -474,7 +588,7 @@
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   color: white;
   padding: 15px 20px;
-  box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+  box-shadow: 0 2px 10px rgba(0,0,0,0.3);
   z-index: 100;
   display: flex;
   justify-content: space-between;
@@ -490,6 +604,11 @@
   margin: 5px 0 0 0;
   font-size: 1.8em;
   font-weight: bold;
+  cursor: pointer;
+}
+
+.session-header__timer:hover {
+  text-decoration: underline;
 }
 
 .session-body {
@@ -513,13 +632,14 @@
   padding: 20px;
   border: 2px solid #667eea;
   border-radius: 12px;
-  background: #f8f9ff;
+  background: #0a0a1e;
   margin-bottom: 20px;
   position: relative;
 }
 
 .exercise-form__title {
   margin-top: 0;
+  color: #fff;
 }
 
 .exercise-form__last-duration {
@@ -540,17 +660,18 @@
 .completed-log {
   padding: 15px;
   margin-bottom: 10px;
-  border: 1px solid #e0e0e0;
+  border: 1px solid #333;
   border-radius: 8px;
-  background: white;
+  background: #111;
 }
 
 .completed-log__title {
   margin: 0 0 8px 0;
+  color: #fff;
 }
 
 .completed-log__details {
-  color: #666;
+  color: #999;
   font-size: 0.9em;
 }
 
@@ -569,18 +690,84 @@
   margin-top: 30px;
 }
 
+/* ===== Rest Timer ===== */
+.rest-timer {
+  text-align: center;
+  padding: 10px 20px;
+  font-size: 1.2em;
+  font-weight: bold;
+  background: #0a1a0a;
+  color: #43e97b;
+  border-bottom: 1px solid #333;
+}
+
+.rest-timer--exceeded {
+  background: #1a0a0a;
+  color: #e74c3c;
+}
+
+/* ===== Rest Duration Input ===== */
+.rest-duration-input {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 20px;
+  background: #111;
+  border-bottom: 1px solid #333;
+  color: #ccc;
+  font-size: 0.9em;
+}
+
+/* ===== Snackbar ===== */
+.snackbar {
+  position: fixed;
+  bottom: 80px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
+  color: #1a3a1a;
+  padding: 14px 28px;
+  border-radius: 12px;
+  font-weight: bold;
+  font-size: 1.1em;
+  z-index: 3000;
+  box-shadow: 0 4px 16px rgba(67, 233, 123, 0.4);
+  animation: snackbar-in 0.3s ease-out;
+}
+
+@keyframes snackbar-in {
+  from { opacity: 0; transform: translateX(-50%) translateY(20px); }
+  to { opacity: 1; transform: translateX(-50%) translateY(0); }
+}
+
+/* ===== Instructions List (Custom Exercise form) ===== */
+.instructions-list {
+  margin: 10px 0 0 0;
+  padding-left: 20px;
+  color: #ccc;
+  font-size: 0.9em;
+  line-height: 1.6;
+}
+
+.instruction-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 0;
+}
+
 /* ===== Analytics Panel ===== */
 .analytics-panel {
   height: 100%;
   display: flex;
   flex-direction: column;
-  background: white;
+  background: #000;
   overflow-y: auto;
 }
 
 .analytics-panel__header {
   padding: 20px;
-  border-bottom: 2px solid #e0e0e0;
+  border-bottom: 2px solid #333;
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   color: white;
 }
@@ -598,7 +785,7 @@
 
 .analytics-controls {
   padding: 20px;
-  border-bottom: 1px solid #e0e0e0;
+  border-bottom: 1px solid #333;
 }
 
 .analytics-chart {
@@ -612,7 +799,7 @@
   align-items: center;
   justify-content: center;
   height: 300px;
-  color: #999;
+  color: #777;
   text-align: center;
 }
 
@@ -663,10 +850,11 @@
 
 .page-title {
   margin: 15px 0;
+  color: #fff;
 }
 
 .page-subtitle {
-  color: #666;
+  color: #999;
 }
 
 /* ===== Muscle Tags (Add Custom Exercise) ===== */
@@ -679,9 +867,11 @@
 .muscle-select {
   flex: 1;
   padding: 10px;
-  border: 1px solid #e0e0e0;
+  border: 1px solid #333;
   border-radius: 6px;
   font-size: 16px;
+  background: #111;
+  color: #e0e0e0;
 }
 
 .muscle-tags {
@@ -698,6 +888,11 @@
   display: flex;
   align-items: center;
   gap: 8px;
+}
+
+.muscle-tag--secondary {
+  background: #1a4a4a;
+  color: #a8edea;
 }
 
 .muscle-tag__remove {

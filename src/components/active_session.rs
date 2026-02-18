@@ -3,6 +3,9 @@ use crate::models::{WorkoutSession, ExerciseLog, get_current_timestamp, format_t
 use crate::services::{exercise_db, storage};
 use crate::Route;
 
+/// Default rest duration in seconds
+const DEFAULT_REST_DURATION: u64 = 30;
+
 #[component]
 pub fn SessionView() -> Element {
     // use_sessions() must be called at the top level of the component, not inside
@@ -20,6 +23,22 @@ pub fn SessionView() -> Element {
     let mut weight_input = use_signal(|| String::new());
     let mut reps_input = use_signal(|| String::new());
     let mut distance_input = use_signal(|| String::new());
+
+    // Rest duration setting (configurable by clicking the timer)
+    let mut rest_duration = use_signal(|| DEFAULT_REST_DURATION);
+    let mut show_rest_input = use_signal(|| false);
+    let mut rest_input_value = use_signal(|| DEFAULT_REST_DURATION.to_string());
+
+    // Rest timer state: tracks when the last exercise was completed
+    let mut rest_start_time = use_signal(|| None::<u64>);
+
+    // Snackbar state for congratulatory message
+    let mut show_snackbar = use_signal(|| false);
+
+    // Bell rung tracker: how many times the rest bell has rung this rest period
+    let mut rest_bell_count = use_signal(|| 0u64);
+    // Duration bell tracker: whether the duration bell has been rung for this exercise
+    let mut duration_bell_rung = use_signal(|| false);
 
     // Tick signal for live timer – updated every second by a coroutine
     let mut now_tick = use_signal(|| get_current_timestamp());
@@ -47,6 +66,57 @@ pub fn SessionView() -> Element {
             0
         }
     };
+
+    // Calculate rest elapsed time and handle rest bell
+    let rest_elapsed = {
+        let _tick = *now_tick.read();
+        if let Some(start) = *rest_start_time.read() {
+            let elapsed = get_current_timestamp() - start;
+            let rd = *rest_duration.read();
+            if rd > 0 && elapsed > 0 {
+                let intervals = elapsed / rd;
+                let prev_count = *rest_bell_count.read();
+                if intervals > prev_count {
+                    rest_bell_count.set(intervals);
+                    #[cfg(target_arch = "wasm32")]
+                    ring_bell(false);
+                }
+            }
+            Some(elapsed)
+        } else {
+            None
+        }
+    };
+
+    let rest_exceeded = rest_elapsed
+        .map(|e| e >= *rest_duration.read())
+        .unwrap_or(false);
+
+    // Handle duration bell for exercises without reps or distance
+    {
+        let _tick = *now_tick.read();
+        if let (Some(exercise_id), Some(start)) = (
+            current_exercise_id.read().as_ref(),
+            *current_exercise_start.read(),
+        ) {
+            if !*duration_bell_rung.read() {
+                if let Some(last_log) = storage::get_last_exercise_log(exercise_id) {
+                    let has_reps = last_log.reps.is_some();
+                    let has_distance = last_log.distance_dam.is_some();
+                    if !has_reps && !has_distance {
+                        if let Some(last_dur) = last_log.duration_seconds() {
+                            let current_dur = get_current_timestamp().saturating_sub(start);
+                            if current_dur >= last_dur && last_dur > 0 {
+                                duration_bell_rung.set(true);
+                                #[cfg(target_arch = "wasm32")]
+                                ring_bell(true);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
 
     let custom_exercises = storage::use_custom_exercises();
     let all_exercises = exercise_db::use_exercises();
@@ -95,6 +165,10 @@ pub fn SessionView() -> Element {
         current_exercise_id.set(Some(exercise_id.clone()));
         current_exercise_start.set(Some(get_current_timestamp()));
         search_query.set(String::new());
+        // Clear rest timer when starting a new exercise
+        rest_start_time.set(None);
+        rest_bell_count.set(0);
+        duration_bell_rung.set(false);
     };
     
     let complete_exercise = move |_| {
@@ -151,31 +225,92 @@ pub fn SessionView() -> Element {
         weight_input.set(String::new());
         reps_input.set(String::new());
         distance_input.set(String::new());
+        // Start rest timer
+        rest_start_time.set(Some(get_current_timestamp()));
+        rest_bell_count.set(0);
+        duration_bell_rung.set(false);
     };
     
     let finish_session = move |_| {
         let mut current_session = session.read().clone();
         current_session.end_time = Some(get_current_timestamp());
         storage::save_session(current_session.clone());
-        // Parent (HomePage) reacts to the session becoming inactive
+        // Show congratulatory snackbar if exercises were completed
+        if !current_session.exercise_logs.is_empty() {
+            show_snackbar.set(true);
+            #[cfg(target_arch = "wasm32")]
+            {
+                spawn(async move {
+                    gloo_timers::future::TimeoutFuture::new(3_000).await;
+                    show_snackbar.set(false);
+                });
+            }
+        }
     };
+
+    let exercise_count = session.read().exercise_logs.len();
+    let finish_label = if exercise_count == 0 { "Cancel Session" } else { "Finish Session" };
     
 
     rsx! {
-        div {
+        section {
             class: "session-container",
             
             // Sticky timer header
-            div {
+            header {
                 class: "session-header",
                 div {
                     h2 { class: "session-header__title", "⏱️ Active Session" }
-                    p { class: "session-header__timer", "{format_time(session_duration)}" }
+                    p {
+                        class: "session-header__timer",
+                        onclick: move |_| {
+                            rest_input_value.set(rest_duration.read().to_string());
+                            let current = *show_rest_input.read();
+                            show_rest_input.set(!current);
+                        },
+                        title: "Click to set rest duration",
+                        "{format_time(session_duration)}"
+                    }
                 }
                 button {
                     onclick: finish_session,
-                    class: "btn--finish",
-                    "Finish Session"
+                    class: if exercise_count == 0 { "btn--cancel-session" } else { "btn--finish" },
+                    "{finish_label}"
+                }
+            }
+
+            // Rest duration input (shown when clicking timer)
+            if *show_rest_input.read() {
+                div {
+                    class: "rest-duration-input",
+                    label { "Rest duration (seconds):" }
+                    input {
+                        r#type: "number",
+                        value: "{rest_input_value}",
+                        oninput: move |evt| rest_input_value.set(evt.value()),
+                        class: "form-input",
+                        style: "width: 80px; text-align: center;",
+                    }
+                    button {
+                        onclick: move |_| {
+                            if let Ok(val) = rest_input_value.read().parse::<u64>() {
+                                rest_duration.set(val);
+                            }
+                            show_rest_input.set(false);
+                        },
+                        class: "btn btn--accent",
+                        "Set"
+                    }
+                }
+            }
+
+            // Rest timer (shown when no exercise is active and rest is ongoing)
+            if current_exercise_id.read().is_none() {
+                if let Some(elapsed) = rest_elapsed {
+                    div {
+                        class: if rest_exceeded { "rest-timer rest-timer--exceeded" } else { "rest-timer" },
+                        "🛋️ Rest: {format_time(elapsed)}"
+                    }
                 }
             }
             
@@ -183,7 +318,7 @@ pub fn SessionView() -> Element {
             div {
                 class: "session-body",
                 
-                div {
+                main {
                     class: "session-main",
                 
                 // Exercise search and selection
@@ -217,7 +352,7 @@ pub fn SessionView() -> Element {
                 } else {
                     // Current exercise input form
                     if let Some(exercise_id) = current_exercise_id.read().as_ref() {
-                        div {
+                        article {
                             class: "exercise-form",
                             
                             {
@@ -319,12 +454,12 @@ pub fn SessionView() -> Element {
                 
                 // Completed exercises list
                 if !session.read().exercise_logs.is_empty() {
-                    div {
+                    section {
                         style: "margin-top: 30px;",
                         h3 { "Completed Exercises" }
                         
                         for (idx, log) in session.read().exercise_logs.iter().enumerate() {
-                            div {
+                            article {
                                 key: "{idx}",
                                 class: "completed-log",
                                 
@@ -361,6 +496,27 @@ pub fn SessionView() -> Element {
                 }
             }
         }
+
+            // Congratulatory snackbar
+            if *show_snackbar.read() {
+                div {
+                    class: "snackbar",
+                    "🎉 Great workout! Session complete!"
+                }
+            }
         }
     }
+}
+
+/// Ring a bell sound using the Web Audio API.
+/// `is_duration_bell` uses a different tone to distinguish from rest bell.
+#[cfg(target_arch = "wasm32")]
+fn ring_bell(is_duration_bell: bool) {
+    let freq = if is_duration_bell { "880" } else { "440" };
+    let duration = if is_duration_bell { "0.3" } else { "0.2" };
+    let js_code = format!(
+        "try{{var c=new(window.AudioContext||window.webkitAudioContext)();var o=c.createOscillator();o.type='sine';o.frequency.value={};o.connect(c.destination);o.start();o.stop(c.currentTime+{});}}catch(e){{}}",
+        freq, duration
+    );
+    let _ = js_sys::eval(&js_code);
 }
