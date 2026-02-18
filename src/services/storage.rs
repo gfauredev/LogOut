@@ -245,38 +245,38 @@ async fn migrate_from_local_storage(
     };
 
     // Workouts
-    if let Ok(Some(data)) = storage.get_item("logout_workouts") {
+    if let Ok(Some(data)) = storage.get_item("log_workout_workouts") {
         if let Ok(workouts) = serde_json::from_str::<Vec<Workout>>(&data) {
             info!("Migrating {} workouts from localStorage → IndexedDB", workouts.len());
             for w in &workouts {
                 let _ = idb::put_item(idb::STORE_WORKOUTS, w).await;
             }
             workouts_sig.set(workouts);
-            let _ = storage.remove_item("logout_workouts");
+            let _ = storage.remove_item("log_workout_workouts");
         }
     }
 
     // Sessions
-    if let Ok(Some(data)) = storage.get_item("logout_sessions") {
+    if let Ok(Some(data)) = storage.get_item("log_workout_sessions") {
         if let Ok(sessions) = serde_json::from_str::<Vec<WorkoutSession>>(&data) {
             info!("Migrating {} sessions from localStorage → IndexedDB", sessions.len());
             for s in &sessions {
                 let _ = idb::put_item(idb::STORE_SESSIONS, s).await;
             }
             sessions_sig.set(sessions);
-            let _ = storage.remove_item("logout_sessions");
+            let _ = storage.remove_item("log_workout_sessions");
         }
     }
 
     // Custom exercises
-    if let Ok(Some(data)) = storage.get_item("logout_custom_exercises") {
+    if let Ok(Some(data)) = storage.get_item("log_workout_custom_exercises") {
         if let Ok(custom) = serde_json::from_str::<Vec<CustomExercise>>(&data) {
             info!("Migrating {} custom exercises from localStorage → IndexedDB", custom.len());
             for c in &custom {
                 let _ = idb::put_item(idb::STORE_CUSTOM_EXERCISES, c).await;
             }
             custom_sig.set(custom);
-            let _ = storage.remove_item("logout_custom_exercises");
+            let _ = storage.remove_item("log_workout_custom_exercises");
         }
     }
 }
