@@ -14,7 +14,7 @@ pub fn AddCustomExercisePage() -> Element {
     let add_muscle = move |_| {
         let value = muscle_input.read().trim().to_string();
         if !value.is_empty() {
-            if let Ok(muscle) = serde_json::from_str::<Muscle>(&format!("\"{}\"", value)) {
+            if let Ok(muscle) = serde_json::from_value::<Muscle>(serde_json::Value::String(value)) {
                 let mut muscles = muscles_list.read().clone();
                 if !muscles.contains(&muscle) {
                     muscles.push(muscle);
@@ -85,7 +85,7 @@ pub fn AddCustomExercisePage() -> Element {
                     select {
                         value: "{category_input.read()}",
                         oninput: move |evt| {
-                            if let Ok(cat) = serde_json::from_str::<Category>(&format!("\"{}\"", evt.value())) {
+                            if let Ok(cat) = serde_json::from_value::<Category>(serde_json::Value::String(evt.value())) {
                                 category_input.set(cat);
                             }
                         },
@@ -105,7 +105,7 @@ pub fn AddCustomExercisePage() -> Element {
                             let val = evt.value();
                             if val.is_empty() {
                                 force_input.set(None);
-                            } else if let Ok(f) = serde_json::from_str::<Force>(&format!("\"{}\"", val)) {
+                            } else if let Ok(f) = serde_json::from_value::<Force>(serde_json::Value::String(val)) {
                                 force_input.set(Some(f));
                             }
                         },
@@ -126,7 +126,7 @@ pub fn AddCustomExercisePage() -> Element {
                             let val = evt.value();
                             if val.is_empty() {
                                 equipment_input.set(None);
-                            } else if let Ok(e) = serde_json::from_str::<Equipment>(&format!("\"{}\"", val)) {
+                            } else if let Ok(e) = serde_json::from_value::<Equipment>(serde_json::Value::String(val)) {
                                 equipment_input.set(Some(e));
                             }
                         },
