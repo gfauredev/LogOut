@@ -251,7 +251,6 @@ pub fn save_session(session: WorkoutSession) {
     });
 }
 
-#[allow(dead_code)]
 pub fn delete_session(id: &str) {
     let mut sig = use_sessions();
     sig.write().retain(|s| s.id != id);

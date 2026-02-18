@@ -424,6 +424,10 @@ pub struct CustomExercise {
     pub force: Option<Force>,
     pub equipment: Option<Equipment>,
     pub primary_muscles: Vec<Muscle>,
+    #[serde(default)]
+    pub secondary_muscles: Vec<Muscle>,
+    #[serde(default)]
+    pub instructions: Vec<String>,
 }
 
 /// Get current timestamp compatible with WASM
@@ -438,7 +442,7 @@ pub fn get_current_timestamp() -> u64 {
         use std::time::{SystemTime, UNIX_EPOCH};
         SystemTime::now()
             .duration_since(UNIX_EPOCH)
-            .unwrap()
+            .unwrap_or_default()
             .as_secs()
     }
 }

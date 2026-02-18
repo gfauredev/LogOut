@@ -3,6 +3,7 @@ use dioxus::prelude::*;
 mod components;
 mod models;
 mod services;
+pub mod utils;
 
 use components::{ExerciseListPage, HomePage, AnalyticsPage, AddCustomExercisePage};
 
