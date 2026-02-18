@@ -62,3 +62,15 @@ pub fn register_service_worker() {
     // The app works perfectly fine without offline caching
     log::info!("Service Worker disabled: running on non-web platform (Blitz-compatible mode)");
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn register_service_worker_noop_on_native() {
+        // Verifies that calling register_service_worker on a non-wasm target
+        // does not panic (the function is a no-op in this configuration).
+        register_service_worker();
+    }
+}

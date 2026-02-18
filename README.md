@@ -41,7 +41,7 @@ Images are downloaded lazily as exercises are viewed.
 
 ## Build for Web (PWA with Service Worker)
 
-`dx build --target web --release`
+`dx build --platform web --release`
 
 …
 
@@ -52,3 +52,37 @@ The PWA version of LogOut is deployed on GitHub Pages automatically at each comm
 ## Build for Blitz "Dioxus Native" (without JavaScript)
 
 …
+
+## Testing
+
+Unit tests cover the pure-Rust model functions (formatting, parsing, data structures) and the
+non-wasm service stubs. They run on the native target and require no browser.
+
+### Run tests
+
+```sh
+cargo test --bin log-workout
+```
+
+**All tests must pass before merging to `main`.**
+The CI workflow (`.github/workflows/tests.yml`) enforces this on every push and pull request.
+
+### Run tests with coverage
+
+Install `cargo-llvm-cov` once:
+
+```sh
+cargo install cargo-llvm-cov
+```
+
+Then generate an LCOV report:
+
+```sh
+cargo llvm-cov --bin log-workout --lcov --output-path lcov.info
+```
+
+Or view an inline summary in the terminal:
+
+```sh
+cargo llvm-cov --bin log-workout
+```
