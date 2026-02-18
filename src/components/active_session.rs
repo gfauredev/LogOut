@@ -1,5 +1,5 @@
 use dioxus::prelude::*;
-use crate::models::{WorkoutSession, ExerciseLog, get_current_timestamp, format_time, format_weight, format_distance, parse_weight_kg, parse_distance_km};
+use crate::models::{WorkoutSession, ExerciseLog, get_current_timestamp, format_time, parse_weight_kg, parse_distance_km, Category};
 use crate::services::{exercise_db, storage};
 use crate::Route;
 
@@ -56,18 +56,18 @@ pub fn SessionView() -> Element {
         if query.is_empty() {
             vec![]
         } else {
-            let mut results = Vec::new();
+            let mut results: Vec<(String, String, Category)> = Vec::new();
             
             let all = all_exercises.read();
             let db_results = exercise_db::search_exercises(&all, &query);
             for ex in db_results.iter().take(10) {
-                results.push((ex.id.clone(), ex.name.clone(), ex.category.clone()));
+                results.push((ex.id.clone(), ex.name.clone(), ex.category));
             }
             
             let custom = custom_exercises.read();
             for ex in custom.iter() {
                 if ex.name.to_lowercase().contains(&query.to_lowercase()) {
-                    results.push((ex.id.clone(), ex.name.clone(), ex.category.clone()));
+                    results.push((ex.id.clone(), ex.name.clone(), ex.category));
                 }
             }
             
@@ -75,16 +75,16 @@ pub fn SessionView() -> Element {
         }
     });
     
-    let mut start_exercise = move |exercise_id: String, _exercise_name: String, _category: String| {
+    let mut start_exercise = move |exercise_id: String, _exercise_name: String, _category: Category| {
         if let Some(last_log) = storage::get_last_exercise_log(&exercise_id) {
             if let Some(w) = last_log.weight_dg {
-                weight_input.set(format!("{:.1}", w as f64 / 100.0));
+                weight_input.set(format!("{:.1}", w.0 as f64 / 100.0));
             }
             if let Some(reps) = last_log.reps {
                 reps_input.set(reps.to_string());
             }
-            if let Some(d) = last_log.distance_m {
-                distance_input.set(format!("{:.2}", d as f64 / 1000.0));
+            if let Some(d) = last_log.distance_dam {
+                distance_input.set(format!("{:.2}", d.0 as f64 / 100.0));
             }
         } else {
             weight_input.set(String::new());
@@ -110,14 +110,14 @@ pub fn SessionView() -> Element {
         
         let mut current_session = session.read().clone();
         
-        let (exercise_name, category) = {
+        let (exercise_name, category, force) = {
             let all = all_exercises.read();
             if let Some(ex) = exercise_db::get_exercise_by_id(&all, &exercise_id) {
-                (ex.name.clone(), ex.category.clone())
+                (ex.name.clone(), ex.category, ex.force)
             } else {
                 let custom = custom_exercises.read();
                 if let Some(ex) = custom.iter().find(|e| e.id == exercise_id) {
-                    (ex.name.clone(), ex.category.clone())
+                    (ex.name.clone(), ex.category, ex.force)
                 } else {
                     return;
                 }
@@ -125,11 +125,10 @@ pub fn SessionView() -> Element {
         };
         
         let end_time = get_current_timestamp();
-        let is_cardio = category.to_lowercase() == "cardio";
         
         let weight_dg = parse_weight_kg(&weight_input.read());
-        let reps = if is_cardio { None } else { reps_input.read().parse().ok() };
-        let distance_m = if is_cardio { parse_distance_km(&distance_input.read()) } else { None };
+        let reps = if force.map_or(false, |f| f.has_reps()) { reps_input.read().parse().ok() } else { None };
+        let distance_dam = if category == Category::Cardio { parse_distance_km(&distance_input.read()) } else { None };
         
         let log = ExerciseLog {
             exercise_id: exercise_id.clone(),
@@ -139,7 +138,8 @@ pub fn SessionView() -> Element {
             end_time: Some(end_time),
             weight_dg,
             reps,
-            distance_m,
+            distance_dam,
+            force,
         };
         
         current_session.exercise_logs.push(log);
@@ -221,23 +221,32 @@ pub fn SessionView() -> Element {
                             class: "exercise-form",
                             
                             {
-                                let (exercise_name, category) = {
+                                let (exercise_name, category, force) = {
                                     let all = all_exercises.read();
                                     if let Some(ex) = exercise_db::get_exercise_by_id(&all, exercise_id) {
-                                        (ex.name.clone(), ex.category.clone())
+                                        (ex.name.clone(), ex.category, ex.force)
                                     } else {
                                         let custom = custom_exercises.read();
                                         if let Some(ex) = custom.iter().find(|e| &e.id == exercise_id) {
-                                            (ex.name.clone(), ex.category.clone())
+                                            (ex.name.clone(), ex.category, ex.force)
                                         } else {
-                                            ("Unknown".to_string(), "unknown".to_string())
+                                            ("Unknown".to_string(), Category::Strength, None)
                                         }
                                     }
                                 };
                                 
-                                let is_cardio = category.to_lowercase() == "cardio";
+                                let show_reps = force.map_or(false, |f| f.has_reps());
+                                let is_cardio = category == Category::Cardio;
+                                let last_duration = storage::get_last_exercise_log(exercise_id)
+                                    .and_then(|log| log.duration_seconds());
                                 
                                 rsx! {
+                                    if let Some(dur) = last_duration {
+                                        div {
+                                            class: "exercise-form__last-duration",
+                                            "Last: {format_time(dur)}"
+                                        }
+                                    }
                                     h3 { class: "exercise-form__title", "{exercise_name}" }
                                     
                                     div {
@@ -267,7 +276,9 @@ pub fn SessionView() -> Element {
                                                     class: "form-input",
                                                 }
                                             }
-                                        } else {
+                                        }
+                                        
+                                        if show_reps {
                                             div {
                                                 label { class: "form-label", "Repetitions" }
                                                 input {
@@ -322,13 +333,13 @@ pub fn SessionView() -> Element {
                                 div {
                                     class: "completed-log__details",
                                     if let Some(w) = log.weight_dg {
-                                        div { "Weight: {format_weight(w)}" }
+                                        div { "Weight: {w}" }
                                     }
                                     if let Some(reps) = log.reps {
                                         div { "Reps: {reps}" }
                                     }
-                                    if let Some(d) = log.distance_m {
-                                        div { "Distance: {format_distance(d)}" }
+                                    if let Some(d) = log.distance_dam {
+                                        div { "Distance: {d}" }
                                     }
                                     if let Some(duration) = log.duration_seconds() {
                                         div { "Duration: {format_time(duration)}" }
