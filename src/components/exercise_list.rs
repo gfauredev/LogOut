@@ -86,7 +86,7 @@ pub fn ExerciseListPage() -> Element {
                                             loading: "lazy",
                                             class: "exercise-card__image",
                                             onclick: move |_| {
-                                                if image_count > 0 {
+                                                if image_count > 1 {
                                                     let mut map = image_indices.write();
                                                     let entry = map.entry(id_for_img.clone()).or_insert(0);
                                                     *entry = (*entry + 1) % image_count;
