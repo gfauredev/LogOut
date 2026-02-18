@@ -14,3 +14,8 @@ target
 
 # WebAssembly build output
 dist/
+
+# Node.js / Playwright
+node_modules/
+test-results/
+playwright-report/

@@ -1,0 +1,25 @@
+{
+  "name": "logout",
+  "version": "1.0.0",
+  "description": "Turn off your computer, Log your workOut",
+  "main": "sw.js",
+  "scripts": {
+    "test:e2e": "npx playwright test",
+    "test:e2e:headed": "npx playwright test --headed"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/gfauredev/LogOut.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/gfauredev/LogOut/issues"
+  },
+  "homepage": "https://github.com/gfauredev/LogOut#readme",
+  "devDependencies": {
+    "@playwright/test": "^1.58.2"
+  }
+}
