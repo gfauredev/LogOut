@@ -4,15 +4,15 @@ lang: en
 
 <!--toc:start-->
 
-- [LogOut](#logout)
-  - [Structure](#structure)
-  - [Development Server (with hot-reload)](#development-server-with-hot-reload)
-  - [Web Build (PWA)](#web-build-pwa)
-    - [GitHub Pages deployment](#github-pages-deployment)
-  - [Unit Testing](#unit-testing)
-  - [End-to-End Testing](#end-to-end-testing)
-  - [Code Quality Standards](#code-quality-standards)
-    - [Run quality checks locally](#run-quality-checks-locally)
+- [Structure](#structure)
+- [Development Server (with hot-reload)](#development-server-with-hot-reload)
+- [Web Build (PWA)](#web-build-pwa)
+  - [GitHub Pages deployment](#github-pages-deployment)
+- [Unit Testing](#unit-testing)
+- [End-to-End Testing](#end-to-end-testing)
+- [Code Quality Standards](#code-quality-standards)
+  - [Run quality checks locally](#run-quality-checks-locally)
+- [TODO](#todo)
 
 <!--toc:end-->
 
@@ -124,6 +124,25 @@ cargo clippy -- -D warnings # Linting
 cargo test # Unit tests
 npx playwright test # E2E tests (starts dev server)
 ```
+
+## TODO
+
+- Sessions
+  - Display the Date, Duration, Repeat and Delete on the same first line
+  - Then, display up to three lines of Exercises tags before the "+n more"
+  - Allow revealing the other exercises tags by clicking on the "+n more" tag
+- Active Session
+  - Sort Completed Exercises antichronologically
+  - Move the "Add Custom Exercise" button to a "+" button left of the exercise
+    search bar
+  - When changing tab, the Rest Timer should not disappear, but continue in the
+    background, and reappear when returning to Session tab
+- Exercises List
+  - When a Session is Active, pin to the top Exercises completed in it
+- Make the app inhibit idle (prevent device from sleeping), like a YouTube video
+- Switch to my fork of the exercise database
+  `https://raw.githubusercontent.com/gfauredev/free-exercise-db/main/`
+  - Make its address SSOT, easily parametrable:
 
 [Guilhem Fauré]: https://www.guilhemfau.re
 [free-exercise-db]: https://github.com/yuhonas/free-exercise-db
