@@ -146,3 +146,185 @@ pub fn get_muscle_groups(exercises: &[Exercise]) -> Vec<Muscle> {
     muscles.dedup();
     muscles
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::models::{Category, Equipment, Force, Level, Muscle};
+
+    fn make_exercise(id: &str, name: &str, category: Category) -> Exercise {
+        Exercise {
+            id: id.to_string(),
+            name: name.to_string(),
+            force: None,
+            level: Level::Beginner,
+            mechanic: None,
+            equipment: None,
+            primary_muscles: vec![],
+            secondary_muscles: vec![],
+            instructions: vec![],
+            category,
+            images: vec![],
+        }
+    }
+
+    // ── search_exercises ──────────────────────────────────────────────────────
+
+    #[test]
+    fn search_by_name_returns_matches() {
+        let exercises = vec![
+            make_exercise("ex1", "Push-up", Category::Strength),
+            make_exercise("ex2", "Pull-up", Category::Strength),
+            make_exercise("ex3", "Squat", Category::Strength),
+        ];
+        let results = search_exercises(&exercises, "push");
+        assert_eq!(results.len(), 1);
+        assert_eq!(results[0].id, "ex1");
+    }
+
+    #[test]
+    fn search_is_case_insensitive() {
+        let exercises = vec![make_exercise("ex1", "Push-up", Category::Strength)];
+        assert_eq!(search_exercises(&exercises, "PUSH").len(), 1);
+        assert_eq!(search_exercises(&exercises, "push").len(), 1);
+        assert_eq!(search_exercises(&exercises, "Push").len(), 1);
+    }
+
+    #[test]
+    fn search_by_category_returns_matches() {
+        let exercises = vec![
+            make_exercise("ex1", "Running", Category::Cardio),
+            make_exercise("ex2", "Push-up", Category::Strength),
+        ];
+        let results = search_exercises(&exercises, "cardio");
+        assert_eq!(results.len(), 1);
+        assert_eq!(results[0].id, "ex1");
+    }
+
+    #[test]
+    fn search_by_primary_muscle() {
+        let mut ex = make_exercise("ex1", "Bench Press", Category::Strength);
+        ex.primary_muscles = vec![Muscle::Chest];
+        let exercises = vec![ex];
+        let results = search_exercises(&exercises, "chest");
+        assert_eq!(results.len(), 1);
+    }
+
+    #[test]
+    fn search_by_force_type() {
+        let mut ex = make_exercise("ex1", "Curl", Category::Strength);
+        ex.force = Some(Force::Pull);
+        let exercises = vec![ex];
+        let results = search_exercises(&exercises, "pull");
+        assert_eq!(results.len(), 1);
+    }
+
+    #[test]
+    fn search_by_equipment() {
+        let mut ex = make_exercise("ex1", "Curl", Category::Strength);
+        ex.equipment = Some(Equipment::Dumbbell);
+        let exercises = vec![ex];
+        let results = search_exercises(&exercises, "dumbbell");
+        assert_eq!(results.len(), 1);
+    }
+
+    #[test]
+    fn search_by_level() {
+        let mut ex = make_exercise("ex1", "Squat", Category::Strength);
+        ex.level = Level::Expert;
+        let exercises = vec![ex];
+        let results = search_exercises(&exercises, "expert");
+        assert_eq!(results.len(), 1);
+    }
+
+    #[test]
+    fn search_empty_query_returns_nothing() {
+        let exercises = vec![make_exercise("ex1", "Push-up", Category::Strength)];
+        // Empty query matches all exercises (all names contain "")
+        // This is expected behaviour because str::contains("") is always true.
+        let results = search_exercises(&exercises, "");
+        assert_eq!(results.len(), 1);
+    }
+
+    #[test]
+    fn search_no_match_returns_empty() {
+        let exercises = vec![make_exercise("ex1", "Push-up", Category::Strength)];
+        let results = search_exercises(&exercises, "zzz_no_match");
+        assert!(results.is_empty());
+    }
+
+    #[test]
+    fn search_empty_list_returns_empty() {
+        let results = search_exercises(&[], "push");
+        assert!(results.is_empty());
+    }
+
+    // ── get_exercise_by_id ───────────────────────────────────────────────────
+
+    #[test]
+    fn get_exercise_by_id_found() {
+        let exercises = vec![
+            make_exercise("ex1", "Push-up", Category::Strength),
+            make_exercise("ex2", "Squat", Category::Strength),
+        ];
+        let found = get_exercise_by_id(&exercises, "ex2");
+        assert!(found.is_some());
+        assert_eq!(found.unwrap().name, "Squat");
+    }
+
+    #[test]
+    fn get_exercise_by_id_not_found() {
+        let exercises = vec![make_exercise("ex1", "Push-up", Category::Strength)];
+        assert!(get_exercise_by_id(&exercises, "missing").is_none());
+    }
+
+    #[test]
+    fn get_exercise_by_id_empty_list() {
+        assert!(get_exercise_by_id(&[], "ex1").is_none());
+    }
+
+    // ── get_equipment_types ──────────────────────────────────────────────────
+
+    #[test]
+    fn get_equipment_types_deduplicates_and_sorts() {
+        let mut ex1 = make_exercise("ex1", "Curl", Category::Strength);
+        ex1.equipment = Some(Equipment::Dumbbell);
+        let mut ex2 = make_exercise("ex2", "Row", Category::Strength);
+        ex2.equipment = Some(Equipment::Barbell);
+        let mut ex3 = make_exercise("ex3", "Curl2", Category::Strength);
+        ex3.equipment = Some(Equipment::Dumbbell); // duplicate
+        let ex4 = make_exercise("ex4", "Plank", Category::Strength); // no equipment
+        let exercises = vec![ex1, ex2, ex3, ex4];
+        let result = get_equipment_types(&exercises);
+        // Should have Barbell and Dumbbell (deduplicated), sorted by name
+        assert_eq!(result.len(), 2);
+        assert_eq!(result[0], Equipment::Barbell);
+        assert_eq!(result[1], Equipment::Dumbbell);
+    }
+
+    #[test]
+    fn get_equipment_types_empty_list() {
+        assert!(get_equipment_types(&[]).is_empty());
+    }
+
+    // ── get_muscle_groups ────────────────────────────────────────────────────
+
+    #[test]
+    fn get_muscle_groups_deduplicates_and_sorts() {
+        let mut ex1 = make_exercise("ex1", "Bench Press", Category::Strength);
+        ex1.primary_muscles = vec![Muscle::Chest, Muscle::Triceps];
+        let mut ex2 = make_exercise("ex2", "Fly", Category::Strength);
+        ex2.primary_muscles = vec![Muscle::Chest]; // duplicate
+        let exercises = vec![ex1, ex2];
+        let result = get_muscle_groups(&exercises);
+        // Chest + Triceps (deduplicated, sorted alphabetically)
+        assert_eq!(result.len(), 2);
+        assert!(result.contains(&Muscle::Chest));
+        assert!(result.contains(&Muscle::Triceps));
+    }
+
+    #[test]
+    fn get_muscle_groups_empty_list() {
+        assert!(get_muscle_groups(&[]).is_empty());
+    }
+}

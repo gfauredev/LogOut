@@ -115,7 +115,7 @@ pub fn AnalyticsPanel() -> Element {
                 class: "analytics-controls",
 
                 div {
-                    style: "margin-bottom: 20px;",
+                    class: "analytics-metric-select",
                     label { class: "form-label form-label--color", "Select Metric" }
                     select {
                         value: "{selected_metric:?}",
@@ -273,7 +273,7 @@ fn ChartView(
                 width: "{width}",
                 height: "{height}",
                 view_box: "0 0 {width} {height}",
-                style: "display: block;",
+                class: "chart-svg",
 
                 // Y-axis
                 line { x1: "{pad}", y1: "{pad}", x2: "{pad}", y2: "{pad + chart_height}", stroke: "#ccc", stroke_width: "2" }

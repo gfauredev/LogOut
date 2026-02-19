@@ -283,8 +283,7 @@ pub fn AddCustomExercisePage() -> Element {
                             placeholder: "Add an instruction step...",
                             value: "{instructions_input}",
                             oninput: move |evt| instructions_input.set(evt.value()),
-                            class: "form-input",
-                            style: "flex: 1;",
+                            class: "form-input instruction-text-input",
                         }
                         button {
                             onclick: add_instruction,

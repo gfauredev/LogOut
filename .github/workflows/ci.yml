@@ -63,6 +63,15 @@ jobs:
       - name: Run unit tests with coverage
         run: cargo llvm-cov --bin log-workout --lcov --output-path lcov.info
 
+      - name: Check coverage threshold (>90%) for files with unit tests
+        run: |
+          cargo llvm-cov report \
+            --include-pattern 'src/models/mod.rs' \
+            --include-pattern 'src/utils.rs' \
+            --include-pattern 'src/services/service_worker.rs' \
+            --include-pattern 'src/services/exercise_db.rs' \
+            --fail-under-lines 90
+
       - name: Generate coverage summary
         id: cov
         run: |

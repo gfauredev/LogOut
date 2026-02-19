@@ -92,7 +92,7 @@ pub fn SessionView() -> Element {
                 if intervals > prev_count {
                     rest_bell_count.set(intervals);
                     #[cfg(target_arch = "wasm32")]
-                    ring_bell(false);
+                    send_notification("⏱️ Rest over", "Time to get back to work!");
                 }
             }
             Some(elapsed)
@@ -122,7 +122,7 @@ pub fn SessionView() -> Element {
                             if current_dur >= last_dur && last_dur > 0 {
                                 duration_bell_rung.set(true);
                                 #[cfg(target_arch = "wasm32")]
-                                ring_bell(true);
+                                send_notification("✅ Exercise done", "Target duration reached!");
                             }
                         }
                     }
@@ -331,11 +331,12 @@ pub fn SessionView() -> Element {
                             class: "btn--cancel-session",
                             "Cancel Session"
                         }
-                    }
-                    button {
-                        onclick: finish_session,
-                        class: "btn--finish",
-                        "Finish Session"
+                    } else {
+                        button {
+                            onclick: finish_session,
+                            class: "btn--finish",
+                            "Finish Session"
+                        }
                     }
                 }
             }
@@ -358,8 +359,7 @@ pub fn SessionView() -> Element {
                         r#type: "number",
                         value: "{rest_input_value}",
                         oninput: move |evt| rest_input_value.set(evt.value()),
-                        class: "form-input",
-                        style: "width: 80px; text-align: center;",
+                        class: "form-input rest-duration-field",
                     }
                     button {
                         r#type: "submit",
@@ -602,7 +602,7 @@ pub fn SessionView() -> Element {
                 // Completed exercises list
                 if !session.read().exercise_logs.is_empty() {
                     section {
-                        style: "margin-top: 30px;",
+                        class: "completed-exercises-section",
                         h3 { "Completed Exercises" }
 
                         for (idx, log) in session.read().exercise_logs.iter().enumerate() {
@@ -753,15 +753,13 @@ pub fn SessionView() -> Element {
     }
 }
 
-/// Ring a bell sound using the Web Audio API.
-/// `is_duration_bell` uses a different tone to distinguish from rest bell.
+/// Send a browser notification with the given title and body.
+/// Falls back silently if the Notification API is unavailable or permission is denied.
 #[cfg(target_arch = "wasm32")]
-fn ring_bell(is_duration_bell: bool) {
-    let freq = if is_duration_bell { "880" } else { "440" };
-    let duration = if is_duration_bell { "0.3" } else { "0.2" };
+fn send_notification(title: &str, body: &str) {
     let js_code = format!(
-        "try{{var c=new(window.AudioContext||window.webkitAudioContext)();var o=c.createOscillator();o.type='sine';o.frequency.value={};o.connect(c.destination);o.start();o.stop(c.currentTime+{});}}catch(e){{}}",
-        freq, duration
+        "try{{if(window.Notification&&Notification.permission==='granted'){{new Notification({:?},{{'body':{:?}}})}}else if(window.Notification&&Notification.permission!=='denied'){{Notification.requestPermission().then(function(p){{if(p==='granted'){{new Notification({:?},{{'body':{:?}}})}}}})}}}catch(e){{}}",
+        title, body, title, body
     );
     let _ = js_sys::eval(&js_code);
 }

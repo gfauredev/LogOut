@@ -1058,3 +1058,29 @@
   padding: 0;
   line-height: 1;
 }
+
+/* ===== Rest Duration Field ===== */
+.rest-duration-field {
+  width: 80px;
+  text-align: center;
+}
+
+/* ===== Completed Exercises Section ===== */
+.completed-exercises-section {
+  margin-top: 30px;
+}
+
+/* ===== Instruction Text Input (Custom Exercise form) ===== */
+.instruction-text-input {
+  flex: 1;
+}
+
+/* ===== Analytics Metric Select ===== */
+.analytics-metric-select {
+  margin-bottom: 20px;
+}
+
+/* ===== SVG Chart ===== */
+.chart-svg {
+  display: block;
+}
