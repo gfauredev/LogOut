@@ -146,3 +146,170 @@ pub fn get_muscle_groups(exercises: &[Exercise]) -> Vec<Muscle> {
     muscles.dedup();
     muscles
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::models::{Category, Equipment, Force, Level, Muscle};
+
+    fn sample_exercises() -> Vec<Exercise> {
+        vec![
+            Exercise {
+                id: "bench_press".into(),
+                name: "Bench Press".into(),
+                force: Some(Force::Push),
+                level: Level::Intermediate,
+                mechanic: None,
+                equipment: Some(Equipment::Barbell),
+                primary_muscles: vec![Muscle::Chest],
+                secondary_muscles: vec![Muscle::Triceps],
+                instructions: vec![],
+                category: Category::Strength,
+                images: vec![],
+            },
+            Exercise {
+                id: "pull_up".into(),
+                name: "Pull-Up".into(),
+                force: Some(Force::Pull),
+                level: Level::Beginner,
+                mechanic: None,
+                equipment: Some(Equipment::BodyOnly),
+                primary_muscles: vec![Muscle::Lats],
+                secondary_muscles: vec![Muscle::Biceps],
+                instructions: vec![],
+                category: Category::Strength,
+                images: vec![],
+            },
+            Exercise {
+                id: "running".into(),
+                name: "Running".into(),
+                force: None,
+                level: Level::Beginner,
+                mechanic: None,
+                equipment: None,
+                primary_muscles: vec![Muscle::Quadriceps, Muscle::Hamstrings],
+                secondary_muscles: vec![],
+                instructions: vec![],
+                category: Category::Cardio,
+                images: vec![],
+            },
+        ]
+    }
+
+    #[test]
+    fn search_by_name() {
+        let exercises = sample_exercises();
+        let results = search_exercises(&exercises, "bench");
+        assert_eq!(results.len(), 1);
+        assert_eq!(results[0].id, "bench_press");
+    }
+
+    #[test]
+    fn search_by_muscle() {
+        let exercises = sample_exercises();
+        let results = search_exercises(&exercises, "lats");
+        assert_eq!(results.len(), 1);
+        assert_eq!(results[0].id, "pull_up");
+    }
+
+    #[test]
+    fn search_by_category() {
+        let exercises = sample_exercises();
+        let results = search_exercises(&exercises, "cardio");
+        assert_eq!(results.len(), 1);
+        assert_eq!(results[0].id, "running");
+    }
+
+    #[test]
+    fn search_by_force() {
+        let exercises = sample_exercises();
+        let results = search_exercises(&exercises, "push");
+        assert_eq!(results.len(), 1);
+        assert_eq!(results[0].id, "bench_press");
+    }
+
+    #[test]
+    fn search_by_equipment() {
+        let exercises = sample_exercises();
+        let results = search_exercises(&exercises, "barbell");
+        assert_eq!(results.len(), 1);
+        assert_eq!(results[0].id, "bench_press");
+    }
+
+    #[test]
+    fn search_by_level() {
+        let exercises = sample_exercises();
+        let results = search_exercises(&exercises, "beginner");
+        assert_eq!(results.len(), 2);
+    }
+
+    #[test]
+    fn search_case_insensitive() {
+        let exercises = sample_exercises();
+        let results = search_exercises(&exercises, "BENCH");
+        assert_eq!(results.len(), 1);
+    }
+
+    #[test]
+    fn search_no_match() {
+        let exercises = sample_exercises();
+        let results = search_exercises(&exercises, "zzz_no_match");
+        assert!(results.is_empty());
+    }
+
+    #[test]
+    fn search_empty_query_returns_all() {
+        let exercises = sample_exercises();
+        let results = search_exercises(&exercises, "");
+        assert_eq!(results.len(), exercises.len());
+    }
+
+    #[test]
+    fn get_exercise_by_id_found() {
+        let exercises = sample_exercises();
+        let found = get_exercise_by_id(&exercises, "pull_up");
+        assert!(found.is_some());
+        assert_eq!(found.unwrap().name, "Pull-Up");
+    }
+
+    #[test]
+    fn get_exercise_by_id_not_found() {
+        let exercises = sample_exercises();
+        let found = get_exercise_by_id(&exercises, "nonexistent");
+        assert!(found.is_none());
+    }
+
+    #[test]
+    fn get_equipment_types_deduplicates() {
+        let exercises = sample_exercises();
+        let equipment = get_equipment_types(&exercises);
+        // barbell and body only (running has None equipment)
+        assert_eq!(equipment.len(), 2);
+    }
+
+    #[test]
+    fn get_muscle_groups_deduplicates() {
+        let exercises = sample_exercises();
+        let muscles = get_muscle_groups(&exercises);
+        // chest, lats, quadriceps, hamstrings
+        assert_eq!(muscles.len(), 4);
+    }
+
+    #[test]
+    fn search_with_none_force_does_not_match_force_query() {
+        let exercises = sample_exercises();
+        // "running" has force: None, should not match when searching for "pull"
+        let results = search_exercises(&exercises, "pull");
+        for r in &results {
+            assert_ne!(r.id, "running");
+        }
+    }
+
+    #[test]
+    fn search_with_none_equipment_does_not_match_equipment_query() {
+        let exercises = sample_exercises();
+        let results = search_exercises(&exercises, "body only");
+        assert_eq!(results.len(), 1);
+        assert_eq!(results[0].id, "pull_up");
+    }
+}
