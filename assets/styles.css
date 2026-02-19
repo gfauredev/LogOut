@@ -459,6 +459,19 @@ main {
   color: #e0e0e0;
 }
 
+.form-input--flex {
+  flex: 1;
+}
+
+.form-input--rest {
+  width: 80px;
+  text-align: center;
+}
+
+.completed-exercises-section {
+  margin-top: 30px;
+}
+
 .input-medium {
   padding: 8px;
   border: 1px solid #333;
@@ -906,6 +919,14 @@ main {
 }
 
 /* ===== Analytics Panel ===== */
+.analytics-metric-selector {
+  margin-bottom: 20px;
+}
+
+.analytics-chart-svg {
+  display: block;
+}
+
 .analytics-panel {
   height: 100%;
   display: flex;
@@ -1040,4 +1061,55 @@ main {
   font-size: 1.2em;
   padding: 0;
   line-height: 1;
+}
+
+/* ===== Credits Page ===== */
+.credits-section {
+  padding: 20px;
+  padding-bottom: 80px;
+}
+
+.credits-header {
+  text-align: center;
+  margin-bottom: 20px;
+}
+
+.credits-card {
+  padding: 16px;
+  border: 1px solid #333;
+  border-radius: 12px;
+  background: #111;
+  margin-bottom: 14px;
+}
+
+.credits-card h2 {
+  margin: 0 0 8px 0;
+  color: #fff;
+}
+
+.credits-card h3 {
+  margin: 0 0 8px 0;
+  color: #ccc;
+}
+
+.credits-card p {
+  margin: 4px 0;
+  color: #999;
+  line-height: 1.5;
+}
+
+.credits-link {
+  color: #667eea;
+  text-decoration: none;
+}
+
+.credits-link:hover {
+  text-decoration: underline;
+}
+
+.credits-list {
+  margin: 8px 0 0 0;
+  padding-left: 20px;
+  color: #999;
+  line-height: 1.8;
 }
