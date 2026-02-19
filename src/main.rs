@@ -5,10 +5,13 @@ mod models;
 mod services;
 pub mod utils;
 
-use components::{ExerciseListPage, HomePage, AnalyticsPage, AddCustomExercisePage, EditCustomExercisePage};
+use components::{
+    AddCustomExercisePage, AnalyticsPage, EditCustomExercisePage, ExerciseListPage, HomePage,
+};
 
 #[derive(Clone, Routable, Debug, PartialEq)]
 #[rustfmt::skip]
+#[allow(clippy::enum_variant_names)]
 enum Route {
     #[route("/")]
     HomePage {},

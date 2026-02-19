@@ -1,8 +1,9 @@
+use crate::models::{Equipment, Exercise, Muscle};
 use dioxus::prelude::*;
-use crate::models::{Exercise, Equipment, Muscle};
 
 #[cfg(target_arch = "wasm32")]
-const EXERCISES_JSON_URL: &str = "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/dist/exercises.json";
+const EXERCISES_JSON_URL: &str =
+    "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/dist/exercises.json";
 
 /// Provide the exercises signal in the Dioxus context.
 /// On first launch, downloads exercises from the API and stores them in IndexedDB.
@@ -36,7 +37,10 @@ async fn load_exercises(mut sig: Signal<Vec<Exercise>>) {
         // 2. Try downloading from API
         match download_exercises().await {
             Ok(exercises) if !exercises.is_empty() => {
-                log::info!("Downloaded {} exercises, storing in IndexedDB", exercises.len());
+                log::info!(
+                    "Downloaded {} exercises, storing in IndexedDB",
+                    exercises.len()
+                );
                 // Store all in IndexedDB for next time
                 idb_exercises::store_all_exercises(&exercises).await;
                 sig.set(exercises);
@@ -80,8 +84,7 @@ async fn download_exercises() -> Result<Vec<Exercise>, String> {
 
     let text_str = text.as_string().ok_or("response not a string")?;
 
-    serde_json::from_str::<Vec<Exercise>>(&text_str)
-        .map_err(|e| format!("JSON parse error: {}", e))
+    serde_json::from_str::<Vec<Exercise>>(&text_str).map_err(|e| format!("JSON parse error: {}", e))
 }
 
 // ─── Synchronous accessors for use in components ───
@@ -96,7 +99,11 @@ pub fn search_exercises(exercises: &[Exercise], query: &str) -> Vec<Exercise> {
                     .primary_muscles
                     .iter()
                     .any(|m| m.to_string().to_lowercase().contains(&query_lower))
-                || exercise.category.to_string().to_lowercase().contains(&query_lower)
+                || exercise
+                    .category
+                    .to_string()
+                    .to_lowercase()
+                    .contains(&query_lower)
                 || exercise
                     .force
                     .as_ref()
@@ -107,7 +114,11 @@ pub fn search_exercises(exercises: &[Exercise], query: &str) -> Vec<Exercise> {
                     .as_ref()
                     .map(|e| e.to_string().to_lowercase().contains(&query_lower))
                     .unwrap_or(false)
-                || exercise.level.to_string().to_lowercase().contains(&query_lower)
+                || exercise
+                    .level
+                    .to_string()
+                    .to_lowercase()
+                    .contains(&query_lower)
         })
         .cloned()
         .collect()
@@ -119,11 +130,8 @@ pub fn get_exercise_by_id<'a>(exercises: &'a [Exercise], id: &str) -> Option<&'a
 
 #[allow(dead_code)]
 pub fn get_equipment_types(exercises: &[Exercise]) -> Vec<Equipment> {
-    let mut equipment: Vec<Equipment> = exercises
-        .iter()
-        .filter_map(|e| e.equipment)
-        .collect();
-    equipment.sort_by(|a, b| a.to_string().cmp(&b.to_string()));
+    let mut equipment: Vec<Equipment> = exercises.iter().filter_map(|e| e.equipment).collect();
+    equipment.sort_by_key(|a| a.to_string());
     equipment.dedup();
     equipment
 }
@@ -134,7 +142,7 @@ pub fn get_muscle_groups(exercises: &[Exercise]) -> Vec<Muscle> {
         .iter()
         .flat_map(|e| e.primary_muscles.iter().copied())
         .collect();
-    muscles.sort_by(|a, b| a.to_string().cmp(&b.to_string()));
+    muscles.sort_by_key(|a| a.to_string());
     muscles.dedup();
     muscles
 }

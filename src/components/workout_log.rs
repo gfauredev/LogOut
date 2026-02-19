@@ -1,17 +1,19 @@
-use dioxus::prelude::*;
-use crate::models::{Workout, WorkoutExercise, WorkoutSet, DATA_VERSION, get_current_timestamp, parse_weight_kg};
+use crate::models::{
+    get_current_timestamp, parse_weight_kg, Workout, WorkoutExercise, WorkoutSet, DATA_VERSION,
+};
 use crate::services::{exercise_db, storage};
 use crate::Route;
+use dioxus::prelude::*;
 
 #[component]
 pub fn WorkoutLogPage() -> Element {
     let all_exercises = exercise_db::use_exercises();
-    let mut workout_exercises = use_signal(|| Vec::<WorkoutExercise>::new());
-    let mut search_query = use_signal(|| String::new());
+    let mut workout_exercises = use_signal(Vec::<WorkoutExercise>::new);
+    let mut search_query = use_signal(String::new);
     let mut selected_exercise = use_signal(|| None::<String>);
     let mut reps_input = use_signal(|| String::from("10"));
     let mut weight_input = use_signal(|| String::from("0"));
-    
+
     let search_results = use_memo(move || {
         let query = search_query.read();
         if query.is_empty() {
@@ -42,7 +44,7 @@ pub fn WorkoutLogPage() -> Element {
     let mut add_set_to_exercise = move |exercise_id: String| {
         let reps: u32 = reps_input.read().parse().unwrap_or(10);
         let weight_dg = parse_weight_kg(&weight_input.read());
-        
+
         let mut exercises = workout_exercises.write();
         if let Some(exercise) = exercises.iter_mut().find(|e| e.exercise_id == exercise_id) {
             exercise.sets.push(WorkoutSet {
@@ -72,7 +74,7 @@ pub fn WorkoutLogPage() -> Element {
     rsx! {
         div {
             class: "container container--narrow",
-            
+
             header {
                 class: "page-header",
                 Link {
@@ -82,7 +84,7 @@ pub fn WorkoutLogPage() -> Element {
                 }
                 h1 { class: "page-title", "Log Your Workout" }
             }
-            
+
             // Exercise Search
             div {
                 class: "form-group",
@@ -94,7 +96,7 @@ pub fn WorkoutLogPage() -> Element {
                     oninput: move |evt| search_query.set(evt.value()),
                     class: "search-input",
                 }
-                
+
                 if !search_results().is_empty() {
                     div {
                         class: "search-results",
@@ -109,20 +111,20 @@ pub fn WorkoutLogPage() -> Element {
                     }
                 }
             }
-            
+
             // Current Workout
             if !workout_exercises.read().is_empty() {
                 div {
                     class: "form-group",
                     h3 { "Current Workout" }
-                    
+
                     for exercise in workout_exercises.read().iter() {
                         div {
                             key: "{exercise.exercise_id}",
                             class: "workout-exercise-card",
-                            
+
                             h4 { class: "workout-exercise-card__title", "{exercise.exercise_name}" }
-                            
+
                             if !exercise.sets.is_empty() {
                                 div {
                                     for (idx, set) in exercise.sets.iter().enumerate() {
@@ -137,7 +139,7 @@ pub fn WorkoutLogPage() -> Element {
                                     }
                                 }
                             }
-                            
+
                             div {
                                 class: "set-inputs",
                                 input {
@@ -165,7 +167,7 @@ pub fn WorkoutLogPage() -> Element {
                             }
                         }
                     }
-                    
+
                     button {
                         onclick: save_workout,
                         class: "btn btn--primary",

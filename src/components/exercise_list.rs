@@ -1,17 +1,17 @@
-use std::collections::HashMap;
-use dioxus::prelude::*;
+use crate::components::{ActiveTab, BottomNav, ExerciseCard};
 use crate::models::{Exercise, Level};
 use crate::services::{exercise_db, storage};
-use crate::components::{BottomNav, ActiveTab, ExerciseCard};
 use crate::Route;
+use dioxus::prelude::*;
+use std::collections::HashMap;
 
 #[component]
 pub fn ExerciseListPage() -> Element {
     let all_exercises = exercise_db::use_exercises();
     let custom_exercises = storage::use_custom_exercises();
-    let mut search_query = use_signal(|| String::new());
-    let mut instructions_open = use_signal(|| HashMap::<String, bool>::new());
-    let image_indices = use_signal(|| HashMap::<String, usize>::new());
+    let mut search_query = use_signal(String::new);
+    let mut instructions_open = use_signal(HashMap::<String, bool>::new);
+    let image_indices = use_signal(HashMap::<String, usize>::new);
 
     // Merge DB exercises and custom exercises into a unified list
     let exercises = use_memo(move || {
@@ -23,8 +23,8 @@ pub fn ExerciseListPage() -> Element {
 
         // Add custom exercises (converted to Exercise for uniform display)
         for ce in custom.iter() {
-            let matches = query.is_empty()
-                || ce.name.to_lowercase().contains(&query.to_lowercase());
+            let matches =
+                query.is_empty() || ce.name.to_lowercase().contains(&query.to_lowercase());
             if matches {
                 results.push(Exercise {
                     id: ce.id.clone(),
@@ -61,7 +61,7 @@ pub fn ExerciseListPage() -> Element {
     rsx! {
         div { class: "page-container",
             main { class: "page-content container container--narrow",
-            
+
                 header {
                     class: "page-header",
                     h1 { class: "page-title", "Exercise Database" }
@@ -69,7 +69,7 @@ pub fn ExerciseListPage() -> Element {
                         "Browse {total} exercises"
                     }
                 }
-                
+
                 div {
                     class: "search-wrapper",
                     input {
@@ -80,7 +80,7 @@ pub fn ExerciseListPage() -> Element {
                         class: "search-input",
                     }
                 }
-                
+
                 section {
                     class: "exercise-list",
                     for exercise in exercises() {

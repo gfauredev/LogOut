@@ -1,8 +1,9 @@
-use std::fmt;
 use serde::{Deserialize, Serialize};
+use std::fmt;
 
 // Base URL for exercise images from the free-exercise-db repository
-const EXERCISES_IMAGE_BASE_URL: &str = "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/";
+const EXERCISES_IMAGE_BASE_URL: &str =
+    "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/";
 
 // Version control for data structures to handle migrations
 pub const DATA_VERSION: u32 = 3;
@@ -168,9 +169,18 @@ impl fmt::Display for Equipment {
 
 impl Equipment {
     pub const ALL: &'static [Equipment] = &[
-        Self::Bands, Self::Barbell, Self::BodyOnly, Self::Cable,
-        Self::Dumbbell, Self::EzCurlBar, Self::ExerciseBall, Self::FoamRoll,
-        Self::Kettlebells, Self::Machine, Self::MedicineBall, Self::Other,
+        Self::Bands,
+        Self::Barbell,
+        Self::BodyOnly,
+        Self::Cable,
+        Self::Dumbbell,
+        Self::EzCurlBar,
+        Self::ExerciseBall,
+        Self::FoamRoll,
+        Self::Kettlebells,
+        Self::Machine,
+        Self::MedicineBall,
+        Self::Other,
     ];
 }
 
@@ -238,10 +248,23 @@ impl fmt::Display for Muscle {
 
 impl Muscle {
     pub const ALL: &'static [Muscle] = &[
-        Self::Abdominals, Self::Abductors, Self::Adductors, Self::Biceps,
-        Self::Calves, Self::Chest, Self::Forearms, Self::Glutes,
-        Self::Hamstrings, Self::Lats, Self::LowerBack, Self::MiddleBack,
-        Self::Neck, Self::Quadriceps, Self::Shoulders, Self::Traps, Self::Triceps,
+        Self::Abdominals,
+        Self::Abductors,
+        Self::Adductors,
+        Self::Biceps,
+        Self::Calves,
+        Self::Chest,
+        Self::Forearms,
+        Self::Glutes,
+        Self::Hamstrings,
+        Self::Lats,
+        Self::LowerBack,
+        Self::MiddleBack,
+        Self::Neck,
+        Self::Quadriceps,
+        Self::Shoulders,
+        Self::Traps,
+        Self::Triceps,
     ];
 }
 
@@ -253,7 +276,7 @@ pub struct Weight(pub u16);
 
 impl fmt::Display for Weight {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        if self.0 % 100 == 0 {
+        if self.0.is_multiple_of(100) {
             write!(f, "{} kg", self.0 / 100)
         } else {
             write!(f, "{:.1} kg", self.0 as f64 / 100.0)
@@ -268,7 +291,7 @@ pub struct Distance(pub u16);
 impl fmt::Display for Distance {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         if self.0 >= 100 {
-            if self.0 % 100 == 0 {
+            if self.0.is_multiple_of(100) {
                 write!(f, "{} km", self.0 / 100)
             } else {
                 write!(f, "{:.2} km", self.0 as f64 / 100.0)
@@ -282,18 +305,26 @@ impl fmt::Display for Distance {
 /// Parse a user-entered kg string into a Weight (decagrams).
 pub fn parse_weight_kg(input: &str) -> Option<Weight> {
     let val: f64 = input.parse().ok()?;
-    if !val.is_finite() || val <= 0.0 { return None; }
+    if !val.is_finite() || val <= 0.0 {
+        return None;
+    }
     let dg = (val * 100.0).round();
-    if dg < 0.0 || dg > u16::MAX as f64 { return None; }
+    if dg < 0.0 || dg > u16::MAX as f64 {
+        return None;
+    }
     Some(Weight(dg as u16))
 }
 
 /// Parse a user-entered km string into a Distance (decameters).
 pub fn parse_distance_km(input: &str) -> Option<Distance> {
     let val: f64 = input.parse().ok()?;
-    if !val.is_finite() || val <= 0.0 { return None; }
+    if !val.is_finite() || val <= 0.0 {
+        return None;
+    }
     let dam = (val * 100.0).round();
-    if dam < 0.0 || dam > u16::MAX as f64 { return None; }
+    if dam < 0.0 || dam > u16::MAX as f64 {
+        return None;
+    }
     Some(Distance(dam as u16))
 }
 
@@ -328,6 +359,7 @@ impl Exercise {
     }
 
     /// Get the first image URL if available
+    #[allow(dead_code)]
     pub fn get_first_image_url(&self) -> Option<String> {
         self.get_image_url(0)
     }
@@ -757,16 +789,14 @@ mod tests {
 
     #[test]
     fn find_active_session_returns_none_when_all_finished() {
-        let sessions = vec![
-            WorkoutSession {
-                id: "s1".into(),
-                start_time: 1000,
-                end_time: Some(2000),
-                exercise_logs: vec![],
-                version: DATA_VERSION,
-                pending_exercise_ids: vec![],
-            },
-        ];
+        let sessions = vec![WorkoutSession {
+            id: "s1".into(),
+            start_time: 1000,
+            end_time: Some(2000),
+            exercise_logs: vec![],
+            version: DATA_VERSION,
+            pending_exercise_ids: vec![],
+        }];
         let active = sessions.iter().find(|s| s.is_active()).cloned();
         assert!(active.is_none());
     }
@@ -926,7 +956,8 @@ mod tests {
     #[test]
     fn workout_session_backward_compat_missing_pending_ids() {
         // Old sessions without pending_exercise_ids should deserialize with empty vec
-        let json = r#"{"id":"s1","start_time":1000,"end_time":null,"exercise_logs":[],"version":3}"#;
+        let json =
+            r#"{"id":"s1","start_time":1000,"end_time":null,"exercise_logs":[],"version":3}"#;
         let session: WorkoutSession = serde_json::from_str(json).unwrap();
         assert!(session.pending_exercise_ids.is_empty());
     }

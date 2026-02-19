@@ -1,0 +1,366 @@
+name: CI
+
+# Runs on every pull request.
+# GitHub automatically pauses workflow runs from first-time contributors on
+# public repositories until a maintainer approves them — satisfying the
+# "require confirmation for first-time contributors" requirement with no
+# extra configuration needed.
+on:
+  pull_request:
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  # ── 1. Formatting ────────────────────────────────────────────────────────────
+  format:
+    name: Check Formatting (cargo fmt)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt
+
+      - uses: swatinem/rust-cache@v2
+
+      - name: Check formatting
+        run: cargo fmt --check
+
+  # ── 2. Linting ───────────────────────────────────────────────────────────────
+  clippy:
+    name: Lint (cargo clippy)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+
+      - uses: swatinem/rust-cache@v2
+
+      - name: Run Clippy (deny warnings)
+        run: cargo clippy -- -D warnings
+
+  # ── 3. Unit tests + coverage comment ─────────────────────────────────────────
+  unit-tests:
+    name: Unit Tests & Coverage
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: llvm-tools-preview
+
+      - uses: swatinem/rust-cache@v2
+
+      - uses: taiki-e/install-action@cargo-llvm-cov
+
+      - name: Run unit tests with coverage
+        run: cargo llvm-cov --bin log-workout --lcov --output-path lcov.info
+
+      - name: Generate coverage summary
+        id: cov
+        run: |
+          SUMMARY=$(cargo llvm-cov report --summary-only 2>&1)
+          echo "summary<<EOF" >> "$GITHUB_OUTPUT"
+          echo "$SUMMARY" >> "$GITHUB_OUTPUT"
+          echo "EOF" >> "$GITHUB_OUTPUT"
+
+      - name: Post unit-test coverage comment
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const summary = `${{ steps.cov.outputs.summary }}`;
+            const tag = '<!-- unit-test-coverage -->';
+            const body = `${tag}\n## 🧪 Unit Test Coverage\n\`\`\`\n${summary}\n\`\`\``;
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+            });
+            const existing = comments.find(c => c.body.includes(tag));
+            if (existing) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: existing.id,
+                body,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body,
+              });
+            }
+
+      - name: Upload lcov report
+        uses: actions/upload-artifact@v4
+        with:
+          name: unit-coverage-lcov
+          path: lcov.info
+          retention-days: 7
+
+  # ── 4. E2E tests + coverage + screenshots ────────────────────────────────────
+  e2e:
+    name: E2E Tests & Coverage
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          target: wasm32-unknown-unknown
+
+      - uses: swatinem/rust-cache@v2
+
+      - name: Install Dioxus CLI
+        uses: taiki-e/install-action@v2
+        with:
+          tool: dioxus-cli
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - run: npm ci
+
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium
+
+      - name: Run E2E tests
+        id: e2e
+        run: npx playwright test
+        continue-on-error: true
+
+      - name: Parse E2E results
+        id: results
+        run: |
+          if [ -f playwright-report/results.json ]; then
+            PASSED=$(jq '.stats.expected'   playwright-report/results.json)
+            FAILED=$(jq '.stats.unexpected' playwright-report/results.json)
+            SKIPPED=$(jq '.stats.skipped'   playwright-report/results.json)
+            TOTAL=$(( PASSED + FAILED ))
+            RATE=$(( TOTAL > 0 ? PASSED * 100 / TOTAL : 0 ))
+          else
+            PASSED=0; FAILED=0; SKIPPED=0; TOTAL=0; RATE=0
+          fi
+          echo "passed=$PASSED"   >> "$GITHUB_OUTPUT"
+          echo "failed=$FAILED"   >> "$GITHUB_OUTPUT"
+          echo "skipped=$SKIPPED" >> "$GITHUB_OUTPUT"
+          echo "total=$TOTAL"     >> "$GITHUB_OUTPUT"
+          echo "rate=$RATE"       >> "$GITHUB_OUTPUT"
+
+      - name: Post E2E results comment
+        if: always()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const passed  = ${{ steps.results.outputs.passed  || 0 }};
+            const failed  = ${{ steps.results.outputs.failed  || 0 }};
+            const skipped = ${{ steps.results.outputs.skipped || 0 }};
+            const total   = ${{ steps.results.outputs.total   || 0 }};
+            const rate    = ${{ steps.results.outputs.rate    || 0 }};
+            const icon      = failed === 0 ? '✅' : '❌';
+            const rateIcon  = rate >= 80    ? '🟢' : '🔴';
+            const tag = '<!-- e2e-test-coverage -->';
+            const body = `${tag}\n## ${icon} E2E Test Results\n| | Count |\n|---|---|\n| ✅ Passed | ${passed} |\n| ❌ Failed | ${failed} |\n| ⏭️ Skipped | ${skipped} |\n| 📊 Pass rate | ${rateIcon} **${rate}%** |`;
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+            });
+            const existing = comments.find(c => c.body.includes(tag));
+            if (existing) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: existing.id,
+                body,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body,
+              });
+            }
+
+      - name: Upload screenshots on failure
+        if: steps.e2e.outcome == 'failure'
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-screenshots
+          path: test-results/
+          if-no-files-found: ignore
+
+      - name: Post failure-screenshots comment
+        if: steps.e2e.outcome == 'failure'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const runUrl = `https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
+            const tag = '<!-- e2e-screenshots -->';
+            const body = `${tag}\n## 📸 E2E Failure Screenshots\nScreenshots of failing tests were captured and uploaded as workflow artifacts.\n👉 [View screenshots](${runUrl})`;
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+            });
+            const existing = comments.find(c => c.body.includes(tag));
+            if (existing) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: existing.id,
+                body,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body,
+              });
+            }
+
+      - name: Enforce ≥ 80% E2E pass-rate threshold
+        run: |
+          RATE=${{ steps.results.outputs.rate || 0 }}
+          if [ "$RATE" -lt 80 ]; then
+            echo "E2E pass rate ${RATE}% is below the required 80% threshold."
+            exit 1
+          fi
+
+      - name: Fail if E2E tests failed
+        if: steps.e2e.outcome == 'failure'
+        run: exit 1
+
+  # ── 5. PageSpeed Insights (Lighthouse) ───────────────────────────────────────
+  lighthouse:
+    name: PageSpeed Insights (Lighthouse)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          target: wasm32-unknown-unknown
+
+      - uses: swatinem/rust-cache@v2
+
+      - name: Install Dioxus CLI
+        uses: taiki-e/install-action@v2
+        with:
+          tool: dioxus-cli
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install Lighthouse CLI
+        run: npm install -g lighthouse
+
+      - name: Start dev server
+        run: dx serve --port 3000 &
+
+      - name: Wait for server
+        run: |
+          echo "Waiting for server to be ready..."
+          for i in $(seq 1 120); do
+            if curl -sf http://localhost:3000/LogOut/ > /dev/null 2>&1; then
+              echo "Server is ready."
+              break
+            fi
+            sleep 5
+          done
+
+      - name: Run Lighthouse
+        id: lighthouse
+        run: |
+          lighthouse http://localhost:3000/LogOut/ \
+            --output json html \
+            --output-path ./lighthouse-report \
+            --chrome-flags="--headless --no-sandbox --disable-dev-shm-usage" \
+            --quiet || true
+
+          if [ -f ./lighthouse-report.report.json ]; then
+            PERF=$(jq '.categories.performance.score * 100 | round'          ./lighthouse-report.report.json)
+            A11Y=$(jq '.categories.accessibility.score * 100 | round'         ./lighthouse-report.report.json)
+            BP=$(jq  '(.categories["best-practices"].score // 0) * 100 | round' ./lighthouse-report.report.json)
+            SEO=$(jq  '.categories.seo.score * 100 | round'                   ./lighthouse-report.report.json)
+            PWA=$(jq  '(.categories.pwa.score // 0) * 100 | round'            ./lighthouse-report.report.json)
+            echo "performance=$PERF"    >> "$GITHUB_OUTPUT"
+            echo "accessibility=$A11Y"  >> "$GITHUB_OUTPUT"
+            echo "best_practices=$BP"   >> "$GITHUB_OUTPUT"
+            echo "seo=$SEO"             >> "$GITHUB_OUTPUT"
+            echo "pwa=$PWA"             >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Upload Lighthouse HTML report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: lighthouse-report
+          path: ./lighthouse-report.report.html
+          if-no-files-found: ignore
+          retention-days: 7
+
+      - name: Post Lighthouse results comment
+        if: always()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const score = s => {
+              const n = parseInt(s) || 0;
+              return n >= 90 ? `🟢 ${n}` : n >= 50 ? `🟡 ${n}` : `🔴 ${n}`;
+            };
+            const perf = '${{ steps.lighthouse.outputs.performance }}';
+            const a11y = '${{ steps.lighthouse.outputs.accessibility }}';
+            const bp   = '${{ steps.lighthouse.outputs.best_practices }}';
+            const seo  = '${{ steps.lighthouse.outputs.seo }}';
+            const pwa  = '${{ steps.lighthouse.outputs.pwa }}';
+            const runUrl = `https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
+            const tag = '<!-- lighthouse-report -->';
+            const body = `${tag}
+            ## 🚀 PageSpeed Insights (Lighthouse)
+            | Category | Score |
+            |----------|-------|
+            | ⚡ Performance   | ${score(perf)} |
+            | ♿ Accessibility | ${score(a11y)} |
+            | 🛡️ Best Practices | ${score(bp)} |
+            | 🔍 SEO           | ${score(seo)} |
+            | 📱 PWA           | ${score(pwa)} |
+
+            > 🟢 ≥ 90 · 🟡 50–89 · 🔴 < 50
+
+            [📄 Full Lighthouse HTML report](${runUrl})`;
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+            });
+            const existing = comments.find(c => c.body.includes(tag));
+            if (existing) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: existing.id,
+                body,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body,
+              });
+            }

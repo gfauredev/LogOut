@@ -1,27 +1,27 @@
 /// Service Worker registration for offline image caching
-/// 
+///
 /// This module handles the registration of the Service Worker (sw.js) which provides
 /// offline caching for exercise images loaded from the GitHub CDN.
-/// 
+///
 /// ## Platform Compatibility
-/// 
+///
 /// **Web Platform (with JavaScript):**
 /// - Service Worker is registered to cache images for offline use
 /// - Uses browser Cache API through sw.js JavaScript file
 /// - Progressive enhancement: app works without it
-/// 
+///
 /// **Blitz/Native Platforms (no JavaScript):**
 /// - Service Worker is disabled (requires JavaScript engine)
 /// - App runs without offline caching
 /// - Images are fetched from network as needed
 /// - Future: Could implement native caching using platform-specific APIs
-/// 
+///
 /// ## Feature Flags
-/// 
+///
 /// The Service Worker is only enabled when both conditions are met:
 /// 1. Compiled for WASM (`target_arch = "wasm32"`)
 /// 2. `web-platform` feature is enabled (default)
-/// 
+///
 /// To build for Blitz without Service Worker:
 /// ```bash
 /// cargo build --no-default-features
@@ -34,11 +34,11 @@ pub fn register_service_worker() {
     if let Some(window) = window() {
         let navigator = window.navigator();
         let sw_container = navigator.service_worker();
-        
+
         // Register the service worker
         // Use relative path for GitHub Pages compatibility
         let registration = sw_container.register("./sw.js");
-        
+
         // Handle the registration promise asynchronously
         // Note: spawn_local failure is acceptable here as service worker registration
         // is a progressive enhancement feature - the app works without it
