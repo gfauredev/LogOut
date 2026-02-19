@@ -28,41 +28,38 @@ pub fn HomePage() -> Element {
     });
 
     rsx! {
-        div { class: "app-container",
-            main { class: "app-content",
-                if *has_active.read() {
-                    SessionView {}
-                } else {
-                    section { class: "sessions-tab",
-                        header { class: "sessions-tab__header",
-                            h1 { class: "app-title", "💪 LogOut" }
-                            p { class: "app-tagline", "Turn off your computer, Log your workOut" }
+        main { if *has_active.read() {
+                SessionView {}
+            } else {
+                section { class: "sessions-tab",
+                    header { class: "sessions-tab__header",
+                        h1 { class: "app-title", "💪 LogOut" }
+                        p { class: "app-tagline", "Turn off your computer, Log your workOut" }
+                    }
+                    if completed_sessions().is_empty() {
+                        div { class: "sessions-empty",
+                            p { "No past sessions yet." }
+                            p { "Tap + to start your first workout!" }
                         }
-                        if completed_sessions().is_empty() {
-                            div { class: "sessions-empty",
-                                p { "No past sessions yet." }
-                                p { "Tap + to start your first workout!" }
-                            }
-                        } else {
-                            div { class: "sessions-list",
-                                for session in completed_sessions() {
-                                    SessionCard { key: "{session.id}", session: session.clone() }
-                                }
+                    } else {
+                        div { class: "sessions-list",
+                            for session in completed_sessions() {
+                                SessionCard { key: "{session.id}", session: session.clone() }
                             }
                         }
                     }
                 }
             }
-            if !*has_active.read() {
-                button {
-                    onclick: start_new_session,
-                    class: "fab",
-                    title: "Start New Workout",
-                    "+"
-                }
-            }
-            BottomNav { active_tab: ActiveTab::Sessions }
         }
+        if !*has_active.read() {
+            button {
+                onclick: start_new_session,
+                class: "new-session-button",
+                title: "Start New Workout",
+                "+"
+            }
+        }
+        BottomNav { active_tab: ActiveTab::Sessions }
     }
 }
 
