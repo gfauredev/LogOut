@@ -98,25 +98,23 @@ pub fn search_exercises(exercises: &[Exercise], query: &str) -> Vec<Exercise> {
                 || exercise
                     .primary_muscles
                     .iter()
-                    .any(|m| m.to_string().to_lowercase().contains(&query_lower))
+                    .any(|m| m.to_string().contains(&query_lower))
                 || exercise
-                    .category
-                    .to_string()
-                    .to_lowercase()
-                    .contains(&query_lower)
+                    .secondary_muscles
+                    .iter()
+                    .any(|m| m.to_string().contains(&query_lower))
+                || exercise.category.to_string().contains(&query_lower)
                 || exercise
                     .force
-                    .as_ref()
-                    .map(|f| f.to_string().to_lowercase().contains(&query_lower))
+                    .map(|f| f.to_string().contains(&query_lower))
                     .unwrap_or(false)
                 || exercise
                     .equipment
-                    .as_ref()
-                    .map(|e| e.to_string().to_lowercase().contains(&query_lower))
+                    .map(|e| e.to_string().contains(&query_lower))
                     .unwrap_or(false)
                 || exercise
                     .level
-                    .map(|l| l.to_string().to_lowercase().contains(&query_lower))
+                    .map(|l| l.to_string().contains(&query_lower))
                     .unwrap_or(false)
         })
         .cloned()
@@ -308,6 +306,24 @@ mod tests {
     fn search_with_none_equipment_does_not_match_equipment_query() {
         let exercises = sample_exercises();
         let results = search_exercises(&exercises, "body only");
+        assert_eq!(results.len(), 1);
+        assert_eq!(results[0].id, "pull_up");
+    }
+
+    #[test]
+    fn search_by_secondary_muscle() {
+        let exercises = sample_exercises();
+        // "triceps" is a secondary muscle of bench_press
+        let results = search_exercises(&exercises, "triceps");
+        assert_eq!(results.len(), 1);
+        assert_eq!(results[0].id, "bench_press");
+    }
+
+    #[test]
+    fn search_by_secondary_muscle_biceps() {
+        let exercises = sample_exercises();
+        // "biceps" is a secondary muscle of pull_up
+        let results = search_exercises(&exercises, "biceps");
         assert_eq!(results.len(), 1);
         assert_eq!(results[0].id, "pull_up");
     }

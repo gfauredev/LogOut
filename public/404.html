@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Redirecting…</title>
+  <script>
+    // Single-Page App redirect for GitHub Pages.
+    // When a direct URL is requested (e.g. /LogOut/exercises), GitHub Pages
+    // returns this 404 page.  We encode the full path in the query string and
+    // redirect to the app root so that the Dioxus router can handle it.
+    var l = window.location;
+    var segments = l.pathname.split('/');
+    // Keep the first non-empty path segment as the base (e.g. "/LogOut").
+    // Fall back to '' for root deployments.
+    var base = segments[1] ? '/' + segments[1] : '';
+    var rest = l.pathname.slice(base.length + 1);
+    l.replace(
+      l.protocol + '//' + l.host + base + '/' +
+      '?redirect=' + encodeURIComponent(rest + l.search + l.hash)
+    );
+  </script>
+</head>
+<body>Redirecting…</body>
+</html>

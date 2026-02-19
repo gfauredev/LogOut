@@ -141,12 +141,14 @@ fn SessionCard(session: WorkoutSession) -> Element {
                 }
             }
 
-            // Delete confirmation dialog (standard HTML dialog element)
-            dialog {
-                class: "delete-modal",
-                open: *show_delete_confirm.read(),
-                onclick: move |_| show_delete_confirm.set(false),
+            // Delete confirmation modal with backdrop
+            if *show_delete_confirm.read() {
                 div {
+                    class: "modal-backdrop",
+                    onclick: move |_| show_delete_confirm.set(false),
+                }
+                div {
+                    class: "delete-modal",
                     onclick: move |evt| evt.stop_propagation(),
                     p { "Delete this session?" }
                     div { class: "delete-modal__buttons",

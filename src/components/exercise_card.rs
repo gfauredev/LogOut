@@ -1,17 +1,11 @@
 use crate::models::Exercise;
+use crate::Route;
 use dioxus::prelude::*;
-use std::collections::HashMap;
 
 #[component]
-pub fn ExerciseCard(
-    exercise: Exercise,
-    instructions_open: Signal<HashMap<String, bool>>,
-    image_indices: Signal<HashMap<String, usize>>,
-) -> Element {
-    let id = exercise.id.clone();
-    let id_for_img = exercise.id.clone();
-    let show_instructions = *instructions_open.read().get(&id).unwrap_or(&false);
-    let img_index = *image_indices.read().get(&id_for_img).unwrap_or(&0);
+pub fn ExerciseCard(exercise: Exercise) -> Element {
+    let mut show_instructions = use_signal(|| false);
+    let mut img_index = use_signal(|| 0usize);
     let image_count = exercise.images.len();
 
     rsx! {
@@ -19,17 +13,25 @@ pub fn ExerciseCard(
             key: "{exercise.id}",
             class: "exercise-card",
 
+            div {
+                class: "exercise-card__custom-header",
+                Link {
+                    to: Route::EditCustomExercisePage { id: exercise.id.clone() },
+                    class: "exercise-card__edit-btn",
+                    "✏️ Edit"
+                }
+            }
+
             h3 {
                 class: "exercise-card__title",
                 onclick: move |_| {
-                    let mut map = instructions_open.write();
-                    let entry = map.entry(id.clone()).or_insert(false);
-                    *entry = !*entry;
+                    let current = *show_instructions.read();
+                    show_instructions.set(!current);
                 },
                 "{exercise.name}"
             }
 
-            if show_instructions && !exercise.instructions.is_empty() {
+            if *show_instructions.read() && !exercise.instructions.is_empty() {
                 ol { class: "exercise-card__instructions",
                     for instruction in &exercise.instructions {
                         li { "{instruction}" }
@@ -37,7 +39,7 @@ pub fn ExerciseCard(
                 }
             }
 
-            if let Some(image_url) = exercise.get_image_url(img_index) {
+            if let Some(image_url) = exercise.get_image_url(*img_index.read()) {
                 img {
                     src: "{image_url}",
                     alt: "{exercise.name}",
@@ -45,9 +47,8 @@ pub fn ExerciseCard(
                     class: "exercise-card__image",
                     onclick: move |_| {
                         if image_count > 1 {
-                            let mut map = image_indices.write();
-                            let entry = map.entry(id_for_img.clone()).or_insert(0);
-                            *entry = (*entry + 1) % image_count;
+                            let next = (*img_index.read() + 1) % image_count;
+                            img_index.set(next);
                         }
                     },
                 }
