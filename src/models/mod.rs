@@ -755,6 +755,24 @@ mod tests {
         );
     }
 
+    /// A session with pending exercises but no completed exercises is still
+    /// considered cancelled. The finish button should not be shown in this state.
+    #[test]
+    fn session_with_only_pending_exercises_is_cancelled() {
+        let session = WorkoutSession {
+            id: "s1".into(),
+            start_time: 1000,
+            end_time: None,
+            exercise_logs: vec![],
+            version: DATA_VERSION,
+            pending_exercise_ids: vec!["ex1".into(), "ex2".into()],
+        };
+        assert!(
+            session.is_cancelled(),
+            "Session with only pending exercises (no completed logs) must be treated as cancelled"
+        );
+    }
+
     #[test]
     fn workout_session_new_has_no_end_time() {
         let session = WorkoutSession::new();

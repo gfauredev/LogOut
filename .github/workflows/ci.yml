@@ -71,13 +71,60 @@ jobs:
           echo "$SUMMARY" >> "$GITHUB_OUTPUT"
           echo "EOF" >> "$GITHUB_OUTPUT"
 
+      - name: Check coverage gate for tested files
+        id: gate
+        run: |
+          # Files that contain unit tests (have #[cfg(test)] blocks)
+          TESTED_FILES=$(grep -rl '#\[cfg(test)\]' src/ | sort)
+          echo "Tested files:"
+          echo "$TESTED_FILES"
+
+          FAIL=0
+          GATE_REPORT=""
+          for f in $TESTED_FILES; do
+            # Extract line coverage for this file from lcov.info
+            IN_FILE=0
+            LH=0
+            LF=0
+            while IFS= read -r line; do
+              case "$line" in
+                SF:*"$f") IN_FILE=1 ;;
+                SF:*) IN_FILE=0 ;;
+                LH:*) [ "$IN_FILE" = 1 ] && LH="${line#LH:}" ;;
+                LF:*) [ "$IN_FILE" = 1 ] && LF="${line#LF:}" ;;
+              esac
+            done < lcov.info
+
+            if [ "$LF" -gt 0 ]; then
+              PCT=$((LH * 100 / LF))
+            else
+              PCT=0
+            fi
+
+            STATUS="✅"
+            if [ "$PCT" -lt 90 ]; then
+              STATUS="❌"
+              FAIL=1
+            fi
+            GATE_REPORT="${GATE_REPORT}| ${f} | ${LH}/${LF} | ${PCT}% | ${STATUS} |\n"
+            echo "$f: $LH/$LF lines covered ($PCT%)"
+          done
+
+          echo "gate_report<<EOF" >> "$GITHUB_OUTPUT"
+          echo -e "$GATE_REPORT" >> "$GITHUB_OUTPUT"
+          echo "EOF" >> "$GITHUB_OUTPUT"
+          echo "gate_failed=$FAIL" >> "$GITHUB_OUTPUT"
+
       - name: Post unit-test coverage comment
         uses: actions/github-script@v7
         with:
           script: |
             const summary = `${{ steps.cov.outputs.summary }}`;
+            const gateReport = `${{ steps.gate.outputs.gate_report }}`;
+            const gateFailed = '${{ steps.gate.outputs.gate_failed }}' === '1';
+            const gateStatus = gateFailed ? '❌ **FAILED** — tested files must have ≥ 90% coverage' : '✅ **PASSED** — all tested files have ≥ 90% coverage';
             const tag = '<!-- unit-test-coverage -->';
-            const body = `${tag}\n## 🧪 Unit Test Coverage\n\`\`\`\n${summary}\n\`\`\``;
+            const body = `${tag}\n## 🧪 Unit Test Coverage\n\`\`\`\n${summary}\n\`\`\`\n\n### Coverage Gate ${gateStatus}\n| File | Lines Hit/Total | Coverage | Status |\n|------|----------------|----------|--------|\n${gateReport}`;
             const { data: comments } = await github.rest.issues.listComments({
               owner: context.repo.owner,
               repo: context.repo.repo,
@@ -106,6 +153,12 @@ jobs:
           name: unit-coverage-lcov
           path: lcov.info
           retention-days: 7
+
+      - name: Fail if coverage gate not met
+        if: steps.gate.outputs.gate_failed == '1'
+        run: |
+          echo "::error::Coverage gate failed: one or more tested files have less than 90% line coverage."
+          exit 1
 
   # ── 4. E2E tests + screenshots on failure ────────────────────────────────────
   e2e:
@@ -281,6 +334,67 @@ jobs:
             > 🟢 ≥ 90 · 🟡 50–89 · 🔴 < 50
 
             [📄 Full Lighthouse HTML report](${runUrl})`;
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+            });
+            const existing = comments.find(c => c.body.includes(tag));
+            if (existing) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: existing.id,
+                body,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body,
+              });
+            }
+
+  # ── 6. PR Preview Build ────────────────────────────────────────────────────
+  # Builds the PR branch and uploads it as a downloadable artifact.
+  # Note: Deploying to a pages subdirectory is not possible without
+  # `contents: write` — GitHub Pages deploy-pages replaces the entire site.
+  preview:
+    name: PR Preview Build
+    runs-on: ubuntu-latest
+    needs: [format, clippy, unit-tests, e2e]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          target: wasm32-unknown-unknown
+
+      - uses: swatinem/rust-cache@v2
+
+      - name: Install Dioxus CLI
+        uses: taiki-e/install-action@v2
+        with:
+          tool: dioxus-cli
+
+      - name: Build for preview
+        run: dx build --release --platform web
+
+      - name: Upload preview build
+        uses: actions/upload-artifact@v4
+        with:
+          name: pr-preview-build
+          path: ./target/dx/log-workout/release/web/public
+          retention-days: 14
+
+      - name: Post preview comment
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const runUrl = `https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
+            const tag = '<!-- pr-preview -->';
+            const body = `${tag}\n## 🔍 PR Preview Build\nA preview build of this PR is available as a workflow artifact.\n👉 [Download preview build](${runUrl})\n\n> To view locally, download and serve the artifact with any static file server.`;
             const { data: comments } = await github.rest.issues.listComments({
               owner: context.repo.owner,
               repo: context.repo.repo,
