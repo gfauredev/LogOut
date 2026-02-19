@@ -977,4 +977,454 @@ mod tests {
         let session: WorkoutSession = serde_json::from_str(json).unwrap();
         assert!(session.pending_exercise_ids.is_empty());
     }
+
+    // ── Display impls full coverage ──────────────────────────────────────────
+
+    #[test]
+    fn category_display_all_variants() {
+        assert_eq!(Category::Cardio.to_string(), "cardio");
+        assert_eq!(
+            Category::OlympicWeightlifting.to_string(),
+            "olympic weightlifting"
+        );
+        assert_eq!(Category::Plyometrics.to_string(), "plyometrics");
+        assert_eq!(Category::Powerlifting.to_string(), "powerlifting");
+        assert_eq!(Category::Strength.to_string(), "strength");
+        assert_eq!(Category::Stretching.to_string(), "stretching");
+        assert_eq!(Category::Strongman.to_string(), "strongman");
+    }
+
+    #[test]
+    fn force_display_all_variants() {
+        assert_eq!(Force::Pull.to_string(), "pull");
+        assert_eq!(Force::Push.to_string(), "push");
+        assert_eq!(Force::Static.to_string(), "static");
+    }
+
+    #[test]
+    fn level_display_all_variants() {
+        assert_eq!(Level::Beginner.to_string(), "beginner");
+        assert_eq!(Level::Intermediate.to_string(), "intermediate");
+        assert_eq!(Level::Expert.to_string(), "expert");
+    }
+
+    #[test]
+    fn mechanic_display_all_variants() {
+        assert_eq!(Mechanic::Compound.to_string(), "compound");
+        assert_eq!(Mechanic::Isolation.to_string(), "isolation");
+    }
+
+    #[test]
+    fn equipment_display_all_variants() {
+        assert_eq!(Equipment::Bands.to_string(), "bands");
+        assert_eq!(Equipment::Barbell.to_string(), "barbell");
+        assert_eq!(Equipment::BodyOnly.to_string(), "body only");
+        assert_eq!(Equipment::Cable.to_string(), "cable");
+        assert_eq!(Equipment::Dumbbell.to_string(), "dumbbell");
+        assert_eq!(Equipment::EzCurlBar.to_string(), "e-z curl bar");
+        assert_eq!(Equipment::ExerciseBall.to_string(), "exercise ball");
+        assert_eq!(Equipment::FoamRoll.to_string(), "foam roll");
+        assert_eq!(Equipment::Kettlebells.to_string(), "kettlebells");
+        assert_eq!(Equipment::Machine.to_string(), "machine");
+        assert_eq!(Equipment::MedicineBall.to_string(), "medicine ball");
+        assert_eq!(Equipment::Other.to_string(), "other");
+    }
+
+    #[test]
+    fn muscle_display_all_variants() {
+        assert_eq!(Muscle::Abdominals.to_string(), "abdominals");
+        assert_eq!(Muscle::Abductors.to_string(), "abductors");
+        assert_eq!(Muscle::Adductors.to_string(), "adductors");
+        assert_eq!(Muscle::Biceps.to_string(), "biceps");
+        assert_eq!(Muscle::Calves.to_string(), "calves");
+        assert_eq!(Muscle::Chest.to_string(), "chest");
+        assert_eq!(Muscle::Forearms.to_string(), "forearms");
+        assert_eq!(Muscle::Glutes.to_string(), "glutes");
+        assert_eq!(Muscle::Hamstrings.to_string(), "hamstrings");
+        assert_eq!(Muscle::Lats.to_string(), "lats");
+        assert_eq!(Muscle::LowerBack.to_string(), "lower back");
+        assert_eq!(Muscle::MiddleBack.to_string(), "middle back");
+        assert_eq!(Muscle::Neck.to_string(), "neck");
+        assert_eq!(Muscle::Quadriceps.to_string(), "quadriceps");
+        assert_eq!(Muscle::Shoulders.to_string(), "shoulders");
+        assert_eq!(Muscle::Traps.to_string(), "traps");
+        assert_eq!(Muscle::Triceps.to_string(), "triceps");
+    }
+
+    // ── ALL constants ────────────────────────────────────────────────────────
+
+    #[test]
+    fn category_all_contains_every_variant() {
+        assert_eq!(Category::ALL.len(), 7);
+        assert!(Category::ALL.contains(&Category::Cardio));
+        assert!(Category::ALL.contains(&Category::OlympicWeightlifting));
+        assert!(Category::ALL.contains(&Category::Plyometrics));
+        assert!(Category::ALL.contains(&Category::Powerlifting));
+        assert!(Category::ALL.contains(&Category::Strength));
+        assert!(Category::ALL.contains(&Category::Stretching));
+        assert!(Category::ALL.contains(&Category::Strongman));
+    }
+
+    #[test]
+    fn force_all_contains_every_variant() {
+        assert_eq!(Force::ALL.len(), 3);
+        assert!(Force::ALL.contains(&Force::Pull));
+        assert!(Force::ALL.contains(&Force::Push));
+        assert!(Force::ALL.contains(&Force::Static));
+    }
+
+    #[test]
+    fn equipment_all_contains_every_variant() {
+        assert_eq!(Equipment::ALL.len(), 12);
+    }
+
+    #[test]
+    fn muscle_all_contains_every_variant() {
+        assert_eq!(Muscle::ALL.len(), 17);
+    }
+
+    // ── Serde round-trip for every enum variant ──────────────────────────────
+
+    #[test]
+    fn all_categories_serde_round_trip() {
+        for &cat in Category::ALL {
+            let json = serde_json::to_string(&cat).unwrap();
+            let back: Category = serde_json::from_str(&json).unwrap();
+            assert_eq!(back, cat);
+        }
+    }
+
+    #[test]
+    fn all_forces_serde_round_trip() {
+        for &f in Force::ALL {
+            let json = serde_json::to_string(&f).unwrap();
+            let back: Force = serde_json::from_str(&json).unwrap();
+            assert_eq!(back, f);
+        }
+    }
+
+    #[test]
+    fn all_equipment_serde_round_trip() {
+        for &eq in Equipment::ALL {
+            let json = serde_json::to_string(&eq).unwrap();
+            let back: Equipment = serde_json::from_str(&json).unwrap();
+            assert_eq!(back, eq);
+        }
+    }
+
+    #[test]
+    fn all_muscles_serde_round_trip() {
+        for &m in Muscle::ALL {
+            let json = serde_json::to_string(&m).unwrap();
+            let back: Muscle = serde_json::from_str(&json).unwrap();
+            assert_eq!(back, m);
+        }
+    }
+
+    #[test]
+    fn level_serde_round_trip() {
+        for level in [Level::Beginner, Level::Intermediate, Level::Expert] {
+            let json = serde_json::to_string(&level).unwrap();
+            let back: Level = serde_json::from_str(&json).unwrap();
+            assert_eq!(back, level);
+        }
+    }
+
+    #[test]
+    fn mechanic_serde_round_trip() {
+        for mech in [Mechanic::Compound, Mechanic::Isolation] {
+            let json = serde_json::to_string(&mech).unwrap();
+            let back: Mechanic = serde_json::from_str(&json).unwrap();
+            assert_eq!(back, mech);
+        }
+    }
+
+    // ── Exercise::get_image_url ──────────────────────────────────────────────
+
+    #[test]
+    fn exercise_get_image_url_by_index() {
+        let ex = Exercise {
+            id: "ex1".into(),
+            name: "Squat".into(),
+            force: None,
+            level: Level::Beginner,
+            mechanic: None,
+            equipment: None,
+            primary_muscles: vec![],
+            secondary_muscles: vec![],
+            instructions: vec![],
+            category: Category::Strength,
+            images: vec!["Squat/0.jpg".into(), "Squat/1.jpg".into()],
+        };
+        assert_eq!(
+            ex.get_image_url(0),
+            Some(
+                "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Squat/0.jpg"
+                    .into()
+            )
+        );
+        assert_eq!(
+            ex.get_image_url(1),
+            Some(
+                "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Squat/1.jpg"
+                    .into()
+            )
+        );
+        assert_eq!(ex.get_image_url(2), None);
+    }
+
+    // ── Exercise full deserialization ─────────────────────────────────────────
+
+    #[test]
+    fn exercise_full_json_deserialization() {
+        let json = r#"{
+            "id": "bench_press",
+            "name": "Bench Press",
+            "force": "push",
+            "level": "intermediate",
+            "mechanic": "compound",
+            "equipment": "barbell",
+            "primaryMuscles": ["chest"],
+            "secondaryMuscles": ["triceps", "shoulders"],
+            "instructions": ["Lie down", "Push up"],
+            "category": "strength",
+            "images": ["BenchPress/0.jpg"]
+        }"#;
+        let ex: Exercise = serde_json::from_str(json).unwrap();
+        assert_eq!(ex.id, "bench_press");
+        assert_eq!(ex.name, "Bench Press");
+        assert_eq!(ex.force, Some(Force::Push));
+        assert_eq!(ex.level, Level::Intermediate);
+        assert_eq!(ex.mechanic, Some(Mechanic::Compound));
+        assert_eq!(ex.equipment, Some(Equipment::Barbell));
+        assert_eq!(ex.primary_muscles, vec![Muscle::Chest]);
+        assert_eq!(
+            ex.secondary_muscles,
+            vec![Muscle::Triceps, Muscle::Shoulders]
+        );
+        assert_eq!(ex.instructions.len(), 2);
+        assert_eq!(ex.category, Category::Strength);
+        assert_eq!(ex.images, vec!["BenchPress/0.jpg"]);
+    }
+
+    #[test]
+    fn exercise_optional_fields_none() {
+        let json = r#"{
+            "id": "stretch1",
+            "name": "Hamstring Stretch",
+            "level": "beginner",
+            "primaryMuscles": ["hamstrings"],
+            "secondaryMuscles": [],
+            "instructions": [],
+            "category": "stretching",
+            "images": []
+        }"#;
+        let ex: Exercise = serde_json::from_str(json).unwrap();
+        assert_eq!(ex.force, None);
+        assert_eq!(ex.mechanic, None);
+        assert_eq!(ex.equipment, None);
+        assert!(ex.images.is_empty());
+    }
+
+    // ── WorkoutSet / WorkoutExercise / Workout serialization ─────────────────
+
+    #[test]
+    fn workout_set_serde_round_trip() {
+        let set = WorkoutSet {
+            reps: 10,
+            weight_dg: Some(Weight(1000)),
+            duration: Some(60),
+        };
+        let json = serde_json::to_string(&set).unwrap();
+        let back: WorkoutSet = serde_json::from_str(&json).unwrap();
+        assert_eq!(back, set);
+    }
+
+    #[test]
+    fn workout_set_without_optionals() {
+        let set = WorkoutSet {
+            reps: 5,
+            weight_dg: None,
+            duration: None,
+        };
+        let json = serde_json::to_string(&set).unwrap();
+        let back: WorkoutSet = serde_json::from_str(&json).unwrap();
+        assert_eq!(back, set);
+    }
+
+    #[test]
+    fn workout_exercise_serde_round_trip() {
+        let we = WorkoutExercise {
+            exercise_id: "ex1".into(),
+            exercise_name: "Squat".into(),
+            sets: vec![WorkoutSet {
+                reps: 5,
+                weight_dg: Some(Weight(1000)),
+                duration: None,
+            }],
+            notes: Some("Heavy day".into()),
+        };
+        let json = serde_json::to_string(&we).unwrap();
+        let back: WorkoutExercise = serde_json::from_str(&json).unwrap();
+        assert_eq!(back, we);
+    }
+
+    #[test]
+    fn workout_serde_round_trip() {
+        let workout = Workout {
+            id: "w1".into(),
+            date: "2025-01-01".into(),
+            exercises: vec![],
+            notes: None,
+            version: DATA_VERSION,
+        };
+        let json = serde_json::to_string(&workout).unwrap();
+        let back: Workout = serde_json::from_str(&json).unwrap();
+        assert_eq!(back, workout);
+    }
+
+    // ── parse function edge cases ────────────────────────────────────────────
+
+    #[test]
+    fn parse_weight_kg_nan_and_infinity() {
+        assert_eq!(parse_weight_kg("NaN"), None);
+        assert_eq!(parse_weight_kg("inf"), None);
+        assert_eq!(parse_weight_kg("-inf"), None);
+        assert_eq!(parse_weight_kg("Infinity"), None);
+    }
+
+    #[test]
+    fn parse_distance_km_nan_and_infinity() {
+        assert_eq!(parse_distance_km("NaN"), None);
+        assert_eq!(parse_distance_km("inf"), None);
+        assert_eq!(parse_distance_km("-inf"), None);
+        assert_eq!(parse_distance_km("Infinity"), None);
+    }
+
+    // ── get_current_timestamp ────────────────────────────────────────────────
+
+    #[test]
+    fn get_current_timestamp_returns_reasonable_value() {
+        let ts = get_current_timestamp();
+        // Should be after 2020-01-01 (1577836800)
+        assert!(ts > 1_577_836_800);
+        // Should be before 2100-01-01 (4102444800)
+        assert!(ts < 4_102_444_800);
+    }
+
+    // ── ExerciseLog with saturating subtraction ──────────────────────────────
+
+    #[test]
+    fn exercise_log_duration_saturates_on_underflow() {
+        let log = ExerciseLog {
+            exercise_id: "ex1".into(),
+            exercise_name: "Bench".into(),
+            category: Category::Strength,
+            start_time: 2000,
+            end_time: Some(1000), // end before start
+            weight_dg: None,
+            reps: None,
+            distance_dam: None,
+            force: None,
+        };
+        // saturating_sub should return 0 instead of wrapping
+        assert_eq!(log.duration_seconds(), Some(0));
+    }
+
+    // ── ExerciseLog serialization round-trip ─────────────────────────────────
+
+    #[test]
+    fn exercise_log_serde_round_trip_with_all_fields() {
+        let log = ExerciseLog {
+            exercise_id: "ex1".into(),
+            exercise_name: "Squat".into(),
+            category: Category::Strength,
+            start_time: 1000,
+            end_time: Some(1120),
+            weight_dg: Some(Weight(1000)),
+            reps: Some(5),
+            distance_dam: Some(Distance(50)),
+            force: Some(Force::Push),
+        };
+        let json = serde_json::to_string(&log).unwrap();
+        let back: ExerciseLog = serde_json::from_str(&json).unwrap();
+        assert_eq!(back, log);
+    }
+
+    #[test]
+    fn exercise_log_force_none_is_omitted_in_json() {
+        let log = ExerciseLog {
+            exercise_id: "ex1".into(),
+            exercise_name: "Run".into(),
+            category: Category::Cardio,
+            start_time: 1000,
+            end_time: Some(2000),
+            weight_dg: None,
+            reps: None,
+            distance_dam: Some(Distance(500)),
+            force: None,
+        };
+        let json = serde_json::to_string(&log).unwrap();
+        assert!(!json.contains("force"));
+    }
+
+    // ── CustomExercise with all None optionals ──────────────────────────────
+
+    #[test]
+    fn custom_exercise_minimal() {
+        let ce = CustomExercise {
+            id: "custom_1".into(),
+            name: "My Exercise".into(),
+            category: Category::Strength,
+            force: None,
+            equipment: None,
+            primary_muscles: vec![],
+            secondary_muscles: vec![],
+            instructions: vec![],
+        };
+        let json = serde_json::to_string(&ce).unwrap();
+        let back: CustomExercise = serde_json::from_str(&json).unwrap();
+        assert_eq!(back, ce);
+    }
+
+    // ── format_time edge cases ───────────────────────────────────────────────
+
+    #[test]
+    fn format_time_boundary_values() {
+        assert_eq!(format_time(1), "00:01");
+        assert_eq!(format_time(59), "00:59");
+        assert_eq!(format_time(60), "01:00");
+        assert_eq!(format_time(3599), "59:59");
+        assert_eq!(format_time(3600), "01:00:00");
+        assert_eq!(format_time(86399), "23:59:59");
+    }
+
+    // ── WorkoutSession serialization ─────────────────────────────────────────
+
+    #[test]
+    fn workout_session_with_exercise_logs_serde() {
+        let session = WorkoutSession {
+            id: "s1".into(),
+            start_time: 1000,
+            end_time: Some(2000),
+            exercise_logs: vec![ExerciseLog {
+                exercise_id: "ex1".into(),
+                exercise_name: "Squat".into(),
+                category: Category::Strength,
+                start_time: 1000,
+                end_time: Some(1120),
+                weight_dg: Some(Weight(1000)),
+                reps: Some(5),
+                distance_dam: None,
+                force: Some(Force::Push),
+            }],
+            version: DATA_VERSION,
+            pending_exercise_ids: vec![],
+        };
+        let json = serde_json::to_string(&session).unwrap();
+        let back: WorkoutSession = serde_json::from_str(&json).unwrap();
+        assert_eq!(back, session);
+        assert_eq!(back.exercise_logs.len(), 1);
+        assert_eq!(back.exercise_logs[0].exercise_name, "Squat");
+    }
 }
