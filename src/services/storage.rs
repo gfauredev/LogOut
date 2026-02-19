@@ -1,5 +1,5 @@
+use crate::models::{CustomExercise, ExerciseLog, Workout, WorkoutSession};
 use dioxus::prelude::*;
-use crate::models::{Workout, WorkoutSession, ExerciseLog, CustomExercise};
 
 #[cfg(target_arch = "wasm32")]
 use wasm_bindgen_futures::spawn_local;
@@ -42,7 +42,7 @@ pub fn use_custom_exercises() -> Signal<Vec<CustomExercise>> {
 
 #[cfg(target_arch = "wasm32")]
 pub(crate) mod idb {
-    use rexie::{Rexie, ObjectStore, TransactionMode};
+    use rexie::{ObjectStore, Rexie, TransactionMode};
     use wasm_bindgen::JsValue;
 
     const DB_NAME: &str = "log_workout_db";
@@ -68,7 +68,8 @@ pub(crate) mod idb {
     /// Put a single serialisable item into a store (upsert by key).
     pub async fn put_item<T: serde::Serialize>(store_name: &str, item: &T) -> Result<(), String> {
         let db = open_db().await.map_err(|e| format!("{e}"))?;
-        let tx = db.transaction(&[store_name], TransactionMode::ReadWrite)
+        let tx = db
+            .transaction(&[store_name], TransactionMode::ReadWrite)
             .map_err(|e| format!("{e}"))?;
         let store = tx.store(store_name).map_err(|e| format!("{e}"))?;
         let js_val = serde_wasm_bindgen::to_value(item).map_err(|e| format!("{e}"))?;
@@ -80,21 +81,31 @@ pub(crate) mod idb {
     /// Delete an item from a store by its key.
     pub async fn delete_item(store_name: &str, key: &str) -> Result<(), String> {
         let db = open_db().await.map_err(|e| format!("{e}"))?;
-        let tx = db.transaction(&[store_name], TransactionMode::ReadWrite)
+        let tx = db
+            .transaction(&[store_name], TransactionMode::ReadWrite)
             .map_err(|e| format!("{e}"))?;
         let store = tx.store(store_name).map_err(|e| format!("{e}"))?;
-        store.delete(JsValue::from_str(key)).await.map_err(|e| format!("{e}"))?;
+        store
+            .delete(JsValue::from_str(key))
+            .await
+            .map_err(|e| format!("{e}"))?;
         tx.done().await.map_err(|e| format!("{e}"))?;
         Ok(())
     }
 
     /// Load all items from a store.
-    pub async fn get_all<T: serde::de::DeserializeOwned>(store_name: &str) -> Result<Vec<T>, String> {
+    pub async fn get_all<T: serde::de::DeserializeOwned>(
+        store_name: &str,
+    ) -> Result<Vec<T>, String> {
         let db = open_db().await.map_err(|e| format!("{e}"))?;
-        let tx = db.transaction(&[store_name], TransactionMode::ReadOnly)
+        let tx = db
+            .transaction(&[store_name], TransactionMode::ReadOnly)
             .map_err(|e| format!("{e}"))?;
         let store = tx.store(store_name).map_err(|e| format!("{e}"))?;
-        let js_values = store.get_all(None, None).await.map_err(|e| format!("{e}"))?;
+        let js_values = store
+            .get_all(None, None)
+            .await
+            .map_err(|e| format!("{e}"))?;
 
         let mut items = Vec::new();
         for (i, js_val) in js_values.into_iter().enumerate() {
@@ -168,7 +179,10 @@ async fn migrate_from_local_storage(
     // Workouts
     if let Ok(Some(data)) = storage.get_item("log_workout_workouts") {
         if let Ok(workouts) = serde_json::from_str::<Vec<Workout>>(&data) {
-            info!("Migrating {} workouts from localStorage → IndexedDB", workouts.len());
+            info!(
+                "Migrating {} workouts from localStorage → IndexedDB",
+                workouts.len()
+            );
             for w in &workouts {
                 let _ = idb::put_item(idb::STORE_WORKOUTS, w).await;
             }
@@ -180,7 +194,10 @@ async fn migrate_from_local_storage(
     // Sessions
     if let Ok(Some(data)) = storage.get_item("log_workout_sessions") {
         if let Ok(sessions) = serde_json::from_str::<Vec<WorkoutSession>>(&data) {
-            info!("Migrating {} sessions from localStorage → IndexedDB", sessions.len());
+            info!(
+                "Migrating {} sessions from localStorage → IndexedDB",
+                sessions.len()
+            );
             for s in &sessions {
                 let _ = idb::put_item(idb::STORE_SESSIONS, s).await;
             }
@@ -192,7 +209,10 @@ async fn migrate_from_local_storage(
     // Custom exercises
     if let Ok(Some(data)) = storage.get_item("log_workout_custom_exercises") {
         if let Ok(custom) = serde_json::from_str::<Vec<CustomExercise>>(&data) {
-            info!("Migrating {} custom exercises from localStorage → IndexedDB", custom.len());
+            info!(
+                "Migrating {} custom exercises from localStorage → IndexedDB",
+                custom.len()
+            );
             for c in &custom {
                 let _ = idb::put_item(idb::STORE_CUSTOM_EXERCISES, c).await;
             }
@@ -206,6 +226,7 @@ async fn migrate_from_local_storage(
 // Public mutation helpers (granular IDB writes)
 // ──────────────────────────────────────────
 
+#[allow(dead_code)]
 pub fn add_workout(workout: Workout) {
     let mut sig = use_workouts();
     sig.write().push(workout.clone());
@@ -323,8 +344,8 @@ pub fn get_active_session() -> Option<WorkoutSession> {
 
 #[cfg(target_arch = "wasm32")]
 pub mod idb_exercises {
-    use crate::models::Exercise;
     use super::idb;
+    use crate::models::Exercise;
 
     pub async fn get_all_exercises() -> Result<Vec<Exercise>, String> {
         idb::get_all::<Exercise>(idb::STORE_EXERCISES).await

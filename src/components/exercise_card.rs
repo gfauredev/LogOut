@@ -1,6 +1,6 @@
-use std::collections::HashMap;
-use dioxus::prelude::*;
 use crate::models::Exercise;
+use dioxus::prelude::*;
+use std::collections::HashMap;
 
 #[component]
 pub fn ExerciseCard(

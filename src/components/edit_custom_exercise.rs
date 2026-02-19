@@ -1,15 +1,13 @@
-use dioxus::prelude::*;
-use crate::models::{CustomExercise, Category, Force, Equipment, Muscle};
+use crate::models::{Category, CustomExercise, Equipment, Force, Muscle};
 use crate::services::storage;
+use dioxus::prelude::*;
 
 #[component]
 pub fn EditCustomExercisePage(id: String) -> Element {
     let custom_exercises = storage::use_custom_exercises();
 
     // Load the exercise to edit
-    let exercise = use_memo(move || {
-        custom_exercises.read().iter().find(|e| e.id == id).cloned()
-    });
+    let exercise = use_memo(move || custom_exercises.read().iter().find(|e| e.id == id).cloned());
 
     let ex = match exercise() {
         Some(e) => e,
@@ -31,11 +29,11 @@ pub fn EditCustomExercisePage(id: String) -> Element {
     let mut category_input = use_signal(|| ex.category);
     let mut force_input: Signal<Option<Force>> = use_signal(|| ex.force);
     let mut equipment_input: Signal<Option<Equipment>> = use_signal(|| ex.equipment);
-    let mut muscle_input = use_signal(|| String::new());
+    let mut muscle_input = use_signal(String::new);
     let mut muscles_list = use_signal(|| ex.primary_muscles.clone());
-    let mut secondary_muscle_input = use_signal(|| String::new());
+    let mut secondary_muscle_input = use_signal(String::new);
     let mut secondary_muscles_list = use_signal(|| ex.secondary_muscles.clone());
-    let mut instructions_input = use_signal(|| String::new());
+    let mut instructions_input = use_signal(String::new);
     let mut instructions_list = use_signal(|| ex.instructions.clone());
 
     let exercise_id = ex.id.clone();
@@ -100,7 +98,9 @@ pub fn EditCustomExercisePage(id: String) -> Element {
 
     let save_exercise = move |_| {
         let name = name_input.read().trim().to_string();
-        if name.is_empty() { return; }
+        if name.is_empty() {
+            return;
+        }
 
         let updated = CustomExercise {
             id: exercise_id.clone(),

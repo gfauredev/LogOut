@@ -1,7 +1,10 @@
-use dioxus::prelude::*;
-use crate::models::{WorkoutSession, ExerciseLog, get_current_timestamp, format_time, parse_weight_kg, parse_distance_km, Category};
+use crate::models::{
+    format_time, get_current_timestamp, parse_distance_km, parse_weight_kg, Category, ExerciseLog,
+    WorkoutSession,
+};
 use crate::services::{exercise_db, storage};
 use crate::Route;
+use dioxus::prelude::*;
 
 /// Default rest duration in seconds
 const DEFAULT_REST_DURATION: u64 = 30;
@@ -13,22 +16,26 @@ pub fn SessionView() -> Element {
     // use_hook's initializer causes a double-borrow of the hooks RefCell → panic.
     let sessions = storage::use_sessions();
     let mut session = use_signal(move || {
-        sessions.read().iter().find(|s| s.is_active()).cloned()
+        sessions
+            .read()
+            .iter()
+            .find(|s| s.is_active())
+            .cloned()
             .unwrap_or_else(WorkoutSession::new)
     });
-    
-    let mut search_query = use_signal(|| String::new());
+
+    let mut search_query = use_signal(String::new);
     let mut current_exercise_id = use_signal(|| None::<String>);
     let mut current_exercise_start = use_signal(|| None::<u64>);
-    let mut weight_input = use_signal(|| String::new());
-    let mut reps_input = use_signal(|| String::new());
-    let mut distance_input = use_signal(|| String::new());
+    let mut weight_input = use_signal(String::new);
+    let mut reps_input = use_signal(String::new);
+    let mut distance_input = use_signal(String::new);
 
     // Edit completed exercise state
     let mut editing_log_idx = use_signal(|| None::<usize>);
-    let mut edit_weight_input = use_signal(|| String::new());
-    let mut edit_reps_input = use_signal(|| String::new());
-    let mut edit_distance_input = use_signal(|| String::new());
+    let mut edit_weight_input = use_signal(String::new);
+    let mut edit_reps_input = use_signal(String::new);
+    let mut edit_distance_input = use_signal(String::new);
 
     // Rest duration setting (configurable by clicking the timer)
     let mut rest_duration = use_signal(|| DEFAULT_REST_DURATION);
@@ -47,7 +54,7 @@ pub fn SessionView() -> Element {
     let mut duration_bell_rung = use_signal(|| false);
 
     // Tick signal for live timer – updated every second by a coroutine
-    let mut now_tick = use_signal(|| get_current_timestamp());
+    let mut now_tick = use_signal(get_current_timestamp);
 
     use_coroutine(move |_: UnboundedReceiver<()>| async move {
         loop {
@@ -129,70 +136,71 @@ pub fn SessionView() -> Element {
 
     // Reactive snapshot of pending exercise IDs – avoids multiple session.read() calls in the template
     let pending_ids = use_memo(move || session.read().pending_exercise_ids.clone());
-    
+
     let search_results = use_memo(move || {
         let query = search_query.read();
         if query.is_empty() {
             vec![]
         } else {
             let mut results: Vec<(String, String, Category)> = Vec::new();
-            
+
             let all = all_exercises.read();
             let db_results = exercise_db::search_exercises(&all, &query);
             for ex in db_results.iter().take(10) {
                 results.push((ex.id.clone(), ex.name.clone(), ex.category));
             }
-            
+
             let custom = custom_exercises.read();
             for ex in custom.iter() {
                 if ex.name.to_lowercase().contains(&query.to_lowercase()) {
                     results.push((ex.id.clone(), ex.name.clone(), ex.category));
                 }
             }
-            
+
             results
         }
     });
-    
-    let mut start_exercise = move |exercise_id: String, _exercise_name: String, _category: Category| {
-        if let Some(last_log) = storage::get_last_exercise_log(&exercise_id) {
-            if let Some(w) = last_log.weight_dg {
-                weight_input.set(format!("{:.1}", w.0 as f64 / 100.0));
+
+    let mut start_exercise =
+        move |exercise_id: String, _exercise_name: String, _category: Category| {
+            if let Some(last_log) = storage::get_last_exercise_log(&exercise_id) {
+                if let Some(w) = last_log.weight_dg {
+                    weight_input.set(format!("{:.1}", w.0 as f64 / 100.0));
+                }
+                if let Some(reps) = last_log.reps {
+                    reps_input.set(reps.to_string());
+                }
+                if let Some(d) = last_log.distance_dam {
+                    distance_input.set(format!("{:.2}", d.0 as f64 / 100.0));
+                }
+            } else {
+                weight_input.set(String::new());
+                reps_input.set(String::new());
+                distance_input.set(String::new());
             }
-            if let Some(reps) = last_log.reps {
-                reps_input.set(reps.to_string());
-            }
-            if let Some(d) = last_log.distance_dam {
-                distance_input.set(format!("{:.2}", d.0 as f64 / 100.0));
-            }
-        } else {
-            weight_input.set(String::new());
-            reps_input.set(String::new());
-            distance_input.set(String::new());
-        }
-        
-        current_exercise_id.set(Some(exercise_id.clone()));
-        current_exercise_start.set(Some(get_current_timestamp()));
-        search_query.set(String::new());
-        // Clear rest timer when starting a new exercise
-        rest_start_time.set(None);
-        rest_bell_count.set(0);
-        duration_bell_rung.set(false);
-    };
-    
+
+            current_exercise_id.set(Some(exercise_id.clone()));
+            current_exercise_start.set(Some(get_current_timestamp()));
+            search_query.set(String::new());
+            // Clear rest timer when starting a new exercise
+            rest_start_time.set(None);
+            rest_bell_count.set(0);
+            duration_bell_rung.set(false);
+        };
+
     let complete_exercise = move |_| {
         let exercise_id = match current_exercise_id.read().as_ref() {
             Some(id) => id.clone(),
             None => return,
         };
-        
+
         let start_time = match current_exercise_start.read().as_ref() {
             Some(time) => *time,
             None => get_current_timestamp(),
         };
-        
+
         let mut current_session = session.read().clone();
-        
+
         let (exercise_name, category, force) = {
             let all = all_exercises.read();
             if let Some(ex) = exercise_db::get_exercise_by_id(&all, &exercise_id) {
@@ -206,13 +214,21 @@ pub fn SessionView() -> Element {
                 }
             }
         };
-        
+
         let end_time = get_current_timestamp();
-        
+
         let weight_dg = parse_weight_kg(&weight_input.read());
-        let reps = if force.map_or(false, |f| f.has_reps()) { reps_input.read().parse().ok() } else { None };
-        let distance_dam = if category == Category::Cardio { parse_distance_km(&distance_input.read()) } else { None };
-        
+        let reps = if force.is_some_and(|f| f.has_reps()) {
+            reps_input.read().parse().ok()
+        } else {
+            None
+        };
+        let distance_dam = if category == Category::Cardio {
+            parse_distance_km(&distance_input.read())
+        } else {
+            None
+        };
+
         let log = ExerciseLog {
             exercise_id: exercise_id.clone(),
             exercise_name,
@@ -224,11 +240,11 @@ pub fn SessionView() -> Element {
             distance_dam,
             force,
         };
-        
+
         current_session.exercise_logs.push(log);
         storage::save_session(current_session.clone());
         session.set(current_session);
-        
+
         current_exercise_id.set(None);
         current_exercise_start.set(None);
         weight_input.set(String::new());
@@ -249,7 +265,7 @@ pub fn SessionView() -> Element {
         if let Some(log) = current_session.exercise_logs.get_mut(idx) {
             log.weight_dg = parse_weight_kg(&edit_weight_input.read());
             let force = log.force;
-            log.reps = if force.map_or(false, |f| f.has_reps()) {
+            log.reps = if force.is_some_and(|f| f.has_reps()) {
                 edit_reps_input.read().parse().ok()
             } else {
                 None
@@ -265,7 +281,7 @@ pub fn SessionView() -> Element {
         edit_reps_input.set(String::new());
         edit_distance_input.set(String::new());
     };
-    
+
     let finish_session = move |_| {
         let mut current_session = session.read().clone();
         if current_session.is_cancelled() {
@@ -287,13 +303,16 @@ pub fn SessionView() -> Element {
     };
 
     let exercise_count = session.read().exercise_logs.len();
-    let finish_label = if exercise_count == 0 { "Cancel Session" } else { "Finish Session" };
-    
+    let finish_label = if exercise_count == 0 {
+        "Cancel Session"
+    } else {
+        "Finish Session"
+    };
 
     rsx! {
         section {
             class: "session-container",
-            
+
             // Sticky timer header
             header {
                 class: "session-header",
@@ -355,11 +374,11 @@ pub fn SessionView() -> Element {
                     }
                 }
             }
-            
+
             // Main content area
             main {
                 class: "session-main",
-                
+
                 // Pending exercises (pre-added from a previous session)
                 if current_exercise_id.read().is_none() && !pending_ids().is_empty() {
                     section { class: "pending-exercises",
@@ -426,7 +445,7 @@ pub fn SessionView() -> Element {
                         }
                     }
                 }
-                
+
                 // Exercise search and selection
                 if current_exercise_id.read().is_none() {
                     div {
@@ -439,14 +458,14 @@ pub fn SessionView() -> Element {
                             oninput: move |evt| search_query.set(evt.value()),
                             class: "search-input",
                         }
-                        
+
                         if !search_results().is_empty() {
                             div {
                                 class: "search-results search-results--tall",
                                 for (id, name, category) in search_results() {
                                     div {
                                         key: "{id}",
-                                        onclick: move |_| start_exercise(id.clone(), name.clone(), category.clone()),
+                                        onclick: move |_| start_exercise(id.clone(), name.clone(), category),
                                         class: "search-result-item search-result-item--flex",
                                         span { "{name}" }
                                         span { class: "tag tag--category", "{category}" }
@@ -460,7 +479,7 @@ pub fn SessionView() -> Element {
                     if let Some(exercise_id) = current_exercise_id.read().as_ref() {
                         article {
                             class: "exercise-form",
-                            
+
                             {
                                 let (exercise_name, category, force) = {
                                     let all = all_exercises.read();
@@ -475,13 +494,13 @@ pub fn SessionView() -> Element {
                                         }
                                     }
                                 };
-                                
-                                let show_reps = force.map_or(false, |f| f.has_reps());
+
+                                let show_reps = force.is_some_and(|f| f.has_reps());
                                 let is_cardio = category == Category::Cardio;
                                 let last_log = storage::get_last_exercise_log(exercise_id);
                                 let last_duration = last_log.as_ref()
                                     .and_then(|log| log.duration_seconds());
-                                
+
                                 // Secondary static timer: shown when exercise has no reps and no distance
                                 let show_static_timer = !show_reps && !is_cardio;
                                 let exercise_elapsed = if show_static_timer {
@@ -490,8 +509,8 @@ pub fn SessionView() -> Element {
                                         get_current_timestamp().saturating_sub(start)
                                     } else { 0 }
                                 } else { 0 };
-                                let timer_reached = last_duration.map_or(false, |d| d > 0 && exercise_elapsed >= d);
-                                
+                                let timer_reached = last_duration.is_some_and(|d| d > 0 && exercise_elapsed >= d);
+
                                 rsx! {
                                     if let Some(dur) = last_duration {
                                         div {
@@ -500,17 +519,17 @@ pub fn SessionView() -> Element {
                                         }
                                     }
                                     h3 { class: "exercise-form__title", "{exercise_name}" }
-                                    
+
                                     if show_static_timer {
                                         div {
                                             class: if timer_reached { "exercise-static-timer exercise-static-timer--reached" } else { "exercise-static-timer" },
                                             "⏱ {format_time(exercise_elapsed)}"
                                         }
                                     }
-                                    
+
                                     div {
                                         class: "exercise-form__fields",
-                                        
+
                                         div {
                                             label { class: "form-label", "Weight (kg)" }
                                             input {
@@ -522,7 +541,7 @@ pub fn SessionView() -> Element {
                                                 class: "form-input",
                                             }
                                         }
-                                        
+
                                         if is_cardio {
                                             div {
                                                 label { class: "form-label", "Distance (km)" }
@@ -536,7 +555,7 @@ pub fn SessionView() -> Element {
                                                 }
                                             }
                                         }
-                                        
+
                                         if show_reps {
                                             div {
                                                 label { class: "form-label", "Repetitions" }
@@ -549,7 +568,7 @@ pub fn SessionView() -> Element {
                                                 }
                                             }
                                         }
-                                        
+
                                         div {
                                             class: "btn-row",
                                             button {
@@ -575,18 +594,18 @@ pub fn SessionView() -> Element {
                         }
                     }
                 }
-                
+
                 // Completed exercises list
                 if !session.read().exercise_logs.is_empty() {
                     section {
                         style: "margin-top: 30px;",
                         h3 { "Completed Exercises" }
-                        
+
                         for (idx, log) in session.read().exercise_logs.iter().enumerate() {
                             article {
                                 key: "{idx}",
                                 class: "completed-log",
-                                
+
                                 div {
                                     class: "completed-log__header",
                                     h4 { class: "completed-log__title", "{log.exercise_name}" }
@@ -624,12 +643,12 @@ pub fn SessionView() -> Element {
                                         }
                                     }
                                 }
-                                
+
                                 if *editing_log_idx.read() == Some(idx) {
                                     // Inline edit form
                                     {
                                         let force = log.force;
-                                        let show_reps = force.map_or(false, |f| f.has_reps());
+                                        let show_reps = force.is_some_and(|f| f.has_reps());
                                         let is_cardio = log.category == Category::Cardio;
                                         rsx! {
                                             div {
@@ -707,7 +726,7 @@ pub fn SessionView() -> Element {
                         }
                     }
                 }
-                
+
                 // Link to add custom exercise
                 div {
                     class: "center-text",

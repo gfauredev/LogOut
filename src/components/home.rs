@@ -1,8 +1,8 @@
-use dioxus::prelude::*;
-use crate::models::{WorkoutSession, format_time};
+use crate::components::{ActiveTab, BottomNav, SessionView};
+use crate::models::{format_time, WorkoutSession};
 use crate::services::storage;
-use crate::components::{SessionView, BottomNav, ActiveTab};
 use crate::utils::format_session_date;
+use dioxus::prelude::*;
 
 #[component]
 pub fn HomePage() -> Element {
@@ -86,7 +86,9 @@ fn SessionCard(session: WorkoutSession) -> Element {
     // Collect exercise IDs (deduplicated, preserving order) for repeat action
     let pending_ids: Vec<String> = {
         let mut seen = std::collections::HashSet::new();
-        session.exercise_logs.iter()
+        session
+            .exercise_logs
+            .iter()
             .filter_map(|log| {
                 if seen.insert(log.exercise_id.clone()) {
                     Some(log.exercise_id.clone())
@@ -175,5 +177,3 @@ fn SessionCard(session: WorkoutSession) -> Element {
         }
     }
 }
-
-

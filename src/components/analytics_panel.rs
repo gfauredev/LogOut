@@ -1,6 +1,6 @@
-use dioxus::prelude::*;
 use crate::models::ExerciseLog;
 use crate::services::storage;
+use dioxus::prelude::*;
 
 #[derive(Clone, Copy, PartialEq, Debug)]
 pub enum Metric {
@@ -31,17 +31,16 @@ impl Metric {
 }
 
 const COLORS: [&str; 8] = [
-    "#667eea", "#f093fb", "#4facfe", "#43e97b",
-    "#fa709a", "#fee140", "#30cfd0", "#a8edea",
+    "#667eea", "#f093fb", "#4facfe", "#43e97b", "#fa709a", "#fee140", "#30cfd0", "#a8edea",
 ];
 
 #[component]
 pub fn AnalyticsPanel() -> Element {
     let mut selected_metric = use_signal(|| Metric::Weight);
     let mut selected_exercises: Signal<Vec<Option<String>>> = use_signal(|| vec![None; 8]);
-    
+
     let sessions = storage::use_sessions();
-    
+
     // Get unique exercise IDs and names, filtered by selected metric
     let available_exercises = use_memo(move || {
         let sessions = sessions.read();
@@ -68,13 +67,14 @@ pub fn AnalyticsPanel() -> Element {
     // Collect data points for each selected exercise
     let chart_data: Vec<(String, Vec<(f64, f64)>)> = {
         let sessions = sessions.read();
-        selected_exercises.read()
+        selected_exercises
+            .read()
             .iter()
             .filter_map(|opt_id| opt_id.as_ref())
             .map(|exercise_id| {
                 let mut points = Vec::new();
                 let metric = *selected_metric.read();
-                
+
                 for session in sessions.iter() {
                     for log in &session.exercise_logs {
                         if &log.exercise_id == exercise_id {
@@ -84,15 +84,16 @@ pub fn AnalyticsPanel() -> Element {
                         }
                     }
                 }
-                
+
                 points.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap_or(std::cmp::Ordering::Equal));
-                
-                let exercise_name = available_exercises.read()
+
+                let exercise_name = available_exercises
+                    .read()
                     .iter()
                     .find(|(id, _)| id == exercise_id)
                     .map(|(_, name)| name.clone())
                     .unwrap_or_else(|| exercise_id.clone());
-                
+
                 (exercise_name, points)
             })
             .collect()
@@ -101,18 +102,18 @@ pub fn AnalyticsPanel() -> Element {
     rsx! {
         div {
             class: "analytics-panel",
-            
+
             // Header
             div {
                 class: "analytics-panel__header",
                 h2 { "📊 Analytics" }
                 p { "Track your progress over time" }
             }
-            
+
             // Controls
             div {
                 class: "analytics-controls",
-                
+
                 div {
                     style: "margin-bottom: 20px;",
                     label { class: "form-label form-label--color", "Select Metric" }
@@ -134,15 +135,15 @@ pub fn AnalyticsPanel() -> Element {
                         option { value: "Duration", "Duration (minutes)" }
                     }
                 }
-                
+
                 div {
                     label { class: "form-label form-label--color", "Select Exercises (up to 8)" }
-                    
+
                     for i in 0..8 {
                         {
                             let current_selections = selected_exercises.read().clone();
                             let is_visible = i == 0 || current_selections.get(i - 1).and_then(|x| x.as_ref()).is_some();
-                            
+
                             if is_visible {
                                 Some(rsx! {
                                     div {
@@ -174,11 +175,11 @@ pub fn AnalyticsPanel() -> Element {
                     }
                 }
             }
-            
+
             // Chart
             div {
                 class: "analytics-chart",
-                
+
                 if chart_data.is_empty() || chart_data.iter().all(|(_, points)| points.is_empty()) {
                     div {
                         class: "chart-empty",
@@ -197,13 +198,17 @@ pub fn AnalyticsPanel() -> Element {
 }
 
 #[component]
-fn ChartView(data: Vec<(String, Vec<(f64, f64)>)>, metric: Metric, colors: Vec<&'static str>) -> Element {
+fn ChartView(
+    data: Vec<(String, Vec<(f64, f64)>)>,
+    metric: Metric,
+    colors: Vec<&'static str>,
+) -> Element {
     let (min_x, max_x, min_y, max_y) = {
         let mut min_x = f64::INFINITY;
         let mut max_x = f64::NEG_INFINITY;
         let mut min_y = f64::INFINITY;
         let mut max_y = f64::NEG_INFINITY;
-        
+
         for (_, points) in &data {
             for (x, y) in points {
                 min_x = min_x.min(*x);
@@ -212,38 +217,46 @@ fn ChartView(data: Vec<(String, Vec<(f64, f64)>)>, metric: Metric, colors: Vec<&
                 max_y = max_y.max(*y);
             }
         }
-        
+
         let y_range = max_y - min_y;
         let padding = y_range * 0.1;
         min_y = (min_y - padding).max(0.0);
         max_y += padding;
-        
+
         (min_x, max_x, min_y, max_y)
     };
-    
+
     let width = 600.0;
     let height = 400.0;
     let pad = 60.0;
     let chart_width = width - 2.0 * pad;
     let chart_height = height - 2.0 * pad;
-    
+
     let scale_x = move |x: f64| -> f64 {
-        if max_x == min_x { pad + chart_width / 2.0 }
-        else { pad + (x - min_x) / (max_x - min_x) * chart_width }
+        if max_x == min_x {
+            pad + chart_width / 2.0
+        } else {
+            pad + (x - min_x) / (max_x - min_x) * chart_width
+        }
     };
-    
+
     let scale_y = move |y: f64| -> f64 {
-        if max_y == min_y { pad + chart_height / 2.0 }
-        else { pad + chart_height - (y - min_y) / (max_y - min_y) * chart_height }
+        if max_y == min_y {
+            pad + chart_height / 2.0
+        } else {
+            pad + chart_height - (y - min_y) / (max_y - min_y) * chart_height
+        }
     };
-    
+
     let format_date = |timestamp: f64| -> String {
         #[cfg(target_arch = "wasm32")]
         let current_time = js_sys::Date::now() / 1000.0;
         #[cfg(not(target_arch = "wasm32"))]
         let current_time = std::time::SystemTime::now()
-            .duration_since(std::time::UNIX_EPOCH).unwrap_or_default().as_secs() as f64;
-        
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap_or_default()
+            .as_secs() as f64;
+
         let days_ago = ((current_time - timestamp) / 86400.0) as i64;
         match days_ago {
             0 => "Today".to_string(),
@@ -255,18 +268,18 @@ fn ChartView(data: Vec<(String, Vec<(f64, f64)>)>, metric: Metric, colors: Vec<&
     rsx! {
         div {
             class: "chart-scroll",
-            
+
             svg {
                 width: "{width}",
                 height: "{height}",
                 view_box: "0 0 {width} {height}",
                 style: "display: block;",
-                
+
                 // Y-axis
                 line { x1: "{pad}", y1: "{pad}", x2: "{pad}", y2: "{pad + chart_height}", stroke: "#ccc", stroke_width: "2" }
                 // X-axis
                 line { x1: "{pad}", y1: "{pad + chart_height}", x2: "{pad + chart_width}", y2: "{pad + chart_height}", stroke: "#ccc", stroke_width: "2" }
-                
+
                 // Y-axis labels
                 for i in 0..5 {
                     {
@@ -280,7 +293,7 @@ fn ChartView(data: Vec<(String, Vec<(f64, f64)>)>, metric: Metric, colors: Vec<&
                         }
                     }
                 }
-                
+
                 // X-axis labels
                 {
                     let num_labels = 4.min(data.iter().map(|(_, p)| p.len()).max().unwrap_or(0)).max(2);
@@ -298,7 +311,7 @@ fn ChartView(data: Vec<(String, Vec<(f64, f64)>)>, metric: Metric, colors: Vec<&
                         }
                     }
                 }
-                
+
                 // Y-axis label
                 text {
                     x: "{pad / 2.0}", y: "{pad + chart_height / 2.0}",
@@ -306,7 +319,7 @@ fn ChartView(data: Vec<(String, Vec<(f64, f64)>)>, metric: Metric, colors: Vec<&
                     transform: "rotate(-90, {pad / 2.0}, {pad + chart_height / 2.0})",
                     "{metric.label()}"
                 }
-                
+
                 // Plot lines
                 for (idx, (_exercise_name, points)) in data.iter().enumerate() {
                     {
@@ -329,7 +342,7 @@ fn ChartView(data: Vec<(String, Vec<(f64, f64)>)>, metric: Metric, colors: Vec<&
                         } else { None }
                     }
                 }
-                
+
                 // Legend
                 for (idx, (exercise_name, _)) in data.iter().enumerate() {
                     {

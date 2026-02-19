@@ -1,20 +1,20 @@
-use dioxus::prelude::*;
-use crate::models::{CustomExercise, Category, Force, Equipment, Muscle, get_current_timestamp};
+use crate::models::{get_current_timestamp, Category, CustomExercise, Equipment, Force, Muscle};
 use crate::services::storage;
+use dioxus::prelude::*;
 
 #[component]
 pub fn AddCustomExercisePage() -> Element {
-    let mut name_input = use_signal(|| String::new());
+    let mut name_input = use_signal(String::new);
     let mut category_input = use_signal(|| Category::Strength);
     let mut force_input: Signal<Option<Force>> = use_signal(|| None);
     let mut equipment_input: Signal<Option<Equipment>> = use_signal(|| None);
-    let mut muscle_input = use_signal(|| String::new());
-    let mut muscles_list = use_signal(|| Vec::<Muscle>::new());
-    let mut secondary_muscle_input = use_signal(|| String::new());
-    let mut secondary_muscles_list = use_signal(|| Vec::<Muscle>::new());
-    let mut instructions_input = use_signal(|| String::new());
-    let mut instructions_list = use_signal(|| Vec::<String>::new());
-    
+    let mut muscle_input = use_signal(String::new);
+    let mut muscles_list = use_signal(Vec::<Muscle>::new);
+    let mut secondary_muscle_input = use_signal(String::new);
+    let mut secondary_muscles_list = use_signal(Vec::<Muscle>::new);
+    let mut instructions_input = use_signal(String::new);
+    let mut instructions_list = use_signal(Vec::<String>::new);
+
     let add_muscle = move |_| {
         let value = muscle_input.read().trim().to_string();
         if !value.is_empty() {
@@ -28,7 +28,7 @@ pub fn AddCustomExercisePage() -> Element {
             }
         }
     };
-    
+
     let mut remove_muscle = move |muscle: Muscle| {
         let mut muscles = muscles_list.read().clone();
         muscles.retain(|m| m != &muscle);
@@ -72,13 +72,15 @@ pub fn AddCustomExercisePage() -> Element {
             instructions_list.set(instructions);
         }
     };
-    
+
     let save_exercise = move |_| {
         let name = name_input.read().trim().to_string();
-        if name.is_empty() { return; }
-        
+        if name.is_empty() {
+            return;
+        }
+
         let timestamp = get_current_timestamp();
-        
+
         let exercise = CustomExercise {
             id: format!("custom_{}", timestamp),
             name,
@@ -89,7 +91,7 @@ pub fn AddCustomExercisePage() -> Element {
             secondary_muscles: secondary_muscles_list.read().clone(),
             instructions: instructions_list.read().clone(),
         };
-        
+
         storage::add_custom_exercise(exercise);
         navigator().go_back();
     };
@@ -97,7 +99,7 @@ pub fn AddCustomExercisePage() -> Element {
     rsx! {
         div {
             class: "container container--form",
-            
+
             header {
                 class: "page-header",
                 button {
@@ -107,10 +109,10 @@ pub fn AddCustomExercisePage() -> Element {
                 }
                 h1 { class: "page-title", "Add Custom Exercise" }
             }
-            
+
             div {
                 class: "form-stack",
-                
+
                 // Name
                 div {
                     label { class: "form-label", "Exercise Name *" }
@@ -122,7 +124,7 @@ pub fn AddCustomExercisePage() -> Element {
                         class: "form-input",
                     }
                 }
-                
+
                 // Category
                 div {
                     label { class: "form-label", "Category *" }
@@ -139,7 +141,7 @@ pub fn AddCustomExercisePage() -> Element {
                         }
                     }
                 }
-                
+
                 // Force type
                 div {
                     label { class: "form-label", "Force Type" }
@@ -160,7 +162,7 @@ pub fn AddCustomExercisePage() -> Element {
                         }
                     }
                 }
-                
+
                 // Equipment
                 div {
                     label { class: "form-label", "Equipment" }
@@ -181,11 +183,11 @@ pub fn AddCustomExercisePage() -> Element {
                         }
                     }
                 }
-                
+
                 // Primary muscles
                 div {
                     label { class: "form-label", "Primary Muscles" }
-                    
+
                     div {
                         class: "muscle-row",
                         select {
@@ -203,7 +205,7 @@ pub fn AddCustomExercisePage() -> Element {
                             "Add"
                         }
                     }
-                    
+
                     if !muscles_list.read().is_empty() {
                         div {
                             class: "muscle-tags",
@@ -229,7 +231,7 @@ pub fn AddCustomExercisePage() -> Element {
                 // Secondary muscles
                 div {
                     label { class: "form-label", "Secondary Muscles" }
-                    
+
                     div {
                         class: "muscle-row",
                         select {
@@ -247,7 +249,7 @@ pub fn AddCustomExercisePage() -> Element {
                             "Add"
                         }
                     }
-                    
+
                     if !secondary_muscles_list.read().is_empty() {
                         div {
                             class: "muscle-tags",
@@ -273,7 +275,7 @@ pub fn AddCustomExercisePage() -> Element {
                 // Instructions
                 div {
                     label { class: "form-label", "Instructions" }
-                    
+
                     div {
                         class: "muscle-row",
                         input {
@@ -290,7 +292,7 @@ pub fn AddCustomExercisePage() -> Element {
                             "Add"
                         }
                     }
-                    
+
                     if !instructions_list.read().is_empty() {
                         ol {
                             class: "instructions-list",
@@ -309,7 +311,7 @@ pub fn AddCustomExercisePage() -> Element {
                         }
                     }
                 }
-                
+
                 // Save button
                 button {
                     onclick: save_exercise,

@@ -1,5 +1,5 @@
+use crate::components::{ActiveTab, AnalyticsPanel, BottomNav};
 use dioxus::prelude::*;
-use crate::components::{AnalyticsPanel, BottomNav, ActiveTab};
 
 #[component]
 pub fn AnalyticsPage() -> Element {
