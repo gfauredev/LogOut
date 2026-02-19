@@ -231,10 +231,10 @@ jobs:
           script: |
             const fs = require('fs');
             const path = require('path');
-            const tag = '<!-- e2e-screenshots -->';
-            let body = `${tag}\n## 📸 E2E Test Failures\n`;
-
-            // Collect screenshot PNGs from test-results/
+            const tag = '';
+            const runUrl = `https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
+            let body = `${tag}\n## 📸 E2E Test Failures\n\n`;
+            body += `Test failures were detected. You can view and download the full screenshots in the **Artifacts** section of the [Action Run](${runUrl}).\n\n`;
             const testResultsDir = 'test-results';
             if (fs.existsSync(testResultsDir)) {
               const walk = (dir) => {
@@ -242,24 +242,22 @@ jobs:
                 for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
                   const full = path.join(dir, entry.name);
                   if (entry.isDirectory()) files.push(...walk(full));
-                  else if (entry.name.endsWith('.png')) files.push(full);
+                  else if (entry.name.endsWith('.png')) files.push(entry.name);
                 }
                 return files;
               };
-              const pngs = walk(testResultsDir);
-              if (pngs.length > 0) {
-                for (const png of pngs) {
-                  const name = path.relative(testResultsDir, png);
-                  const data = fs.readFileSync(png, { encoding: 'base64' });
-                  body += `\n### ${name}\n![${name}](data:image/png;base64,${data})\n`;
-                }
+              const pngNames = walk(testResultsDir);
+              if (pngNames.length > 0) {
+                body += `### Failed Screenshots Found:\n`;
+                pngNames.forEach(name => {
+                  body += `- \`${name}\` \n`;
+                });
               } else {
-                body += '\nNo screenshot images found.\n';
+                body += '> [!NOTE]\n> No .png files found in the test-results directory.\n';
               }
             } else {
-              body += '\nNo test-results directory found.\n';
+              body += '> [!WARNING]\n> The `test-results` directory was not found.\n';
             }
-
             const { data: comments } = await github.rest.issues.listComments({
               owner: context.repo.owner,
               repo: context.repo.repo,
