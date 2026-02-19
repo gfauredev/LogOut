@@ -277,6 +277,12 @@
   line-height: 1;
 }
 
+.bottom-nav__label {
+  font-size: 0.65em;
+  line-height: 1;
+  margin-top: 2px;
+}
+
 /* ===== Search Input ===== */
 .search-wrapper {
   margin-bottom: 20px;
@@ -630,6 +636,12 @@
 
 .session-header__timer:hover {
   text-decoration: underline;
+}
+
+.session-header__actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
 }
 
 .session-main {
