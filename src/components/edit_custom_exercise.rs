@@ -1,5 +1,5 @@
 use crate::components::exercise_form_fields::ExerciseFormFields;
-use crate::models::{CustomExercise, Equipment, Force};
+use crate::models::{Equipment, Exercise, Force};
 use crate::services::storage;
 use dioxus::prelude::*;
 
@@ -36,8 +36,12 @@ pub fn EditCustomExercisePage(id: String) -> Element {
     let secondary_muscles_list = use_signal(|| ex.secondary_muscles.clone());
     let instructions_input = use_signal(String::new);
     let instructions_list = use_signal(|| ex.instructions.clone());
+    let image_url_input = use_signal(String::new);
+    let images_list = use_signal(|| ex.images.clone());
 
     let exercise_id = ex.id.clone();
+    let exercise_level = ex.level;
+    let exercise_mechanic = ex.mechanic;
 
     let save_exercise = move |_: ()| {
         let name = name_input.read().trim().to_string();
@@ -45,15 +49,18 @@ pub fn EditCustomExercisePage(id: String) -> Element {
             return;
         }
 
-        let updated = CustomExercise {
+        let updated = Exercise {
             id: exercise_id.clone(),
             name,
             category: *category_input.read(),
             force: *force_input.read(),
+            level: exercise_level,
+            mechanic: exercise_mechanic,
             equipment: *equipment_input.read(),
             primary_muscles: muscles_list.read().clone(),
             secondary_muscles: secondary_muscles_list.read().clone(),
             instructions: instructions_list.read().clone(),
+            images: images_list.read().clone(),
         };
 
         storage::update_custom_exercise(updated);
@@ -71,7 +78,7 @@ pub fn EditCustomExercisePage(id: String) -> Element {
                     class: "back-btn",
                     "← Back"
                 }
-                h1 { class: "page-title", "Edit Custom Exercise" }
+                h1 { class: "page-title", "Edit Exercise" }
             }
 
             ExerciseFormFields {
@@ -85,6 +92,8 @@ pub fn EditCustomExercisePage(id: String) -> Element {
                 secondary_muscles_list,
                 instructions_input,
                 instructions_list,
+                image_url_input,
+                images_list,
                 save_label: "Save Changes".to_string(),
                 on_save: save_exercise,
             }

@@ -61,7 +61,14 @@ jobs:
       - uses: taiki-e/install-action@cargo-llvm-cov
 
       - name: Run unit tests with coverage
-        run: cargo llvm-cov --bin log-workout --lcov --output-path lcov.info
+        id: tests
+        run: |
+          # Run tests with coverage, capturing both test output and coverage data
+          TEST_OUTPUT=$(cargo llvm-cov --bin log-workout --lcov --output-path lcov.info 2>&1)
+          echo "$TEST_OUTPUT"
+          echo "test_output<<EOF" >> "$GITHUB_OUTPUT"
+          echo "$TEST_OUTPUT" >> "$GITHUB_OUTPUT"
+          echo "EOF" >> "$GITHUB_OUTPUT"
 
       - name: Generate coverage summary
         id: cov
@@ -119,12 +126,13 @@ jobs:
         uses: actions/github-script@v7
         with:
           script: |
+            const testOutput = `${{ steps.tests.outputs.test_output }}`;
             const summary = `${{ steps.cov.outputs.summary }}`;
             const gateReport = `${{ steps.gate.outputs.gate_report }}`;
             const gateFailed = '${{ steps.gate.outputs.gate_failed }}' === '1';
             const gateStatus = gateFailed ? '❌ **FAILED** — tested files must have ≥ 90% coverage' : '✅ **PASSED** — all tested files have ≥ 90% coverage';
             const tag = '<!-- unit-test-coverage -->';
-            const body = `${tag}\n## 🧪 Unit Test Coverage\n\`\`\`\n${summary}\n\`\`\`\n\n### Coverage Gate ${gateStatus}\n| File | Lines Hit/Total | Coverage | Status |\n|------|----------------|----------|--------|\n${gateReport}`;
+            const body = `${tag}\n## 🧪 Unit Tests & Coverage\n\n### Test Results\n\`\`\`\n${testOutput}\n\`\`\`\n\n### Coverage Summary\n\`\`\`\n${summary}\n\`\`\`\n\n### Coverage Gate ${gateStatus}\n| File | Lines Hit/Total | Coverage | Status |\n|------|----------------|----------|--------|\n${gateReport}`;
             const { data: comments } = await github.rest.issues.listComments({
               owner: context.repo.owner,
               repo: context.repo.repo,

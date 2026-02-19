@@ -116,9 +116,8 @@ pub fn search_exercises(exercises: &[Exercise], query: &str) -> Vec<Exercise> {
                     .unwrap_or(false)
                 || exercise
                     .level
-                    .to_string()
-                    .to_lowercase()
-                    .contains(&query_lower)
+                    .map(|l| l.to_string().to_lowercase().contains(&query_lower))
+                    .unwrap_or(false)
         })
         .cloned()
         .collect()
@@ -158,7 +157,7 @@ mod tests {
                 id: "bench_press".into(),
                 name: "Bench Press".into(),
                 force: Some(Force::Push),
-                level: Level::Intermediate,
+                level: Some(Level::Intermediate),
                 mechanic: None,
                 equipment: Some(Equipment::Barbell),
                 primary_muscles: vec![Muscle::Chest],
@@ -171,7 +170,7 @@ mod tests {
                 id: "pull_up".into(),
                 name: "Pull-Up".into(),
                 force: Some(Force::Pull),
-                level: Level::Beginner,
+                level: Some(Level::Beginner),
                 mechanic: None,
                 equipment: Some(Equipment::BodyOnly),
                 primary_muscles: vec![Muscle::Lats],
@@ -184,7 +183,7 @@ mod tests {
                 id: "running".into(),
                 name: "Running".into(),
                 force: None,
-                level: Level::Beginner,
+                level: Some(Level::Beginner),
                 mechanic: None,
                 equipment: None,
                 primary_muscles: vec![Muscle::Quadriceps, Muscle::Hamstrings],
