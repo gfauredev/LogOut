@@ -119,6 +119,27 @@
   opacity: 1;
 }
 
+.session-card__actions {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+}
+
+.session-card__repeat-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 1.1em;
+  padding: 4px 8px;
+  border-radius: 4px;
+  opacity: 0.6;
+  transition: opacity 0.2s;
+}
+
+.session-card__repeat-btn:hover {
+  opacity: 1;
+}
+
 .session-card__stats {
   display: flex;
   gap: 16px;
@@ -611,16 +632,10 @@
   text-decoration: underline;
 }
 
-.session-body {
-  flex: 1;
-  display: flex;
-  overflow: hidden;
-  position: relative;
-}
-
 .session-main {
   flex: 1;
   overflow-y: auto;
+  overflow-x: hidden;
   padding: 20px;
   padding-bottom: 80px;
   max-width: 500px;
@@ -677,6 +692,12 @@
   color: #fff;
 }
 
+.completed-log__actions {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+}
+
 .completed-log__edit-form {
   display: flex;
   flex-direction: column;
@@ -698,6 +719,73 @@
 
 .btn--edit-log:hover {
   opacity: 1;
+}
+
+.btn--delete-log {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 1em;
+  padding: 2px 6px;
+  border-radius: 4px;
+  opacity: 0.6;
+  transition: opacity 0.2s;
+}
+
+.btn--delete-log:hover {
+  opacity: 1;
+}
+
+/* ===== Pending Exercises (pre-added from a previous session) ===== */
+.pending-exercises {
+  margin-bottom: 20px;
+  padding: 14px;
+  border: 1px dashed #4a4a6a;
+  border-radius: 10px;
+  background: #0a0a1a;
+}
+
+.pending-exercises h3 {
+  margin: 0 0 12px 0;
+  font-size: 1em;
+  color: #999;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.pending-exercise-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 0;
+  border-bottom: 1px solid #222;
+}
+
+.pending-exercise-item:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.pending-exercise-item__name {
+  flex: 1;
+  font-weight: 500;
+  color: #ccc;
+}
+
+.btn--start {
+  padding: 7px 14px;
+  background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
+  color: #1a3a1a;
+  border: none;
+  border-radius: 6px;
+  font-weight: bold;
+  font-size: 0.9em;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.btn--start:hover {
+  opacity: 0.9;
 }
 
 /* ===== Exercise Static Timer ===== */
