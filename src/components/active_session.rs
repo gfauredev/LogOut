@@ -143,10 +143,10 @@ pub fn SessionView() -> Element {
             // Add custom exercises first (they have priority over DB exercises)
             let custom = custom_exercises.read();
             for ex in custom.iter() {
-                if ex.name.to_lowercase().contains(&query.to_lowercase()) {
-                    if seen_ids.insert(ex.id.clone()) {
-                        results.push((ex.id.clone(), ex.name.clone(), ex.category));
-                    }
+                if ex.name.to_lowercase().contains(&query.to_lowercase())
+                    && seen_ids.insert(ex.id.clone())
+                {
+                    results.push((ex.id.clone(), ex.name.clone(), ex.category));
                 }
             }
 

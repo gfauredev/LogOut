@@ -34,7 +34,10 @@ pub fn ExerciseListPage() -> Element {
                 }
             }
         } else {
-            for ex in exercise_db::search_exercises(&all, &query).into_iter().take(50) {
+            for ex in exercise_db::search_exercises(&all, &query)
+                .into_iter()
+                .take(50)
+            {
                 if seen_ids.insert(ex.id.clone()) {
                     results.push(ex);
                 }
