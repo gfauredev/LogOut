@@ -1055,6 +1055,14 @@ main {
   line-height: 1;
 }
 
+.image-url-tag {
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.85em;
+}
+
 /* ===== Credits Page ===== */
 .credits-section {
   padding: 20px;

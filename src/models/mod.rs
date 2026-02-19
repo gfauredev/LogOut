@@ -334,7 +334,8 @@ pub struct Exercise {
     pub name: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub force: Option<Force>,
-    pub level: Level,
+    #[serde(default)]
+    pub level: Option<Level>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub mechanic: Option<Mechanic>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -342,18 +343,28 @@ pub struct Exercise {
     #[serde(rename = "primaryMuscles")]
     pub primary_muscles: Vec<Muscle>,
     #[serde(rename = "secondaryMuscles")]
+    #[serde(default)]
     pub secondary_muscles: Vec<Muscle>,
+    #[serde(default)]
     pub instructions: Vec<String>,
     pub category: Category,
+    #[serde(default)]
     pub images: Vec<String>,
 }
 
 impl Exercise {
-    /// Get the URL for a specific image by index
+    /// Get the URL for a specific image by index.
+    /// Images that are already full URLs (start with http:// or https://) are
+    /// returned as-is.  Relative paths from the exercise-db are prefixed with
+    /// the EXERCISES_IMAGE_BASE_URL.
     pub fn get_image_url(&self, index: usize) -> Option<String> {
-        self.images
-            .get(index)
-            .map(|img| format!("{}{}", EXERCISES_IMAGE_BASE_URL, img))
+        self.images.get(index).map(|img| {
+            if img.starts_with("http://") || img.starts_with("https://") {
+                img.clone()
+            } else {
+                format!("{}{}", EXERCISES_IMAGE_BASE_URL, img)
+            }
+        })
     }
 
     /// Get the first image URL if available
@@ -454,20 +465,6 @@ impl WorkoutSession {
     pub fn is_cancelled(&self) -> bool {
         self.exercise_logs.is_empty()
     }
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
-pub struct CustomExercise {
-    pub id: String,
-    pub name: String,
-    pub category: Category,
-    pub force: Option<Force>,
-    pub equipment: Option<Equipment>,
-    pub primary_muscles: Vec<Muscle>,
-    #[serde(default)]
-    pub secondary_muscles: Vec<Muscle>,
-    #[serde(default)]
-    pub instructions: Vec<String>,
 }
 
 /// Get current timestamp compatible with WASM
@@ -832,7 +829,7 @@ mod tests {
             id: "ex1".into(),
             name: "Squat".into(),
             force: None,
-            level: Level::Beginner,
+            level: Some(Level::Beginner),
             mechanic: None,
             equipment: None,
             primary_muscles: vec![],
@@ -853,7 +850,7 @@ mod tests {
             id: "ex1".into(),
             name: "Squat".into(),
             force: None,
-            level: Level::Beginner,
+            level: Some(Level::Beginner),
             mechanic: None,
             equipment: None,
             primary_muscles: vec![],
@@ -916,34 +913,40 @@ mod tests {
         assert_eq!(parse_distance_km("655.35"), Some(Distance(65535)));
     }
 
-    // ── CustomExercise ────────────────────────────────────────────────────────
+    // ── User-created exercise (uses unified Exercise struct) ────────────────
 
     #[test]
-    fn custom_exercise_serialization_with_new_fields() {
-        let exercise = CustomExercise {
+    fn user_exercise_serialization_with_all_fields() {
+        let exercise = Exercise {
             id: "custom_123".into(),
             name: "Test Exercise".into(),
             category: Category::Strength,
             force: Some(Force::Push),
+            level: None,
+            mechanic: None,
             equipment: Some(Equipment::Barbell),
             primary_muscles: vec![Muscle::Chest],
             secondary_muscles: vec![Muscle::Triceps, Muscle::Shoulders],
             instructions: vec!["Step 1".into(), "Step 2".into()],
+            images: vec!["https://example.com/img.jpg".into()],
         };
         let json = serde_json::to_string(&exercise).unwrap();
-        let deserialized: CustomExercise = serde_json::from_str(&json).unwrap();
+        let deserialized: Exercise = serde_json::from_str(&json).unwrap();
         assert_eq!(exercise, deserialized);
         assert_eq!(deserialized.secondary_muscles.len(), 2);
         assert_eq!(deserialized.instructions.len(), 2);
+        assert_eq!(deserialized.images.len(), 1);
     }
 
     #[test]
-    fn custom_exercise_backward_compat_missing_new_fields() {
-        // Old format without secondary_muscles and instructions
-        let json = r#"{"id":"custom_1","name":"Old Exercise","category":"strength","force":"push","equipment":"barbell","primary_muscles":["chest"]}"#;
-        let exercise: CustomExercise = serde_json::from_str(json).unwrap();
+    fn exercise_backward_compat_missing_optional_fields() {
+        // Old format without secondary_muscles, instructions, images, level
+        let json = r#"{"id":"custom_1","name":"Old Exercise","category":"strength","force":"push","equipment":"barbell","primaryMuscles":["chest"]}"#;
+        let exercise: Exercise = serde_json::from_str(json).unwrap();
         assert_eq!(exercise.secondary_muscles, Vec::<Muscle>::new());
         assert_eq!(exercise.instructions, Vec::<String>::new());
+        assert_eq!(exercise.images, Vec::<String>::new());
+        assert_eq!(exercise.level, None);
     }
 
     // ── WorkoutSession pending_exercise_ids ───────────────────────────────────
@@ -1147,7 +1150,7 @@ mod tests {
             id: "ex1".into(),
             name: "Squat".into(),
             force: None,
-            level: Level::Beginner,
+            level: Some(Level::Beginner),
             mechanic: None,
             equipment: None,
             primary_muscles: vec![],
@@ -1173,6 +1176,42 @@ mod tests {
         assert_eq!(ex.get_image_url(2), None);
     }
 
+    #[test]
+    fn exercise_get_image_url_full_url_passthrough() {
+        let ex = Exercise {
+            id: "ex1".into(),
+            name: "Custom".into(),
+            force: None,
+            level: None,
+            mechanic: None,
+            equipment: None,
+            primary_muscles: vec![],
+            secondary_muscles: vec![],
+            instructions: vec![],
+            category: Category::Strength,
+            images: vec!["https://example.com/image.jpg".into()],
+        };
+        // Full URLs should be returned as-is (no prefix)
+        assert_eq!(
+            ex.get_image_url(0),
+            Some("https://example.com/image.jpg".into())
+        );
+    }
+
+    #[test]
+    fn exercise_level_none_when_missing_from_json() {
+        let json = r#"{"id":"ex1","name":"Test","category":"strength","primaryMuscles":[]}"#;
+        let ex: Exercise = serde_json::from_str(json).unwrap();
+        assert_eq!(ex.level, None);
+    }
+
+    #[test]
+    fn exercise_level_some_when_present_in_json() {
+        let json = r#"{"id":"ex1","name":"Test","level":"expert","category":"strength","primaryMuscles":[]}"#;
+        let ex: Exercise = serde_json::from_str(json).unwrap();
+        assert_eq!(ex.level, Some(Level::Expert));
+    }
+
     // ── Exercise full deserialization ─────────────────────────────────────────
 
     #[test]
@@ -1194,7 +1233,7 @@ mod tests {
         assert_eq!(ex.id, "bench_press");
         assert_eq!(ex.name, "Bench Press");
         assert_eq!(ex.force, Some(Force::Push));
-        assert_eq!(ex.level, Level::Intermediate);
+        assert_eq!(ex.level, Some(Level::Intermediate));
         assert_eq!(ex.mechanic, Some(Mechanic::Compound));
         assert_eq!(ex.equipment, Some(Equipment::Barbell));
         assert_eq!(ex.primary_muscles, vec![Muscle::Chest]);
@@ -1368,23 +1407,26 @@ mod tests {
         assert!(!json.contains("force"));
     }
 
-    // ── CustomExercise with all None optionals ──────────────────────────────
+    // ── Exercise with all None optionals ─────────────────────────────────────
 
     #[test]
-    fn custom_exercise_minimal() {
-        let ce = CustomExercise {
+    fn exercise_minimal() {
+        let ex = Exercise {
             id: "custom_1".into(),
             name: "My Exercise".into(),
             category: Category::Strength,
             force: None,
+            level: None,
+            mechanic: None,
             equipment: None,
             primary_muscles: vec![],
             secondary_muscles: vec![],
             instructions: vec![],
+            images: vec![],
         };
-        let json = serde_json::to_string(&ce).unwrap();
-        let back: CustomExercise = serde_json::from_str(&json).unwrap();
-        assert_eq!(back, ce);
+        let json = serde_json::to_string(&ex).unwrap();
+        let back: Exercise = serde_json::from_str(&json).unwrap();
+        assert_eq!(back, ex);
     }
 
     // ── format_time edge cases ───────────────────────────────────────────────

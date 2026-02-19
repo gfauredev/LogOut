@@ -62,7 +62,9 @@ pub fn ExerciseCard(
                 if let Some(equipment) = &exercise.equipment {
                     span { class: "tag tag--equipment", "{equipment}" }
                 }
-                span { class: "tag tag--level", "{exercise.level}" }
+                if let Some(level) = &exercise.level {
+                    span { class: "tag tag--level", "{level}" }
+                }
             }
 
             if !exercise.primary_muscles.is_empty() {

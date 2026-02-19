@@ -1,4 +1,4 @@
-use crate::models::{CustomExercise, ExerciseLog, Workout, WorkoutSession};
+use crate::models::{Exercise, ExerciseLog, Workout, WorkoutSession};
 use dioxus::prelude::*;
 
 #[cfg(target_arch = "wasm32")]
@@ -16,7 +16,7 @@ use log::{error, info};
 pub fn provide_app_state() {
     use_context_provider(|| Signal::new(Vec::<Workout>::new()));
     use_context_provider(|| Signal::new(Vec::<WorkoutSession>::new()));
-    use_context_provider(|| Signal::new(Vec::<CustomExercise>::new()));
+    use_context_provider(|| Signal::new(Vec::<Exercise>::new()));
 
     // Load persisted data into the signals via a resource (lifecycle-managed)
     use_resource(load_storage_data);
@@ -32,8 +32,8 @@ pub fn use_sessions() -> Signal<Vec<WorkoutSession>> {
     consume_context::<Signal<Vec<WorkoutSession>>>()
 }
 
-pub fn use_custom_exercises() -> Signal<Vec<CustomExercise>> {
-    consume_context::<Signal<Vec<CustomExercise>>>()
+pub fn use_custom_exercises() -> Signal<Vec<Exercise>> {
+    consume_context::<Signal<Vec<Exercise>>>()
 }
 
 // ──────────────────────────────────────────
@@ -146,7 +146,7 @@ async fn load_storage_data() {
                 from_idb = true;
             }
         }
-        if let Ok(custom) = idb::get_all::<CustomExercise>(idb::STORE_CUSTOM_EXERCISES).await {
+        if let Ok(custom) = idb::get_all::<Exercise>(idb::STORE_CUSTOM_EXERCISES).await {
             if !custom.is_empty() {
                 info!("Loaded {} custom exercises from IndexedDB", custom.len());
                 custom_sig.set(custom);
@@ -165,7 +165,7 @@ async fn load_storage_data() {
 async fn migrate_from_local_storage(
     mut workouts_sig: Signal<Vec<Workout>>,
     mut sessions_sig: Signal<Vec<WorkoutSession>>,
-    mut custom_sig: Signal<Vec<CustomExercise>>,
+    mut custom_sig: Signal<Vec<Exercise>>,
 ) {
     let window = match web_sys::window() {
         Some(w) => w,
@@ -208,7 +208,7 @@ async fn migrate_from_local_storage(
 
     // Custom exercises
     if let Ok(Some(data)) = storage.get_item("log_workout_custom_exercises") {
-        if let Ok(custom) = serde_json::from_str::<Vec<CustomExercise>>(&data) {
+        if let Ok(custom) = serde_json::from_str::<Vec<Exercise>>(&data) {
             info!(
                 "Migrating {} custom exercises from localStorage → IndexedDB",
                 custom.len()
@@ -288,7 +288,7 @@ pub fn delete_session(id: &str) {
     }
 }
 
-pub fn add_custom_exercise(exercise: CustomExercise) {
+pub fn add_custom_exercise(exercise: Exercise) {
     let mut sig = use_custom_exercises();
     sig.write().push(exercise.clone());
 
@@ -300,7 +300,7 @@ pub fn add_custom_exercise(exercise: CustomExercise) {
     });
 }
 
-pub fn update_custom_exercise(exercise: CustomExercise) {
+pub fn update_custom_exercise(exercise: Exercise) {
     let mut sig = use_custom_exercises();
     {
         let mut exercises = sig.write();

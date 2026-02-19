@@ -1,5 +1,5 @@
 use crate::components::exercise_form_fields::ExerciseFormFields;
-use crate::models::{get_current_timestamp, Category, CustomExercise, Equipment, Force, Muscle};
+use crate::models::{get_current_timestamp, Category, Equipment, Exercise, Force, Muscle};
 use crate::services::storage;
 use dioxus::prelude::*;
 
@@ -15,6 +15,8 @@ pub fn AddCustomExercisePage() -> Element {
     let secondary_muscles_list = use_signal(Vec::<Muscle>::new);
     let instructions_input = use_signal(String::new);
     let instructions_list = use_signal(Vec::<String>::new);
+    let image_url_input = use_signal(String::new);
+    let images_list = use_signal(Vec::<String>::new);
 
     let save_exercise = move |_: ()| {
         let name = name_input.read().trim().to_string();
@@ -24,15 +26,18 @@ pub fn AddCustomExercisePage() -> Element {
 
         let timestamp = get_current_timestamp();
 
-        let exercise = CustomExercise {
+        let exercise = Exercise {
             id: format!("custom_{}", timestamp),
             name,
             category: *category_input.read(),
             force: *force_input.read(),
+            level: None,
+            mechanic: None,
             equipment: *equipment_input.read(),
             primary_muscles: muscles_list.read().clone(),
             secondary_muscles: secondary_muscles_list.read().clone(),
             instructions: instructions_list.read().clone(),
+            images: images_list.read().clone(),
         };
 
         storage::add_custom_exercise(exercise);
@@ -50,7 +55,7 @@ pub fn AddCustomExercisePage() -> Element {
                     class: "back-btn",
                     "← Back"
                 }
-                h1 { class: "page-title", "Add Custom Exercise" }
+                h1 { class: "page-title", "Add Exercise" }
             }
 
             ExerciseFormFields {
@@ -64,6 +69,8 @@ pub fn AddCustomExercisePage() -> Element {
                 secondary_muscles_list,
                 instructions_input,
                 instructions_list,
+                image_url_input,
+                images_list,
                 save_label: "Save Exercise".to_string(),
                 on_save: save_exercise,
             }

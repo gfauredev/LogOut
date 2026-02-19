@@ -14,6 +14,8 @@ pub fn ExerciseFormFields(
     secondary_muscles_list: Signal<Vec<Muscle>>,
     instructions_input: Signal<String>,
     instructions_list: Signal<Vec<String>>,
+    image_url_input: Signal<String>,
+    images_list: Signal<Vec<String>>,
     save_label: String,
     on_save: EventHandler<()>,
 ) -> Element {
@@ -27,6 +29,8 @@ pub fn ExerciseFormFields(
     let mut secondary_muscles_list = secondary_muscles_list;
     let mut instructions_input = instructions_input;
     let mut instructions_list = instructions_list;
+    let mut image_url_input = image_url_input;
+    let mut images_list = images_list;
 
     let add_muscle = move |_| {
         let value = muscle_input.read().trim().to_string();
@@ -83,6 +87,26 @@ pub fn ExerciseFormFields(
         if idx < instructions.len() {
             instructions.remove(idx);
             instructions_list.set(instructions);
+        }
+    };
+
+    let add_image = move |_| {
+        let url = image_url_input.read().trim().to_string();
+        if !url.is_empty() {
+            let mut imgs = images_list.read().clone();
+            if !imgs.contains(&url) {
+                imgs.push(url);
+                images_list.set(imgs);
+                image_url_input.set(String::new());
+            }
+        }
+    };
+
+    let mut remove_image = move |idx: usize| {
+        let mut imgs = images_list.read().clone();
+        if idx < imgs.len() {
+            imgs.remove(idx);
+            images_list.set(imgs);
         }
     };
 
@@ -279,6 +303,45 @@ pub fn ExerciseFormFields(
                                 span { "{instruction}" }
                                 button {
                                     onclick: move |_| remove_instruction(idx),
+                                    class: "muscle-tag__remove",
+                                    "×"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Images
+            div {
+                label { class: "form-label", "Images (URLs)" }
+
+                div {
+                    class: "muscle-row",
+                    input {
+                        r#type: "url",
+                        placeholder: "https://example.com/image.jpg",
+                        value: "{image_url_input}",
+                        oninput: move |evt| image_url_input.set(evt.value()),
+                        class: "form-input form-input--flex",
+                    }
+                    button {
+                        onclick: add_image,
+                        class: "btn btn--accent-lg",
+                        "Add"
+                    }
+                }
+
+                if !images_list.read().is_empty() {
+                    div {
+                        class: "muscle-tags",
+                        for (idx, url) in images_list.read().iter().enumerate() {
+                            div {
+                                key: "{idx}",
+                                class: "muscle-tag",
+                                span { class: "image-url-tag", "{url}" }
+                                button {
+                                    onclick: move |_| remove_image(idx),
                                     class: "muscle-tag__remove",
                                     "×"
                                 }
