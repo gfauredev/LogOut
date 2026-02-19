@@ -4,12 +4,10 @@ use std::fmt;
 // Base URL for exercise images from the free-exercise-db repository
 const EXERCISES_IMAGE_BASE_URL: &str =
     "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/";
-
 // Version control for data structures to handle migrations
-pub const DATA_VERSION: u32 = 3;
+pub const DATA_VERSION: u16 = 0;
 
 // ── Enums for exercise fields with fixed values ─────────────────────────────
-
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum Category {
     #[serde(rename = "cardio")]
@@ -388,7 +386,7 @@ pub struct Workout {
     pub exercises: Vec<WorkoutExercise>,
     pub notes: Option<String>,
     #[serde(default)]
-    pub version: u32,
+    pub version: u16,
 }
 
 // Models for active session tracking
@@ -426,7 +424,7 @@ pub struct WorkoutSession {
     pub end_time: Option<u64>,
     pub exercise_logs: Vec<ExerciseLog>,
     #[serde(default)]
-    pub version: u32,
+    pub version: u16,
     /// Exercise IDs queued from a previous session (pre-added, not yet started).
     #[serde(default)]
     pub pending_exercise_ids: Vec<String>,
