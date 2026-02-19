@@ -1,36 +1,32 @@
-use crate::components::{ActiveTab, BottomNav};
+use crate::components::{ActiveTab, BottomNav, ExerciseCard};
 use crate::services::{exercise_db, storage};
-use crate::Route;
 use dioxus::prelude::*;
-use std::collections::HashMap;
 
 #[component]
 pub fn ExerciseListPage() -> Element {
     let all_exercises = exercise_db::use_exercises();
     let custom_exercises = storage::use_custom_exercises();
     let mut search_query = use_signal(String::new);
-    let mut instructions_open = use_signal(HashMap::<String, bool>::new);
-    let mut image_indices = use_signal(HashMap::<String, usize>::new);
 
     // Merge DB exercises and user-created exercises into a unified list
     let exercises = use_memo(move || {
         let query = search_query.read();
         let all = all_exercises.read();
         let custom = custom_exercises.read();
+        let query_lower = query.to_lowercase();
 
         let mut results = Vec::new();
 
         // Add user-created exercises first
         for ex in custom.iter() {
-            let matches =
-                query.is_empty() || ex.name.to_lowercase().contains(&query.to_lowercase());
+            let matches = query_lower.is_empty() || ex.name.to_lowercase().contains(&query_lower);
             if matches {
                 results.push(ex.clone());
             }
         }
 
         // Add DB exercises
-        if query.is_empty() {
+        if query_lower.is_empty() {
             results.extend(all.iter().take(50).cloned());
         } else {
             results.extend(
@@ -70,98 +66,7 @@ pub fn ExerciseListPage() -> Element {
             section {
                 class: "exercise-list",
                 for exercise in exercises() {
-                    {
-                        let id = exercise.id.clone();
-                        let id_for_img = exercise.id.clone();
-                        let show_instructions = *instructions_open.read().get(&id).unwrap_or(&false);
-                        let img_index = *image_indices.read().get(&id_for_img).unwrap_or(&0);
-                        let image_count = exercise.images.len();
-
-                        rsx! {
-                            article {
-                                key: "{exercise.id}",
-                                class: "exercise-card",
-
-                                div {
-                                    class: "exercise-card__custom-header",
-                                    Link {
-                                        to: Route::EditCustomExercisePage { id: exercise.id.clone() },
-                                        class: "exercise-card__edit-btn",
-                                        "✏️ Edit"
-                                    }
-                                }
-
-                                h3 {
-                                    class: "exercise-card__title",
-                                    onclick: {
-                                        let id = id.clone();
-                                        move |_| {
-                                            let mut map = instructions_open.write();
-                                            let entry = map.entry(id.clone()).or_insert(false);
-                                            *entry = !*entry;
-                                        }
-                                    },
-                                    "{exercise.name}"
-                                }
-
-                                if show_instructions && !exercise.instructions.is_empty() {
-                                    ol { class: "exercise-card__instructions",
-                                        for instruction in &exercise.instructions {
-                                            li { "{instruction}" }
-                                        }
-                                    }
-                                }
-
-                                if let Some(image_url) = exercise.get_image_url(img_index) {
-                                    img {
-                                        src: "{image_url}",
-                                        alt: "{exercise.name}",
-                                        loading: "lazy",
-                                        class: "exercise-card__image",
-                                        onclick: move |_| {
-                                            if image_count > 1 {
-                                                let mut map = image_indices.write();
-                                                let entry = map.entry(id_for_img.clone()).or_insert(0);
-                                                *entry = (*entry + 1) % image_count;
-                                            }
-                                        },
-                                    }
-                                }
-
-                                div {
-                                    class: "tag-row",
-                                    span { class: "tag tag--category", "{exercise.category}" }
-                                    if let Some(force) = &exercise.force {
-                                        span { class: "tag tag--force", "{force}" }
-                                    }
-                                    if let Some(equipment) = &exercise.equipment {
-                                        span { class: "tag tag--equipment", "{equipment}" }
-                                    }
-                                    if let Some(level) = &exercise.level {
-                                        span { class: "tag tag--level", "{level}" }
-                                    }
-                                }
-
-                                if !exercise.primary_muscles.is_empty() {
-                                    div {
-                                        class: "tag-row",
-                                        for muscle in &exercise.primary_muscles {
-                                            span { class: "tag tag--muscle-primary", "{muscle}" }
-                                        }
-                                    }
-                                }
-
-                                if !exercise.secondary_muscles.is_empty() {
-                                    div {
-                                        class: "tag-row",
-                                        for muscle in &exercise.secondary_muscles {
-                                            span { class: "tag tag--muscle-secondary", "{muscle}" }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
+                    ExerciseCard { key: "{exercise.id}", exercise }
                 }
             }
         }

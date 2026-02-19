@@ -20,5 +20,6 @@ pub use bottom_nav::{ActiveTab, BottomNav};
 pub use completed_exercise_log::CompletedExerciseLog;
 pub use credits::CreditsPage;
 pub use edit_custom_exercise::EditCustomExercisePage;
+pub use exercise_card::ExerciseCard;
 pub use exercise_list::ExerciseListPage;
 pub use home::HomePage;

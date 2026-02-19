@@ -9,6 +9,18 @@
     <meta name="description" content="LogOut - Turn off your computer, Log your workOut. A workout logging PWA.">
     <link rel="manifest" href="./manifest.json">
     <title>{app_title}</title>
+    <script>
+        // Restore the original URL after a 404-redirect from GitHub Pages.
+        (function () {
+            var redirect = new URLSearchParams(window.location.search).get('redirect');
+            if (redirect) {
+                // Remove trailing slash from pathname, then join with redirect path.
+                var base = window.location.pathname.replace(/\/$/, '');
+                var url = base + '/' + redirect.replace(/^\//, '');
+                window.history.replaceState(null, '', url);
+            }
+        }());
+    </script>
     <style>
         * {
             margin: 0;

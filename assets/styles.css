@@ -172,7 +172,18 @@ main {
 }
 
 /* ===== Delete Confirmation Modal ===== */
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.7);
+  z-index: 99;
+}
+
 .delete-modal {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
   background: #1a1a1a;
   border: 1px solid #333;
   border-radius: .8em;
@@ -180,10 +191,7 @@ main {
   text-align: center;
   min-width: 260px;
   color: #e0e0e0;
-}
-
-.delete-modal::backdrop {
-  background: rgba(0, 0, 0, 0.7);
+  z-index: 100;
 }
 
 .delete-modal p {
