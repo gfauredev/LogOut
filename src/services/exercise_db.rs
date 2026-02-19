@@ -336,9 +336,10 @@ mod tests {
     fn search_progressive_typing_never_panics() {
         let exercises = sample_exercises();
         let input = "bench press";
-        for i in 1..=input.len() {
-            let query = &input[..i];
-            let _ = search_exercises(&exercises, query);
+        let mut query = String::new();
+        for c in input.chars() {
+            query.push(c);
+            let _ = search_exercises(&exercises, &query);
         }
     }
 
@@ -394,9 +395,9 @@ mod tests {
     #[test]
     fn search_whitespace_only_query() {
         let exercises = sample_exercises();
+        // Whitespace-only queries should not crash; no exercise field contains "   "
         let results = search_exercises(&exercises, "   ");
-        // Whitespace-only queries should not crash
-        assert!(results.is_empty() || !results.is_empty());
+        assert!(results.is_empty());
     }
 
     #[test]
@@ -628,9 +629,10 @@ mod tests {
 
         // Progressive typing on a large list must not crash
         let input = "exercise number 42";
-        for i in 1..=input.len() {
-            let query = &input[..i];
-            let _ = search_exercises(&exercises, query);
+        let mut query = String::new();
+        for c in input.chars() {
+            query.push(c);
+            let _ = search_exercises(&exercises, &query);
         }
     }
 
