@@ -138,16 +138,23 @@ pub fn SessionView() -> Element {
             vec![]
         } else {
             let mut results: Vec<(String, String, Category)> = Vec::new();
+            let mut seen_ids = std::collections::HashSet::new();
 
-            let all = all_exercises.read();
-            let db_results = exercise_db::search_exercises(&all, &query);
-            for ex in db_results.iter().take(10) {
-                results.push((ex.id.clone(), ex.name.clone(), ex.category));
-            }
-
+            // Add custom exercises first (they have priority over DB exercises)
             let custom = custom_exercises.read();
             for ex in custom.iter() {
                 if ex.name.to_lowercase().contains(&query.to_lowercase()) {
+                    if seen_ids.insert(ex.id.clone()) {
+                        results.push((ex.id.clone(), ex.name.clone(), ex.category));
+                    }
+                }
+            }
+
+            // Add DB exercises, skipping any IDs already added from custom exercises
+            let all = all_exercises.read();
+            let db_results = exercise_db::search_exercises(&all, &query);
+            for ex in db_results.iter().take(10) {
+                if seen_ids.insert(ex.id.clone()) {
                     results.push((ex.id.clone(), ex.name.clone(), ex.category));
                 }
             }
