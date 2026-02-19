@@ -327,4 +327,336 @@ mod tests {
         assert_eq!(results.len(), 1);
         assert_eq!(results[0].id, "pull_up");
     }
+
+    // ─── Tests ensuring search never panics for any input ───────────────────
+
+    /// Simulate the exact user scenario that caused the crash: typing characters
+    /// one by one into the search field. Each progressive query must succeed.
+    #[test]
+    fn search_progressive_typing_never_panics() {
+        let exercises = sample_exercises();
+        let input = "bench press";
+        for i in 1..=input.len() {
+            let query = &input[..i];
+            let _ = search_exercises(&exercises, query);
+        }
+    }
+
+    /// Progressive typing with a query that starts matching many exercises
+    /// and then narrows down – the transition that originally crashed.
+    #[test]
+    fn search_progressive_typing_narrowing_results() {
+        let exercises = sample_exercises();
+        let queries = ["b", "be", "ben", "benc", "bench"];
+        let mut prev_count = usize::MAX;
+        for query in &queries {
+            let results = search_exercises(&exercises, query);
+            // Results should never increase as the query gets more specific
+            assert!(
+                results.len() <= prev_count || prev_count == usize::MAX,
+                "Results increased from {} to {} for query '{}'",
+                prev_count,
+                results.len(),
+                query
+            );
+            prev_count = results.len();
+        }
+    }
+
+    /// Progressive typing starting with a single character that matches everything.
+    #[test]
+    fn search_progressive_typing_single_char_start() {
+        let exercises = sample_exercises();
+        // 's' matches many fields: "strength", "chest", "lats", etc.
+        let r1 = search_exercises(&exercises, "s");
+        assert!(!r1.is_empty());
+        // Adding a second character must not crash
+        let r2 = search_exercises(&exercises, "st");
+        assert!(r2.len() <= r1.len());
+        let r3 = search_exercises(&exercises, "str");
+        assert!(r3.len() <= r2.len());
+    }
+
+    #[test]
+    fn search_empty_exercise_list() {
+        let exercises: Vec<Exercise> = vec![];
+        let results = search_exercises(&exercises, "anything");
+        assert!(results.is_empty());
+    }
+
+    #[test]
+    fn search_empty_exercise_list_empty_query() {
+        let exercises: Vec<Exercise> = vec![];
+        let results = search_exercises(&exercises, "");
+        assert!(results.is_empty());
+    }
+
+    #[test]
+    fn search_whitespace_only_query() {
+        let exercises = sample_exercises();
+        let results = search_exercises(&exercises, "   ");
+        // Whitespace-only queries should not crash
+        assert!(results.is_empty() || !results.is_empty());
+    }
+
+    #[test]
+    fn search_with_tab_and_newline() {
+        let exercises = sample_exercises();
+        let _ = search_exercises(&exercises, "\t");
+        let _ = search_exercises(&exercises, "\n");
+        let _ = search_exercises(&exercises, "\r\n");
+        let _ = search_exercises(&exercises, " \t\n ");
+    }
+
+    #[test]
+    fn search_unicode_accented_characters() {
+        let exercises = sample_exercises();
+        let _ = search_exercises(&exercises, "café");
+        let _ = search_exercises(&exercises, "über");
+        let _ = search_exercises(&exercises, "naïve");
+        let _ = search_exercises(&exercises, "résumé");
+    }
+
+    #[test]
+    fn search_unicode_emoji() {
+        let exercises = sample_exercises();
+        let _ = search_exercises(&exercises, "💪");
+        let _ = search_exercises(&exercises, "🏋️");
+        let _ = search_exercises(&exercises, "🏃‍♂️");
+    }
+
+    #[test]
+    fn search_unicode_cjk_characters() {
+        let exercises = sample_exercises();
+        let _ = search_exercises(&exercises, "腕立て伏せ");
+        let _ = search_exercises(&exercises, "运动");
+        let _ = search_exercises(&exercises, "한국어");
+    }
+
+    #[test]
+    fn search_unicode_mixed_scripts() {
+        let exercises = sample_exercises();
+        let _ = search_exercises(&exercises, "bench💪press");
+        let _ = search_exercises(&exercises, "αβγ");
+        let _ = search_exercises(&exercises, "Ωmega");
+    }
+
+    #[test]
+    fn search_special_characters() {
+        let exercises = sample_exercises();
+        let special = [
+            "!", "@", "#", "$", "%", "^", "&", "*", "(", ")", "-", "+", "=", "[", "]", "{", "}",
+            "|", "\\", "/", ":", ";", "'", "\"", "<", ">", ",", ".", "?", "`", "~",
+        ];
+        for s in &special {
+            let _ = search_exercises(&exercises, s);
+        }
+    }
+
+    #[test]
+    fn search_regex_like_patterns() {
+        let exercises = sample_exercises();
+        let _ = search_exercises(&exercises, ".*");
+        let _ = search_exercises(&exercises, "bench|pull");
+        let _ = search_exercises(&exercises, "[a-z]+");
+        let _ = search_exercises(&exercises, "^bench$");
+        let _ = search_exercises(&exercises, "(?i)bench");
+    }
+
+    #[test]
+    fn search_very_long_query() {
+        let exercises = sample_exercises();
+        let long_query = "a".repeat(10_000);
+        let results = search_exercises(&exercises, &long_query);
+        assert!(results.is_empty());
+    }
+
+    #[test]
+    fn search_null_byte_in_query() {
+        let exercises = sample_exercises();
+        let _ = search_exercises(&exercises, "bench\0press");
+        let _ = search_exercises(&exercises, "\0");
+    }
+
+    #[test]
+    fn search_exercise_with_all_none_optional_fields() {
+        let exercises = vec![Exercise {
+            id: "minimal".into(),
+            name: "Minimal Exercise".into(),
+            force: None,
+            level: None,
+            mechanic: None,
+            equipment: None,
+            primary_muscles: vec![],
+            secondary_muscles: vec![],
+            instructions: vec![],
+            category: Category::Strength,
+            images: vec![],
+        }];
+        // Must not crash even when all optional fields are None and lists are empty
+        let results = search_exercises(&exercises, "m");
+        assert!(!results.is_empty()); // matches "Minimal" name
+        let results = search_exercises(&exercises, "pull");
+        assert!(results.is_empty()); // no match for force=None
+        let results = search_exercises(&exercises, "barbell");
+        assert!(results.is_empty()); // no match for equipment=None
+        let results = search_exercises(&exercises, "beginner");
+        assert!(results.is_empty()); // no match for level=None
+    }
+
+    /// Rapidly alternating between short queries simulates fast typing/backspace.
+    #[test]
+    fn search_rapid_query_changes() {
+        let exercises = sample_exercises();
+        let queries = [
+            "b", "be", "ben", "be", "b", "", "p", "pu", "pul", "pull", "pul", "pu", "p", "",
+        ];
+        for query in &queries {
+            let _ = search_exercises(&exercises, query);
+        }
+    }
+
+    /// Simulates typing then clearing then typing again.
+    #[test]
+    fn search_type_clear_retype() {
+        let exercises = sample_exercises();
+        for _ in 0..3 {
+            let _ = search_exercises(&exercises, "b");
+            let _ = search_exercises(&exercises, "be");
+            let _ = search_exercises(&exercises, "ben");
+            let _ = search_exercises(&exercises, "");
+        }
+    }
+
+    /// Every single printable ASCII character must not crash the search.
+    #[test]
+    fn search_every_ascii_char() {
+        let exercises = sample_exercises();
+        for c in (0x20u8..=0x7E).map(|b| b as char) {
+            let query = String::from(c);
+            let _ = search_exercises(&exercises, &query);
+        }
+    }
+
+    /// Two-character combinations of common letters must not crash.
+    #[test]
+    fn search_two_char_combinations() {
+        let exercises = sample_exercises();
+        let chars = ['a', 'b', 'c', 'e', 'l', 'p', 'r', 's', 't', 'u'];
+        for &a in &chars {
+            for &b in &chars {
+                let query = format!("{}{}", a, b);
+                let _ = search_exercises(&exercises, &query);
+            }
+        }
+    }
+
+    /// Ensure search results are always a subset: adding characters never adds
+    /// exercises that weren't in the broader result set.
+    #[test]
+    fn search_results_monotonically_narrow() {
+        let exercises = sample_exercises();
+        let broad = search_exercises(&exercises, "b");
+        let narrow = search_exercises(&exercises, "be");
+        for ex in &narrow {
+            assert!(
+                broad.iter().any(|b| b.id == ex.id),
+                "Exercise '{}' in narrow results but not in broad results",
+                ex.id
+            );
+        }
+    }
+
+    #[test]
+    fn search_with_leading_trailing_spaces() {
+        let exercises = sample_exercises();
+        let _ = search_exercises(&exercises, " bench ");
+        let _ = search_exercises(&exercises, "  ");
+        let _ = search_exercises(&exercises, " b");
+    }
+
+    #[test]
+    fn search_hyphenated_name() {
+        let exercises = sample_exercises();
+        // "Pull-Up" contains a hyphen
+        let results = search_exercises(&exercises, "pull-up");
+        assert_eq!(results.len(), 1);
+        assert_eq!(results[0].id, "pull_up");
+        // Partial with hyphen must not crash
+        let _ = search_exercises(&exercises, "pull-");
+        let _ = search_exercises(&exercises, "-up");
+        let _ = search_exercises(&exercises, "-");
+    }
+
+    /// Stress test: large exercise list with progressive typing.
+    #[test]
+    fn search_large_list_progressive_typing() {
+        let mut exercises = Vec::new();
+        for i in 0..500 {
+            exercises.push(Exercise {
+                id: format!("exercise_{}", i),
+                name: format!("Exercise Number {}", i),
+                force: if i % 3 == 0 {
+                    Some(Force::Push)
+                } else if i % 3 == 1 {
+                    Some(Force::Pull)
+                } else {
+                    None
+                },
+                level: if i % 2 == 0 {
+                    Some(Level::Beginner)
+                } else {
+                    Some(Level::Expert)
+                },
+                mechanic: None,
+                equipment: if i % 4 == 0 {
+                    Some(Equipment::Barbell)
+                } else {
+                    None
+                },
+                primary_muscles: vec![Muscle::Chest],
+                secondary_muscles: vec![],
+                instructions: vec![],
+                category: if i % 5 == 0 {
+                    Category::Cardio
+                } else {
+                    Category::Strength
+                },
+                images: vec![],
+            });
+        }
+
+        // Progressive typing on a large list must not crash
+        let input = "exercise number 42";
+        for i in 1..=input.len() {
+            let query = &input[..i];
+            let _ = search_exercises(&exercises, query);
+        }
+    }
+
+    #[test]
+    fn get_exercise_by_id_empty_list() {
+        let exercises: Vec<Exercise> = vec![];
+        assert!(get_exercise_by_id(&exercises, "anything").is_none());
+    }
+
+    #[test]
+    fn get_exercise_by_id_empty_id() {
+        let exercises = sample_exercises();
+        assert!(get_exercise_by_id(&exercises, "").is_none());
+    }
+
+    #[test]
+    fn get_equipment_types_empty_list() {
+        let exercises: Vec<Exercise> = vec![];
+        let equipment = get_equipment_types(&exercises);
+        assert!(equipment.is_empty());
+    }
+
+    #[test]
+    fn get_muscle_groups_empty_list() {
+        let exercises: Vec<Exercise> = vec![];
+        let muscles = get_muscle_groups(&exercises);
+        assert!(muscles.is_empty());
+    }
 }
