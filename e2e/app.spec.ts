@@ -128,5 +128,45 @@ test.describe("Active session view", () => {
     await page.click(".fab");
     await expect(page.locator(".bottom-nav")).toBeVisible();
   });
+
+  test("empty session shows Cancel Session button", async ({ page }) => {
+    await page.goto(`${BASE}/`);
+    await page.click(".fab");
+    await expect(
+      page.locator("button", { hasText: "Cancel Session" })
+    ).toBeVisible();
+  });
+
+  test("cancelling an empty session returns to home screen", async ({
+    page,
+  }) => {
+    await page.goto(`${BASE}/`);
+    await page.click(".fab");
+    await page.click("button:has-text('Cancel Session')");
+    await expect(page.locator(".app-title")).toHaveText("💪 LogOut");
+  });
+});
+
+test.describe("PWA assets", () => {
+  test("manifest.json is accessible and valid JSON", async ({ request }) => {
+    const response = await request.get(`${BASE}/manifest.json`);
+    expect(response.ok()).toBeTruthy();
+    const body = await response.json();
+    expect(body.name).toBeTruthy();
+    expect(body.icons).toBeInstanceOf(Array);
+  });
+
+  test("service worker script sw.js is accessible", async ({ request }) => {
+    const response = await request.get(`${BASE}/sw.js`);
+    expect(response.ok()).toBeTruthy();
+    const contentType = response.headers()["content-type"];
+    expect(contentType).toContain("javascript");
+  });
+
+  test("manifest link is present in page HTML", async ({ page }) => {
+    await page.goto(`${BASE}/`);
+    const manifestLink = page.locator('link[rel="manifest"]');
+    await expect(manifestLink).toHaveAttribute("href", "./manifest.json");
+  });
 });
 

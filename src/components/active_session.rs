@@ -126,6 +126,9 @@ pub fn SessionView() -> Element {
 
     let custom_exercises = storage::use_custom_exercises();
     let all_exercises = exercise_db::use_exercises();
+
+    // Reactive snapshot of pending exercise IDs – avoids multiple session.read() calls in the template
+    let pending_ids = use_memo(move || session.read().pending_exercise_ids.clone());
     
     let search_results = use_memo(move || {
         let query = search_query.read();
@@ -358,10 +361,10 @@ pub fn SessionView() -> Element {
                 class: "session-main",
                 
                 // Pending exercises (pre-added from a previous session)
-                if current_exercise_id.read().is_none() && !session.read().pending_exercise_ids.is_empty() {
+                if current_exercise_id.read().is_none() && !pending_ids().is_empty() {
                     section { class: "pending-exercises",
                         h3 { "Pre-added Exercises" }
-                        for exercise_id in session.read().pending_exercise_ids.clone() {
+                        for exercise_id in pending_ids() {
                             {
                                 let (name, category) = {
                                     let all = all_exercises.read();
