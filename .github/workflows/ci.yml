@@ -1,10 +1,5 @@
 name: CI
 
-# Runs on every pull request.
-# GitHub automatically pauses workflow runs from first-time contributors on
-# public repositories until a maintainer approves them — satisfying the
-# "require confirmation for first-time contributors" requirement with no
-# extra configuration needed.
 on:
   pull_request:
 
@@ -13,7 +8,6 @@ permissions:
   pull-requests: write
 
 jobs:
-  # ── 1. Formatting ────────────────────────────────────────────────────────────
   format:
     name: Check Formatting (cargo fmt)
     runs-on: ubuntu-latest
@@ -29,7 +23,6 @@ jobs:
       - name: Check formatting
         run: cargo fmt --check
 
-  # ── 2. Linting ───────────────────────────────────────────────────────────────
   clippy:
     name: Lint (cargo clippy)
     runs-on: ubuntu-latest
@@ -45,7 +38,6 @@ jobs:
       - name: Run Clippy (deny warnings)
         run: cargo clippy -- -D warnings
 
-  # ── 3. Unit tests + coverage comment ─────────────────────────────────────────
   unit-tests:
     name: Unit Tests & Coverage
     runs-on: ubuntu-latest
@@ -124,15 +116,39 @@ jobs:
 
       - name: Post unit-test coverage comment
         uses: actions/github-script@v7
+        env:
+          TEST_OUTPUT: ${{ steps.tests.outputs.test_output }}
+          SUMMARY: ${{ steps.cov.outputs.summary }}
+          GATE_REPORT: ${{ steps.gate.outputs.gate_report }}
+          GATE_FAILED: ${{ steps.gate.outputs.gate_failed }}
         with:
           script: |
-            const testOutput = `${{ steps.tests.outputs.test_output }}`;
-            const summary = `${{ steps.cov.outputs.summary }}`;
-            const gateReport = `${{ steps.gate.outputs.gate_report }}`;
-            const gateFailed = '${{ steps.gate.outputs.gate_failed }}' === '1';
-            const gateStatus = gateFailed ? '❌ **FAILED** — tested files must have ≥ 90% coverage' : '✅ **PASSED** — all tested files have ≥ 90% coverage';
-            const tag = '<!-- unit-test-coverage -->';
-            const body = `${tag}\n## 🧪 Unit Tests & Coverage\n\n### Test Results\n\`\`\`\n${testOutput}\n\`\`\`\n\n### Coverage Summary\n\`\`\`\n${summary}\n\`\`\`\n\n### Coverage Gate ${gateStatus}\n| File | Lines Hit/Total | Coverage | Status |\n|------|----------------|----------|--------|\n${gateReport}`;
+            // Access variables via process.env
+            const testOutput = process.env.TEST_OUTPUT;
+            const summary = process.env.SUMMARY;
+            const gateReport = process.env.GATE_REPORT;
+            const gateFailed = process.env.GATE_FAILED === '1';
+            const gateStatus = gateFailed 
+              ? '❌ **FAILED** — tested files must have ≥ 90% coverage' 
+              : '✅ **PASSED** — all tested files have ≥ 90% coverage';
+            const tag = '';
+            const body = `${tag}
+            ## 🧪 Unit Tests & Coverage
+
+            ### Test Results
+            \`\`\`
+            ${testOutput}
+            \`\`\`
+
+            ### Coverage Summary
+            \`\`\`
+            ${summary}
+            \`\`\`
+
+            ### Coverage Gate ${gateStatus}
+            | File | Lines Hit/Total | Coverage | Status |
+            |------|----------------|----------|--------|
+            ${gateReport}`;
             const { data: comments } = await github.rest.issues.listComments({
               owner: context.repo.owner,
               repo: context.repo.repo,
@@ -168,7 +184,6 @@ jobs:
           echo "::error::Coverage gate failed: one or more tested files have less than 90% line coverage."
           exit 1
 
-  # ── 4. E2E tests + screenshots on failure ────────────────────────────────────
   e2e:
     name: E2E Tests
     runs-on: ubuntu-latest
@@ -271,7 +286,6 @@ jobs:
         if: steps.e2e.outcome == 'failure'
         run: exit 1
 
-  # ── 5. PageSpeed Insights (Lighthouse) ───────────────────────────────────────
   lighthouse:
     name: PageSpeed Insights (Lighthouse)
     runs-on: ubuntu-latest
@@ -392,10 +406,6 @@ jobs:
               });
             }
 
-  # ── 6. PR Preview Build ────────────────────────────────────────────────────
-  # Builds the PR branch and uploads it as a downloadable artifact.
-  # Note: Deploying to a pages subdirectory is not possible without
-  # `contents: write` — GitHub Pages deploy-pages replaces the entire site.
   preview:
     name: PR Preview Build
     runs-on: ubuntu-latest
