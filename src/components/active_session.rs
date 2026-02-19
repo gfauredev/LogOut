@@ -800,7 +800,7 @@ pub fn SessionView() -> Element {
 #[cfg(target_arch = "wasm32")]
 fn send_notification(title: &str, body: &str) {
     let js_code = format!(
-        "try{{if(window.Notification&&Notification.permission==='granted'){{new Notification({:?},{{'body':{:?}}})}}else if(window.Notification&&Notification.permission!=='denied'){{Notification.requestPermission().then(function(p){{if(p==='granted'){{new Notification({:?},{{'body':{:?}}})}}}})}}}catch(e){{}}",
+        "try{{if(window.Notification&&Notification.permission==='granted'){{new Notification({:?},{{'body':{:?}}})}}else if(window.Notification&&Notification.permission!=='denied'){{Notification.requestPermission().then(function(p){{if(p==='granted'){{new Notification({:?},{{'body':{:?}}})}}}})}}}}catch(e){{}}",
         title, body, title, body
     );
     let _ = js_sys::eval(&js_code);

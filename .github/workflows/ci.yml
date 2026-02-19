@@ -9,7 +9,7 @@ on:
   pull_request:
 
 permissions:
-  contents: read
+  contents: write
   pull-requests: write
 
 jobs:
@@ -66,10 +66,7 @@ jobs:
       - name: Check coverage threshold (>90%) for files with unit tests
         run: |
           cargo llvm-cov report \
-            --include-pattern 'src/models/mod.rs' \
-            --include-pattern 'src/utils.rs' \
-            --include-pattern 'src/services/service_worker.rs' \
-            --include-pattern 'src/services/exercise_db.rs' \
+            --ignore-filename-regex 'components|services/storage\.rs|main\.rs' \
             --fail-under-lines 90
 
       - name: Generate coverage summary
@@ -311,3 +308,40 @@ jobs:
                 body,
               });
             }
+
+  # ── 6. PR Preview ────────────────────────────────────────────────────────────
+  preview:
+    name: Deploy PR Preview
+    runs-on: ubuntu-latest
+    needs: [format, clippy, unit-tests, e2e]
+    concurrency:
+      group: pr-preview-${{ github.event.pull_request.number }}
+      cancel-in-progress: true
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          target: wasm32-unknown-unknown
+
+      - uses: swatinem/rust-cache@v2
+
+      - name: Install Dioxus CLI
+        uses: taiki-e/install-action@v2
+        with:
+          tool: dioxus-cli
+
+      - name: Build for PR preview
+        env:
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          dx build --release --platform web \
+            --base-path "LogOut/pr-preview/pr-${PR_NUMBER}"
+
+      - name: Deploy PR preview
+        uses: rossjrw/pr-preview-action@v1
+        with:
+          source-dir: ./target/dx/log-workout/release/web/public
+          preview-branch: gh-pages
+          umbrella-dir: pr-preview
+          action: auto
