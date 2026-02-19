@@ -34,7 +34,7 @@ jobs:
           tool: dioxus-cli
 
       - name: Build
-        run: dx build --release --platform web --basepath /LogOut
+        run: dx build --release --platform web --base-path /LogOut
 
       - name: Debug Output Content
         run: ls -R target/dx
