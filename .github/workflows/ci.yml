@@ -107,9 +107,9 @@ jobs:
           path: lcov.info
           retention-days: 7
 
-  # ── 4. E2E tests + coverage + screenshots ────────────────────────────────────
+  # ── 4. E2E tests + screenshots on failure ────────────────────────────────────
   e2e:
-    name: E2E Tests & Coverage
+    name: E2E Tests
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -140,60 +140,6 @@ jobs:
         run: npx playwright test
         continue-on-error: true
 
-      - name: Parse E2E results
-        id: results
-        run: |
-          if [ -f playwright-report/results.json ]; then
-            PASSED=$(jq '.stats.expected'   playwright-report/results.json)
-            FAILED=$(jq '.stats.unexpected' playwright-report/results.json)
-            SKIPPED=$(jq '.stats.skipped'   playwright-report/results.json)
-            TOTAL=$(( PASSED + FAILED ))
-            RATE=$(( TOTAL > 0 ? PASSED * 100 / TOTAL : 0 ))
-          else
-            PASSED=0; FAILED=0; SKIPPED=0; TOTAL=0; RATE=0
-          fi
-          echo "passed=$PASSED"   >> "$GITHUB_OUTPUT"
-          echo "failed=$FAILED"   >> "$GITHUB_OUTPUT"
-          echo "skipped=$SKIPPED" >> "$GITHUB_OUTPUT"
-          echo "total=$TOTAL"     >> "$GITHUB_OUTPUT"
-          echo "rate=$RATE"       >> "$GITHUB_OUTPUT"
-
-      - name: Post E2E results comment
-        if: always()
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const passed  = ${{ steps.results.outputs.passed  || 0 }};
-            const failed  = ${{ steps.results.outputs.failed  || 0 }};
-            const skipped = ${{ steps.results.outputs.skipped || 0 }};
-            const total   = ${{ steps.results.outputs.total   || 0 }};
-            const rate    = ${{ steps.results.outputs.rate    || 0 }};
-            const icon      = failed === 0 ? '✅' : '❌';
-            const rateIcon  = rate >= 80    ? '🟢' : '🔴';
-            const tag = '<!-- e2e-test-coverage -->';
-            const body = `${tag}\n## ${icon} E2E Test Results\n| | Count |\n|---|---|\n| ✅ Passed | ${passed} |\n| ❌ Failed | ${failed} |\n| ⏭️ Skipped | ${skipped} |\n| 📊 Pass rate | ${rateIcon} **${rate}%** |`;
-            const { data: comments } = await github.rest.issues.listComments({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number: context.issue.number,
-            });
-            const existing = comments.find(c => c.body.includes(tag));
-            if (existing) {
-              await github.rest.issues.updateComment({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                comment_id: existing.id,
-                body,
-              });
-            } else {
-              await github.rest.issues.createComment({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                issue_number: context.issue.number,
-                body,
-              });
-            }
-
       - name: Upload screenshots on failure
         if: steps.e2e.outcome == 'failure'
         uses: actions/upload-artifact@v4
@@ -209,7 +155,7 @@ jobs:
           script: |
             const runUrl = `https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
             const tag = '<!-- e2e-screenshots -->';
-            const body = `${tag}\n## 📸 E2E Failure Screenshots\nScreenshots of failing tests were captured and uploaded as workflow artifacts.\n👉 [View screenshots](${runUrl})`;
+            const body = `${tag}\n## 📸 E2E Test Failures\nSome E2E tests failed. Screenshots have been uploaded as workflow artifacts.\n👉 [View failure screenshots](${runUrl})`;
             const { data: comments } = await github.rest.issues.listComments({
               owner: context.repo.owner,
               repo: context.repo.repo,
@@ -232,15 +178,7 @@ jobs:
               });
             }
 
-      - name: Enforce ≥ 80% E2E pass-rate threshold
-        run: |
-          RATE=${{ steps.results.outputs.rate || 0 }}
-          if [ "$RATE" -lt 80 ]; then
-            echo "E2E pass rate ${RATE}% is below the required 80% threshold."
-            exit 1
-          fi
-
-      - name: Fail if E2E tests failed
+      - name: Fail if any E2E test failed
         if: steps.e2e.outcome == 'failure'
         run: exit 1
 

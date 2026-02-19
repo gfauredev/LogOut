@@ -303,11 +303,6 @@ pub fn SessionView() -> Element {
     };
 
     let exercise_count = session.read().exercise_logs.len();
-    let finish_label = if exercise_count == 0 {
-        "Cancel Session"
-    } else {
-        "Finish Session"
-    };
 
     rsx! {
         section {
@@ -329,10 +324,19 @@ pub fn SessionView() -> Element {
                         "{format_time(session_duration)}"
                     }
                 }
-                button {
-                    onclick: finish_session,
-                    class: if exercise_count == 0 { "btn--cancel-session" } else { "btn--finish" },
-                    "{finish_label}"
+                div { class: "session-header__actions",
+                    if exercise_count == 0 {
+                        button {
+                            onclick: finish_session,
+                            class: "btn--cancel-session",
+                            "Cancel Session"
+                        }
+                    }
+                    button {
+                        onclick: finish_session,
+                        class: "btn--finish",
+                        "Finish Session"
+                    }
                 }
             }
 
