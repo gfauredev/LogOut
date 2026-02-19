@@ -8,7 +8,6 @@ publisher = "gfaure"
 
 [web.app]
 title = "LogOut - Workout Logger"
-base_path = "LogOut"
 
 [web.watcher]
 reload_html = true

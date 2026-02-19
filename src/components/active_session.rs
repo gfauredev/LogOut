@@ -349,7 +349,7 @@ pub fn SessionView() -> Element {
             }
 
             // Main content area
-            main {
+            section {
                 class: "session-main",
 
                 // Pending exercises (pre-added from a previous session)
@@ -485,13 +485,15 @@ pub fn SessionView() -> Element {
                                 let timer_reached = last_duration.is_some_and(|d| d > 0 && exercise_elapsed >= d);
 
                                 rsx! {
+                                    header { class: "exercise-form__header",
+                                    h3 { class: "exercise-form__title", "{exercise_name}" }
                                     if let Some(dur) = last_duration {
-                                        div {
+                                        span {
                                             class: "exercise-form__last-duration",
-                                            "Last: {format_time(dur)}"
+                                            "Last duration: {format_time(dur)}"
                                         }
                                     }
-                                    h3 { class: "exercise-form__title", "{exercise_name}" }
+                                    }
 
                                     if show_static_timer {
                                         div {
