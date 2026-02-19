@@ -6,7 +6,8 @@ mod services;
 pub mod utils;
 
 use components::{
-    AddCustomExercisePage, AnalyticsPage, EditCustomExercisePage, ExerciseListPage, HomePage,
+    AddCustomExercisePage, AnalyticsPage, CreditsPage, EditCustomExercisePage, ExerciseListPage,
+    HomePage,
 };
 
 #[derive(Clone, Routable, Debug, PartialEq)]
@@ -19,6 +20,8 @@ enum Route {
     ExerciseListPage {},
     #[route("/analytics")]
     AnalyticsPage {},
+    #[route("/credits")]
+    CreditsPage {},
     #[route("/add-exercise")]
     AddCustomExercisePage {},
     #[route("/edit-exercise/:id")]
