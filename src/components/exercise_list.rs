@@ -16,24 +16,29 @@ pub fn ExerciseListPage() -> Element {
         let query_lower = query.to_lowercase();
 
         let mut results = Vec::new();
+        let mut seen_ids = std::collections::HashSet::new();
 
-        // Add user-created exercises first
+        // Add user-created exercises first (they have priority)
         for ex in custom.iter() {
             let matches = query_lower.is_empty() || ex.name.to_lowercase().contains(&query_lower);
-            if matches {
+            if matches && seen_ids.insert(ex.id.clone()) {
                 results.push(ex.clone());
             }
         }
 
-        // Add DB exercises
+        // Add DB exercises, skipping duplicates
         if query_lower.is_empty() {
-            results.extend(all.iter().take(50).cloned());
+            for ex in all.iter().take(50) {
+                if seen_ids.insert(ex.id.clone()) {
+                    results.push(ex.clone());
+                }
+            }
         } else {
-            results.extend(
-                exercise_db::search_exercises(&all, &query)
-                    .into_iter()
-                    .take(50),
-            );
+            for ex in exercise_db::search_exercises(&all, &query).into_iter().take(50) {
+                if seen_ids.insert(ex.id.clone()) {
+                    results.push(ex);
+                }
+            }
         }
 
         results
