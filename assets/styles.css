@@ -2,31 +2,29 @@
 .container {
   padding: 20px;
   font-family: system-ui, -apple-system, sans-serif;
-  max-width: 500px;
   margin: 0 auto;
   color: #e0e0e0;
 }
 
 .container--narrow {
-  max-width: 500px;
   margin: 0 auto;
 }
 
 .container--form {
-  max-width: 500px;
   margin: 0 auto;
 }
 
-/* ===== App Layout (bottom-nav pages) ===== */
-.app-container {
-  font-family: system-ui, -apple-system, sans-serif;
+/* ===== General Layout ===== */
+div#main {
   display: flex;
   flex-direction: column;
-  min-height: 100vh;
-  position: relative;
-  max-width: 500px;
+  min-height: 100vh;  
+  max-width: 550px;
   margin: 0 auto;
-  color: #e0e0e0;
+}
+
+main {
+  flex: 1;
 }
 
 /* ===== Page Layout (exercise, analytics pages) ===== */
@@ -35,7 +33,6 @@
   min-height: 100vh;
   display: flex;
   flex-direction: column;
-  max-width: 500px;
   margin: 0 auto;
   color: #e0e0e0;
 }
@@ -84,7 +81,7 @@
 .session-card {
   padding: 16px;
   border: 1px solid #333;
-  border-radius: 12px;
+  border-radius: .8em;
   background: #111;
   box-shadow: 0 2px 6px rgba(0,0,0,0.3);
 }
@@ -110,7 +107,7 @@
   cursor: pointer;
   font-size: 1.1em;
   padding: 4px 8px;
-  border-radius: 4px;
+  border-radius: .8em;
   opacity: 0.6;
   transition: opacity 0.2s;
 }
@@ -131,7 +128,7 @@
   cursor: pointer;
   font-size: 1.1em;
   padding: 4px 8px;
-  border-radius: 4px;
+  border-radius: .8em;
   opacity: 0.6;
   transition: opacity 0.2s;
 }
@@ -162,7 +159,7 @@
   padding: 3px 10px;
   background: #1a1a2e;
   color: #667eea;
-  border-radius: 12px;
+  border-radius: .8em;
   font-size: 0.85em;
 }
 
@@ -170,7 +167,7 @@
   padding: 3px 10px;
   background: #222;
   color: #777;
-  border-radius: 12px;
+  border-radius: .8em;
   font-size: 0.85em;
 }
 
@@ -191,7 +188,7 @@
 .delete-modal {
   background: #1a1a1a;
   border: 1px solid #333;
-  border-radius: 12px;
+  border-radius: .8em;
   padding: 24px;
   text-align: center;
   min-width: 260px;
@@ -214,39 +211,33 @@
   background: #e74c3c;
   color: white;
   border: none;
-  border-radius: 8px;
+  border-radius: .8em;
   font-weight: bold;
   cursor: pointer;
 }
 
-/* ===== FAB (+ Start Session button) ===== */
-.fab {
-  position: fixed;
-  bottom: 76px;
-  right: 20px;
+/* ===== Start Session ===== */
+.new-session-button {
+  display: block;
   width: 56px;
   height: 56px;
-  border-radius: 50%;
+  border-radius: .8em;
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   color: white;
   font-size: 2em;
   border: none;
   cursor: pointer;
   box-shadow: 0 4px 12px rgba(102, 126, 234, 0.5);
-  display: flex;
-  align-items: center;
-  justify-content: center;
   z-index: 500;
-  line-height: 1;
+  margin: 16px auto;
 }
 
 /* ===== Bottom Navigation ===== */
 .bottom-nav {
-  position: fixed;
+  position: sticky;
   bottom: 0;
-  left: 0;
-  right: 0;
-  height: 60px;
+  margin: auto 0 0 0;
+  height: max-contents;
   background: #111;
   border-top: 1px solid #333;
   display: flex;
@@ -257,19 +248,12 @@
 }
 
 .bottom-nav__tab {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  flex: 1;
-  padding: 6px 0;
+  padding: 16px;
   text-decoration: none;
-  color: #666;
-  transition: color 0.2s;
 }
 
 .bottom-nav__tab--active {
-  color: #667eea;
+  transform: scale(1.25);
 }
 
 .bottom-nav__icon {
@@ -293,7 +277,7 @@
   padding: 12px;
   font-size: 16px;
   border: 2px solid #333;
-  border-radius: 8px;
+  border-radius: .8em;
   box-sizing: border-box;
   background: #111;
   color: #e0e0e0;
@@ -309,7 +293,7 @@
 .exercise-card {
   padding: 15px;
   border: 1px solid #333;
-  border-radius: 8px;
+  border-radius: .8em;
   background: #111;
   box-shadow: 0 2px 4px rgba(0,0,0,0.2);
 }
@@ -330,7 +314,7 @@
   padding: 2px 10px;
   background: #764ba2;
   color: white;
-  border-radius: 4px;
+  border-radius: .8em;
   font-size: 0.75em;
   font-weight: bold;
   text-transform: uppercase;
@@ -338,11 +322,12 @@
 }
 
 .exercise-card__image {
-  width: 100%;
-  max-width: 300px;
-  height: auto;
-  border-radius: 8px;
-  margin-bottom: 10px;
+  display: block;
+  width: auto;
+  max-width: 100%;
+  max-height: 20vh;
+  border-radius: .8em;
+  margin: 0 auto 10px auto;
   cursor: pointer;
 }
 
@@ -356,7 +341,7 @@
 .tag {
   padding: 3px 8px;
   color: white;
-  border-radius: 12px;
+  border-radius: .8em;
   font-size: 0.8em;
 }
 
@@ -384,7 +369,7 @@
 .search-results {
   margin-top: 10px;
   border: 1px solid #333;
-  border-radius: 8px;
+  border-radius: .8em;
   background: #111;
   max-height: 200px;
   overflow-y: auto;
@@ -439,7 +424,7 @@
   width: 100%;
   padding: 10px;
   border: 1px solid #333;
-  border-radius: 6px;
+  border-radius: .8em;
   font-size: 16px;
   box-sizing: border-box;
   background: #111;
@@ -450,7 +435,7 @@
   width: 100%;
   padding: 10px;
   border: 1px solid #333;
-  border-radius: 6px;
+  border-radius: .8em;
   font-size: 16px;
   box-sizing: border-box;
   background: #111;
@@ -468,7 +453,7 @@
 .input-small {
   padding: 8px;
   border: 1px solid #333;
-  border-radius: 4px;
+  border-radius: .8em;
   width: 80px;
   background: #111;
   color: #e0e0e0;
@@ -477,7 +462,7 @@
 .input-medium {
   padding: 8px;
   border: 1px solid #333;
-  border-radius: 4px;
+  border-radius: .8em;
   width: 100px;
   background: #111;
   color: #e0e0e0;
@@ -486,7 +471,7 @@
 /* ===== Buttons ===== */
 .btn {
   border: none;
-  border-radius: 8px;
+  border-radius: .8em;
   font-weight: bold;
   cursor: pointer;
 }
@@ -505,7 +490,7 @@
   background: #4facfe;
   color: white;
   border: none;
-  border-radius: 4px;
+  border-radius: .8em;
   font-weight: bold;
   cursor: pointer;
 }
@@ -515,7 +500,7 @@
   background: #4facfe;
   color: white;
   border: none;
-  border-radius: 6px;
+  border-radius: .8em;
   font-weight: bold;
   cursor: pointer;
 }
@@ -526,7 +511,7 @@
   background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
   color: white;
   border: none;
-  border-radius: 8px;
+  border-radius: .8em;
   font-size: 1.1em;
   font-weight: bold;
   cursor: pointer;
@@ -537,7 +522,7 @@
   background: #333;
   color: #ccc;
   border: none;
-  border-radius: 8px;
+  border-radius: .8em;
   font-size: 1.1em;
   font-weight: bold;
   cursor: pointer;
@@ -548,7 +533,7 @@
   background: #1a1a2e;
   color: #667eea;
   border: none;
-  border-radius: 8px;
+  border-radius: .8em;
   font-size: 1.1em;
   font-weight: bold;
   cursor: pointer;
@@ -560,7 +545,7 @@
   background: #2a1a1a;
   color: #e74c3c;
   border: none;
-  border-radius: 8px;
+  border-radius: .8em;
   font-size: 1.1em;
   font-weight: bold;
   cursor: pointer;
@@ -588,7 +573,7 @@
   padding: 15px;
   margin-bottom: 15px;
   border: 1px solid #333;
-  border-radius: 8px;
+  border-radius: .8em;
   background: #111;
 }
 
@@ -604,7 +589,6 @@
   flex-direction: column;
   height: 100vh;
   position: relative;
-  max-width: 500px;
   margin: 0 auto;
   color: #e0e0e0;
 }
@@ -650,7 +634,6 @@
   overflow-x: hidden;
   padding: 20px;
   padding-bottom: 80px;
-  max-width: 500px;
   margin: 0 auto;
   width: 100%;
 }
@@ -658,10 +641,15 @@
 .exercise-form {
   padding: 20px;
   border: 2px solid #667eea;
-  border-radius: 12px;
+  border-radius: .8em;
   background: #0a0a1e;
   margin-bottom: 20px;
   position: relative;
+}
+
+.exercise-form__header {
+  display: flex;
+  justify-content: space-between;
 }
 
 .exercise-form__title {
@@ -670,12 +658,7 @@
 }
 
 .exercise-form__last-duration {
-  position: absolute;
-  top: 8px;
-  left: 12px;
-  font-size: 0.8em;
-  color: #667eea;
-  font-weight: 500;
+  color: #668efa;
 }
 
 .exercise-form__fields {
@@ -688,7 +671,7 @@
   padding: 15px;
   margin-bottom: 10px;
   border: 1px solid #333;
-  border-radius: 8px;
+  border-radius: .8em;
   background: #111;
 }
 
@@ -723,7 +706,7 @@
   cursor: pointer;
   font-size: 1em;
   padding: 2px 6px;
-  border-radius: 4px;
+  border-radius: .8em;
   color: #667eea;
   opacity: 0.7;
   transition: opacity 0.2s;
@@ -739,7 +722,7 @@
   cursor: pointer;
   font-size: 1em;
   padding: 2px 6px;
-  border-radius: 4px;
+  border-radius: .8em;
   opacity: 0.6;
   transition: opacity 0.2s;
 }
@@ -753,7 +736,7 @@
   margin-bottom: 20px;
   padding: 14px;
   border: 1px dashed #4a4a6a;
-  border-radius: 10px;
+  border-radius: .8em;
   background: #0a0a1a;
 }
 
@@ -789,7 +772,7 @@
   background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
   color: #1a3a1a;
   border: none;
-  border-radius: 6px;
+  border-radius: .8em;
   font-weight: bold;
   font-size: 0.9em;
   cursor: pointer;
@@ -828,7 +811,7 @@
   color: #667eea;
   text-decoration: none;
   padding: 2px 8px;
-  border-radius: 4px;
+  border-radius: .8em;
   border: 1px solid #667eea;
 }
 
@@ -847,7 +830,7 @@
   background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
   color: white;
   text-decoration: none;
-  border-radius: 8px;
+  border-radius: .8em;
   font-weight: bold;
 }
 
@@ -893,7 +876,7 @@
   background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
   color: #1a3a1a;
   padding: 14px 28px;
-  border-radius: 12px;
+  border-radius: .8em;
   font-weight: bold;
   font-size: 1.1em;
   z-index: 3000;
@@ -972,7 +955,7 @@
 .color-dot {
   width: 20px;
   height: 20px;
-  border-radius: 50%;
+  border-radius: .8em;
   flex-shrink: 0;
 }
 
@@ -1022,7 +1005,7 @@
   flex: 1;
   padding: 10px;
   border: 1px solid #333;
-  border-radius: 6px;
+  border-radius: .8em;
   font-size: 16px;
   background: #111;
   color: #e0e0e0;
@@ -1038,7 +1021,7 @@
   padding: 6px 12px;
   background: #667eea;
   color: white;
-  border-radius: 16px;
+  border-radius: .8em;
   display: flex;
   align-items: center;
   gap: 8px;
