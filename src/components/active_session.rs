@@ -9,6 +9,203 @@ use dioxus::prelude::*;
 /// Default rest duration in seconds
 const DEFAULT_REST_DURATION: u64 = 30;
 
+// ── Sub-components ────────────────────────────────────────────────────────────
+
+/// Displays the live rest countdown after an exercise is completed.
+#[component]
+fn RestTimerDisplay(rest_elapsed: Option<u64>, rest_exceeded: bool) -> Element {
+    if let Some(elapsed) = rest_elapsed {
+        rsx! {
+            div {
+                class: if rest_exceeded { "rest-timer rest-timer--exceeded" } else { "rest-timer" },
+                "🛋️ Rest: {format_time(elapsed)}"
+            }
+        }
+    } else {
+        rsx! {}
+    }
+}
+
+/// The shared weight / distance / reps input fields used in both the "add
+/// exercise" form and the "edit completed exercise" inline form.
+#[derive(Clone, PartialEq, Props)]
+struct ExerciseLogFieldsProps {
+    weight_input: Signal<String>,
+    reps_input: Signal<String>,
+    distance_input: Signal<String>,
+    show_reps: bool,
+    is_cardio: bool,
+    save_label: String,
+    on_save: EventHandler<()>,
+    on_cancel: EventHandler<()>,
+}
+
+#[component]
+fn ExerciseLogFields(props: ExerciseLogFieldsProps) -> Element {
+    let mut weight_input = props.weight_input;
+    let mut reps_input = props.reps_input;
+    let mut distance_input = props.distance_input;
+    rsx! {
+        div {
+            label { class: "form-label", "Weight (kg)" }
+            input {
+                r#type: "number",
+                step: "0.5",
+                placeholder: "Optional",
+                value: "{weight_input}",
+                oninput: move |evt| weight_input.set(evt.value()),
+                class: "form-input",
+            }
+        }
+
+        if props.is_cardio {
+            div {
+                label { class: "form-label", "Distance (km)" }
+                input {
+                    r#type: "number",
+                    step: "0.1",
+                    placeholder: "Distance",
+                    value: "{distance_input}",
+                    oninput: move |evt| distance_input.set(evt.value()),
+                    class: "form-input",
+                }
+            }
+        }
+
+        if props.show_reps {
+            div {
+                label { class: "form-label", "Repetitions" }
+                input {
+                    r#type: "number",
+                    placeholder: "Reps",
+                    value: "{reps_input}",
+                    oninput: move |evt| reps_input.set(evt.value()),
+                    class: "form-input",
+                }
+            }
+        }
+
+        div {
+            class: "btn-row",
+            button {
+                onclick: move |_| props.on_save.call(()),
+                class: "btn--complete",
+                "{props.save_label}"
+            }
+            button {
+                onclick: move |_| props.on_cancel.call(()),
+                class: "btn--cancel",
+                "Cancel"
+            }
+        }
+    }
+}
+
+/// A single completed-exercise card with optional inline edit form.
+#[derive(Clone, PartialEq, Props)]
+struct CompletedExerciseCardProps {
+    idx: usize,
+    log: ExerciseLog,
+    session: Signal<WorkoutSession>,
+    editing_log_idx: Signal<Option<usize>>,
+    edit_weight_input: Signal<String>,
+    edit_reps_input: Signal<String>,
+    edit_distance_input: Signal<String>,
+    on_save_edit: EventHandler<()>,
+}
+
+#[component]
+fn CompletedExerciseCard(props: CompletedExerciseCardProps) -> Element {
+    let idx = props.idx;
+    let log = props.log.clone();
+    let mut session = props.session;
+    let mut editing_log_idx = props.editing_log_idx;
+    let mut edit_weight_input = props.edit_weight_input;
+    let mut edit_reps_input = props.edit_reps_input;
+    let mut edit_distance_input = props.edit_distance_input;
+
+    let is_editing = *editing_log_idx.read() == Some(idx);
+    let force = log.force;
+    let show_reps = force.is_some_and(|f| f.has_reps());
+    let is_cardio = log.category == Category::Cardio;
+
+    rsx! {
+        article {
+            class: "completed-log",
+
+            div {
+                class: "completed-log__header",
+                h4 { class: "completed-log__title", "{log.exercise_name}" }
+                div { class: "completed-log__actions",
+                    button {
+                        class: "btn--edit-log",
+                        onclick: {
+                            let log = log.clone();
+                            move |_| {
+                                editing_log_idx.set(Some(idx));
+                                edit_weight_input.set(
+                                    log.weight_dg.map(|w| format!("{:.1}", w.0 as f64 / 100.0)).unwrap_or_default()
+                                );
+                                edit_reps_input.set(
+                                    log.reps.map(|r| r.to_string()).unwrap_or_default()
+                                );
+                                edit_distance_input.set(
+                                    log.distance_dam.map(|d| format!("{:.2}", d.0 as f64 / 100.0)).unwrap_or_default()
+                                );
+                            }
+                        },
+                        "✏️"
+                    }
+                    button {
+                        class: "btn--delete-log",
+                        title: "Delete this exercise",
+                        onclick: move |_| {
+                            let mut current_session = session.read().clone();
+                            current_session.exercise_logs.remove(idx);
+                            storage::save_session(current_session.clone());
+                            session.set(current_session);
+                            editing_log_idx.set(None);
+                        },
+                        "🗑️"
+                    }
+                }
+            }
+
+            if is_editing {
+                div {
+                    class: "completed-log__edit-form",
+                    ExerciseLogFields {
+                        weight_input: edit_weight_input,
+                        reps_input: edit_reps_input,
+                        distance_input: edit_distance_input,
+                        show_reps,
+                        is_cardio,
+                        save_label: "✓ Save".to_string(),
+                        on_save: props.on_save_edit,
+                        on_cancel: move |_| editing_log_idx.set(None),
+                    }
+                }
+            } else {
+                div {
+                    class: "completed-log__details",
+                    if let Some(w) = log.weight_dg {
+                        div { "Weight: {w}" }
+                    }
+                    if let Some(reps) = log.reps {
+                        div { "Reps: {reps}" }
+                    }
+                    if let Some(d) = log.distance_dam {
+                        div { "Distance: {d}" }
+                    }
+                    if let Some(duration) = log.duration_seconds() {
+                        div { "Duration: {format_time(duration)}" }
+                    }
+                }
+            }
+        }
+    }
+}
+
 #[component]
 pub fn SessionView() -> Element {
     // use_sessions() must be called at the top level of the component, not inside
@@ -371,11 +568,9 @@ pub fn SessionView() -> Element {
 
             // Rest timer (shown when no exercise is active and rest is ongoing)
             if current_exercise_id.read().is_none() {
-                if let Some(elapsed) = rest_elapsed {
-                    div {
-                        class: if rest_exceeded { "rest-timer rest-timer--exceeded" } else { "rest-timer" },
-                        "🛋️ Rest: {format_time(elapsed)}"
-                    }
+                RestTimerDisplay {
+                    rest_elapsed,
+                    rest_exceeded,
                 }
             }
 
@@ -533,64 +728,21 @@ pub fn SessionView() -> Element {
 
                                     div {
                                         class: "exercise-form__fields",
-
-                                        div {
-                                            label { class: "form-label", "Weight (kg)" }
-                                            input {
-                                                r#type: "number",
-                                                step: "0.5",
-                                                placeholder: "Optional",
-                                                value: "{weight_input}",
-                                                oninput: move |evt| weight_input.set(evt.value()),
-                                                class: "form-input",
-                                            }
-                                        }
-
-                                        if is_cardio {
-                                            div {
-                                                label { class: "form-label", "Distance (km)" }
-                                                input {
-                                                    r#type: "number",
-                                                    step: "0.1",
-                                                    placeholder: "Distance",
-                                                    value: "{distance_input}",
-                                                    oninput: move |evt| distance_input.set(evt.value()),
-                                                    class: "form-input",
-                                                }
-                                            }
-                                        }
-
-                                        if show_reps {
-                                            div {
-                                                label { class: "form-label", "Repetitions" }
-                                                input {
-                                                    r#type: "number",
-                                                    placeholder: "Reps",
-                                                    value: "{reps_input}",
-                                                    oninput: move |evt| reps_input.set(evt.value()),
-                                                    class: "form-input",
-                                                }
-                                            }
-                                        }
-
-                                        div {
-                                            class: "btn-row",
-                                            button {
-                                                onclick: complete_exercise,
-                                                class: "btn--complete",
-                                                "✓ Complete Exercise"
-                                            }
-                                            button {
-                                                onclick: move |_| {
-                                                    current_exercise_id.set(None);
-                                                    current_exercise_start.set(None);
-                                                    weight_input.set(String::new());
-                                                    reps_input.set(String::new());
-                                                    distance_input.set(String::new());
-                                                },
-                                                class: "btn--cancel",
-                                                "Cancel"
-                                            }
+                                        ExerciseLogFields {
+                                            weight_input,
+                                            reps_input,
+                                            distance_input,
+                                            show_reps,
+                                            is_cardio,
+                                            save_label: "✓ Complete Exercise".to_string(),
+                                            on_save: complete_exercise,
+                                            on_cancel: move |_| {
+                                                current_exercise_id.set(None);
+                                                current_exercise_start.set(None);
+                                                weight_input.set(String::new());
+                                                reps_input.set(String::new());
+                                                distance_input.set(String::new());
+                                            },
                                         }
                                     }
                                 }
@@ -606,126 +758,16 @@ pub fn SessionView() -> Element {
                         h3 { "Completed Exercises" }
 
                         for (idx, log) in session.read().exercise_logs.iter().enumerate() {
-                            article {
+                            CompletedExerciseCard {
                                 key: "{idx}",
-                                class: "completed-log",
-
-                                div {
-                                    class: "completed-log__header",
-                                    h4 { class: "completed-log__title", "{log.exercise_name}" }
-                                    div { class: "completed-log__actions",
-                                        button {
-                                            class: "btn--edit-log",
-                                            onclick: {
-                                                let log = log.clone();
-                                                move |_| {
-                                                    editing_log_idx.set(Some(idx));
-                                                    edit_weight_input.set(
-                                                        log.weight_dg.map(|w| format!("{:.1}", w.0 as f64 / 100.0)).unwrap_or_default()
-                                                    );
-                                                    edit_reps_input.set(
-                                                        log.reps.map(|r| r.to_string()).unwrap_or_default()
-                                                    );
-                                                    edit_distance_input.set(
-                                                        log.distance_dam.map(|d| format!("{:.2}", d.0 as f64 / 100.0)).unwrap_or_default()
-                                                    );
-                                                }
-                                            },
-                                            "✏️"
-                                        }
-                                        button {
-                                            class: "btn--delete-log",
-                                            title: "Delete this exercise",
-                                            onclick: move |_| {
-                                                let mut current_session = session.read().clone();
-                                                current_session.exercise_logs.remove(idx);
-                                                storage::save_session(current_session.clone());
-                                                session.set(current_session);
-                                                editing_log_idx.set(None);
-                                            },
-                                            "🗑️"
-                                        }
-                                    }
-                                }
-
-                                if *editing_log_idx.read() == Some(idx) {
-                                    // Inline edit form
-                                    {
-                                        let force = log.force;
-                                        let show_reps = force.is_some_and(|f| f.has_reps());
-                                        let is_cardio = log.category == Category::Cardio;
-                                        rsx! {
-                                            div {
-                                                class: "completed-log__edit-form",
-                                                div {
-                                                    label { class: "form-label", "Weight (kg)" }
-                                                    input {
-                                                        r#type: "number",
-                                                        step: "0.5",
-                                                        placeholder: "Optional",
-                                                        value: "{edit_weight_input}",
-                                                        oninput: move |evt| edit_weight_input.set(evt.value()),
-                                                        class: "form-input",
-                                                    }
-                                                }
-                                                if is_cardio {
-                                                    div {
-                                                        label { class: "form-label", "Distance (km)" }
-                                                        input {
-                                                            r#type: "number",
-                                                            step: "0.1",
-                                                            placeholder: "Distance",
-                                                            value: "{edit_distance_input}",
-                                                            oninput: move |evt| edit_distance_input.set(evt.value()),
-                                                            class: "form-input",
-                                                        }
-                                                    }
-                                                }
-                                                if show_reps {
-                                                    div {
-                                                        label { class: "form-label", "Repetitions" }
-                                                        input {
-                                                            r#type: "number",
-                                                            placeholder: "Reps",
-                                                            value: "{edit_reps_input}",
-                                                            oninput: move |evt| edit_reps_input.set(evt.value()),
-                                                            class: "form-input",
-                                                        }
-                                                    }
-                                                }
-                                                div {
-                                                    class: "btn-row",
-                                                    button {
-                                                        onclick: save_edit,
-                                                        class: "btn--complete",
-                                                        "✓ Save"
-                                                    }
-                                                    button {
-                                                        onclick: move |_| editing_log_idx.set(None),
-                                                        class: "btn--cancel",
-                                                        "Cancel"
-                                                    }
-                                                }
-                                            }
-                                        }
-                                    }
-                                } else {
-                                    div {
-                                        class: "completed-log__details",
-                                        if let Some(w) = log.weight_dg {
-                                            div { "Weight: {w}" }
-                                        }
-                                        if let Some(reps) = log.reps {
-                                            div { "Reps: {reps}" }
-                                        }
-                                        if let Some(d) = log.distance_dam {
-                                            div { "Distance: {d}" }
-                                        }
-                                        if let Some(duration) = log.duration_seconds() {
-                                            div { "Duration: {format_time(duration)}" }
-                                        }
-                                    }
-                                }
+                                idx,
+                                log: log.clone(),
+                                session,
+                                editing_log_idx,
+                                edit_weight_input,
+                                edit_reps_input,
+                                edit_distance_input,
+                                on_save_edit: save_edit,
                             }
                         }
                     }

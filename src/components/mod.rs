@@ -3,6 +3,7 @@ pub mod add_custom_exercise;
 pub mod analytics;
 pub mod analytics_panel;
 pub mod bottom_nav;
+pub mod custom_exercise_form;
 pub mod edit_custom_exercise;
 pub mod exercise_card;
 pub mod exercise_list;

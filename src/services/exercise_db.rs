@@ -241,7 +241,7 @@ mod tests {
     fn search_empty_query_returns_nothing() {
         let exercises = vec![make_exercise("ex1", "Push-up", Category::Strength)];
         // Empty query matches all exercises (all names contain "")
-        // This is expected behaviour because str::contains("") is always true.
+        // This is expected behavior because str::contains("") is always true.
         let results = search_exercises(&exercises, "");
         assert_eq!(results.len(), 1);
     }
