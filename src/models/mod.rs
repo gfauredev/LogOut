@@ -395,6 +395,9 @@ pub struct WorkoutSession {
     pub exercise_logs: Vec<ExerciseLog>,
     #[serde(default)]
     pub version: u32,
+    /// Exercise IDs queued from a previous session (pre-added, not yet started).
+    #[serde(default)]
+    pub pending_exercise_ids: Vec<String>,
 }
 
 impl WorkoutSession {
@@ -407,6 +410,7 @@ impl WorkoutSession {
             end_time: None,
             exercise_logs: Vec::new(),
             version: DATA_VERSION,
+            pending_exercise_ids: Vec::new(),
         }
     }
 
@@ -626,6 +630,7 @@ mod tests {
             end_time: None,
             exercise_logs: vec![],
             version: DATA_VERSION,
+            pending_exercise_ids: vec![],
         };
         assert!(session.is_active());
         session.end_time = Some(2000);
@@ -640,6 +645,7 @@ mod tests {
             end_time: None,
             exercise_logs: vec![],
             version: DATA_VERSION,
+            pending_exercise_ids: vec![],
         };
         assert!(session.is_cancelled());
     }
@@ -663,6 +669,7 @@ mod tests {
             end_time: None,
             exercise_logs: vec![log],
             version: DATA_VERSION,
+            pending_exercise_ids: vec![],
         };
         assert!(!session.is_cancelled());
     }
@@ -677,6 +684,7 @@ mod tests {
             end_time: None,
             exercise_logs: vec![],
             version: DATA_VERSION,
+            pending_exercise_ids: vec![],
         };
         // The predicate that guards save vs. delete must return true for empty sessions.
         assert!(
@@ -706,6 +714,7 @@ mod tests {
             end_time: None,
             exercise_logs: vec![log],
             version: DATA_VERSION,
+            pending_exercise_ids: vec![],
         };
         // The predicate must return false so the session is saved, not deleted.
         assert!(
@@ -731,6 +740,7 @@ mod tests {
                 end_time: Some(2000),
                 exercise_logs: vec![],
                 version: DATA_VERSION,
+                pending_exercise_ids: vec![],
             },
             WorkoutSession {
                 id: "s2".into(),
@@ -738,6 +748,7 @@ mod tests {
                 end_time: None,
                 exercise_logs: vec![],
                 version: DATA_VERSION,
+                pending_exercise_ids: vec![],
             },
         ];
         let active = sessions.iter().find(|s| s.is_active()).cloned();
@@ -753,6 +764,7 @@ mod tests {
                 end_time: Some(2000),
                 exercise_logs: vec![],
                 version: DATA_VERSION,
+                pending_exercise_ids: vec![],
             },
         ];
         let active = sessions.iter().find(|s| s.is_active()).cloned();
@@ -886,5 +898,36 @@ mod tests {
         let exercise: CustomExercise = serde_json::from_str(json).unwrap();
         assert_eq!(exercise.secondary_muscles, Vec::<Muscle>::new());
         assert_eq!(exercise.instructions, Vec::<String>::new());
+    }
+
+    // ── WorkoutSession pending_exercise_ids ───────────────────────────────────
+
+    #[test]
+    fn workout_session_new_has_empty_pending_ids() {
+        let session = WorkoutSession::new();
+        assert!(session.pending_exercise_ids.is_empty());
+    }
+
+    #[test]
+    fn workout_session_pending_ids_serialization_round_trip() {
+        let session = WorkoutSession {
+            id: "s1".into(),
+            start_time: 1000,
+            end_time: None,
+            exercise_logs: vec![],
+            version: DATA_VERSION,
+            pending_exercise_ids: vec!["ex1".into(), "ex2".into()],
+        };
+        let json = serde_json::to_string(&session).unwrap();
+        let back: WorkoutSession = serde_json::from_str(&json).unwrap();
+        assert_eq!(back.pending_exercise_ids, vec!["ex1", "ex2"]);
+    }
+
+    #[test]
+    fn workout_session_backward_compat_missing_pending_ids() {
+        // Old sessions without pending_exercise_ids should deserialize with empty vec
+        let json = r#"{"id":"s1","start_time":1000,"end_time":null,"exercise_logs":[],"version":3}"#;
+        let session: WorkoutSession = serde_json::from_str(json).unwrap();
+        assert!(session.pending_exercise_ids.is_empty());
     }
 }

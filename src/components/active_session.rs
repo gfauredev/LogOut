@@ -316,10 +316,19 @@ pub fn SessionView() -> Element {
 
             // Rest duration input (shown when clicking timer)
             if *show_rest_input.read() {
-                div {
+                form {
                     class: "rest-duration-input",
-                    label { "Rest duration (seconds):" }
+                    aria_label: "Set rest duration",
+                    onsubmit: move |evt| {
+                        evt.prevent_default();
+                        if let Ok(val) = rest_input_value.read().parse::<u64>() {
+                            rest_duration.set(val);
+                        }
+                        show_rest_input.set(false);
+                    },
+                    label { r#for: "rest-duration-field", "Rest duration (seconds):" }
                     input {
+                        id: "rest-duration-field",
                         r#type: "number",
                         value: "{rest_input_value}",
                         oninput: move |evt| rest_input_value.set(evt.value()),
@@ -327,12 +336,7 @@ pub fn SessionView() -> Element {
                         style: "width: 80px; text-align: center;",
                     }
                     button {
-                        onclick: move |_| {
-                            if let Ok(val) = rest_input_value.read().parse::<u64>() {
-                                rest_duration.set(val);
-                            }
-                            show_rest_input.set(false);
-                        },
+                        r#type: "submit",
                         class: "btn btn--accent",
                         "Set"
                     }
@@ -350,11 +354,75 @@ pub fn SessionView() -> Element {
             }
             
             // Main content area
-            div {
-                class: "session-body",
+            main {
+                class: "session-main",
                 
-                main {
-                    class: "session-main",
+                // Pending exercises (pre-added from a previous session)
+                if current_exercise_id.read().is_none() && !session.read().pending_exercise_ids.is_empty() {
+                    section { class: "pending-exercises",
+                        h3 { "Pre-added Exercises" }
+                        for exercise_id in session.read().pending_exercise_ids.clone() {
+                            {
+                                let (name, category) = {
+                                    let all = all_exercises.read();
+                                    if let Some(ex) = exercise_db::get_exercise_by_id(&all, &exercise_id) {
+                                        (ex.name.clone(), ex.category)
+                                    } else {
+                                        let custom = custom_exercises.read();
+                                        if let Some(ex) = custom.iter().find(|e| e.id == exercise_id) {
+                                            (ex.name.clone(), ex.category)
+                                        } else {
+                                            ("Unknown".to_string(), Category::Strength)
+                                        }
+                                    }
+                                };
+                                rsx! {
+                                    article { class: "pending-exercise-item",
+                                        span { class: "pending-exercise-item__name", "{name}" }
+                                        span { class: "tag tag--category", "{category}" }
+                                        button {
+                                            class: "btn--start",
+                                            onclick: {
+                                                let id = exercise_id.clone();
+                                                move |_| {
+                                                    // Prefill from last log
+                                                    if let Some(last_log) = storage::get_last_exercise_log(&id) {
+                                                        if let Some(w) = last_log.weight_dg {
+                                                            weight_input.set(format!("{:.1}", w.0 as f64 / 100.0));
+                                                        }
+                                                        if let Some(reps) = last_log.reps {
+                                                            reps_input.set(reps.to_string());
+                                                        }
+                                                        if let Some(d) = last_log.distance_dam {
+                                                            distance_input.set(format!("{:.2}", d.0 as f64 / 100.0));
+                                                        }
+                                                    } else {
+                                                        weight_input.set(String::new());
+                                                        reps_input.set(String::new());
+                                                        distance_input.set(String::new());
+                                                    }
+                                                    // Remove from pending and save
+                                                    let mut current_session = session.read().clone();
+                                                    current_session.pending_exercise_ids.retain(|x| x != &id);
+                                                    storage::save_session(current_session.clone());
+                                                    session.set(current_session);
+                                                    // Start the exercise
+                                                    current_exercise_id.set(Some(id.clone()));
+                                                    current_exercise_start.set(Some(get_current_timestamp()));
+                                                    search_query.set(String::new());
+                                                    rest_start_time.set(None);
+                                                    rest_bell_count.set(0);
+                                                    duration_bell_rung.set(false);
+                                                }
+                                            },
+                                            "▶ Start"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
                 
                 // Exercise search and selection
                 if current_exercise_id.read().is_none() {
@@ -519,24 +587,38 @@ pub fn SessionView() -> Element {
                                 div {
                                     class: "completed-log__header",
                                     h4 { class: "completed-log__title", "{log.exercise_name}" }
-                                    button {
-                                        class: "btn--edit-log",
-                                        onclick: {
-                                            let log = log.clone();
-                                            move |_| {
-                                                editing_log_idx.set(Some(idx));
-                                                edit_weight_input.set(
-                                                    log.weight_dg.map(|w| format!("{:.1}", w.0 as f64 / 100.0)).unwrap_or_default()
-                                                );
-                                                edit_reps_input.set(
-                                                    log.reps.map(|r| r.to_string()).unwrap_or_default()
-                                                );
-                                                edit_distance_input.set(
-                                                    log.distance_dam.map(|d| format!("{:.2}", d.0 as f64 / 100.0)).unwrap_or_default()
-                                                );
-                                            }
-                                        },
-                                        "✏️"
+                                    div { class: "completed-log__actions",
+                                        button {
+                                            class: "btn--edit-log",
+                                            onclick: {
+                                                let log = log.clone();
+                                                move |_| {
+                                                    editing_log_idx.set(Some(idx));
+                                                    edit_weight_input.set(
+                                                        log.weight_dg.map(|w| format!("{:.1}", w.0 as f64 / 100.0)).unwrap_or_default()
+                                                    );
+                                                    edit_reps_input.set(
+                                                        log.reps.map(|r| r.to_string()).unwrap_or_default()
+                                                    );
+                                                    edit_distance_input.set(
+                                                        log.distance_dam.map(|d| format!("{:.2}", d.0 as f64 / 100.0)).unwrap_or_default()
+                                                    );
+                                                }
+                                            },
+                                            "✏️"
+                                        }
+                                        button {
+                                            class: "btn--delete-log",
+                                            title: "Delete this exercise",
+                                            onclick: move |_| {
+                                                let mut current_session = session.read().clone();
+                                                current_session.exercise_logs.remove(idx);
+                                                storage::save_session(current_session.clone());
+                                                session.set(current_session);
+                                                editing_log_idx.set(None);
+                                            },
+                                            "🗑️"
+                                        }
                                     }
                                 }
                                 
@@ -633,7 +715,6 @@ pub fn SessionView() -> Element {
                     }
                 }
             }
-        }
 
             // Congratulatory snackbar
             if *show_snackbar.read() {

@@ -83,15 +83,46 @@ fn SessionCard(session: WorkoutSession) -> Element {
         format!("{} exercise", exercise_count)
     };
 
+    // Collect exercise IDs (deduplicated, preserving order) for repeat action
+    let pending_ids: Vec<String> = {
+        let mut seen = std::collections::HashSet::new();
+        session.exercise_logs.iter()
+            .filter_map(|log| {
+                if seen.insert(log.exercise_id.clone()) {
+                    Some(log.exercise_id.clone())
+                } else {
+                    None
+                }
+            })
+            .collect()
+    };
+
     rsx! {
         article { class: "session-card",
-            div { class: "session-card__header",
-                div { class: "session-card__date", "{date_str}" }
-                button {
-                    onclick: move |_| show_delete_confirm.set(true),
-                    class: "session-card__delete-btn",
-                    title: "Delete session",
-                    "🗑️"
+            header { class: "session-card__header",
+                time { class: "session-card__date", "{date_str}" }
+                div { class: "session-card__actions",
+                    if !pending_ids.is_empty() {
+                        button {
+                            onclick: {
+                                let pending_ids = pending_ids.clone();
+                                move |_| {
+                                    let mut new_session = WorkoutSession::new();
+                                    new_session.pending_exercise_ids = pending_ids.clone();
+                                    storage::save_session(new_session);
+                                }
+                            },
+                            class: "session-card__repeat-btn",
+                            title: "Start a new session based on this one",
+                            "🔄"
+                        }
+                    }
+                    button {
+                        onclick: move |_| show_delete_confirm.set(true),
+                        class: "session-card__delete-btn",
+                        title: "Delete session",
+                        "🗑️"
+                    }
                 }
             }
             div { class: "session-card__stats",
@@ -144,4 +175,5 @@ fn SessionCard(session: WorkoutSession) -> Element {
         }
     }
 }
+
 
