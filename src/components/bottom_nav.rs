@@ -33,7 +33,6 @@ pub fn BottomNav(active_tab: ActiveTab) -> Element {
                 to: Route::CreditsPage {},
                 class: if active_tab == ActiveTab::Credits { "bottom-nav__tab bottom-nav__tab--active" } else { "bottom-nav__tab" },
                 span { class: "bottom-nav__icon", "ℹ️" }
-                span { class: "bottom-nav__label", "Credits" }
             }
         }
     }

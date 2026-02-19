@@ -1,60 +1,57 @@
+---
+lang: en
+---
+
+<!--toc:start-->
+
+- [LogOut](#logout)
+  - [Structure](#structure)
+  - [Development Server (with hot-reload)](#development-server-with-hot-reload)
+  - [Web Build (PWA)](#web-build-pwa)
+    - [GitHub Pages deployment](#github-pages-deployment)
+  - [Unit Testing](#unit-testing)
+  - [End-to-End Testing](#end-to-end-testing)
+  - [Code Quality Standards](#code-quality-standards)
+    - [Run quality checks locally](#run-quality-checks-locally)
+
+<!--toc:end-->
+
 # LogOut
 
-Turn off your computer, Log your workOut
+> Turn off your computer, Log your workOut
 
-A cross-platform workout logging application built with Dioxus 0.7 and compiled to WebAssembly.
+A simple, efficient and cross-platform workout logging application with
+[800+ exercises] built-in, by [Guilhem Fauré].
 
-The app initially populates its exercise database with 873+ exercises from
-[free-exercise-db](https://github.com/yuhonas/free-exercise-db).
-
-## Features
-
-- 🏋️ Browse 873+ exercises with search functionality
-- 💪 Log workout sessions with sets, reps, weights, distances, and durations
+- 💪 Easily log workout sessions with sets, reps, weights, distances, durations
 - 📊 **Analytics panel** with line charts to track progress over time
-- 📱 Mobile-first responsive design with a bottom navigation bar
-- 🔌 **Offline-ready PWA** with service worker caching
-- 💾 Exercise database embedded at build time for instant search
-- 🖼️ Exercise images lazy-loaded from a remote CDN
+- 🏋️ Browse the 870+ included exercises with search functionality
+  - Easily add your custom exercises or customize existing ones
+- 📱 Mobile-first responsive design, bottom navigation bar, local-first
 
 ## Structure
 
 ```
 src/
-  main.rs              # Application entry point and routing
-  models/              # Data models: exercises, sessions, sets, enums
-  services/            # Business logic: exercise DB, storage (IndexedDB), service worker
-  components/          # UI components: home, exercise list, session view, analytics
-  utils.rs             # Pure utility functions (date formatting, etc.)
-e2e/
-  app.spec.ts          # Playwright end-to-end tests
-assets/
-  styles.css           # Application stylesheet
+  main.rs       # Application entry point and routing
+  models/       # Data models: exercises, sessions, sets, enums
+  services/     # Business: exercise DB, storage (IndexedDB), service worker
+  components/   # UI components: home, exercise list, session view, analytics
+  utils.rs      # Pure utility functions (date formatting, etc.)
+e2e/app.spec.ts   # Playwright end-to-end tests
+assets/styles.css # Application stylesheet
 public/
-  manifest.json        # PWA manifest
-  sw.js                # Service worker (JavaScript — required by the browser SW spec)
+  manifest.json # PWA manifest
+  sw.js         # Service worker (JavaScript, required by the browser SW spec)
 ```
 
-## Prerequisites
-
-| Tool | Purpose | Install |
-|------|---------|---------|
-| [Rust stable](https://rustup.rs) | Compile the application | `rustup install stable` |
-| `wasm32-unknown-unknown` target | Cross-compile to WebAssembly | `rustup target add wasm32-unknown-unknown` |
-| [Dioxus CLI (`dx`)](https://dioxuslabs.com/learn/0.6/getting_started) | Build and serve the web app | `cargo install dioxus-cli` |
-| [Node.js ≥ 20](https://nodejs.org) + npm | Run Playwright E2E tests | — |
-
-## Build
-
-### Development server (with hot-reload)
+## Development Server (with hot-reload)
 
 ```sh
-dx serve
+dx serve # Serves at http://localhost:8080
 ```
 
-The app is served at `http://localhost:8080/LogOut/`.
-
-### Production build (PWA)
+## Web Build (PWA)
 
 ```sh
 dx build --platform web --release
@@ -64,12 +61,10 @@ Output is written to `target/dx/log-workout/release/web/public/`.
 
 ### GitHub Pages deployment
 
-The production PWA is deployed automatically on every push to `main` via
-`.github/workflows/deploy.yml`.
+The PWA is deployed automatically on every push to `main` via
+`.github/workflows/deploy.yml` on `https://gfauredev.github.io/LogOut`.
 
-## Testing
-
-### Unit tests
+## Unit Testing
 
 Unit tests cover pure-Rust model functions (formatting, parsing, serialization),
 service stubs, and utility helpers. They compile and run on the native target —
@@ -79,85 +74,63 @@ no browser or WASM toolchain required.
 cargo test
 ```
 
-All unit tests must pass.
+The `main` branch must always pass `100%` of unit tests, covering more than
+`90%` of the codebase.
 
-#### Unit test coverage
-
-Install `cargo-llvm-cov` once:
-
-```sh
-cargo install cargo-llvm-cov
-```
-
-Print a summary inline:
+They can be run with `cargo llvm-cov` (might need to be installed).
 
 ```sh
-cargo llvm-cov --bin log-workout
+cargo llvm-cov --bin log-workout # Summary inline
 ```
-
-Generate an LCOV report:
 
 ```sh
-cargo llvm-cov --bin log-workout --lcov --output-path lcov.info
+cargo llvm-cov --bin log-workout --lcov --output-path lcov.info # LCOV report
 ```
 
-### E2E tests (Playwright)
+## End-to-End Testing
 
-End-to-end tests exercise the full application running in Chromium via
-Playwright. They start `dx serve` automatically before the test run.
-
-Install dependencies once:
+End-to-end tests exercise the full application running with [Playwright]. They
+start `dx serve` automatically before the test run.
 
 ```sh
-npm install
-npx playwright install --with-deps chromium
+npx playwright test # Run the tests (headless by default)
 ```
-
-Run the tests:
 
 ```sh
-npx playwright test
+npx playwright test --headed # Run tests within a visible browser
 ```
 
-Run with a visible browser (useful for debugging):
+The `main` branch must always pass `100%` of E2E tests. When a test fails,
+Playwright captures a screenshot automatically and saves it to `test-results/`.
+
+## Code Quality Standards
+
+Every pull request is validated by `.github/workflows/ci.yml`, ensuring that all
+five jobs pass before a PR can be merged.
+
+| Job            | Command                       | Requirement                                                 |
+| -------------- | ----------------------------- | ----------------------------------------------------------- |
+| **Formatting** | `cargo fmt --check`           | Code must match `rustfmt` style exactly                     |
+| **Linting**    | `cargo clippy -- -D warnings` | Zero Clippy warnings                                        |
+| **Unit tests** | `cargo llvm-cov …`            | All unit tests pass, covering more than 90% of the codebase |
+| **E2E tests**  | `npx playwright test`         | All Playwright tests pass                                   |
+| **PageSpeed**  | Lighthouse CLI                | Performance scores posted as PR comment                     |
+
+### Run quality checks locally
 
 ```sh
-npx playwright test --headed
+cargo fmt --check # Formatting
+cargo clippy -- -D warnings # Linting
+cargo test # Unit tests
+npx playwright test # E2E tests (starts dev server)
 ```
 
-All E2E tests must pass. When a test fails, Playwright captures a screenshot
-automatically and saves it to `test-results/`.
-
-## Code Quality Requirements
-
-Every pull request is validated by `.github/workflows/ci.yml`.
-All five jobs must pass before a PR can be merged.
-GitHub automatically holds runs from first-time contributors for maintainer
-approval before any code is executed.
-
-| Job | Command | Requirement |
-|-----|---------|-------------|
-| **Formatting** | `cargo fmt --check` | Code must match `rustfmt` style exactly |
-| **Linting** | `cargo clippy -- -D warnings` | Zero Clippy warnings |
-| **Unit tests** | `cargo llvm-cov …` | All unit tests pass; coverage report posted as PR comment |
-| **E2E tests** | `npx playwright test` | All Playwright tests pass; failure screenshots posted as PR comment |
-| **PageSpeed** | Lighthouse CLI | Performance scores posted as PR comment |
-
-### Run all quality checks locally
-
-```sh
-# Formatting
-cargo fmt --check
-
-# Linting
-cargo clippy -- -D warnings
-
-# Unit tests
-cargo test
-
-# E2E tests (starts the dev server automatically)
-npx playwright test
-```
-
-Permissions used by the CI workflow: `contents: read`, `pull-requests: write`.
-
+[Guilhem Fauré]: https://www.guilhemfau.re
+[free-exercise-db]: https://github.com/yuhonas/free-exercise-db
+[800+ exercises]: https://github.com/yuhonas/free-exercise-db
+[Rust]: https://rust-lang.org
+[rust]: https://rust-lang.org
+[Dioxus]: https://dioxuslabs.com
+[dioxuslabs]: https://dioxuslabs.com
+[Node.js]: https://nodejs.org
+[Playwright]: https://playwright.dev
