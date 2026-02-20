@@ -127,17 +127,11 @@ npx playwright test # E2E tests (starts dev server)
 
 ## TODO
 
-- In Active Session, keep Exercise in the "performing" state with its form open
-  when changing tab, and pin it to the top of the Exercises List
-- Allow to change the exercise database URL in Credits/Extra tab
-- Use the same style for each tab heading, centered, preceded by emoji
-- Display a congratulation toast when (non empty) session is finished
-- Prevent Add/Edit Exercise form width shrinking and growing as the data changes
-- Place the Add Exercise button after (right) of search bar in Active Session
-- Remove any magic number, making then into clearly named constants
+- …
 
 ### Optimization
 
+- Remove any magic number, making then into clearly named constants
 - Reduce allocations to the heap, especially in search loop
 - Split the SessionView god component into modular child components
 - Improve indexedDB error handling with thiserror
