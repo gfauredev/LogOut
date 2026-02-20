@@ -22,7 +22,7 @@ pub fn ExerciseListPage() -> Element {
         for ex in custom.iter() {
             let matches = query_lower.is_empty() || ex.name.to_lowercase().contains(&query_lower);
             if matches && seen_ids.insert(ex.id.clone()) {
-                results.push(ex.clone());
+                results.push((ex.clone(), true));
             }
         }
 
@@ -30,7 +30,7 @@ pub fn ExerciseListPage() -> Element {
         if query_lower.is_empty() {
             for ex in all.iter().take(50) {
                 if seen_ids.insert(ex.id.clone()) {
-                    results.push(ex.clone());
+                    results.push((ex.clone(), false));
                 }
             }
         } else {
@@ -39,7 +39,7 @@ pub fn ExerciseListPage() -> Element {
                 .take(50)
             {
                 if seen_ids.insert(ex.id.clone()) {
-                    results.push(ex);
+                    results.push((ex, false));
                 }
             }
         }
@@ -73,8 +73,8 @@ pub fn ExerciseListPage() -> Element {
 
             section {
                 class: "exercise-list",
-                for exercise in exercises() {
-                    ExerciseCard { key: "{exercise.id}", exercise }
+                for (exercise, is_custom) in exercises() {
+                    ExerciseCard { key: "{exercise.id}", exercise, is_custom }
                 }
             }
         }

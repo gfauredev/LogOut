@@ -35,6 +35,9 @@ fn main() {
     // Register service worker for offline image caching
     services::service_worker::register_service_worker();
 
+    // Prevent the device screen from sleeping while the app is open
+    services::wake_lock::enable_wake_lock();
+
     launch(App);
 }
 
