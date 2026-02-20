@@ -127,34 +127,24 @@ npx playwright test # E2E tests (starts dev server)
 
 ## TODO
 
-- Sessions
-  - Display the Date, Duration, Repeat and Delete on the same first line
-  - Then, display up to three lines of Exercises tags before the "+n more"
-  - Allow revealing the other exercises tags by clicking on the "+n more" tag
-- Active Session
-  - Sort Completed Exercises antichronologically
-  - Move the "Add Custom Exercise" button to a "+" button left of the exercise
-    search bar
-  - When changing tab, the Rest Timer should not disappear, but continue in the
-    background, and reappear when returning to Session tab
-- Exercises List
-  - When a Session is Active, pin to the top Exercises completed in it
-  - Fix width shrinking or growing depending on displayed exercises
-- Request notification permission at the app start
-- Consider avoiding lots of heap allocations inside the filter() loop in
-  search_exercises function
-
-- Exercises
-  - Fix "Edit Clone" button doesn’t display, as if all the exercises were custom
-  - It says "browse 1748" exercises when it’s supposed to be only 873 (the half)
-  - When there are custom exercise(s), it makes the default exercises disappear
-- Improve the Analytics chart presentation
-  - Make the labels, axis, and legend more constrasted on black background
-  - Make it responsive so it fully fit without overflow on the restricted width
-- Pre-add Exercises from past Session as many times as it was done
-
+- Never use js_sys::eval ; use web-sys Notification instead
+- Use timezone-aware time handling on native targets too
+- Extract timers into their own isolated component, prevent unnecessary renders
+- Replace the 50 exercise search limit by pagination
+- Unify search logic of default and custom exercises
+- When an Exercise is being performed, pin it to the top of the list, with
+  instructions displayed
 - Consider reducing boilerplate by using strum crate for enums serializations
 - Consider removing dead code definitively
+
+- Consider reducing allocations to the heap in search loop
+- Consider splitting the SessionView god component into modular child components
+- Remove any magic number, making then into clearly named constants
+- Consider improving indexedDB error handling with thiserror
+- Use the same style for each tab heading, centered, preceded by emoji
+- Place add "+" exercise button after (right) of search bar
+- Display a congratulation toast when (non empty) session is finished
+- Fix exercise form width shrinking and growing as the data changes
 
 [Guilhem Fauré]: https://www.guilhemfau.re
 [free-exercise-db]: https://github.com/yuhonas/free-exercise-db
