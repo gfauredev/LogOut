@@ -24,8 +24,8 @@ export default defineConfig({
   ],
   webServer: [
     {
-      command: "dx serve --port 8080",
-      url: "http://localhost:8080",
+      command: "dx build --release && npx serve dist -p 8080",
+      url: "http://127.0.0.1:8080",
       timeout: 10 * 60 * 1000,
       reuseExistingServer: !process.env.CI,
       stdout: "pipe",
