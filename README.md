@@ -144,7 +144,16 @@ npx playwright test # E2E tests (starts dev server)
 - Consider avoiding lots of heap allocations inside the filter() loop in
   search_exercises function
 - Consider reducing boilerplate by using strum crate for enums serializations
-- Consider removing dead code
+- Consider removing dead code definitively
+
+- Exercises
+  - Fix "Edit Clone" button doesn’t display, as if all the exercises were custom
+  - It says "browse 1748" exercises when it’s supposed to be only 873 (the half)
+  - When there are custom exercise(s), it makes the default exercises disappear
+- Improve the Analytics chart presentation
+  - Make the labels, axis, and legend more constrasted on black background
+  - Make it responsive so it fully fit without overflow on the restricted width
+- Pre-add Exercises from past Session as many times as it was done
 
 [Guilhem Fauré]: https://www.guilhemfau.re
 [free-exercise-db]: https://github.com/yuhonas/free-exercise-db
