@@ -92,10 +92,7 @@ fn SessionCard(session: WorkoutSession) -> Element {
     };
 
     // Collect exercise IDs (deduplicated, preserving order) for repeat action
-    let pending_ids: Vec<String> = unique_exercises
-        .iter()
-        .map(|(id, _)| id.clone())
-        .collect();
+    let pending_ids: Vec<String> = unique_exercises.iter().map(|(id, _)| id.clone()).collect();
 
     // Up to 9 tags visible initially (~3 lines of 3 tags each)
     const MAX_VISIBLE: usize = 9;
