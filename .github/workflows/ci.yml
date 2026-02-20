@@ -58,8 +58,10 @@ jobs:
           # Run tests with coverage, capturing both test output and coverage data
           TEST_OUTPUT=$(cargo llvm-cov --bin log-workout --lcov --output-path lcov.info 2>&1)
           echo "$TEST_OUTPUT"
+          # Strip Cargo compilation/progress lines; keep only test results
+          CLEAN_OUTPUT=$(echo "$TEST_OUTPUT" | grep -Ev '^\s*(Compiling|Checking|Finished|Downloaded|Downloading|Updating|Locking|Fresh)')
           echo "test_output<<EOF" >> "$GITHUB_OUTPUT"
-          echo "$TEST_OUTPUT" >> "$GITHUB_OUTPUT"
+          echo "$CLEAN_OUTPUT" >> "$GITHUB_OUTPUT"
           echo "EOF" >> "$GITHUB_OUTPUT"
 
       - name: Generate coverage summary

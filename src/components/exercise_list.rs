@@ -1,5 +1,6 @@
 use crate::components::{ActiveTab, BottomNav, ExerciseCard};
 use crate::services::{exercise_db, storage};
+use crate::Route;
 use dioxus::prelude::*;
 
 /// Number of exercises loaded per scroll increment.
@@ -89,10 +90,9 @@ pub fn ExerciseListPage() -> Element {
 
     // Set up scroll-based auto-pagination: load more items as the user scrolls down.
     // Uses eval to run JavaScript in the underlying renderer (browser or WebView).
-    // The resource handle is intentionally discarded; Dioxus drops it when the
-    // component unmounts.  window.onscroll assignment (rather than addEventListener)
-    // avoids accumulating duplicate listeners across component remounts.
-    let _ = use_resource(move || async move {
+    // window.onscroll assignment (rather than addEventListener) avoids accumulating
+    // duplicate listeners across component remounts.
+    let _scroll_listener = use_resource(move || async move {
         let mut rx = dioxus::document::eval(
             r#"window.onscroll = function() {
                 var scrollTop = window.scrollY || document.documentElement.scrollTop;
@@ -143,7 +143,7 @@ pub fn ExerciseListPage() -> Element {
             }
 
             div {
-                class: "search-wrapper",
+                class: "search-with-add",
                 input {
                     r#type: "text",
                     placeholder: "Search exercises, muscles, or categories...",
@@ -153,6 +153,12 @@ pub fn ExerciseListPage() -> Element {
                         visible_count.set(PAGE_SIZE);
                     },
                     class: "search-input",
+                }
+                Link {
+                    to: Route::AddCustomExercisePage {},
+                    class: "add-exercise-btn",
+                    title: "Add Custom Exercise",
+                    "+"
                 }
             }
 
