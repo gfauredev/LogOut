@@ -33,18 +33,14 @@ pub fn enable_wake_lock() {
                 let Some(document) = window.document() else {
                     return;
                 };
-                if document.visibility_state()
-                    == web_sys::VisibilityState::Visible
-                {
+                if document.visibility_state() == web_sys::VisibilityState::Visible {
                     let _ = request_wake_lock().await;
                 }
             });
         });
 
-        let _ = document.add_event_listener_with_callback(
-            "visibilitychange",
-            closure.as_ref().unchecked_ref(),
-        );
+        let _ = document
+            .add_event_listener_with_callback("visibilitychange", closure.as_ref().unchecked_ref());
         // Intentionally leak the closure so it lives for the page lifetime.
         closure.forget();
     }
@@ -62,14 +58,14 @@ async fn request_wake_lock() -> Result<(), String> {
     let navigator = window.navigator();
 
     // Check that navigator.wakeLock exists (not all browsers support it yet).
-    let wake_lock = Reflect::get(&navigator, &JsValue::from_str("wakeLock"))
-        .map_err(|e| format!("{:?}", e))?;
+    let wake_lock =
+        Reflect::get(&navigator, &JsValue::from_str("wakeLock")).map_err(|e| format!("{:?}", e))?;
     if wake_lock.is_undefined() || wake_lock.is_null() {
         return Ok(()); // API not supported – silently skip
     }
 
-    let request_fn = Reflect::get(&wake_lock, &JsValue::from_str("request"))
-        .map_err(|e| format!("{:?}", e))?;
+    let request_fn =
+        Reflect::get(&wake_lock, &JsValue::from_str("request")).map_err(|e| format!("{:?}", e))?;
     let request_fn: Function = request_fn
         .dyn_into()
         .map_err(|_| "wakeLock.request is not a function".to_string())?;
