@@ -218,47 +218,49 @@ jobs:
         run: npx playwright test
         continue-on-error: true
 
-      - name: Upload screenshots to Imgur
+      - name: Upload screenshots to Cloudinary
         if: steps.e2e.outcome == 'failure'
-        id: imgur
+        id: cloudinary
         env:
-          IMGUR_CLIENT_ID: ${{ secrets.IMGUR_CLIENT_ID }}
+          CLOUDINARY_CLOUD_NAME: ${{ secrets.CLOUDINARY_CLOUD_NAME }}
+          CLOUDINARY_UPLOAD_PRESET: ${{ secrets.CLOUDINARY_UPLOAD_PRESET }}
         run: |
-          IMGUR_URLS=""
-          if [ -n "$IMGUR_CLIENT_ID" ] && [ -d test-results ]; then
+          CLOUDINARY_URLS=""
+          if [ -n "$CLOUDINARY_CLOUD_NAME" ] && [ -n "$CLOUDINARY_UPLOAD_PRESET" ] && [ -d test-results ]; then
             while IFS= read -r -d '' f; do
-              RESPONSE=$(curl -sf --location 'https://api.imgur.com/3/image' \
-                --header "Authorization: Client-ID $IMGUR_CLIENT_ID" \
-                --form "image=@$f" \
-                --form 'type=file' || echo '{"error":"curl failed"}')
+              RESPONSE=$(curl -sf --location \
+                "https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/image/upload" \
+                --form "file=@$f" \
+                --form "upload_preset=${CLOUDINARY_UPLOAD_PRESET}" \
+                || echo '{"error":{"message":"curl failed"}}')
               if echo "$RESPONSE" | jq -e '.error' > /dev/null 2>&1; then
-                echo "Warning: failed to upload $f to Imgur: $(echo "$RESPONSE" | jq -r '.error')"
+                echo "Warning: failed to upload $f to Cloudinary: $(echo "$RESPONSE" | jq -r '.error.message')"
                 continue
               fi
-              URL=$(echo "$RESPONSE" | jq -r '.data.link // empty')
+              URL=$(echo "$RESPONSE" | jq -r '.secure_url // empty')
               if [ -n "$URL" ]; then
                 TITLE=$(basename "$f" .png)
-                IMGUR_URLS="${IMGUR_URLS}![${TITLE}](${URL})\n"
+                CLOUDINARY_URLS="${CLOUDINARY_URLS}![${TITLE}](${URL})\n"
               fi
             done < <(find test-results -name "*.png" -print0)
           fi
-          echo "imgur_urls<<EOF" >> "$GITHUB_OUTPUT"
-          echo -e "$IMGUR_URLS" >> "$GITHUB_OUTPUT"
+          echo "cloudinary_urls<<EOF" >> "$GITHUB_OUTPUT"
+          echo -e "$CLOUDINARY_URLS" >> "$GITHUB_OUTPUT"
           echo "EOF" >> "$GITHUB_OUTPUT"
 
       - name: Post failure-screenshots comment
         if: steps.e2e.outcome == 'failure'
         uses: actions/github-script@v7
         env:
-          IMGUR_URLS: ${{ steps.imgur.outputs.imgur_urls }}
+          CLOUDINARY_URLS: ${{ steps.cloudinary.outputs.cloudinary_urls }}
         with:
           script: |
             const tag = '<!-- e2e-screenshots -->';
             const runUrl = `https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
-            const imgurUrls = process.env.IMGUR_URLS || '';
+            const cloudinaryUrls = process.env.CLOUDINARY_URLS || '';
             let body = `${tag}\n## 📸 E2E Test Failures\n\n`;
-            if (imgurUrls.trim()) {
-              body += imgurUrls;
+            if (cloudinaryUrls.trim()) {
+              body += cloudinaryUrls;
             } else {
               body += `Test failures were detected. Screenshots are available in the **Artifacts** section of the [Action Run](${runUrl}).\n`;
             }
