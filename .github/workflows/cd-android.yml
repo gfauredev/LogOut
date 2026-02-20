@@ -83,26 +83,28 @@ jobs:
           files: ${{ steps.apk.outputs.path }}
 
       # ── On push to main / manual trigger: maintain a rolling pre-release ────
-      - name: Delete previous "latest-android" release
+      - name: Create or update "latest-android" pre-release
         if: github.event_name != 'release'
-        continue-on-error: true   # no-op when the release doesn't exist yet
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release delete latest-android --yes --cleanup-tag
+        run: |
+          TAG=latest-android
+          TITLE="Android APK – latest build"
+          NOTES="Automatically built from the latest commit on \`main\`.
 
-      - name: Publish rolling "latest-android" pre-release
-        if: github.event_name != 'release'
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: latest-android
-          name: "Android APK – latest build"
-          body: |
-            Automatically built from the latest commit on `main`.
+          **To install on Android (8.0+):**
+          1. Download \`logout-android.apk\` below.
+          2. Open the file on your device – you will be prompted to allow installation from your file manager or browser (this is a per-app setting since Android 8.0).
+          3. Follow the on-screen prompts to complete the installation."
+          FILE=logout-android.apk
 
-            **To install on Android (8.0+):**
-            1. Download `logout-android.apk` below.
-            2. Open the file on your device – you will be prompted to allow installation from your file manager or browser (this is a per-app setting since Android 8.0).
-            3. Follow the on-screen prompts to complete the installation.
-          prerelease: true
-          make_latest: false
-          files: ${{ steps.apk.outputs.path }}
+          if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release upload "$TAG" "$FILE" --clobber --repo "$GITHUB_REPOSITORY"
+            gh release edit "$TAG" --prerelease --title "$TITLE" --notes "$NOTES" --repo "$GITHUB_REPOSITORY"
+          else
+            gh release create "$TAG" "$FILE" \
+              --prerelease \
+              --title "$TITLE" \
+              --notes "$NOTES" \
+              --repo "$GITHUB_REPOSITORY"
+          fi
