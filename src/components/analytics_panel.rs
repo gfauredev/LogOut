@@ -106,7 +106,7 @@ pub fn AnalyticsPanel() -> Element {
             // Header
             div {
                 class: "analytics-panel__header",
-                h2 { "📊 Analytics" }
+                h2 { class: "page-title", "📊 Analytics" }
                 p { "Track your progress over time" }
             }
 

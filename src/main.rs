@@ -10,6 +10,10 @@ use components::{
     HomePage,
 };
 
+/// Global context signal for the congratulations toast shown after completing a session.
+#[derive(Clone, Copy)]
+pub struct CongratulationsSignal(pub Signal<bool>);
+
 #[derive(Clone, Routable, Debug, PartialEq)]
 #[rustfmt::skip]
 #[allow(clippy::enum_variant_names)]
@@ -55,9 +59,28 @@ fn App() -> Element {
     // Provide shared state signals via context
     services::storage::provide_app_state();
     services::exercise_db::provide_exercises();
+    use_context_provider(|| CongratulationsSignal(Signal::new(false)));
 
     rsx! {
         Stylesheet { href: asset!("/assets/styles.css") }
         Router::<Route> {}
+        CongratulationsToast {}
+    }
+}
+
+/// Renders the congratulations toast when a session is successfully completed.
+#[component]
+fn CongratulationsToast() -> Element {
+    let mut show = use_context::<CongratulationsSignal>().0;
+    if *show.read() {
+        rsx! {
+            div {
+                class: "snackbar",
+                onclick: move |_| show.set(false),
+                "🎉 Great workout! Session complete!"
+            }
+        }
+    } else {
+        rsx! {}
     }
 }

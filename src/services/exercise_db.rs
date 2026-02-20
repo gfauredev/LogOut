@@ -26,7 +26,7 @@ const MILLIS_PER_SECOND: f64 = 1000.0;
 
 #[cfg(target_arch = "wasm32")]
 fn exercises_json_url() -> String {
-    format!("{}dist/exercises.json", crate::utils::EXERCISE_DB_BASE_URL)
+    format!("{}dist/exercises.json", crate::utils::get_exercise_db_url())
 }
 
 /// Provide the exercises signal in the Dioxus context.
@@ -119,6 +119,19 @@ fn record_fetch_timestamp() {
     };
     let now = (js_sys::Date::now() / MILLIS_PER_SECOND).to_string();
     let _ = storage.set_item(LAST_FETCH_KEY, &now);
+}
+
+/// Clears the locally-cached fetch timestamp so that the exercise database is
+/// re-downloaded from the current URL on the next application load.
+#[cfg(target_arch = "wasm32")]
+pub fn clear_fetch_cache() {
+    let Some(window) = web_sys::window() else {
+        return;
+    };
+    let Ok(Some(storage)) = window.local_storage() else {
+        return;
+    };
+    let _ = storage.remove_item(LAST_FETCH_KEY);
 }
 
 #[cfg(target_arch = "wasm32")]

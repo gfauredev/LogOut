@@ -399,7 +399,7 @@ impl Exercise {
             } else {
                 format!(
                     "{}{}{}",
-                    crate::utils::EXERCISE_DB_BASE_URL,
+                    crate::utils::get_exercise_db_url(),
                     EXERCISES_IMAGE_SUB_PATH,
                     img
                 )
@@ -482,6 +482,12 @@ pub struct WorkoutSession {
     /// Timestamp when the last rest period started (for persisting timer across tab switches).
     #[serde(default)]
     pub rest_start_time: Option<u64>,
+    /// The exercise currently being performed (persisted for tab-switch resilience).
+    #[serde(default)]
+    pub current_exercise_id: Option<String>,
+    /// Timestamp when the current exercise started (persisted for tab-switch resilience).
+    #[serde(default)]
+    pub current_exercise_start: Option<u64>,
 }
 
 impl WorkoutSession {
@@ -496,6 +502,8 @@ impl WorkoutSession {
             version: DATA_VERSION,
             pending_exercise_ids: Vec::new(),
             rest_start_time: None,
+            current_exercise_id: None,
+            current_exercise_start: None,
         }
     }
 
@@ -703,6 +711,8 @@ mod tests {
             version: DATA_VERSION,
             pending_exercise_ids: vec![],
             rest_start_time: None,
+            current_exercise_id: None,
+            current_exercise_start: None,
         };
         assert!(session.is_active());
         session.end_time = Some(2000);
@@ -719,6 +729,8 @@ mod tests {
             version: DATA_VERSION,
             pending_exercise_ids: vec![],
             rest_start_time: None,
+            current_exercise_id: None,
+            current_exercise_start: None,
         };
         assert!(session.is_cancelled());
     }
@@ -744,6 +756,8 @@ mod tests {
             version: DATA_VERSION,
             pending_exercise_ids: vec![],
             rest_start_time: None,
+            current_exercise_id: None,
+            current_exercise_start: None,
         };
         assert!(!session.is_cancelled());
     }
@@ -760,6 +774,8 @@ mod tests {
             version: DATA_VERSION,
             pending_exercise_ids: vec![],
             rest_start_time: None,
+            current_exercise_id: None,
+            current_exercise_start: None,
         };
         // The predicate that guards save vs. delete must return true for empty sessions.
         assert!(
@@ -791,6 +807,8 @@ mod tests {
             version: DATA_VERSION,
             pending_exercise_ids: vec![],
             rest_start_time: None,
+            current_exercise_id: None,
+            current_exercise_start: None,
         };
         // The predicate must return false so the session is saved, not deleted.
         assert!(
@@ -811,6 +829,8 @@ mod tests {
             version: DATA_VERSION,
             pending_exercise_ids: vec!["ex1".into(), "ex2".into()],
             rest_start_time: None,
+            current_exercise_id: None,
+            current_exercise_start: None,
         };
         assert!(
             session.is_cancelled(),
@@ -824,6 +844,25 @@ mod tests {
         assert!(session.is_active());
         assert!(session.id.starts_with("session_"));
         assert_eq!(session.version, DATA_VERSION);
+        // New sessions must not have a performing exercise
+        assert!(session.current_exercise_id.is_none());
+        assert!(session.current_exercise_start.is_none());
+    }
+
+    #[test]
+    fn workout_session_current_exercise_fields_default_none() {
+        // Deserialising an old session JSON (without the new fields) must work.
+        let json = r#"{
+            "id": "session_1",
+            "start_time": 1000,
+            "end_time": null,
+            "exercise_logs": [],
+            "version": 0,
+            "pending_exercise_ids": []
+        }"#;
+        let session: WorkoutSession = serde_json::from_str(json).unwrap();
+        assert!(session.current_exercise_id.is_none());
+        assert!(session.current_exercise_start.is_none());
     }
 
     #[test]
@@ -837,6 +876,8 @@ mod tests {
                 version: DATA_VERSION,
                 pending_exercise_ids: vec![],
                 rest_start_time: None,
+            current_exercise_id: None,
+            current_exercise_start: None,
             },
             WorkoutSession {
                 id: "s2".into(),
@@ -846,6 +887,8 @@ mod tests {
                 version: DATA_VERSION,
                 pending_exercise_ids: vec![],
                 rest_start_time: None,
+            current_exercise_id: None,
+            current_exercise_start: None,
             },
         ];
         let active = sessions.iter().find(|s| s.is_active()).cloned();
@@ -862,6 +905,8 @@ mod tests {
             version: DATA_VERSION,
             pending_exercise_ids: vec![],
             rest_start_time: None,
+            current_exercise_id: None,
+            current_exercise_start: None,
         }];
         let active = sessions.iter().find(|s| s.is_active()).cloned();
         assert!(active.is_none());
@@ -1020,6 +1065,8 @@ mod tests {
             version: DATA_VERSION,
             pending_exercise_ids: vec!["ex1".into(), "ex2".into()],
             rest_start_time: None,
+            current_exercise_id: None,
+            current_exercise_start: None,
         };
         let json = serde_json::to_string(&session).unwrap();
         let back: WorkoutSession = serde_json::from_str(&json).unwrap();
@@ -1082,6 +1129,8 @@ mod tests {
             version: DATA_VERSION,
             pending_exercise_ids: vec![],
             rest_start_time: None,
+            current_exercise_id: None,
+            current_exercise_start: None,
         };
 
         // Build pending IDs the same way SessionCard does (all logs, not deduplicated)
@@ -1608,6 +1657,8 @@ mod tests {
             version: DATA_VERSION,
             pending_exercise_ids: vec![],
             rest_start_time: None,
+            current_exercise_id: None,
+            current_exercise_start: None,
         };
         let json = serde_json::to_string(&session).unwrap();
         let back: WorkoutSession = serde_json::from_str(&json).unwrap();
