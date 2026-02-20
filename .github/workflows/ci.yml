@@ -308,8 +308,11 @@ jobs:
       - name: Install Lighthouse CLI
         run: npm install -g lighthouse
 
-      - name: Start dev server
-        run: dx build --release && npx serve -s target/dx/log-workout/release/web/public -p 8080
+      - name: Build app
+        run: dx build --release
+
+      - name: Start test server
+        run: npx serve -s target/dx/log-workout/release/web/public -p 8080 &
 
       # - name: Wait for server
       #   run: |
