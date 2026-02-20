@@ -24,7 +24,7 @@ export default defineConfig({
   ],
   webServer: [
     {
-      command: "dx build --release && npx serve dist -p 8080",
+      command: "dx build --release && npx serve -s target/dx/log-workout/release/web/public -p 8080",
       url: "http://127.0.0.1:8080",
       timeout: 10 * 60 * 1000,
       reuseExistingServer: !process.env.CI,

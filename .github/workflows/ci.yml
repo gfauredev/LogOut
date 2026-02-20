@@ -309,18 +309,18 @@ jobs:
         run: npm install -g lighthouse
 
       - name: Start dev server
-        run: dx serve --port 3000 &
+        run: dx build --release && npx serve -s target/dx/log-workout/release/web/public -p 8080
 
-      - name: Wait for server
-        run: |
-          echo "Waiting for server to be ready..."
-          for i in $(seq 1 120); do
-            if curl -sf http://localhost:3000/LogOut/ > /dev/null 2>&1; then
-              echo "Server is ready."
-              break
-            fi
-            sleep 5
-          done
+      # - name: Wait for server
+      #   run: |
+      #     echo "Waiting for server to be ready..."
+      #     for i in $(seq 1 120); do
+      #       if curl -sf http://localhost:3000/LogOut/ > /dev/null 2>&1; then
+      #         echo "Server is ready."
+      #         break
+      #       fi
+      #       sleep 5
+      #     done
 
       - name: Run Lighthouse
         id: lighthouse
