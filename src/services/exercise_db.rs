@@ -1,6 +1,15 @@
 use crate::models::{Equipment, Exercise, Muscle};
 use dioxus::prelude::*;
 
+/// Newtype wrapper for the exercise-database signal so its `TypeId` is distinct
+/// from the `Signal<Vec<Exercise>>` used by `storage::provide_app_state` for
+/// custom exercises.  Without this wrapper both `use_context_provider` calls in
+/// `App` would share the same context slot, causing both signals to point at the
+/// same `Signal<Vec<Exercise>>` and leading to doubled counts, missing DB
+/// exercises, and all exercises being treated as custom.
+#[derive(Clone, Copy)]
+struct AllExercisesSignal(Signal<Vec<Exercise>>);
+
 /// Number of seconds between automatic exercise database refreshes (7 days).
 #[cfg(target_arch = "wasm32")]
 const EXERCISE_DB_REFRESH_INTERVAL_SECS: f64 = 7.0 * 24.0 * 60.0 * 60.0;
@@ -22,7 +31,8 @@ fn exercises_json_url() -> String {
 /// On first launch, downloads exercises from the API and stores them in IndexedDB.
 /// On subsequent launches, loads from IndexedDB.
 pub fn provide_exercises() {
-    let sig: Signal<Vec<Exercise>> = use_context_provider(|| Signal::new(Vec::new()));
+    let wrapper = use_context_provider(|| AllExercisesSignal(Signal::new(Vec::new())));
+    let sig = wrapper.0;
 
     spawn(async move {
         load_exercises(sig).await;
@@ -30,7 +40,7 @@ pub fn provide_exercises() {
 }
 
 pub fn use_exercises() -> Signal<Vec<Exercise>> {
-    use_context::<Signal<Vec<Exercise>>>()
+    use_context::<AllExercisesSignal>().0
 }
 
 #[allow(unused_mut, unused_variables)]

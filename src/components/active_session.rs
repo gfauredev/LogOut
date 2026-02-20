@@ -419,7 +419,17 @@ pub fn SessionView() -> Element {
                                                     }
                                                     // Remove from pending and save
                                                     let mut current_session = session.read().clone();
-                                                    current_session.pending_exercise_ids.retain(|x| x != &id);
+                                                    // Remove only the first occurrence so that repeated
+                                                    // exercises are consumed one at a time.
+                                                    let mut removed = false;
+                                                    current_session.pending_exercise_ids.retain(|x| {
+                                                        if !removed && x == &id {
+                                                            removed = true;
+                                                            false
+                                                        } else {
+                                                            true
+                                                        }
+                                                    });
                                                     current_session.rest_start_time = None;
                                                     session.set(current_session.clone());
                                                     storage::save_session(current_session);
