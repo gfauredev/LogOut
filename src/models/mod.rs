@@ -1,9 +1,8 @@
 use serde::{Deserialize, Serialize};
 use std::fmt;
 
-// Base URL for exercise images from the free-exercise-db repository
-const EXERCISES_IMAGE_BASE_URL: &str =
-    "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/";
+// Image sub-path within the exercise database repository
+const EXERCISES_IMAGE_SUB_PATH: &str = "exercises/";
 // Version control for data structures to handle migrations
 pub const DATA_VERSION: u16 = 0;
 
@@ -362,7 +361,12 @@ impl Exercise {
             if img.starts_with("http://") || img.starts_with("https://") {
                 img.clone()
             } else {
-                format!("{}{}", EXERCISES_IMAGE_BASE_URL, img)
+                format!(
+                    "{}{}{}",
+                    crate::utils::EXERCISE_DB_BASE_URL,
+                    EXERCISES_IMAGE_SUB_PATH,
+                    img
+                )
             }
         })
     }
@@ -840,7 +844,7 @@ mod tests {
         };
         assert_eq!(
             ex.get_first_image_url(),
-            Some("https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Squat/0.jpg".into())
+            Some("https://raw.githubusercontent.com/gfauredev/free-exercise-db/main/exercises/Squat/0.jpg".into())
         );
     }
 
@@ -1162,14 +1166,14 @@ mod tests {
         assert_eq!(
             ex.get_image_url(0),
             Some(
-                "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Squat/0.jpg"
+                "https://raw.githubusercontent.com/gfauredev/free-exercise-db/main/exercises/Squat/0.jpg"
                     .into()
             )
         );
         assert_eq!(
             ex.get_image_url(1),
             Some(
-                "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Squat/1.jpg"
+                "https://raw.githubusercontent.com/gfauredev/free-exercise-db/main/exercises/Squat/1.jpg"
                     .into()
             )
         );

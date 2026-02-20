@@ -1,9 +1,22 @@
 use crate::models::{Equipment, Exercise, Muscle};
 use dioxus::prelude::*;
 
+/// Number of seconds between automatic exercise database refreshes (7 days).
 #[cfg(target_arch = "wasm32")]
-const EXERCISES_JSON_URL: &str =
-    "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/dist/exercises.json";
+const EXERCISE_DB_REFRESH_INTERVAL_SECS: f64 = 7.0 * 24.0 * 60.0 * 60.0;
+
+/// localStorage key used to track when exercises were last downloaded.
+#[cfg(target_arch = "wasm32")]
+const LAST_FETCH_KEY: &str = "exercise_db_last_fetch";
+
+/// Milliseconds per second – used when converting `Date.now()` to Unix seconds.
+#[cfg(target_arch = "wasm32")]
+const MILLIS_PER_SECOND: f64 = 1000.0;
+
+#[cfg(target_arch = "wasm32")]
+fn exercises_json_url() -> String {
+    format!("{}dist/exercises.json", crate::utils::EXERCISE_DB_BASE_URL)
+}
 
 /// Provide the exercises signal in the Dioxus context.
 /// On first launch, downloads exercises from the API and stores them in IndexedDB.
@@ -22,27 +35,35 @@ pub fn use_exercises() -> Signal<Vec<Exercise>> {
 
 #[allow(unused_mut, unused_variables)]
 async fn load_exercises(mut sig: Signal<Vec<Exercise>>) {
-    // 1. Try IndexedDB
+    // 1. Try IndexedDB for immediate display
     #[cfg(target_arch = "wasm32")]
     {
         use crate::services::storage::idb_exercises;
-        if let Ok(exercises) = idb_exercises::get_all_exercises().await {
-            if !exercises.is_empty() {
-                log::info!("Loaded {} exercises from IndexedDB", exercises.len());
-                sig.set(exercises);
+
+        let cached = idb_exercises::get_all_exercises().await.unwrap_or_default();
+        let needs_refresh = !cached.is_empty() && is_refresh_due();
+
+        if !cached.is_empty() {
+            log::info!("Loaded {} exercises from IndexedDB", cached.len());
+            sig.set(cached);
+
+            if !needs_refresh {
                 return;
             }
+
+            // Re-fetch in the background to keep exercises up to date
+            log::info!("Exercise database is stale – refreshing in background");
         }
 
-        // 2. Try downloading from API
+        // 2. Download from the network (first run or periodic refresh)
         match download_exercises().await {
             Ok(exercises) if !exercises.is_empty() => {
                 log::info!(
                     "Downloaded {} exercises, storing in IndexedDB",
                     exercises.len()
                 );
-                // Store all in IndexedDB for next time
                 idb_exercises::store_all_exercises(&exercises).await;
+                record_fetch_timestamp();
                 sig.set(exercises);
                 return;
             }
@@ -55,6 +76,39 @@ async fn load_exercises(mut sig: Signal<Vec<Exercise>>) {
     log::warn!("No exercises available: failed to load from IndexedDB and download from API");
 }
 
+/// Returns true when the locally-cached exercise list is older than
+/// [`EXERCISE_DB_REFRESH_INTERVAL_SECS`] or has never been fetched.
+#[cfg(target_arch = "wasm32")]
+fn is_refresh_due() -> bool {
+    let Some(window) = web_sys::window() else {
+        return true;
+    };
+    let Ok(Some(storage)) = window.local_storage() else {
+        return true;
+    };
+    let Ok(Some(ts_str)) = storage.get_item(LAST_FETCH_KEY) else {
+        return true;
+    };
+    let Ok(last_fetch) = ts_str.parse::<f64>() else {
+        return true;
+    };
+    let now = js_sys::Date::now() / MILLIS_PER_SECOND;
+    (now - last_fetch) >= EXERCISE_DB_REFRESH_INTERVAL_SECS
+}
+
+/// Stores the current timestamp as the last exercise-fetch time.
+#[cfg(target_arch = "wasm32")]
+fn record_fetch_timestamp() {
+    let Some(window) = web_sys::window() else {
+        return;
+    };
+    let Ok(Some(storage)) = window.local_storage() else {
+        return;
+    };
+    let now = (js_sys::Date::now() / MILLIS_PER_SECOND).to_string();
+    let _ = storage.set_item(LAST_FETCH_KEY, &now);
+}
+
 #[cfg(target_arch = "wasm32")]
 async fn download_exercises() -> Result<Vec<Exercise>, String> {
     use wasm_bindgen::JsCast;
@@ -65,7 +119,7 @@ async fn download_exercises() -> Result<Vec<Exercise>, String> {
     let opts = RequestInit::new();
     opts.set_method("GET");
 
-    let request = Request::new_with_str_and_init(EXERCISES_JSON_URL, &opts)
+    let request = Request::new_with_str_and_init(&exercises_json_url(), &opts)
         .map_err(|e| format!("{:?}", e))?;
 
     let resp_value = JsFuture::from(window.fetch_with_request(&request))
@@ -326,5 +380,24 @@ mod tests {
         let results = search_exercises(&exercises, "biceps");
         assert_eq!(results.len(), 1);
         assert_eq!(results[0].id, "pull_up");
+    }
+
+    #[test]
+    fn exercises_json_url_uses_fork() {
+        // The JSON endpoint must reference the gfauredev fork (SSOT).
+        #[cfg(target_arch = "wasm32")]
+        {
+            let url = exercises_json_url();
+            assert!(
+                url.contains("gfauredev"),
+                "Expected gfauredev fork URL, got: {url}"
+            );
+            assert!(url.ends_with("dist/exercises.json"));
+        }
+        // On non-wasm we verify the base URL constant instead.
+        #[cfg(not(target_arch = "wasm32"))]
+        {
+            assert!(crate::utils::EXERCISE_DB_BASE_URL.contains("gfauredev"));
+        }
     }
 }

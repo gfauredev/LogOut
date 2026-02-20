@@ -1,3 +1,8 @@
+/// Base URL for the exercise database fork (single source of truth).
+/// All exercise data (JSON catalog, images) is served from this origin.
+pub(crate) const EXERCISE_DB_BASE_URL: &str =
+    "https://raw.githubusercontent.com/gfauredev/free-exercise-db/main/";
+
 /// Format a session timestamp as a human-readable relative date string.
 pub fn format_session_date(timestamp: u64) -> String {
     let days_ago = days_since(timestamp);
