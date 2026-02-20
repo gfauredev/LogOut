@@ -68,8 +68,7 @@ mod tests {
         let offset = UtcOffset::current_local_offset().unwrap_or(UtcOffset::UTC);
         let now = OffsetDateTime::now_utc().to_offset(offset);
         // Build a datetime at local midnight for today and convert back to unix seconds.
-        let midnight = now
-            .replace_time(time::Time::MIDNIGHT);
+        let midnight = now.replace_time(time::Time::MIDNIGHT);
         midnight.unix_timestamp().max(0) as u64
     }
 
