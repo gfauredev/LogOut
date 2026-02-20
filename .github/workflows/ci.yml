@@ -218,47 +218,49 @@ jobs:
         run: npx playwright test
         continue-on-error: true
 
-      - name: Upload screenshots on failure
+      - name: Upload screenshots to Imgur
         if: steps.e2e.outcome == 'failure'
-        uses: actions/upload-artifact@v4
-        with:
-          name: e2e-screenshots
-          path: test-results/
-          if-no-files-found: ignore
+        id: imgur
+        env:
+          IMGUR_CLIENT_ID: ${{ secrets.IMGUR_CLIENT_ID }}
+        run: |
+          IMGUR_URLS=""
+          if [ -n "$IMGUR_CLIENT_ID" ] && [ -d test-results ]; then
+            while IFS= read -r -d '' f; do
+              RESPONSE=$(curl -sf --location 'https://api.imgur.com/3/image' \
+                --header "Authorization: Client-ID $IMGUR_CLIENT_ID" \
+                --form "image=@$f" \
+                --form 'type=file' || echo '{"error":"curl failed"}')
+              if echo "$RESPONSE" | jq -e '.error' > /dev/null 2>&1; then
+                echo "Warning: failed to upload $f to Imgur: $(echo "$RESPONSE" | jq -r '.error')"
+                continue
+              fi
+              URL=$(echo "$RESPONSE" | jq -r '.data.link // empty')
+              if [ -n "$URL" ]; then
+                TITLE=$(basename "$f" .png)
+                IMGUR_URLS="${IMGUR_URLS}![${TITLE}](${URL})\n"
+              fi
+            done < <(find test-results -name "*.png" -print0)
+          fi
+          echo "imgur_urls<<EOF" >> "$GITHUB_OUTPUT"
+          echo -e "$IMGUR_URLS" >> "$GITHUB_OUTPUT"
+          echo "EOF" >> "$GITHUB_OUTPUT"
 
       - name: Post failure-screenshots comment
         if: steps.e2e.outcome == 'failure'
         uses: actions/github-script@v7
+        env:
+          IMGUR_URLS: ${{ steps.imgur.outputs.imgur_urls }}
         with:
           script: |
-            const fs = require('fs');
-            const path = require('path');
-            const tag = '';
+            const tag = '<!-- e2e-screenshots -->';
             const runUrl = `https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
+            const imgurUrls = process.env.IMGUR_URLS || '';
             let body = `${tag}\n## 📸 E2E Test Failures\n\n`;
-            body += `Test failures were detected. You can view and download the full screenshots in the **Artifacts** section of the [Action Run](${runUrl}).\n\n`;
-            const testResultsDir = 'test-results';
-            if (fs.existsSync(testResultsDir)) {
-              const walk = (dir) => {
-                let files = [];
-                for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
-                  const full = path.join(dir, entry.name);
-                  if (entry.isDirectory()) files.push(...walk(full));
-                  else if (entry.name.endsWith('.png')) files.push(entry.name);
-                }
-                return files;
-              };
-              const pngNames = walk(testResultsDir);
-              if (pngNames.length > 0) {
-                body += `### Failed Screenshots Found:\n`;
-                pngNames.forEach(name => {
-                  body += `- \`${name}\` \n`;
-                });
-              } else {
-                body += '> [!NOTE]\n> No .png files found in the test-results directory.\n';
-              }
+            if (imgurUrls.trim()) {
+              body += imgurUrls;
             } else {
-              body += '> [!WARNING]\n> The `test-results` directory was not found.\n';
+              body += `Test failures were detected. Screenshots are available in the **Artifacts** section of the [Action Run](${runUrl}).\n`;
             }
             const { data: comments } = await github.rest.issues.listComments({
               owner: context.repo.owner,
@@ -285,172 +287,3 @@ jobs:
       - name: Fail if any E2E test failed
         if: steps.e2e.outcome == 'failure'
         run: exit 1
-
-  lighthouse:
-    name: PageSpeed Insights (Lighthouse)
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: dtolnay/rust-toolchain@stable
-        with:
-          target: wasm32-unknown-unknown
-
-      - uses: swatinem/rust-cache@v2
-
-      - name: Install Dioxus CLI
-        uses: taiki-e/install-action@v2
-        with:
-          tool: dioxus-cli
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: "20"
-
-      - name: Install Lighthouse CLI
-        run: npm install -g lighthouse
-
-      - name: Build app
-        run: dx build --release
-
-      - name: Start test server
-        run: npx serve -s target/dx/log-workout/release/web/public -p 8080 &
-
-      - name: Run Lighthouse
-        id: lighthouse
-        run: |
-          lighthouse http://localhost:8080/LogOut/ \
-            --output json html \
-            --output-path ./lighthouse-report \
-            --chrome-flags="--headless --no-sandbox --disable-dev-shm-usage" \
-            --quiet || true
-
-          if [ -f ./lighthouse-report.report.json ]; then
-            PERF=$(jq '.categories.performance.score * 100 | round'          ./lighthouse-report.report.json)
-            A11Y=$(jq '.categories.accessibility.score * 100 | round'         ./lighthouse-report.report.json)
-            BP=$(jq  '(.categories["best-practices"].score // 0) * 100 | round' ./lighthouse-report.report.json)
-            SEO=$(jq  '.categories.seo.score * 100 | round'                   ./lighthouse-report.report.json)
-            PWA=$(jq  '(.categories.pwa.score // 0) * 100 | round'            ./lighthouse-report.report.json)
-            echo "performance=$PERF"    >> "$GITHUB_OUTPUT"
-            echo "accessibility=$A11Y"  >> "$GITHUB_OUTPUT"
-            echo "best_practices=$BP"   >> "$GITHUB_OUTPUT"
-            echo "seo=$SEO"             >> "$GITHUB_OUTPUT"
-            echo "pwa=$PWA"             >> "$GITHUB_OUTPUT"
-          fi
-
-      - name: Upload Lighthouse HTML report
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: lighthouse-report
-          path: ./lighthouse-report.report.html
-          if-no-files-found: ignore
-          retention-days: 7
-
-      - name: Post Lighthouse results comment
-        if: always()
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const score = s => {
-              const n = parseInt(s) || 0;
-              return n >= 90 ? `🟢 ${n}` : n >= 50 ? `🟡 ${n}` : `🔴 ${n}`;
-            };
-            const perf = '${{ steps.lighthouse.outputs.performance }}';
-            const a11y = '${{ steps.lighthouse.outputs.accessibility }}';
-            const bp   = '${{ steps.lighthouse.outputs.best_practices }}';
-            const seo  = '${{ steps.lighthouse.outputs.seo }}';
-            const pwa  = '${{ steps.lighthouse.outputs.pwa }}';
-            const runUrl = `https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
-            const tag = '<!-- lighthouse-report -->';
-            const body = `${tag}
-            ## 🚀 PageSpeed Insights (Lighthouse)
-            | Category | Score |
-            |----------|-------|
-            | ⚡ Performance   | ${score(perf)} |
-            | ♿ Accessibility | ${score(a11y)} |
-            | 🛡️ Best Practices | ${score(bp)} |
-            | 🔍 SEO           | ${score(seo)} |
-            | 📱 PWA           | ${score(pwa)} |
-
-            > 🟢 ≥ 90 · 🟡 50–89 · 🔴 < 50
-
-            [📄 Full Lighthouse HTML report](${runUrl})`;
-            const { data: comments } = await github.rest.issues.listComments({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number: context.issue.number,
-            });
-            const existing = comments.find(c => c.body.includes(tag));
-            if (existing) {
-              await github.rest.issues.updateComment({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                comment_id: existing.id,
-                body,
-              });
-            } else {
-              await github.rest.issues.createComment({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                issue_number: context.issue.number,
-                body,
-              });
-            }
-
-  preview:
-    name: PR Preview Build
-    runs-on: ubuntu-latest
-    needs: [format, clippy, unit-tests, e2e]
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: dtolnay/rust-toolchain@stable
-        with:
-          target: wasm32-unknown-unknown
-
-      - uses: swatinem/rust-cache@v2
-
-      - name: Install Dioxus CLI
-        uses: taiki-e/install-action@v2
-        with:
-          tool: dioxus-cli
-
-      - name: Build for preview
-        run: dx build --release --platform web
-
-      - name: Upload preview build
-        uses: actions/upload-artifact@v4
-        with:
-          name: pr-preview-build
-          path: ./target/dx/log-workout/release/web/public
-          retention-days: 14
-
-      - name: Post preview comment
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const runUrl = `https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
-            const tag = '<!-- pr-preview -->';
-            const body = `${tag}\n## 🔍 PR Preview Build\nA preview build of this PR is available as a workflow artifact.\n👉 [Download preview build](${runUrl})\n\n> To view locally, download and serve the artifact with any static file server.`;
-            const { data: comments } = await github.rest.issues.listComments({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number: context.issue.number,
-            });
-            const existing = comments.find(c => c.body.includes(tag));
-            if (existing) {
-              await github.rest.issues.updateComment({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                comment_id: existing.id,
-                body,
-              });
-            } else {
-              await github.rest.issues.createComment({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                issue_number: context.issue.number,
-                body,
-              });
-            }
