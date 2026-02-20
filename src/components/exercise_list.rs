@@ -65,7 +65,7 @@ pub fn ExerciseListPage() -> Element {
         results
     });
 
-    let total = all_exercises.read().len() + custom_exercises.read().len();
+    let total = all_exercises.read().len();
 
     rsx! {
         main { class: "page-content container container--narrow",

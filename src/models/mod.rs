@@ -1035,6 +1035,97 @@ mod tests {
         assert!(session.pending_exercise_ids.is_empty());
     }
 
+    #[test]
+    fn pending_ids_include_repeated_exercises() {
+        // When an exercise is performed multiple times in a session, each
+        // occurrence should appear in pending_exercise_ids so the repeated
+        // session mirrors the original exactly.
+        let session = WorkoutSession {
+            id: "s1".into(),
+            start_time: 1000,
+            end_time: Some(2000),
+            exercise_logs: vec![
+                ExerciseLog {
+                    exercise_id: "bench_press".into(),
+                    exercise_name: "Bench Press".into(),
+                    category: Category::Strength,
+                    start_time: 1000,
+                    end_time: Some(1100),
+                    weight_dg: None,
+                    reps: Some(10),
+                    distance_dam: None,
+                    force: None,
+                },
+                ExerciseLog {
+                    exercise_id: "squat".into(),
+                    exercise_name: "Squat".into(),
+                    category: Category::Strength,
+                    start_time: 1200,
+                    end_time: Some(1300),
+                    weight_dg: None,
+                    reps: Some(8),
+                    distance_dam: None,
+                    force: None,
+                },
+                ExerciseLog {
+                    exercise_id: "bench_press".into(),
+                    exercise_name: "Bench Press".into(),
+                    category: Category::Strength,
+                    start_time: 1400,
+                    end_time: Some(1500),
+                    weight_dg: None,
+                    reps: Some(8),
+                    distance_dam: None,
+                    force: None,
+                },
+            ],
+            version: DATA_VERSION,
+            pending_exercise_ids: vec![],
+            rest_start_time: None,
+        };
+
+        // Build pending IDs the same way SessionCard does (all logs, not deduplicated)
+        let pending: Vec<String> = session
+            .exercise_logs
+            .iter()
+            .map(|log| log.exercise_id.clone())
+            .collect();
+
+        assert_eq!(
+            pending,
+            vec!["bench_press", "squat", "bench_press"],
+            "repeated exercises must appear in pending_ids as many times as performed"
+        );
+    }
+
+    #[test]
+    fn remove_first_occurrence_from_pending_ids() {
+        // Simulates the retain logic in active_session.rs: removing only the
+        // first occurrence of an exercise ID so that subsequent repetitions
+        // remain in the queue.
+        let mut pending = vec![
+            "bench_press".to_string(),
+            "squat".to_string(),
+            "bench_press".to_string(),
+        ];
+        let target = "bench_press";
+        let mut removed = false;
+        pending.retain(|x| {
+            if !removed && x == target {
+                removed = true;
+                false
+            } else {
+                true
+            }
+        });
+
+        assert_eq!(
+            pending,
+            vec!["squat", "bench_press"],
+            "only the first occurrence should be removed"
+        );
+    }
+
     // ── Display impls full coverage ──────────────────────────────────────────
 
     #[test]

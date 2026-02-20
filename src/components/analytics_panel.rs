@@ -266,93 +266,89 @@ fn ChartView(
     };
 
     rsx! {
-        div {
-            class: "chart-scroll",
+        svg {
+            width: "100%",
+            height: "auto",
+            view_box: "0 0 {width} {height}",
+            class: "analytics-chart-svg",
 
-            svg {
-                width: "{width}",
-                height: "{height}",
-                view_box: "0 0 {width} {height}",
-                class: "analytics-chart-svg",
+            // Y-axis
+            line { x1: "{pad}", y1: "{pad}", x2: "{pad}", y2: "{pad + chart_height}", stroke: "#ccc", stroke_width: "2" }
+            // X-axis
+            line { x1: "{pad}", y1: "{pad + chart_height}", x2: "{pad + chart_width}", y2: "{pad + chart_height}", stroke: "#ccc", stroke_width: "2" }
 
-                // Y-axis
-                line { x1: "{pad}", y1: "{pad}", x2: "{pad}", y2: "{pad + chart_height}", stroke: "#ccc", stroke_width: "2" }
-                // X-axis
-                line { x1: "{pad}", y1: "{pad + chart_height}", x2: "{pad + chart_width}", y2: "{pad + chart_height}", stroke: "#ccc", stroke_width: "2" }
-
-                // Y-axis labels
-                for i in 0..5 {
-                    {
-                        let y_val = min_y + (max_y - min_y) * (i as f64 / 4.0);
-                        let y_pos = scale_y(y_val);
-                        rsx! {
-                            g { key: "ylabel_{i}",
-                                line { x1: "{pad - 5.0}", y1: "{y_pos}", x2: "{pad}", y2: "{y_pos}", stroke: "#ccc", stroke_width: "1" }
-                                text { x: "{pad - 10.0}", y: "{y_pos + 4.0}", text_anchor: "end", font_size: "12", fill: "#666", "{y_val:.1}" }
-                            }
-                        }
-                    }
-                }
-
-                // X-axis labels
+            // Y-axis labels
+            for i in 0..5 {
                 {
-                    let num_labels = 4.min(data.iter().map(|(_, p)| p.len()).max().unwrap_or(0)).max(2);
+                    let y_val = min_y + (max_y - min_y) * (i as f64 / 4.0);
+                    let y_pos = scale_y(y_val);
                     rsx! {
-                        for i in 0..num_labels {
-                            {
-                                let x_val = min_x + (max_x - min_x) * (i as f64 / (num_labels - 1) as f64);
-                                let x_pos = scale_x(x_val);
-                                rsx! {
-                                    g { key: "xlabel_{i}",
-                                        text { x: "{x_pos}", y: "{pad + chart_height + 20.0}", text_anchor: "middle", font_size: "11", fill: "#666", "{format_date(x_val)}" }
-                                    }
+                        g { key: "ylabel_{i}",
+                            line { x1: "{pad - 5.0}", y1: "{y_pos}", x2: "{pad}", y2: "{y_pos}", stroke: "#ccc", stroke_width: "1" }
+                            text { x: "{pad - 10.0}", y: "{y_pos + 4.0}", text_anchor: "end", font_size: "12", fill: "#ccc", "{y_val:.1}" }
+                        }
+                    }
+                }
+            }
+
+            // X-axis labels
+            {
+                let num_labels = 4.min(data.iter().map(|(_, p)| p.len()).max().unwrap_or(0)).max(2);
+                rsx! {
+                    for i in 0..num_labels {
+                        {
+                            let x_val = min_x + (max_x - min_x) * (i as f64 / (num_labels - 1) as f64);
+                            let x_pos = scale_x(x_val);
+                            rsx! {
+                                g { key: "xlabel_{i}",
+                                    text { x: "{x_pos}", y: "{pad + chart_height + 20.0}", text_anchor: "middle", font_size: "11", fill: "#ccc", "{format_date(x_val)}" }
                                 }
                             }
                         }
                     }
                 }
+            }
 
-                // Y-axis label
-                text {
-                    x: "{pad / 2.0}", y: "{pad + chart_height / 2.0}",
-                    text_anchor: "middle", font_size: "14", font_weight: "bold", fill: "#333",
-                    transform: "rotate(-90, {pad / 2.0}, {pad + chart_height / 2.0})",
-                    "{metric.label()}"
-                }
+            // Y-axis label
+            text {
+                x: "{pad / 2.0}", y: "{pad + chart_height / 2.0}",
+                text_anchor: "middle", font_size: "14", font_weight: "bold", fill: "#e0e0e0",
+                transform: "rotate(-90, {pad / 2.0}, {pad + chart_height / 2.0})",
+                "{metric.label()}"
+            }
 
-                // Plot lines
-                for (idx, (_exercise_name, points)) in data.iter().enumerate() {
-                    {
-                        if points.len() >= 2 {
-                            let path_data = points.iter().enumerate()
-                                .map(|(i, (x, y))| {
-                                    let sx = scale_x(*x); let sy = scale_y(*y);
-                                    if i == 0 { format!("M {} {}", sx, sy) } else { format!("L {} {}", sx, sy) }
-                                })
-                                .collect::<Vec<_>>().join(" ");
-                            let color = colors.get(idx).unwrap_or(&"#000");
-                            Some(rsx! {
-                                g { key: "line_{idx}",
-                                    path { d: "{path_data}", stroke: "{color}", stroke_width: "3", fill: "none", stroke_linecap: "round", stroke_linejoin: "round" }
-                                    for (x, y) in points.iter() {
-                                        circle { cx: "{scale_x(*x)}", cy: "{scale_y(*y)}", r: "4", fill: "{color}", stroke: "white", stroke_width: "2" }
-                                    }
-                                }
+            // Plot lines
+            for (idx, (_exercise_name, points)) in data.iter().enumerate() {
+                {
+                    if points.len() >= 2 {
+                        let path_data = points.iter().enumerate()
+                            .map(|(i, (x, y))| {
+                                let sx = scale_x(*x); let sy = scale_y(*y);
+                                if i == 0 { format!("M {} {}", sx, sy) } else { format!("L {} {}", sx, sy) }
                             })
-                        } else { None }
-                    }
-                }
-
-                // Legend
-                for (idx, (exercise_name, _)) in data.iter().enumerate() {
-                    {
-                        let y_offset = 20.0 + idx as f64 * 20.0;
-                        let color = colors.get(idx).unwrap_or(&"#000");
-                        rsx! {
-                            g { key: "legend_{idx}",
-                                circle { cx: "{width - 150.0}", cy: "{y_offset}", r: "6", fill: "{color}" }
-                                text { x: "{width - 135.0}", y: "{y_offset + 4.0}", font_size: "12", fill: "#333", "{exercise_name}" }
+                            .collect::<Vec<_>>().join(" ");
+                        let color = colors.get(idx).unwrap_or(&"#ccc");
+                        Some(rsx! {
+                            g { key: "line_{idx}",
+                                path { d: "{path_data}", stroke: "{color}", stroke_width: "3", fill: "none", stroke_linecap: "round", stroke_linejoin: "round" }
+                                for (x, y) in points.iter() {
+                                    circle { cx: "{scale_x(*x)}", cy: "{scale_y(*y)}", r: "4", fill: "{color}", stroke: "#111", stroke_width: "2" }
+                                }
                             }
+                        })
+                    } else { None }
+                }
+            }
+
+            // Legend
+            for (idx, (exercise_name, _)) in data.iter().enumerate() {
+                {
+                    let y_offset = 20.0 + idx as f64 * 20.0;
+                    let color = colors.get(idx).unwrap_or(&"#ccc");
+                    rsx! {
+                        g { key: "legend_{idx}",
+                            circle { cx: "{width - 150.0}", cy: "{y_offset}", r: "6", fill: "{color}" }
+                            text { x: "{width - 135.0}", y: "{y_offset + 4.0}", font_size: "12", fill: "#e0e0e0", "{exercise_name}" }
                         }
                     }
                 }
