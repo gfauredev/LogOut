@@ -98,8 +98,8 @@ pub fn ExerciseListPage() -> Element {
             .skip(page_start)
             .take(PAGE_SIZE)
             .map(|(ex, is_custom)| {
-                let show_instructions = active_ids.contains(&ex.id)
-                    || cur_id.as_deref() == Some(ex.id.as_str());
+                let show_instructions =
+                    active_ids.contains(&ex.id) || cur_id.as_deref() == Some(ex.id.as_str());
                 (ex.clone(), *is_custom, show_instructions)
             })
             .collect::<Vec<_>>()
