@@ -4,8 +4,9 @@ use crate::Route;
 use dioxus::prelude::*;
 
 #[component]
-pub fn ExerciseCard(exercise: Exercise, is_custom: bool) -> Element {
-    let mut show_instructions = use_signal(|| false);
+pub fn ExerciseCard(exercise: Exercise, is_custom: bool, show_instructions_initial: Option<bool>) -> Element {
+    let initial = show_instructions_initial.unwrap_or(false);
+    let mut show_instructions = use_signal(move || initial);
     let mut img_index = use_signal(|| 0usize);
     let image_count = exercise.images.len();
 

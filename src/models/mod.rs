@@ -408,7 +408,7 @@ impl Exercise {
     }
 
     /// Get the first image URL if available
-    #[allow(dead_code)]
+    #[cfg(test)]
     pub fn get_first_image_url(&self) -> Option<String> {
         self.get_image_url(0)
     }

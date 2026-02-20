@@ -41,14 +41,21 @@ fn days_since(timestamp: u64) -> i64 {
 
     #[cfg(not(target_arch = "wasm32"))]
     {
-        // On non-WASM targets (tests) use UTC day numbers as an approximation.
-        let current_day = std::time::SystemTime::now()
-            .duration_since(std::time::UNIX_EPOCH)
-            .unwrap_or_default()
-            .as_secs()
-            / 86400;
-        let ts_day = timestamp / 86400;
-        (current_day as i64) - (ts_day as i64)
+        use time::{OffsetDateTime, UtcOffset};
+
+        // Obtain the local UTC offset; fall back to UTC if it cannot be determined
+        // (e.g. in sandboxed CI environments without /etc/localtime).
+        let offset = UtcOffset::current_local_offset().unwrap_or(UtcOffset::UTC);
+
+        let now = OffsetDateTime::now_utc().to_offset(offset);
+        let ts_dt = OffsetDateTime::from_unix_timestamp(timestamp as i64)
+            .unwrap_or(OffsetDateTime::UNIX_EPOCH)
+            .to_offset(offset);
+
+        let now_date = now.date();
+        let ts_date = ts_dt.date();
+
+        (now_date - ts_date).whole_days()
     }
 }
 
@@ -56,43 +63,59 @@ fn days_since(timestamp: u64) -> i64 {
 mod tests {
     use super::*;
 
-    fn today_midnight_utc_secs() -> u64 {
-        let now = std::time::SystemTime::now()
-            .duration_since(std::time::UNIX_EPOCH)
-            .unwrap_or_default()
-            .as_secs();
-        // Truncate to start of UTC day
-        (now / 86400) * 86400
+    fn today_midnight_local_secs() -> u64 {
+        use time::{OffsetDateTime, UtcOffset};
+        let offset = UtcOffset::current_local_offset().unwrap_or(UtcOffset::UTC);
+        let now = OffsetDateTime::now_utc().to_offset(offset);
+        // Build a datetime at local midnight for today and convert back to unix seconds.
+        let midnight = now
+            .replace_time(time::Time::MIDNIGHT);
+        midnight.unix_timestamp().max(0) as u64
     }
 
     #[test]
     fn format_session_date_today() {
-        // A timestamp within today's UTC day
-        let ts = today_midnight_utc_secs() + 3600; // 1h into today
+        // A timestamp within today's local day
+        let ts = today_midnight_local_secs() + 3600; // 1h into today
         assert_eq!(format_session_date(ts), "Today");
     }
 
     #[test]
     fn format_session_date_yesterday() {
-        let ts = today_midnight_utc_secs() - 1; // 1 second before today's midnight
+        let ts = today_midnight_local_secs() - 1; // 1 second before today's midnight
         assert_eq!(format_session_date(ts), "Yesterday");
     }
 
     #[test]
     fn format_session_date_days_ago() {
-        let ts = today_midnight_utc_secs() - 86400 * 3; // 3 days before today
+        let ts = today_midnight_local_secs() - 86400 * 3; // 3 days before today
         assert_eq!(format_session_date(ts), "3 days ago");
     }
 
     #[test]
     fn format_session_date_beginning_of_today() {
-        let ts = today_midnight_utc_secs();
+        let ts = today_midnight_local_secs();
         assert_eq!(format_session_date(ts), "Today");
     }
 
     #[test]
     fn format_session_date_end_of_yesterday() {
-        let ts = today_midnight_utc_secs() - 1;
+        let ts = today_midnight_local_secs() - 1;
         assert_eq!(format_session_date(ts), "Yesterday");
+    }
+
+    #[test]
+    fn format_session_date_two_days_ago() {
+        let ts = today_midnight_local_secs() - 86400 * 2;
+        assert_eq!(format_session_date(ts), "2 days ago");
+    }
+
+    #[test]
+    fn days_since_uses_local_midnight_boundary() {
+        // Verify that a timestamp at local midnight counts as "today",
+        // not as "yesterday" (which UTC truncation would give for negative UTC offsets).
+        let midnight = today_midnight_local_secs();
+        let days = super::days_since(midnight);
+        assert_eq!(days, 0, "local midnight should be day 0");
     }
 }

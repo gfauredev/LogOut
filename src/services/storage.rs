@@ -24,6 +24,7 @@ pub fn provide_app_state() {
 
 // ── helpers to obtain the signals from any component ──
 
+#[allow(dead_code)]
 pub fn use_workouts() -> Signal<Vec<Workout>> {
     consume_context::<Signal<Vec<Workout>>>()
 }
@@ -226,6 +227,9 @@ async fn migrate_from_local_storage(
 // Public mutation helpers (granular IDB writes)
 // ──────────────────────────────────────────
 
+/// Appends a completed workout to the workout list and persists it to IndexedDB.
+/// Note: the WorkoutLog page currently has no route; this function is kept for
+/// future use when the workout-planning flow is wired up.
 #[allow(dead_code)]
 pub fn add_workout(workout: Workout) {
     let mut sig = use_workouts();
@@ -237,20 +241,6 @@ pub fn add_workout(workout: Workout) {
             error!("Failed to persist workout: {e}");
         }
     });
-}
-
-#[allow(dead_code)]
-pub fn delete_workout(id: &str) {
-    let mut sig = use_workouts();
-    sig.write().retain(|w| w.id != id);
-
-    #[cfg(target_arch = "wasm32")]
-    {
-        let id = id.to_owned();
-        spawn_local(async move {
-            let _ = idb::delete_item(idb::STORE_WORKOUTS, &id).await;
-        });
-    }
 }
 
 pub fn save_session(session: WorkoutSession) {
@@ -329,13 +319,6 @@ pub fn get_last_exercise_log(exercise_id: &str) -> Option<ExerciseLog> {
         }
     }
     None
-}
-
-#[allow(dead_code)]
-pub fn get_active_session() -> Option<WorkoutSession> {
-    let sessions = use_sessions();
-    let result = sessions.read().iter().find(|s| s.is_active()).cloned();
-    result
 }
 
 // ──────────────────────────────────────────

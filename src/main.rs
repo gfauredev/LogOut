@@ -41,9 +41,10 @@ fn main() {
     // Request notification permission so rest/duration alerts can be shown
     #[cfg(all(target_arch = "wasm32", feature = "web-platform"))]
     {
-        let _ = js_sys::eval(
-            "try{if(Notification&&Notification.permission==='default'){Notification.requestPermission();}}catch(e){}",
-        );
+        use web_sys::NotificationPermission;
+        if web_sys::Notification::permission() == NotificationPermission::Default {
+            let _ = web_sys::Notification::request_permission();
+        }
     }
 
     launch(App);
