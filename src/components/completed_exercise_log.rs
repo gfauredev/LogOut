@@ -20,14 +20,14 @@ pub fn CompletedExerciseLog(
         let log = log.clone();
         move |_| {
             edit_weight_input.set(
-                log.weight_dg
-                    .map(|w| format!("{:.1}", w.0 as f64 / 100.0))
+                log.weight_hg
+                    .map(|w| format!("{:.1}", w.0 as f64 / 10.0))
                     .unwrap_or_default(),
             );
             edit_reps_input.set(log.reps.map(|r| r.to_string()).unwrap_or_default());
             edit_distance_input.set(
-                log.distance_dam
-                    .map(|d| format!("{:.2}", d.0 as f64 / 100.0))
+                log.distance_m
+                    .map(|d| format!("{:.2}", d.0 as f64 / 1000.0))
                     .unwrap_or_default(),
             );
             is_editing.set(true);
@@ -37,7 +37,7 @@ pub fn CompletedExerciseLog(
     let save_edit = move |_| {
         let mut current_session = session.read().clone();
         if let Some(log) = current_session.exercise_logs.get_mut(idx) {
-            log.weight_dg = parse_weight_kg(&edit_weight_input.read());
+            log.weight_hg = parse_weight_kg(&edit_weight_input.read());
             let force = log.force;
             log.reps = if force.is_some_and(|f| f.has_reps()) {
                 edit_reps_input.read().parse().ok()
@@ -45,7 +45,7 @@ pub fn CompletedExerciseLog(
                 None
             };
             if log.category == Category::Cardio {
-                log.distance_dam = parse_distance_km(&edit_distance_input.read());
+                log.distance_m = parse_distance_km(&edit_distance_input.read());
             }
         }
         storage::save_session(current_session.clone());
@@ -143,13 +143,13 @@ pub fn CompletedExerciseLog(
             } else {
                 div {
                     class: "completed-log__details",
-                    if let Some(w) = log.weight_dg {
+                    if let Some(w) = log.weight_hg {
                         div { "Weight: {w}" }
                     }
                     if let Some(reps) = log.reps {
                         div { "Reps: {reps}" }
                     }
-                    if let Some(d) = log.distance_dam {
+                    if let Some(d) = log.distance_m {
                         div { "Distance: {d}" }
                     }
                     if let Some(duration) = log.duration_seconds() {

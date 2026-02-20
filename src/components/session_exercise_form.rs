@@ -1,4 +1,4 @@
-use crate::models::{format_time, Category};
+use crate::models::{format_time, parse_distance_km, parse_weight_kg, Category};
 use crate::services::{exercise_db, storage};
 use dioxus::prelude::*;
 
@@ -78,56 +78,86 @@ pub(super) fn ExerciseFormPanel(
             div {
                 class: "exercise-form__fields",
 
-                div {
-                    label { class: "form-label", "Weight (kg)" }
-                    input {
-                        r#type: "number",
-                        step: "0.5",
-                        placeholder: "Optional",
-                        value: "{weight_input}",
-                        oninput: move |evt| weight_input.set(evt.value()),
-                        class: "form-input",
+                {
+                    let weight = weight_input.read();
+                    let weight_invalid = !weight.is_empty() && parse_weight_kg(&weight).is_none();
+                    rsx! {
+                        div {
+                            label { class: "form-label", "Weight (kg)" }
+                            input {
+                                r#type: "number",
+                                step: "0.1",
+                                placeholder: "Optional",
+                                value: "{weight_input}",
+                                oninput: move |evt| weight_input.set(evt.value()),
+                                class: if weight_invalid { "form-input form-input--invalid" } else { "form-input" },
+                            }
+                        }
                     }
                 }
 
                 if is_cardio {
-                    div {
-                        label { class: "form-label", "Distance (km)" }
-                        input {
-                            r#type: "number",
-                            step: "0.1",
-                            placeholder: "Distance",
-                            value: "{distance_input}",
-                            oninput: move |evt| distance_input.set(evt.value()),
-                            class: "form-input",
+                    {
+                        let dist = distance_input.read();
+                        let distance_invalid = !dist.is_empty() && parse_distance_km(&dist).is_none();
+                        rsx! {
+                            div {
+                                label { class: "form-label", "Distance (km)" }
+                                input {
+                                    r#type: "number",
+                                    step: "0.1",
+                                    placeholder: "Distance",
+                                    value: "{distance_input}",
+                                    oninput: move |evt| distance_input.set(evt.value()),
+                                    class: if distance_invalid { "form-input form-input--invalid" } else { "form-input" },
+                                }
+                            }
                         }
                     }
                 }
 
                 if show_reps {
-                    div {
-                        label { class: "form-label", "Repetitions" }
-                        input {
-                            r#type: "number",
-                            placeholder: "Reps",
-                            value: "{reps_input}",
-                            oninput: move |evt| reps_input.set(evt.value()),
-                            class: "form-input",
+                    {
+                        let reps = reps_input.read();
+                        let reps_invalid = !reps.is_empty() && reps.parse::<u32>().map(|r| r == 0).unwrap_or(true);
+                        rsx! {
+                            div {
+                                label { class: "form-label", "Repetitions" }
+                                input {
+                                    r#type: "number",
+                                    placeholder: "Reps",
+                                    value: "{reps_input}",
+                                    oninput: move |evt| reps_input.set(evt.value()),
+                                    class: if reps_invalid { "form-input form-input--invalid" } else { "form-input" },
+                                }
+                            }
                         }
                     }
                 }
 
-                div {
-                    class: "btn-row",
-                    button {
-                        onclick: move |_| on_complete.call(()),
-                        class: "btn--complete",
-                        "✓ Complete Exercise"
-                    }
-                    button {
-                        onclick: move |_| on_cancel.call(()),
-                        class: "btn--cancel",
-                        "Cancel"
+                {
+                    let weight = weight_input.read();
+                    let reps = reps_input.read();
+                    let dist = distance_input.read();
+                    let weight_valid = weight.is_empty() || parse_weight_kg(&weight).is_some();
+                    let reps_valid = !show_reps || reps.parse::<u32>().map(|r| r > 0).unwrap_or(false);
+                    let distance_valid = !is_cardio || parse_distance_km(&dist).is_some();
+                    let complete_disabled = !weight_valid || !reps_valid || !distance_valid;
+                    rsx! {
+                        div {
+                            class: "btn-row",
+                            button {
+                                onclick: move |_| on_complete.call(()),
+                                disabled: complete_disabled,
+                                class: "btn--complete",
+                                "✓ Complete Exercise"
+                            }
+                            button {
+                                onclick: move |_| on_cancel.call(()),
+                                class: "btn--cancel",
+                                "Cancel"
+                            }
+                        }
                     }
                 }
             }

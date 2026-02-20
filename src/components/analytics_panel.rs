@@ -22,9 +22,9 @@ impl Metric {
 
     fn extract_value(&self, log: &ExerciseLog) -> Option<f64> {
         match self {
-            Metric::Weight => log.weight_dg.map(|w| w.0 as f64 / 100.0),
+            Metric::Weight => log.weight_hg.map(|w| w.0 as f64 / 10.0),
             Metric::Reps => log.reps.map(|r| r as f64),
-            Metric::Distance => log.distance_dam.map(|d| d.0 as f64 / 100.0),
+            Metric::Distance => log.distance_m.map(|d| d.0 as f64 / 1000.0),
             Metric::Duration => log.duration_seconds().map(|d| d as f64 / 60.0),
         }
     }
@@ -49,9 +49,9 @@ pub fn AnalyticsPanel() -> Element {
         for session in sessions.iter() {
             for log in &session.exercise_logs {
                 let tracks_metric = match metric {
-                    Metric::Weight => log.weight_dg.is_some(),
+                    Metric::Weight => log.weight_hg.is_some(),
                     Metric::Reps => log.reps.is_some(),
-                    Metric::Distance => log.distance_dam.is_some(),
+                    Metric::Distance => log.distance_m.is_some(),
                     Metric::Duration => true,
                 };
                 if tracks_metric {

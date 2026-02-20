@@ -501,6 +501,10 @@ main {
   flex: 1;
 }
 
+.form-input--invalid {
+  border-color: #e74c3c;
+}
+
 .form-input--rest {
   width: 80px;
   text-align: center;

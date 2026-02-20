@@ -303,62 +303,62 @@ impl Muscle {
 
 // ── Weight and Distance value types ─────────────────────────────────────────
 
-/// Weight stored as decagrams (10 g units). 1 kg = 100 dg.
+/// Weight stored as hectograms (100 g units). 1 kg = 10 hg.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Weight(pub u16);
 
 impl fmt::Display for Weight {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        if self.0.is_multiple_of(100) {
-            write!(f, "{} kg", self.0 / 100)
+        if self.0.is_multiple_of(10) {
+            write!(f, "{} kg", self.0 / 10)
         } else {
-            write!(f, "{:.1} kg", self.0 as f64 / 100.0)
+            write!(f, "{:.1} kg", self.0 as f64 / 10.0)
         }
     }
 }
 
-/// Distance stored as decameters (10 m units). 1 km = 100 dam.
+/// Distance stored as meters. 1 km = 1000 m.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-pub struct Distance(pub u16);
+pub struct Distance(pub u32);
 
 impl fmt::Display for Distance {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        if self.0 >= 100 {
-            if self.0.is_multiple_of(100) {
-                write!(f, "{} km", self.0 / 100)
+        if self.0 >= 1000 {
+            if self.0.is_multiple_of(1000) {
+                write!(f, "{} km", self.0 / 1000)
             } else {
-                write!(f, "{:.2} km", self.0 as f64 / 100.0)
+                write!(f, "{:.2} km", self.0 as f64 / 1000.0)
             }
         } else {
-            write!(f, "{} m", self.0 as u32 * 10)
+            write!(f, "{} m", self.0)
         }
     }
 }
 
-/// Parse a user-entered kg string into a Weight (decagrams).
+/// Parse a user-entered kg string into a Weight (hectograms).
 pub fn parse_weight_kg(input: &str) -> Option<Weight> {
     let val: f64 = input.parse().ok()?;
     if !val.is_finite() || val <= 0.0 {
         return None;
     }
-    let dg = (val * 100.0).round();
-    if dg < 0.0 || dg > u16::MAX as f64 {
+    let hg = (val * 10.0).round();
+    if hg < 1.0 || hg > u16::MAX as f64 {
         return None;
     }
-    Some(Weight(dg as u16))
+    Some(Weight(hg as u16))
 }
 
-/// Parse a user-entered km string into a Distance (decameters).
+/// Parse a user-entered km string into a Distance (meters).
 pub fn parse_distance_km(input: &str) -> Option<Distance> {
     let val: f64 = input.parse().ok()?;
     if !val.is_finite() || val <= 0.0 {
         return None;
     }
-    let dam = (val * 100.0).round();
-    if dam < 0.0 || dam > u16::MAX as f64 {
+    let m = (val * 1000.0).round();
+    if m < 1.0 || m > u32::MAX as f64 {
         return None;
     }
-    Some(Distance(dam as u16))
+    Some(Distance(m as u32))
 }
 
 // ── Data structures ─────────────────────────────────────────────────────────
@@ -417,8 +417,8 @@ impl Exercise {
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct WorkoutSet {
     pub reps: u32,
-    /// Weight in decagrams
-    pub weight_dg: Option<Weight>,
+    /// Weight in hectograms
+    pub weight_hg: Option<Weight>,
     pub duration: Option<u32>, // in seconds
 }
 
@@ -448,10 +448,10 @@ pub struct ExerciseLog {
     pub category: Category,
     pub start_time: u64,
     pub end_time: Option<u64>,
-    pub weight_dg: Option<Weight>,
+    pub weight_hg: Option<Weight>,
     pub reps: Option<u32>,
-    /// Distance in decameters
-    pub distance_dam: Option<Distance>,
+    /// Distance in meters
+    pub distance_m: Option<Distance>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub force: Option<Force>,
 }
@@ -556,16 +556,16 @@ mod tests {
 
     #[test]
     fn weight_display_whole_kg() {
-        assert_eq!(Weight(100).to_string(), "1 kg");
-        assert_eq!(Weight(200).to_string(), "2 kg");
-        assert_eq!(Weight(10000).to_string(), "100 kg");
+        assert_eq!(Weight(10).to_string(), "1 kg");
+        assert_eq!(Weight(20).to_string(), "2 kg");
+        assert_eq!(Weight(1000).to_string(), "100 kg");
     }
 
     #[test]
     fn weight_display_fractional_kg() {
-        assert_eq!(Weight(150).to_string(), "1.5 kg");
-        assert_eq!(Weight(175).to_string(), "1.8 kg");
-        assert_eq!(Weight(1).to_string(), "0.0 kg");
+        assert_eq!(Weight(15).to_string(), "1.5 kg");
+        assert_eq!(Weight(25).to_string(), "2.5 kg");
+        assert_eq!(Weight(1).to_string(), "0.1 kg");
     }
 
     #[test]
@@ -577,10 +577,10 @@ mod tests {
 
     #[test]
     fn parse_weight_kg_valid() {
-        assert_eq!(parse_weight_kg("1"), Some(Weight(100)));
-        assert_eq!(parse_weight_kg("1.5"), Some(Weight(150)));
-        assert_eq!(parse_weight_kg("100"), Some(Weight(10000)));
-        assert_eq!(parse_weight_kg("0.01"), Some(Weight(1)));
+        assert_eq!(parse_weight_kg("1"), Some(Weight(10)));
+        assert_eq!(parse_weight_kg("1.5"), Some(Weight(15)));
+        assert_eq!(parse_weight_kg("100"), Some(Weight(1000)));
+        assert_eq!(parse_weight_kg("0.1"), Some(Weight(1)));
     }
 
     #[test]
@@ -597,29 +597,29 @@ mod tests {
     #[test]
     fn distance_display_metres() {
         assert_eq!(Distance(0).to_string(), "0 m");
-        assert_eq!(Distance(50).to_string(), "500 m");
-        assert_eq!(Distance(99).to_string(), "990 m");
+        assert_eq!(Distance(500).to_string(), "500 m");
+        assert_eq!(Distance(999).to_string(), "999 m");
     }
 
     #[test]
     fn distance_display_whole_km() {
-        assert_eq!(Distance(100).to_string(), "1 km");
-        assert_eq!(Distance(500).to_string(), "5 km");
+        assert_eq!(Distance(1000).to_string(), "1 km");
+        assert_eq!(Distance(5000).to_string(), "5 km");
     }
 
     #[test]
     fn distance_display_fractional_km() {
-        assert_eq!(Distance(150).to_string(), "1.50 km");
-        assert_eq!(Distance(275).to_string(), "2.75 km");
+        assert_eq!(Distance(1500).to_string(), "1.50 km");
+        assert_eq!(Distance(2750).to_string(), "2.75 km");
     }
 
     // ── parse_distance_km ─────────────────────────────────────────────────────
 
     #[test]
     fn parse_distance_km_valid() {
-        assert_eq!(parse_distance_km("1"), Some(Distance(100)));
-        assert_eq!(parse_distance_km("0.5"), Some(Distance(50)));
-        assert_eq!(parse_distance_km("10"), Some(Distance(1000)));
+        assert_eq!(parse_distance_km("1"), Some(Distance(1000)));
+        assert_eq!(parse_distance_km("0.5"), Some(Distance(500)));
+        assert_eq!(parse_distance_km("10"), Some(Distance(10000)));
     }
 
     #[test]
@@ -657,9 +657,9 @@ mod tests {
             category: Category::Strength,
             start_time: 1000,
             end_time: None,
-            weight_dg: None,
+            weight_hg: None,
             reps: None,
-            distance_dam: None,
+            distance_m: None,
             force: Some(Force::Push),
         };
         assert!(!log.is_complete());
@@ -675,9 +675,9 @@ mod tests {
             category: Category::Strength,
             start_time: 1000,
             end_time: Some(1060),
-            weight_dg: None,
+            weight_hg: None,
             reps: None,
-            distance_dam: None,
+            distance_m: None,
             force: Some(Force::Push),
         };
         assert_eq!(log.duration_seconds(), Some(60));
@@ -691,9 +691,9 @@ mod tests {
             category: Category::Strength,
             start_time: 1000,
             end_time: None,
-            weight_dg: None,
+            weight_hg: None,
             reps: None,
-            distance_dam: None,
+            distance_m: None,
             force: Some(Force::Push),
         };
         assert_eq!(log.duration_seconds(), None);
@@ -743,9 +743,9 @@ mod tests {
             category: Category::Strength,
             start_time: 1000,
             end_time: Some(1060),
-            weight_dg: None,
+            weight_hg: None,
             reps: Some(10),
-            distance_dam: None,
+            distance_m: None,
             force: Some(Force::Push),
         };
         let session = WorkoutSession {
@@ -794,9 +794,9 @@ mod tests {
             category: Category::Strength,
             start_time: 1000,
             end_time: Some(1120),
-            weight_dg: None,
+            weight_hg: None,
             reps: Some(5),
-            distance_dam: None,
+            distance_m: None,
             force: Some(Force::Push),
         };
         let session = WorkoutSession {
@@ -997,18 +997,18 @@ mod tests {
 
     #[test]
     fn parse_weight_kg_large_value_clamped() {
-        // 655.36 kg = 65536 dg which overflows u16
-        assert_eq!(parse_weight_kg("655.36"), None);
-        // 655.35 kg = 65535 dg fits in u16
-        assert_eq!(parse_weight_kg("655.35"), Some(Weight(65535)));
+        // 6553.6 kg = 65536 hg which overflows u16
+        assert_eq!(parse_weight_kg("6553.6"), None);
+        // 6553.5 kg = 65535 hg fits in u16
+        assert_eq!(parse_weight_kg("6553.5"), Some(Weight(65535)));
     }
 
     #[test]
     fn parse_distance_km_large_value_clamped() {
-        // 655.36 km = 65536 dam which overflows u16
-        assert_eq!(parse_distance_km("655.36"), None);
-        // 655.35 km = 65535 dam fits in u16
-        assert_eq!(parse_distance_km("655.35"), Some(Distance(65535)));
+        // Values up to u32::MAX meters (≈ 4_294_967 km) are accepted
+        assert!(parse_distance_km("100").is_some());
+        // Negative values are rejected
+        assert_eq!(parse_distance_km("-1"), None);
     }
 
     // ── User-created exercise (uses unified Exercise struct) ────────────────
@@ -1098,9 +1098,9 @@ mod tests {
                     category: Category::Strength,
                     start_time: 1000,
                     end_time: Some(1100),
-                    weight_dg: None,
+                    weight_hg: None,
                     reps: Some(10),
-                    distance_dam: None,
+                    distance_m: None,
                     force: None,
                 },
                 ExerciseLog {
@@ -1109,9 +1109,9 @@ mod tests {
                     category: Category::Strength,
                     start_time: 1200,
                     end_time: Some(1300),
-                    weight_dg: None,
+                    weight_hg: None,
                     reps: Some(8),
-                    distance_dam: None,
+                    distance_m: None,
                     force: None,
                 },
                 ExerciseLog {
@@ -1120,9 +1120,9 @@ mod tests {
                     category: Category::Strength,
                     start_time: 1400,
                     end_time: Some(1500),
-                    weight_dg: None,
+                    weight_hg: None,
                     reps: Some(8),
-                    distance_dam: None,
+                    distance_m: None,
                     force: None,
                 },
             ],
@@ -1465,7 +1465,7 @@ mod tests {
     fn workout_set_serde_round_trip() {
         let set = WorkoutSet {
             reps: 10,
-            weight_dg: Some(Weight(1000)),
+            weight_hg: Some(Weight(1000)),
             duration: Some(60),
         };
         let json = serde_json::to_string(&set).unwrap();
@@ -1477,7 +1477,7 @@ mod tests {
     fn workout_set_without_optionals() {
         let set = WorkoutSet {
             reps: 5,
-            weight_dg: None,
+            weight_hg: None,
             duration: None,
         };
         let json = serde_json::to_string(&set).unwrap();
@@ -1492,7 +1492,7 @@ mod tests {
             exercise_name: "Squat".into(),
             sets: vec![WorkoutSet {
                 reps: 5,
-                weight_dg: Some(Weight(1000)),
+                weight_hg: Some(Weight(1000)),
                 duration: None,
             }],
             notes: Some("Heavy day".into()),
@@ -1555,9 +1555,9 @@ mod tests {
             category: Category::Strength,
             start_time: 2000,
             end_time: Some(1000), // end before start
-            weight_dg: None,
+            weight_hg: None,
             reps: None,
-            distance_dam: None,
+            distance_m: None,
             force: None,
         };
         // saturating_sub should return 0 instead of wrapping
@@ -1574,9 +1574,9 @@ mod tests {
             category: Category::Strength,
             start_time: 1000,
             end_time: Some(1120),
-            weight_dg: Some(Weight(1000)),
+            weight_hg: Some(Weight(1000)),
             reps: Some(5),
-            distance_dam: Some(Distance(50)),
+            distance_m: Some(Distance(50)),
             force: Some(Force::Push),
         };
         let json = serde_json::to_string(&log).unwrap();
@@ -1592,9 +1592,9 @@ mod tests {
             category: Category::Cardio,
             start_time: 1000,
             end_time: Some(2000),
-            weight_dg: None,
+            weight_hg: None,
             reps: None,
-            distance_dam: Some(Distance(500)),
+            distance_m: Some(Distance(500)),
             force: None,
         };
         let json = serde_json::to_string(&log).unwrap();
@@ -1649,9 +1649,9 @@ mod tests {
                 category: Category::Strength,
                 start_time: 1000,
                 end_time: Some(1120),
-                weight_dg: Some(Weight(1000)),
+                weight_hg: Some(Weight(1000)),
                 reps: Some(5),
-                distance_dam: None,
+                distance_m: None,
                 force: Some(Force::Push),
             }],
             version: DATA_VERSION,

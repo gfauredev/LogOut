@@ -27,14 +27,14 @@ fn prefill_inputs_from_last_log(
     mut distance_input: Signal<String>,
 ) {
     if let Some(last_log) = storage::get_last_exercise_log(exercise_id) {
-        if let Some(w) = last_log.weight_dg {
-            weight_input.set(format!("{:.1}", w.0 as f64 / 100.0));
+        if let Some(w) = last_log.weight_hg {
+            weight_input.set(format!("{:.1}", w.0 as f64 / 10.0));
         }
         if let Some(reps) = last_log.reps {
             reps_input.set(reps.to_string());
         }
-        if let Some(d) = last_log.distance_dam {
-            distance_input.set(format!("{:.2}", d.0 as f64 / 100.0));
+        if let Some(d) = last_log.distance_m {
+            distance_input.set(format!("{:.2}", d.0 as f64 / 1000.0));
         }
     } else {
         weight_input.set(String::new());
@@ -185,13 +185,13 @@ pub fn SessionView() -> Element {
 
         let end_time = get_current_timestamp();
 
-        let weight_dg = parse_weight_kg(&weight_input.read());
+        let weight_hg = parse_weight_kg(&weight_input.read());
         let reps = if force.is_some_and(|f| f.has_reps()) {
             reps_input.read().parse().ok()
         } else {
             None
         };
-        let distance_dam = if category == Category::Cardio {
+        let distance_m = if category == Category::Cardio {
             parse_distance_km(&distance_input.read())
         } else {
             None
@@ -203,9 +203,9 @@ pub fn SessionView() -> Element {
             category,
             start_time,
             end_time: Some(end_time),
-            weight_dg,
+            weight_hg,
             reps,
-            distance_dam,
+            distance_m,
             force,
         };
 

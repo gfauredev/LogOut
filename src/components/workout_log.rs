@@ -43,13 +43,13 @@ pub fn WorkoutLogPage() -> Element {
 
     let mut add_set_to_exercise = move |exercise_id: String| {
         let reps: u32 = reps_input.read().parse().unwrap_or(10);
-        let weight_dg = parse_weight_kg(&weight_input.read());
+        let weight_hg = parse_weight_kg(&weight_input.read());
 
         let mut exercises = workout_exercises.write();
         if let Some(exercise) = exercises.iter_mut().find(|e| e.exercise_id == exercise_id) {
             exercise.sets.push(WorkoutSet {
                 reps,
-                weight_dg,
+                weight_hg,
                 duration: None,
             });
         }
@@ -132,7 +132,7 @@ pub fn WorkoutLogPage() -> Element {
                                             key: "{idx}",
                                             class: "set-line",
                                             "Set {idx + 1}: {set.reps} reps"
-                                            if let Some(w) = set.weight_dg {
+                                            if let Some(w) = set.weight_hg {
                                                 " @ {w}"
                                             }
                                         }
