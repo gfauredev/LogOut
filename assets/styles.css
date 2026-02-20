@@ -40,6 +40,8 @@ main {
 .page-content {
   flex: 1;
   padding-bottom: 70px;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 /* ===== Sessions Tab (center tab home page) ===== */
@@ -86,11 +88,11 @@ main {
   box-shadow: 0 2px 6px rgba(0,0,0,0.3);
 }
 
-.session-card__header {
+.session-card__top-line {
   display: flex;
-  justify-content: space-between;
   align-items: center;
-  margin-bottom: 8px;
+  gap: 10px;
+  margin-bottom: 10px;
 }
 
 .session-card__date {
@@ -99,6 +101,7 @@ main {
   font-weight: 500;
   text-transform: uppercase;
   letter-spacing: 0.04em;
+  flex: 1;
 }
 
 .session-card__delete-btn {
@@ -137,16 +140,11 @@ main {
   opacity: 1;
 }
 
-.session-card__stats {
-  display: flex;
-  gap: 16px;
-  margin-bottom: 10px;
-}
-
 .session-card__stat {
-  font-size: 1em;
+  font-size: 0.9em;
   font-weight: 600;
   color: #ccc;
+  white-space: nowrap;
 }
 
 .session-card__exercises {
@@ -169,6 +167,14 @@ main {
   color: #777;
   border-radius: .8em;
   font-size: 0.85em;
+  border: none;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.session-card__more:hover {
+  background: #333;
+  color: #aaa;
 }
 
 /* ===== Delete Confirmation Modal ===== */
@@ -283,11 +289,41 @@ main {
   color: #e0e0e0;
 }
 
+/* Search bar with inline "+" add button */
+.search-with-add {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.search-with-add .search-input {
+  flex: 1;
+  min-width: 0;
+}
+
+.add-exercise-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 42px;
+  height: 42px;
+  flex-shrink: 0;
+  background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+  color: white;
+  text-decoration: none;
+  border-radius: .8em;
+  font-size: 1.6em;
+  font-weight: bold;
+  line-height: 1;
+}
+
 /* ===== Exercise List ===== */
 .exercise-list {
   display: flex;
   flex-direction: column;
   gap: 10px;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .exercise-card {

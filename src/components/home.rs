@@ -66,29 +66,24 @@ pub fn HomePage() -> Element {
 #[component]
 fn SessionCard(session: WorkoutSession) -> Element {
     let mut show_delete_confirm = use_signal(|| false);
+    let mut show_all_exercises = use_signal(|| false);
     let session_id = session.id.clone();
 
     let duration = session
         .end_time
         .map(|end| end.saturating_sub(session.start_time))
         .unwrap_or(0);
-    let exercise_count = session.exercise_logs.len();
     let date_str = format_session_date(session.start_time);
-    let exercise_label = if exercise_count != 1 {
-        format!("{} exercises", exercise_count)
-    } else {
-        format!("{} exercise", exercise_count)
-    };
 
-    // Collect exercise IDs (deduplicated, preserving order) for repeat action
-    let pending_ids: Vec<String> = {
+    // Collect unique exercise names (deduplicated by ID, preserving order)
+    let unique_exercises: Vec<(String, String)> = {
         let mut seen = std::collections::HashSet::new();
         session
             .exercise_logs
             .iter()
             .filter_map(|log| {
                 if seen.insert(log.exercise_id.clone()) {
-                    Some(log.exercise_id.clone())
+                    Some((log.exercise_id.clone(), log.exercise_name.clone()))
                 } else {
                     None
                 }
@@ -96,10 +91,27 @@ fn SessionCard(session: WorkoutSession) -> Element {
             .collect()
     };
 
+    // Collect exercise IDs (deduplicated, preserving order) for repeat action
+    let pending_ids: Vec<String> = unique_exercises
+        .iter()
+        .map(|(id, _)| id.clone())
+        .collect();
+
+    // Up to 9 tags visible initially (~3 lines of 3 tags each)
+    const MAX_VISIBLE: usize = 9;
+    let total_unique = unique_exercises.len();
+    let visible_count = if *show_all_exercises.read() {
+        total_unique
+    } else {
+        total_unique.min(MAX_VISIBLE)
+    };
+    let hidden_count = total_unique.saturating_sub(visible_count);
+
     rsx! {
         article { class: "session-card",
-            header { class: "session-card__header",
+            div { class: "session-card__top-line",
                 time { class: "session-card__date", "{date_str}" }
+                span { class: "session-card__stat", "⏱ {format_time(duration)}" }
                 div { class: "session-card__actions",
                     if !pending_ids.is_empty() {
                         button {
@@ -124,18 +136,16 @@ fn SessionCard(session: WorkoutSession) -> Element {
                     }
                 }
             }
-            div { class: "session-card__stats",
-                span { class: "session-card__stat", "⏱ {format_time(duration)}" }
-                span { class: "session-card__stat", "🏋️ {exercise_label}" }
-            }
-            if !session.exercise_logs.is_empty() {
+            if !unique_exercises.is_empty() {
                 div { class: "session-card__exercises",
-                    for log in session.exercise_logs.iter().take(3) {
-                        span { class: "session-card__exercise-name", "{log.exercise_name}" }
+                    for (_, name) in unique_exercises.iter().take(visible_count) {
+                        span { class: "session-card__exercise-name", "{name}" }
                     }
-                    if session.exercise_logs.len() > 3 {
-                        span { class: "session-card__more",
-                            "+{session.exercise_logs.len() - 3} more"
+                    if hidden_count > 0 {
+                        button {
+                            class: "session-card__more",
+                            onclick: move |_| show_all_exercises.set(true),
+                            "+{hidden_count} more"
                         }
                     }
                 }

@@ -25,17 +25,23 @@ pub enum Category {
     Strongman,
 }
 
+impl Category {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::Cardio => "cardio",
+            Self::OlympicWeightlifting => "olympic weightlifting",
+            Self::Plyometrics => "plyometrics",
+            Self::Powerlifting => "powerlifting",
+            Self::Strength => "strength",
+            Self::Stretching => "stretching",
+            Self::Strongman => "strongman",
+        }
+    }
+}
+
 impl fmt::Display for Category {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::Cardio => write!(f, "cardio"),
-            Self::OlympicWeightlifting => write!(f, "olympic weightlifting"),
-            Self::Plyometrics => write!(f, "plyometrics"),
-            Self::Powerlifting => write!(f, "powerlifting"),
-            Self::Strength => write!(f, "strength"),
-            Self::Stretching => write!(f, "stretching"),
-            Self::Strongman => write!(f, "strongman"),
-        }
+        f.write_str(self.as_str())
     }
 }
 
@@ -61,13 +67,19 @@ pub enum Force {
     Static,
 }
 
+impl Force {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::Pull => "pull",
+            Self::Push => "push",
+            Self::Static => "static",
+        }
+    }
+}
+
 impl fmt::Display for Force {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::Pull => write!(f, "pull"),
-            Self::Push => write!(f, "push"),
-            Self::Static => write!(f, "static"),
-        }
+        f.write_str(self.as_str())
     }
 }
 
@@ -90,13 +102,19 @@ pub enum Level {
     Expert,
 }
 
+impl Level {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::Beginner => "beginner",
+            Self::Intermediate => "intermediate",
+            Self::Expert => "expert",
+        }
+    }
+}
+
 impl fmt::Display for Level {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::Beginner => write!(f, "beginner"),
-            Self::Intermediate => write!(f, "intermediate"),
-            Self::Expert => write!(f, "expert"),
-        }
+        f.write_str(self.as_str())
     }
 }
 
@@ -108,12 +126,18 @@ pub enum Mechanic {
     Isolation,
 }
 
+impl Mechanic {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::Compound => "compound",
+            Self::Isolation => "isolation",
+        }
+    }
+}
+
 impl fmt::Display for Mechanic {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::Compound => write!(f, "compound"),
-            Self::Isolation => write!(f, "isolation"),
-        }
+        f.write_str(self.as_str())
     }
 }
 
@@ -145,22 +169,28 @@ pub enum Equipment {
     Other,
 }
 
+impl Equipment {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::Bands => "bands",
+            Self::Barbell => "barbell",
+            Self::BodyOnly => "body only",
+            Self::Cable => "cable",
+            Self::Dumbbell => "dumbbell",
+            Self::EzCurlBar => "e-z curl bar",
+            Self::ExerciseBall => "exercise ball",
+            Self::FoamRoll => "foam roll",
+            Self::Kettlebells => "kettlebells",
+            Self::Machine => "machine",
+            Self::MedicineBall => "medicine ball",
+            Self::Other => "other",
+        }
+    }
+}
+
 impl fmt::Display for Equipment {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::Bands => write!(f, "bands"),
-            Self::Barbell => write!(f, "barbell"),
-            Self::BodyOnly => write!(f, "body only"),
-            Self::Cable => write!(f, "cable"),
-            Self::Dumbbell => write!(f, "dumbbell"),
-            Self::EzCurlBar => write!(f, "e-z curl bar"),
-            Self::ExerciseBall => write!(f, "exercise ball"),
-            Self::FoamRoll => write!(f, "foam roll"),
-            Self::Kettlebells => write!(f, "kettlebells"),
-            Self::Machine => write!(f, "machine"),
-            Self::MedicineBall => write!(f, "medicine ball"),
-            Self::Other => write!(f, "other"),
-        }
+        f.write_str(self.as_str())
     }
 }
 
@@ -219,27 +249,33 @@ pub enum Muscle {
     Triceps,
 }
 
+impl Muscle {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::Abdominals => "abdominals",
+            Self::Abductors => "abductors",
+            Self::Adductors => "adductors",
+            Self::Biceps => "biceps",
+            Self::Calves => "calves",
+            Self::Chest => "chest",
+            Self::Forearms => "forearms",
+            Self::Glutes => "glutes",
+            Self::Hamstrings => "hamstrings",
+            Self::Lats => "lats",
+            Self::LowerBack => "lower back",
+            Self::MiddleBack => "middle back",
+            Self::Neck => "neck",
+            Self::Quadriceps => "quadriceps",
+            Self::Shoulders => "shoulders",
+            Self::Traps => "traps",
+            Self::Triceps => "triceps",
+        }
+    }
+}
+
 impl fmt::Display for Muscle {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::Abdominals => write!(f, "abdominals"),
-            Self::Abductors => write!(f, "abductors"),
-            Self::Adductors => write!(f, "adductors"),
-            Self::Biceps => write!(f, "biceps"),
-            Self::Calves => write!(f, "calves"),
-            Self::Chest => write!(f, "chest"),
-            Self::Forearms => write!(f, "forearms"),
-            Self::Glutes => write!(f, "glutes"),
-            Self::Hamstrings => write!(f, "hamstrings"),
-            Self::Lats => write!(f, "lats"),
-            Self::LowerBack => write!(f, "lower back"),
-            Self::MiddleBack => write!(f, "middle back"),
-            Self::Neck => write!(f, "neck"),
-            Self::Quadriceps => write!(f, "quadriceps"),
-            Self::Shoulders => write!(f, "shoulders"),
-            Self::Traps => write!(f, "traps"),
-            Self::Triceps => write!(f, "triceps"),
-        }
+        f.write_str(self.as_str())
     }
 }
 
@@ -443,6 +479,9 @@ pub struct WorkoutSession {
     /// Exercise IDs queued from a previous session (pre-added, not yet started).
     #[serde(default)]
     pub pending_exercise_ids: Vec<String>,
+    /// Timestamp when the last rest period started (for persisting timer across tab switches).
+    #[serde(default)]
+    pub rest_start_time: Option<u64>,
 }
 
 impl WorkoutSession {
@@ -456,6 +495,7 @@ impl WorkoutSession {
             exercise_logs: Vec::new(),
             version: DATA_VERSION,
             pending_exercise_ids: Vec::new(),
+            rest_start_time: None,
         }
     }
 
@@ -662,6 +702,7 @@ mod tests {
             exercise_logs: vec![],
             version: DATA_VERSION,
             pending_exercise_ids: vec![],
+            rest_start_time: None,
         };
         assert!(session.is_active());
         session.end_time = Some(2000);
@@ -677,6 +718,7 @@ mod tests {
             exercise_logs: vec![],
             version: DATA_VERSION,
             pending_exercise_ids: vec![],
+            rest_start_time: None,
         };
         assert!(session.is_cancelled());
     }
@@ -701,6 +743,7 @@ mod tests {
             exercise_logs: vec![log],
             version: DATA_VERSION,
             pending_exercise_ids: vec![],
+            rest_start_time: None,
         };
         assert!(!session.is_cancelled());
     }
@@ -716,6 +759,7 @@ mod tests {
             exercise_logs: vec![],
             version: DATA_VERSION,
             pending_exercise_ids: vec![],
+            rest_start_time: None,
         };
         // The predicate that guards save vs. delete must return true for empty sessions.
         assert!(
@@ -746,6 +790,7 @@ mod tests {
             exercise_logs: vec![log],
             version: DATA_VERSION,
             pending_exercise_ids: vec![],
+            rest_start_time: None,
         };
         // The predicate must return false so the session is saved, not deleted.
         assert!(
@@ -765,6 +810,7 @@ mod tests {
             exercise_logs: vec![],
             version: DATA_VERSION,
             pending_exercise_ids: vec!["ex1".into(), "ex2".into()],
+            rest_start_time: None,
         };
         assert!(
             session.is_cancelled(),
@@ -790,6 +836,7 @@ mod tests {
                 exercise_logs: vec![],
                 version: DATA_VERSION,
                 pending_exercise_ids: vec![],
+                rest_start_time: None,
             },
             WorkoutSession {
                 id: "s2".into(),
@@ -798,6 +845,7 @@ mod tests {
                 exercise_logs: vec![],
                 version: DATA_VERSION,
                 pending_exercise_ids: vec![],
+                rest_start_time: None,
             },
         ];
         let active = sessions.iter().find(|s| s.is_active()).cloned();
@@ -813,6 +861,7 @@ mod tests {
             exercise_logs: vec![],
             version: DATA_VERSION,
             pending_exercise_ids: vec![],
+            rest_start_time: None,
         }];
         let active = sessions.iter().find(|s| s.is_active()).cloned();
         assert!(active.is_none());
@@ -970,6 +1019,7 @@ mod tests {
             exercise_logs: vec![],
             version: DATA_VERSION,
             pending_exercise_ids: vec!["ex1".into(), "ex2".into()],
+            rest_start_time: None,
         };
         let json = serde_json::to_string(&session).unwrap();
         let back: WorkoutSession = serde_json::from_str(&json).unwrap();
@@ -1466,6 +1516,7 @@ mod tests {
             }],
             version: DATA_VERSION,
             pending_exercise_ids: vec![],
+            rest_start_time: None,
         };
         let json = serde_json::to_string(&session).unwrap();
         let back: WorkoutSession = serde_json::from_str(&json).unwrap();
