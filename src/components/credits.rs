@@ -145,8 +145,9 @@ pub fn CreditsPage() -> Element {
                             }
                             button {
                                 r#type: "submit",
-                                class: "btn btn--primary",
-                                "Save"
+                                class: "btn btn--accent",
+                                aria_label: "Save",
+                                "💾"
                             }
                         }
                     }

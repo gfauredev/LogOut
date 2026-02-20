@@ -20,7 +20,7 @@
 div#main {
   display: flex;
   flex-direction: column;
-  min-height: 100vh;  
+  min-height: 100dvh;
   max-width: 550px;
   margin: 0 auto;
 }
@@ -32,7 +32,7 @@ main {
 /* ===== Page Layout (exercise, analytics pages) ===== */
 .page-container {
   font-family: system-ui, -apple-system, sans-serif;
-  min-height: 100vh;
+  min-height: 100dvh;
   display: flex;
   flex-direction: column;
   margin: 0 auto;
@@ -638,7 +638,7 @@ main {
   font-family: system-ui, -apple-system, sans-serif;
   display: flex;
   flex-direction: column;
-  height: 100vh;
+  height: 100dvh;
   position: relative;
   margin: 0 auto;
   color: #e0e0e0;
