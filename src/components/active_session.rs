@@ -156,7 +156,7 @@ pub fn SessionView() -> Element {
             storage::save_session(current_session);
         };
 
-    let complete_exercise = move |()| {
+    let complete_exercise = move |_| {
         let exercise_id = match current_exercise_id.read().as_ref() {
             Some(id) => id.clone(),
             None => return,
@@ -230,7 +230,7 @@ pub fn SessionView() -> Element {
         duration_bell_rung.set(false);
     };
 
-    let cancel_exercise = move |()| {
+    let cancel_exercise = move |_| {
         current_exercise_id.set(None);
         current_exercise_start.set(None);
         weight_input.set(String::new());
