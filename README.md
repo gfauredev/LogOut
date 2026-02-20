@@ -127,6 +127,16 @@ npx playwright test # E2E tests (starts dev server)
 
 ## TODO
 
+- Switch to my fork of the exercise database
+  `https://raw.githubusercontent.com/gfauredev/free-exercise-db/main/`
+  - Make its address SSOT, easily parametrable:
+- Make the default exercices immuable
+  - Replace their "Edit" button by a "Edit Clone" button, that effectively
+    clones the exercice and directly opens the edit form of the clone
+  - Fetch new exercises from DB every few days or so when the app is launched
+- Make the app inhibit idle (prevent device from sleeping), like a YouTube video
+- Ensure everything is well optimized, follows modern best practices
+
 - Sessions
   - Display the Date, Duration, Repeat and Delete on the same first line
   - Then, display up to three lines of Exercises tags before the "+n more"
@@ -139,10 +149,8 @@ npx playwright test # E2E tests (starts dev server)
     background, and reappear when returning to Session tab
 - Exercises List
   - When a Session is Active, pin to the top Exercises completed in it
-- Make the app inhibit idle (prevent device from sleeping), like a YouTube video
-- Switch to my fork of the exercise database
-  `https://raw.githubusercontent.com/gfauredev/free-exercise-db/main/`
-  - Make its address SSOT, easily parametrable:
+  - Fix width shrinking or growing depending on displayed exercises
+- Request notification permission at the app start
 
 [Guilhem Fauré]: https://www.guilhemfau.re
 [free-exercise-db]: https://github.com/yuhonas/free-exercise-db
