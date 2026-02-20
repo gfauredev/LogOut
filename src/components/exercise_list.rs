@@ -2,12 +2,16 @@ use crate::components::{ActiveTab, BottomNav, ExerciseCard};
 use crate::services::{exercise_db, storage};
 use dioxus::prelude::*;
 
+/// Number of exercises displayed per page.
+const PAGE_SIZE: usize = 20;
+
 #[component]
 pub fn ExerciseListPage() -> Element {
     let all_exercises = exercise_db::use_exercises();
     let custom_exercises = storage::use_custom_exercises();
     let sessions = storage::use_sessions();
     let mut search_query = use_signal(String::new);
+    let mut page = use_signal(|| 0usize);
 
     // Collect exercise IDs from the active session (if any)
     let active_session_ids = use_memo(move || {
@@ -20,37 +24,41 @@ pub fn ExerciseListPage() -> Element {
         ids
     });
 
-    // Merge DB exercises and user-created exercises into a unified list
+    // Merge DB exercises and user-created exercises into a unified list.
+    // Unified search applies to both custom and DB exercises (by name, muscle, category, etc.).
     let exercises = use_memo(move || {
         let query = search_query.read();
         let all = all_exercises.read();
         let custom = custom_exercises.read();
-        let query_lower = query.to_lowercase();
         let active_ids = active_session_ids();
 
         let mut results = Vec::new();
         let mut seen_ids = std::collections::HashSet::new();
 
-        // Add user-created exercises first (they have priority)
-        for ex in custom.iter() {
-            let matches = query_lower.is_empty() || ex.name.to_lowercase().contains(&query_lower);
-            if matches && seen_ids.insert(ex.id.clone()) {
-                results.push((ex.clone(), true));
+        if query.is_empty() {
+            // Add all user-created exercises first (they have priority)
+            for ex in custom.iter() {
+                if seen_ids.insert(ex.id.clone()) {
+                    results.push((ex.clone(), true));
+                }
             }
-        }
-
-        // Add DB exercises, skipping duplicates
-        if query_lower.is_empty() {
-            for ex in all.iter().take(50) {
+            // Add all DB exercises (no hard limit – pagination handles display)
+            for ex in all.iter() {
                 if seen_ids.insert(ex.id.clone()) {
                     results.push((ex.clone(), false));
                 }
             }
         } else {
-            for ex in exercise_db::search_exercises(&all, &query)
-                .into_iter()
-                .take(50)
-            {
+            // Unified search: use search_exercises for both custom and DB exercises
+            // so that muscle, category, equipment, etc. are all searchable.
+            let custom_results = exercise_db::search_exercises(&custom, &query);
+            for ex in custom_results {
+                if seen_ids.insert(ex.id.clone()) {
+                    results.push((ex, true));
+                }
+            }
+            let db_results = exercise_db::search_exercises(&all, &query);
+            for ex in db_results {
                 if seen_ids.insert(ex.id.clone()) {
                     results.push((ex, false));
                 }
@@ -65,7 +73,25 @@ pub fn ExerciseListPage() -> Element {
         results
     });
 
+    // Current page items, annotated with whether instructions should be shown.
+    let page_items = use_memo(move || {
+        let active_ids = active_session_ids();
+        let page_start = page() * PAGE_SIZE;
+        exercises
+            .read()
+            .iter()
+            .skip(page_start)
+            .take(PAGE_SIZE)
+            .map(|(ex, is_custom)| {
+                let show_instructions = active_ids.contains(&ex.id);
+                (ex.clone(), *is_custom, show_instructions)
+            })
+            .collect::<Vec<_>>()
+    });
+
     let total = all_exercises.read().len();
+    let total_results = exercises.read().len();
+    let total_pages = total_results.div_ceil(PAGE_SIZE).max(1);
 
     rsx! {
         main { class: "page-content container container--narrow",
@@ -84,15 +110,43 @@ pub fn ExerciseListPage() -> Element {
                     r#type: "text",
                     placeholder: "Search exercises, muscles, or categories...",
                     value: "{search_query}",
-                    oninput: move |evt| search_query.set(evt.value()),
+                    oninput: move |evt| {
+                        search_query.set(evt.value());
+                        page.set(0);
+                    },
                     class: "search-input",
                 }
             }
 
             section {
                 class: "exercise-list",
-                for (exercise, is_custom) in exercises() {
-                    ExerciseCard { key: "{exercise.id}", exercise, is_custom }
+                for (exercise, is_custom, show_instructions) in page_items() {
+                    ExerciseCard {
+                        key: "{exercise.id}",
+                        exercise,
+                        is_custom,
+                        show_instructions_initial: show_instructions,
+                    }
+                }
+            }
+
+            if total_pages > 1 {
+                div { class: "pagination",
+                    button {
+                        class: "btn btn--secondary",
+                        disabled: page() == 0,
+                        onclick: move |_| page.set(page() - 1),
+                        "← Previous"
+                    }
+                    span { class: "pagination__info",
+                        "Page {page() + 1} of {total_pages}"
+                    }
+                    button {
+                        class: "btn btn--secondary",
+                        disabled: (page() + 1) >= total_pages,
+                        onclick: move |_| page.set(page() + 1),
+                        "Next →"
+                    }
                 }
             }
         }

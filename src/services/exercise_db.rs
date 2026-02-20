@@ -1,4 +1,6 @@
-use crate::models::{Equipment, Exercise, Muscle};
+use crate::models::Exercise;
+#[cfg(test)]
+use crate::models::{Equipment, Muscle};
 use dioxus::prelude::*;
 
 /// Newtype wrapper for the exercise-database signal so its `TypeId` is distinct
@@ -189,7 +191,7 @@ pub fn get_exercise_by_id<'a>(exercises: &'a [Exercise], id: &str) -> Option<&'a
     exercises.iter().find(|e| e.id == id)
 }
 
-#[allow(dead_code)]
+#[cfg(test)]
 pub fn get_equipment_types(exercises: &[Exercise]) -> Vec<Equipment> {
     let mut equipment: Vec<Equipment> = exercises.iter().filter_map(|e| e.equipment).collect();
     equipment.sort_by_key(|a| a.to_string());
@@ -197,7 +199,7 @@ pub fn get_equipment_types(exercises: &[Exercise]) -> Vec<Equipment> {
     equipment
 }
 
-#[allow(dead_code)]
+#[cfg(test)]
 pub fn get_muscle_groups(exercises: &[Exercise]) -> Vec<Muscle> {
     let mut muscles: Vec<Muscle> = exercises
         .iter()
@@ -409,5 +411,89 @@ mod tests {
         {
             assert!(crate::utils::EXERCISE_DB_BASE_URL.contains("gfauredev"));
         }
+    }
+
+    // ── Unified search tests (covers the unified search for custom exercises) ──
+
+    #[test]
+    fn search_custom_exercise_by_muscle_unified() {
+        // search_exercises is used for both custom and DB exercises; verify it
+        // finds custom exercises by primary muscle.
+        let exercises = vec![Exercise {
+            id: "custom_squat".into(),
+            name: "Custom Squat".into(),
+            force: Some(Force::Push),
+            level: Some(Level::Beginner),
+            mechanic: None,
+            equipment: None,
+            primary_muscles: vec![Muscle::Quadriceps],
+            secondary_muscles: vec![Muscle::Glutes],
+            instructions: vec![],
+            category: Category::Strength,
+            images: vec![],
+        }];
+        let results = search_exercises(&exercises, "quadriceps");
+        assert_eq!(results.len(), 1);
+        assert_eq!(results[0].id, "custom_squat");
+    }
+
+    #[test]
+    fn search_custom_exercise_by_secondary_muscle_unified() {
+        let exercises = vec![Exercise {
+            id: "custom_squat".into(),
+            name: "Custom Squat".into(),
+            force: Some(Force::Push),
+            level: Some(Level::Beginner),
+            mechanic: None,
+            equipment: None,
+            primary_muscles: vec![Muscle::Quadriceps],
+            secondary_muscles: vec![Muscle::Glutes],
+            instructions: vec![],
+            category: Category::Strength,
+            images: vec![],
+        }];
+        let results = search_exercises(&exercises, "glutes");
+        assert_eq!(results.len(), 1);
+        assert_eq!(results[0].id, "custom_squat");
+    }
+
+    #[test]
+    fn search_custom_exercise_by_category_unified() {
+        let exercises = vec![Exercise {
+            id: "custom_run".into(),
+            name: "My Run".into(),
+            force: None,
+            level: None,
+            mechanic: None,
+            equipment: None,
+            primary_muscles: vec![],
+            secondary_muscles: vec![],
+            instructions: vec![],
+            category: Category::Cardio,
+            images: vec![],
+        }];
+        // Search by category should match custom exercises too
+        let results = search_exercises(&exercises, "cardio");
+        assert_eq!(results.len(), 1);
+        assert_eq!(results[0].id, "custom_run");
+    }
+
+    // ── get_equipment_types / get_muscle_groups (test-only utilities) ──
+
+    #[test]
+    fn get_equipment_types_only_returns_some_equipment() {
+        let exercises = sample_exercises();
+        // running has equipment: None, so only barbell and body only appear
+        let equipment = get_equipment_types(&exercises);
+        assert!(equipment.iter().all(|e| e.as_str().len() > 0));
+    }
+
+    #[test]
+    fn get_muscle_groups_only_returns_primary_muscles() {
+        let exercises = sample_exercises();
+        // Only primary muscles are collected
+        let muscles = get_muscle_groups(&exercises);
+        // chest (bench_press), lats (pull_up), quadriceps+hamstrings (running)
+        assert_eq!(muscles.len(), 4);
     }
 }
