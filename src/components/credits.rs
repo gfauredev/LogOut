@@ -23,14 +23,10 @@ pub fn CreditsPage() -> Element {
         {
             if let Some(window) = web_sys::window() {
                 if let Ok(Some(storage)) = window.local_storage() {
-                    if url.is_empty()
-                        || url == crate::utils::EXERCISE_DB_BASE_URL
-                    {
-                        let _ = storage
-                            .remove_item(crate::utils::EXERCISE_DB_URL_STORAGE_KEY);
+                    if url.is_empty() || url == crate::utils::EXERCISE_DB_BASE_URL {
+                        let _ = storage.remove_item(crate::utils::EXERCISE_DB_URL_STORAGE_KEY);
                     } else {
-                        let _ = storage
-                            .set_item(crate::utils::EXERCISE_DB_URL_STORAGE_KEY, &url);
+                        let _ = storage.set_item(crate::utils::EXERCISE_DB_URL_STORAGE_KEY, &url);
                     }
                 }
             }

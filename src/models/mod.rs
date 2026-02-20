@@ -876,8 +876,8 @@ mod tests {
                 version: DATA_VERSION,
                 pending_exercise_ids: vec![],
                 rest_start_time: None,
-            current_exercise_id: None,
-            current_exercise_start: None,
+                current_exercise_id: None,
+                current_exercise_start: None,
             },
             WorkoutSession {
                 id: "s2".into(),
@@ -887,8 +887,8 @@ mod tests {
                 version: DATA_VERSION,
                 pending_exercise_ids: vec![],
                 rest_start_time: None,
-            current_exercise_id: None,
-            current_exercise_start: None,
+                current_exercise_id: None,
+                current_exercise_start: None,
             },
         ];
         let active = sessions.iter().find(|s| s.is_active()).cloned();
