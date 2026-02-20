@@ -38,6 +38,14 @@ fn main() {
     // Prevent the device screen from sleeping while the app is open
     services::wake_lock::enable_wake_lock();
 
+    // Request notification permission so rest/duration alerts can be shown
+    #[cfg(all(target_arch = "wasm32", feature = "web-platform"))]
+    {
+        let _ = js_sys::eval(
+            "try{if(Notification&&Notification.permission==='default'){Notification.requestPermission();}}catch(e){}",
+        );
+    }
+
     launch(App);
 }
 

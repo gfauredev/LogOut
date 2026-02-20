@@ -152,23 +152,23 @@ pub fn search_exercises(exercises: &[Exercise], query: &str) -> Vec<Exercise> {
                 || exercise
                     .primary_muscles
                     .iter()
-                    .any(|m| m.to_string().contains(&query_lower))
+                    .any(|m| m.as_str().contains(&query_lower))
                 || exercise
                     .secondary_muscles
                     .iter()
-                    .any(|m| m.to_string().contains(&query_lower))
-                || exercise.category.to_string().contains(&query_lower)
+                    .any(|m| m.as_str().contains(&query_lower))
+                || exercise.category.as_str().contains(&query_lower)
                 || exercise
                     .force
-                    .map(|f| f.to_string().contains(&query_lower))
+                    .map(|f| f.as_str().contains(&query_lower))
                     .unwrap_or(false)
                 || exercise
                     .equipment
-                    .map(|e| e.to_string().contains(&query_lower))
+                    .map(|e| e.as_str().contains(&query_lower))
                     .unwrap_or(false)
                 || exercise
                     .level
-                    .map(|l| l.to_string().contains(&query_lower))
+                    .map(|l| l.as_str().contains(&query_lower))
                     .unwrap_or(false)
         })
         .cloned()

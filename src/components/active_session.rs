@@ -38,7 +38,13 @@ pub fn SessionView() -> Element {
     let mut rest_input_value = use_signal(|| DEFAULT_REST_DURATION.to_string());
 
     // Rest timer state: tracks when the last exercise was completed
-    let mut rest_start_time = use_signal(|| None::<u64>);
+    let mut rest_start_time = use_signal(move || {
+        sessions
+            .read()
+            .iter()
+            .find(|s| s.is_active())
+            .and_then(|s| s.rest_start_time)
+    });
 
     // Snackbar state for congratulatory message
     let mut show_snackbar = use_signal(|| false);
@@ -188,6 +194,11 @@ pub fn SessionView() -> Element {
             rest_start_time.set(None);
             rest_bell_count.set(0);
             duration_bell_rung.set(false);
+            // Persist cleared rest timer in session
+            let mut current_session = session.read().clone();
+            current_session.rest_start_time = None;
+            storage::save_session(current_session.clone());
+            session.set(current_session);
         };
 
     let complete_exercise = move |_| {
@@ -244,6 +255,9 @@ pub fn SessionView() -> Element {
         };
 
         current_session.exercise_logs.push(log);
+        // Save rest timer start time in the session for persistence across tab switches
+        let rest_start = get_current_timestamp();
+        current_session.rest_start_time = Some(rest_start);
         storage::save_session(current_session.clone());
         session.set(current_session);
 
@@ -253,7 +267,7 @@ pub fn SessionView() -> Element {
         reps_input.set(String::new());
         distance_input.set(String::new());
         // Start rest timer
-        rest_start_time.set(Some(get_current_timestamp()));
+        rest_start_time.set(Some(rest_start));
         rest_bell_count.set(0);
         duration_bell_rung.set(false);
     };
@@ -406,6 +420,7 @@ pub fn SessionView() -> Element {
                                                     // Remove from pending and save
                                                     let mut current_session = session.read().clone();
                                                     current_session.pending_exercise_ids.retain(|x| x != &id);
+                                                    current_session.rest_start_time = None;
                                                     storage::save_session(current_session.clone());
                                                     session.set(current_session);
                                                     // Start the exercise
@@ -431,12 +446,20 @@ pub fn SessionView() -> Element {
                     div {
                         class: "form-group",
                         h3 { "Select Exercise" }
-                        input {
-                            r#type: "text",
-                            placeholder: "Search for an exercise...",
-                            value: "{search_query}",
-                            oninput: move |evt| search_query.set(evt.value()),
-                            class: "search-input",
+                        div { class: "search-with-add",
+                            Link {
+                                to: Route::AddCustomExercisePage {},
+                                class: "add-exercise-btn",
+                                title: "Add Custom Exercise",
+                                "+"
+                            }
+                            input {
+                                r#type: "text",
+                                placeholder: "Search for an exercise...",
+                                value: "{search_query}",
+                                oninput: move |evt| search_query.set(evt.value()),
+                                class: "search-input",
+                            }
                         }
 
                         if !search_results().is_empty() {
@@ -577,13 +600,13 @@ pub fn SessionView() -> Element {
                     }
                 }
 
-                // Completed exercises list
+                // Completed exercises list (antichronological order)
                 if !session.read().exercise_logs.is_empty() {
                     section {
                         class: "completed-exercises-section",
                         h3 { "Completed Exercises" }
 
-                        for (idx, log) in session.read().exercise_logs.iter().enumerate() {
+                        for (idx, log) in session.read().exercise_logs.iter().enumerate().collect::<Vec<_>>().into_iter().rev() {
                             CompletedExerciseLog {
                                 key: "{idx}",
                                 idx,
@@ -591,16 +614,6 @@ pub fn SessionView() -> Element {
                                 session,
                             }
                         }
-                    }
-                }
-
-                // Link to add custom exercise
-                div {
-                    class: "center-text",
-                    Link {
-                        to: Route::AddCustomExercisePage {},
-                        class: "add-custom-link",
-                        "+ Add Custom Exercise"
                     }
                 }
             }

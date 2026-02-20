@@ -6,7 +6,19 @@ use dioxus::prelude::*;
 pub fn ExerciseListPage() -> Element {
     let all_exercises = exercise_db::use_exercises();
     let custom_exercises = storage::use_custom_exercises();
+    let sessions = storage::use_sessions();
     let mut search_query = use_signal(String::new);
+
+    // Collect exercise IDs from the active session (if any)
+    let active_session_ids = use_memo(move || {
+        let mut ids = std::collections::HashSet::new();
+        if let Some(session) = sessions.read().iter().find(|s| s.is_active()) {
+            for log in &session.exercise_logs {
+                ids.insert(log.exercise_id.clone());
+            }
+        }
+        ids
+    });
 
     // Merge DB exercises and user-created exercises into a unified list
     let exercises = use_memo(move || {
@@ -14,6 +26,7 @@ pub fn ExerciseListPage() -> Element {
         let all = all_exercises.read();
         let custom = custom_exercises.read();
         let query_lower = query.to_lowercase();
+        let active_ids = active_session_ids();
 
         let mut results = Vec::new();
         let mut seen_ids = std::collections::HashSet::new();
@@ -42,6 +55,11 @@ pub fn ExerciseListPage() -> Element {
                     results.push((ex, false));
                 }
             }
+        }
+
+        // Pin exercises from the active session to the top
+        if !active_ids.is_empty() {
+            results.sort_by_key(|(ex, _)| !active_ids.contains(&ex.id));
         }
 
         results
