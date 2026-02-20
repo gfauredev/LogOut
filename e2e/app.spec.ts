@@ -187,7 +187,7 @@ test.describe("Exercise search functionality", () => {
   }) => {
     // Verify the fix works in the exercise list too
     await page.goto(`${BASE}/exercises`);
-    await expect(page.locator("h1")).toHaveText("Exercise Database");
+    await expect(page.locator("h1")).toHaveText("📚 Exercise Database");
 
     // Search for exercises - this also had the duplicate key bug
     const searchInput = page.locator(".search-input");
@@ -197,14 +197,14 @@ test.describe("Exercise search functionality", () => {
     await page.waitForTimeout(1000);
 
     // Verify page is still functional
-    await expect(page.locator("h1")).toHaveText("Exercise Database");
+    await expect(page.locator("h1")).toHaveText("📚 Exercise Database");
 
     // Try another search
     await searchInput.fill("squat");
     await page.waitForTimeout(500);
 
     // Still functional
-    await expect(page.locator("h1")).toHaveText("Exercise Database");
+    await expect(page.locator("h1")).toHaveText("📚 Exercise Database");
   });
 });
 
