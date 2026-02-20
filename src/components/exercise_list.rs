@@ -2,7 +2,7 @@ use crate::components::{ActiveTab, BottomNav, ExerciseCard};
 use crate::services::{exercise_db, storage};
 use dioxus::prelude::*;
 
-/// Number of exercises displayed per page.
+/// Number of exercises loaded per scroll increment.
 const PAGE_SIZE: usize = 20;
 
 #[component]
@@ -11,7 +11,7 @@ pub fn ExerciseListPage() -> Element {
     let custom_exercises = storage::use_custom_exercises();
     let sessions = storage::use_sessions();
     let mut search_query = use_signal(String::new);
-    let mut page = use_signal(|| 0usize);
+    let mut visible_count = use_signal(|| PAGE_SIZE);
 
     // Collect exercise IDs from the active session (if any)
     let active_session_ids = use_memo(move || {
@@ -51,7 +51,7 @@ pub fn ExerciseListPage() -> Element {
                     results.push((ex.clone(), true));
                 }
             }
-            // Add all DB exercises (no hard limit – pagination handles display)
+            // Add all DB exercises (no hard limit – scroll pagination handles display)
             for ex in all.iter() {
                 if seen_ids.insert(ex.id.clone()) {
                     results.push((ex.clone(), false));
@@ -87,16 +87,40 @@ pub fn ExerciseListPage() -> Element {
         results
     });
 
-    // Current page items, annotated with whether instructions should be shown.
-    let page_items = use_memo(move || {
+    // Set up scroll-based auto-pagination: load more items as the user scrolls down.
+    // Uses eval to run JavaScript in the underlying renderer (browser or WebView).
+    // The resource handle is intentionally discarded; Dioxus drops it when the
+    // component unmounts.  window.onscroll assignment (rather than addEventListener)
+    // avoids accumulating duplicate listeners across component remounts.
+    let _ = use_resource(move || async move {
+        let mut rx = dioxus::document::eval(
+            r#"window.onscroll = function() {
+                var scrollTop = window.scrollY || document.documentElement.scrollTop;
+                var clientHeight = window.innerHeight || document.documentElement.clientHeight;
+                var scrollHeight = document.documentElement.scrollHeight || document.body.scrollHeight;
+                if (scrollTop + clientHeight >= scrollHeight - 300) {
+                    dioxus.send(true);
+                }
+            };"#,
+        );
+        while rx.recv::<bool>().await.is_ok() {
+            let cur = *visible_count.peek();
+            let total = exercises.peek().len();
+            if cur < total {
+                visible_count.set(cur + PAGE_SIZE);
+            }
+        }
+    });
+
+    // Visible items, annotated with whether instructions should be shown.
+    let visible_items = use_memo(move || {
         let active_ids = active_session_ids();
         let cur_id = current_exercise_id.read().clone();
-        let page_start = page() * PAGE_SIZE;
+        let count = *visible_count.read();
         exercises
             .read()
             .iter()
-            .skip(page_start)
-            .take(PAGE_SIZE)
+            .take(count)
             .map(|(ex, is_custom)| {
                 let show_instructions =
                     active_ids.contains(&ex.id) || cur_id.as_deref() == Some(ex.id.as_str());
@@ -106,8 +130,6 @@ pub fn ExerciseListPage() -> Element {
     });
 
     let total = all_exercises.read().len();
-    let total_results = exercises.read().len();
-    let total_pages = total_results.div_ceil(PAGE_SIZE).max(1);
 
     rsx! {
         main { class: "page-content container container--narrow",
@@ -128,7 +150,7 @@ pub fn ExerciseListPage() -> Element {
                     value: "{search_query}",
                     oninput: move |evt| {
                         search_query.set(evt.value());
-                        page.set(0);
+                        visible_count.set(PAGE_SIZE);
                     },
                     class: "search-input",
                 }
@@ -136,32 +158,12 @@ pub fn ExerciseListPage() -> Element {
 
             section {
                 class: "exercise-list",
-                for (exercise, is_custom, show_instructions) in page_items() {
+                for (exercise, is_custom, show_instructions) in visible_items() {
                     ExerciseCard {
                         key: "{exercise.id}",
                         exercise,
                         is_custom,
                         show_instructions_initial: show_instructions,
-                    }
-                }
-            }
-
-            if total_pages > 1 {
-                div { class: "pagination",
-                    button {
-                        class: "btn btn--secondary",
-                        disabled: page() == 0,
-                        onclick: move |_| page.set(page() - 1),
-                        "← Previous"
-                    }
-                    span { class: "pagination__info",
-                        "Page {page() + 1} of {total_pages}"
-                    }
-                    button {
-                        class: "btn btn--secondary",
-                        disabled: (page() + 1) >= total_pages,
-                        onclick: move |_| page.set(page() + 1),
-                        "Next →"
                     }
                 }
             }
