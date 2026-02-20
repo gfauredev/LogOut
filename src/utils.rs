@@ -4,6 +4,7 @@ pub(crate) const EXERCISE_DB_BASE_URL: &str =
     "https://raw.githubusercontent.com/gfauredev/free-exercise-db/main/";
 
 /// localStorage key used to store a user-configured exercise database URL.
+#[allow(dead_code)] // FIXME Why unused ?
 pub(crate) const EXERCISE_DB_URL_STORAGE_KEY: &str = "exercise_db_url";
 
 /// Returns the effective exercise database base URL.
