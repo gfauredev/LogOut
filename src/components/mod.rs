@@ -10,6 +10,8 @@ pub mod exercise_card;
 pub mod exercise_form_fields;
 pub mod exercise_list;
 pub mod home;
+mod session_exercise_form;
+mod session_timers;
 pub mod workout_log;
 
 pub use active_session::SessionView;

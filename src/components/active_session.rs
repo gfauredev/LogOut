@@ -1,20 +1,47 @@
 use crate::components::CompletedExerciseLog;
 use crate::models::{
-    format_time, get_current_timestamp, parse_distance_km, parse_weight_kg, Category, ExerciseLog,
+    get_current_timestamp, parse_distance_km, parse_weight_kg, Category, ExerciseLog,
     WorkoutSession,
 };
 use crate::services::{exercise_db, storage};
 use crate::Route;
 use dioxus::prelude::*;
 
+use super::session_exercise_form::ExerciseFormPanel;
+use super::session_timers::{RestTimerDisplay, SessionDurationDisplay};
+
 /// Default rest duration in seconds
 const DEFAULT_REST_DURATION: u64 = 30;
-/// Timer tick interval in milliseconds
-#[cfg(target_arch = "wasm32")]
-const TIMER_TICK_MS: u32 = 1_000;
 /// Snackbar auto-dismiss delay in milliseconds
 #[cfg(target_arch = "wasm32")]
 const SNACKBAR_DISMISS_MS: u32 = 3_000;
+
+// ── Helpers ────────────────────────────────────────────────────────────────
+
+/// Prefill the weight / reps / distance inputs from the last recorded log for
+/// `exercise_id`, or clear them if no prior log exists.
+fn prefill_inputs_from_last_log(
+    exercise_id: &str,
+    mut weight_input: Signal<String>,
+    mut reps_input: Signal<String>,
+    mut distance_input: Signal<String>,
+) {
+    if let Some(last_log) = storage::get_last_exercise_log(exercise_id) {
+        if let Some(w) = last_log.weight_dg {
+            weight_input.set(format!("{:.1}", w.0 as f64 / 100.0));
+        }
+        if let Some(reps) = last_log.reps {
+            reps_input.set(reps.to_string());
+        }
+        if let Some(d) = last_log.distance_dam {
+            distance_input.set(format!("{:.2}", d.0 as f64 / 100.0));
+        }
+    } else {
+        weight_input.set(String::new());
+        reps_input.set(String::new());
+        distance_input.set(String::new());
+    }
+}
 
 #[component]
 pub fn SessionView() -> Element {
@@ -111,22 +138,7 @@ pub fn SessionView() -> Element {
 
     let mut start_exercise =
         move |exercise_id: String, _exercise_name: String, _category: Category| {
-            if let Some(last_log) = storage::get_last_exercise_log(&exercise_id) {
-                if let Some(w) = last_log.weight_dg {
-                    weight_input.set(format!("{:.1}", w.0 as f64 / 100.0));
-                }
-                if let Some(reps) = last_log.reps {
-                    reps_input.set(reps.to_string());
-                }
-                if let Some(d) = last_log.distance_dam {
-                    distance_input.set(format!("{:.2}", d.0 as f64 / 100.0));
-                }
-            } else {
-                weight_input.set(String::new());
-                reps_input.set(String::new());
-                distance_input.set(String::new());
-            }
-
+            prefill_inputs_from_last_log(&exercise_id, weight_input, reps_input, distance_input);
             current_exercise_id.set(Some(exercise_id.clone()));
             let exercise_start = get_current_timestamp();
             current_exercise_start.set(Some(exercise_start));
@@ -144,7 +156,7 @@ pub fn SessionView() -> Element {
             storage::save_session(current_session);
         };
 
-    let complete_exercise = move |_| {
+    let complete_exercise = move |()| {
         let exercise_id = match current_exercise_id.read().as_ref() {
             Some(id) => id.clone(),
             None => return,
@@ -216,6 +228,20 @@ pub fn SessionView() -> Element {
         rest_start_time.set(Some(rest_start));
         rest_bell_count.set(0);
         duration_bell_rung.set(false);
+    };
+
+    let cancel_exercise = move |()| {
+        current_exercise_id.set(None);
+        current_exercise_start.set(None);
+        weight_input.set(String::new());
+        reps_input.set(String::new());
+        distance_input.set(String::new());
+        // Persist cleared performing state
+        let mut current_session = session.read().clone();
+        current_session.current_exercise_id = None;
+        current_session.current_exercise_start = None;
+        session.set(current_session.clone());
+        storage::save_session(current_session);
     };
 
     let finish_session = move |_| {
@@ -349,22 +375,12 @@ pub fn SessionView() -> Element {
                                             onclick: {
                                                 let id = exercise_id.clone();
                                                 move |_| {
-                                                    // Prefill from last log
-                                                    if let Some(last_log) = storage::get_last_exercise_log(&id) {
-                                                        if let Some(w) = last_log.weight_dg {
-                                                            weight_input.set(format!("{:.1}", w.0 as f64 / 100.0));
-                                                        }
-                                                        if let Some(reps) = last_log.reps {
-                                                            reps_input.set(reps.to_string());
-                                                        }
-                                                        if let Some(d) = last_log.distance_dam {
-                                                            distance_input.set(format!("{:.2}", d.0 as f64 / 100.0));
-                                                        }
-                                                    } else {
-                                                        weight_input.set(String::new());
-                                                        reps_input.set(String::new());
-                                                        distance_input.set(String::new());
-                                                    }
+                                                    prefill_inputs_from_last_log(
+                                                        &id,
+                                                        weight_input,
+                                                        reps_input,
+                                                        distance_input,
+                                                    );
                                                     // Remove from pending and save
                                                     let mut current_session = session.read().clone();
                                                     // Remove only the first occurrence so that repeated
@@ -438,126 +454,17 @@ pub fn SessionView() -> Element {
                             }
                         }
                     }
-                } else {
+                } else if let Some(exercise_id) = current_exercise_id.read().as_ref().cloned() {
                     // Current exercise input form
-                    if let Some(exercise_id) = current_exercise_id.read().as_ref() {
-                        article {
-                            class: "exercise-form",
-
-                            {
-                                let (exercise_name, category, force) = {
-                                    let all = all_exercises.read();
-                                    if let Some(ex) = exercise_db::get_exercise_by_id(&all, exercise_id) {
-                                        (ex.name.clone(), ex.category, ex.force)
-                                    } else {
-                                        let custom = custom_exercises.read();
-                                        if let Some(ex) = custom.iter().find(|e| &e.id == exercise_id) {
-                                            (ex.name.clone(), ex.category, ex.force)
-                                        } else {
-                                            ("Unknown".to_string(), Category::Strength, None)
-                                        }
-                                    }
-                                };
-
-                                let show_reps = force.is_some_and(|f| f.has_reps());
-                                let is_cardio = category == Category::Cardio;
-                                let last_log = storage::get_last_exercise_log(exercise_id);
-                                let last_duration = last_log.as_ref()
-                                    .and_then(|log| log.duration_seconds());
-
-                                // Secondary static timer: shown when exercise has no reps and no distance
-                                let show_static_timer = !show_reps && !is_cardio;
-
-                                rsx! {
-                                    header { class: "exercise-form__header",
-                                    h3 { class: "exercise-form__title", "{exercise_name}" }
-                                    if let Some(dur) = last_duration {
-                                        span {
-                                            class: "exercise-form__last-duration",
-                                            "Last duration: {format_time(dur)}"
-                                        }
-                                    }
-                                    }
-
-                                    if show_static_timer {
-                                        ExerciseElapsedTimer {
-                                            exercise_start: *current_exercise_start.read(),
-                                            last_duration,
-                                            duration_bell_rung,
-                                        }
-                                    }
-
-                                    div {
-                                        class: "exercise-form__fields",
-
-                                        div {
-                                            label { class: "form-label", "Weight (kg)" }
-                                            input {
-                                                r#type: "number",
-                                                step: "0.5",
-                                                placeholder: "Optional",
-                                                value: "{weight_input}",
-                                                oninput: move |evt| weight_input.set(evt.value()),
-                                                class: "form-input",
-                                            }
-                                        }
-
-                                        if is_cardio {
-                                            div {
-                                                label { class: "form-label", "Distance (km)" }
-                                                input {
-                                                    r#type: "number",
-                                                    step: "0.1",
-                                                    placeholder: "Distance",
-                                                    value: "{distance_input}",
-                                                    oninput: move |evt| distance_input.set(evt.value()),
-                                                    class: "form-input",
-                                                }
-                                            }
-                                        }
-
-                                        if show_reps {
-                                            div {
-                                                label { class: "form-label", "Repetitions" }
-                                                input {
-                                                    r#type: "number",
-                                                    placeholder: "Reps",
-                                                    value: "{reps_input}",
-                                                    oninput: move |evt| reps_input.set(evt.value()),
-                                                    class: "form-input",
-                                                }
-                                            }
-                                        }
-
-                                        div {
-                                            class: "btn-row",
-                                            button {
-                                                onclick: complete_exercise,
-                                                class: "btn--complete",
-                                                "✓ Complete Exercise"
-                                            }
-                                            button {
-                                                onclick: move |_| {
-                                                    current_exercise_id.set(None);
-                                                    current_exercise_start.set(None);
-                                                    weight_input.set(String::new());
-                                                    reps_input.set(String::new());
-                                                    distance_input.set(String::new());
-                                                    // Persist cleared performing state
-                                                    let mut current_session = session.read().clone();
-                                                    current_session.current_exercise_id = None;
-                                                    current_session.current_exercise_start = None;
-                                                    session.set(current_session.clone());
-                                                    storage::save_session(current_session);
-                                                },
-                                                class: "btn--cancel",
-                                                "Cancel"
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
+                    ExerciseFormPanel {
+                        exercise_id,
+                        weight_input,
+                        reps_input,
+                        distance_input,
+                        current_exercise_start,
+                        duration_bell_rung,
+                        on_complete: complete_exercise,
+                        on_cancel: cancel_exercise,
                     }
                 }
 
@@ -578,164 +485,6 @@ pub fn SessionView() -> Element {
                     }
                 }
             }
-        }
-    }
-}
-
-/// Send a notification using the Web Notifications API.
-/// The system decides whether to play audio or vibrate.
-/// `is_duration_bell` selects a different message to distinguish from rest alerts.
-#[cfg(target_arch = "wasm32")]
-fn send_notification(is_duration_bell: bool) {
-    use web_sys::{Notification, NotificationOptions, NotificationPermission};
-
-    let (title, body) = if is_duration_bell {
-        ("Duration reached", "Target exercise duration reached!")
-    } else {
-        ("Rest over", "Time to start your next set!")
-    };
-
-    let send = |t: &str, b: &str| {
-        let opts = NotificationOptions::new();
-        opts.set_body(b);
-        let _ = Notification::new_with_options(t, &opts);
-    };
-
-    match Notification::permission() {
-        NotificationPermission::Granted => send(title, body),
-        NotificationPermission::Default => {
-            let title = title.to_string();
-            let body = body.to_string();
-            if let Ok(promise) = Notification::request_permission() {
-                wasm_bindgen_futures::spawn_local(async move {
-                    if wasm_bindgen_futures::JsFuture::from(promise).await.is_ok()
-                        && Notification::permission() == NotificationPermission::Granted
-                    {
-                        let opts = NotificationOptions::new();
-                        opts.set_body(&body);
-                        let _ = Notification::new_with_options(&title, &opts);
-                    }
-                });
-            }
-        }
-        _ => {}
-    }
-}
-
-// ── Isolated timer components ──────────────────────────────────────────────
-// Each component owns its own tick coroutine so that only the timer display
-// re-renders every second, preventing unnecessary re-renders of the main
-// session form (input fields, exercise list, etc.).
-
-/// Renders the session elapsed time, updating every second.
-#[component]
-fn SessionDurationDisplay(session_start_time: u64, session_is_active: bool) -> Element {
-    let mut now_tick = use_signal(get_current_timestamp);
-    use_coroutine(move |_: UnboundedReceiver<()>| async move {
-        loop {
-            #[cfg(target_arch = "wasm32")]
-            gloo_timers::future::TimeoutFuture::new(TIMER_TICK_MS).await;
-            #[cfg(not(target_arch = "wasm32"))]
-            std::future::pending::<()>().await;
-            now_tick.set(get_current_timestamp());
-        }
-    });
-    let tick = *now_tick.read();
-    let duration = if session_is_active {
-        tick.saturating_sub(session_start_time)
-    } else {
-        0
-    };
-    rsx! { "{format_time(duration)}" }
-}
-
-/// Renders the rest timer and fires a notification when the rest period ends.
-#[component]
-fn RestTimerDisplay(
-    rest_start_time: Signal<Option<u64>>,
-    rest_duration: Signal<u64>,
-    mut rest_bell_count: Signal<u64>,
-) -> Element {
-    let mut now_tick = use_signal(get_current_timestamp);
-    use_coroutine(move |_: UnboundedReceiver<()>| async move {
-        loop {
-            #[cfg(target_arch = "wasm32")]
-            gloo_timers::future::TimeoutFuture::new(TIMER_TICK_MS).await;
-            #[cfg(not(target_arch = "wasm32"))]
-            std::future::pending::<()>().await;
-            now_tick.set(get_current_timestamp());
-        }
-    });
-
-    let tick = *now_tick.read();
-    let Some(start) = *rest_start_time.read() else {
-        return rsx! {};
-    };
-    let elapsed = tick.saturating_sub(start);
-    let rd = *rest_duration.read();
-
-    // Fire bell at each completed rest interval
-    if rd > 0 && elapsed > 0 {
-        let intervals = elapsed / rd;
-        let prev_count = *rest_bell_count.read();
-        if intervals > prev_count {
-            rest_bell_count.set(intervals);
-            #[cfg(target_arch = "wasm32")]
-            send_notification(false);
-        }
-    }
-
-    let exceeded = rd > 0 && elapsed >= rd;
-    rsx! {
-        div {
-            class: if exceeded { "rest-timer rest-timer--exceeded" } else { "rest-timer" },
-            "🛋️ Rest: {format_time(elapsed)}"
-        }
-    }
-}
-
-/// Renders the exercise elapsed timer and fires a notification when the
-/// target duration from the last log is reached.
-#[component]
-fn ExerciseElapsedTimer(
-    exercise_start: Option<u64>,
-    last_duration: Option<u64>,
-    mut duration_bell_rung: Signal<bool>,
-) -> Element {
-    let mut now_tick = use_signal(get_current_timestamp);
-    use_coroutine(move |_: UnboundedReceiver<()>| async move {
-        loop {
-            #[cfg(target_arch = "wasm32")]
-            gloo_timers::future::TimeoutFuture::new(TIMER_TICK_MS).await;
-            #[cfg(not(target_arch = "wasm32"))]
-            std::future::pending::<()>().await;
-            now_tick.set(get_current_timestamp());
-        }
-    });
-
-    let tick = *now_tick.read();
-    let elapsed = if let Some(start) = exercise_start {
-        tick.saturating_sub(start)
-    } else {
-        0
-    };
-
-    // Fire duration bell once when the previous exercise duration is reached
-    if !*duration_bell_rung.read() {
-        if let Some(dur) = last_duration {
-            if dur > 0 && elapsed >= dur {
-                duration_bell_rung.set(true);
-                #[cfg(target_arch = "wasm32")]
-                send_notification(true);
-            }
-        }
-    }
-
-    let timer_reached = last_duration.is_some_and(|d| d > 0 && elapsed >= d);
-    rsx! {
-        div {
-            class: if timer_reached { "exercise-static-timer exercise-static-timer--reached" } else { "exercise-static-timer" },
-            "⏱ {format_time(elapsed)}"
         }
     }
 }
