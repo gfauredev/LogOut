@@ -141,6 +141,10 @@ npx playwright test # E2E tests (starts dev server)
   - When a Session is Active, pin to the top Exercises completed in it
   - Fix width shrinking or growing depending on displayed exercises
 - Request notification permission at the app start
+- Consider avoiding lots of heap allocations inside the filter() loop in
+  search_exercises function
+- Consider reducing boilerplate by using strum crate for enums serializations
+- Consider removing dead code
 
 [Guilhem Fauré]: https://www.guilhemfau.re
 [free-exercise-db]: https://github.com/yuhonas/free-exercise-db
