@@ -127,15 +127,9 @@ npx playwright test # E2E tests (starts dev server)
 
 ## TODO
 
-- Never use js_sys::eval ; use web-sys Notification instead
-- Use timezone-aware time handling on native targets too
-- Extract timers into their own isolated component, prevent unnecessary renders
-- Replace the 50 exercise search limit by pagination
-- Unify search logic of default and custom exercises
 - When an Exercise is being performed, pin it to the top of the list, with
   instructions displayed
 - Consider reducing boilerplate by using strum crate for enums serializations
-- Consider removing dead code definitively
 
 - Consider reducing allocations to the heap in search loop
 - Consider splitting the SessionView god component into modular child components
