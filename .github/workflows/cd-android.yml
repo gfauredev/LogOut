@@ -1,0 +1,108 @@
+name: CD – Android APK
+
+# Triggers:
+#   • push to main   → builds and updates the rolling "latest-android" pre-release
+#   • release event  → attaches the APK to the newly published GitHub release
+#   • manual         → same as push to main
+on:
+  push:
+    branches: [main]
+  release:
+    types: [published]
+  workflow_dispatch:
+
+permissions:
+  contents: write   # required to create/update releases and upload assets
+
+jobs:
+  build-android:
+    name: Build Android APK
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # Gradle (used by dx to assemble the APK) requires Java 17+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: "17"
+          distribution: temurin
+
+      # Install Rust cross-compilation targets for Android ABIs.
+      # The Android NDK and ANDROID_NDK_HOME are pre-installed on ubuntu-latest.
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: >-
+            aarch64-linux-android
+            armv7-linux-androideabi
+            i686-linux-android
+            x86_64-linux-android
+
+      - uses: swatinem/rust-cache@v2
+
+      - name: Install Dioxus CLI
+        uses: taiki-e/install-action@v2
+        with:
+          tool: dioxus-cli
+
+      # Build the Android APK.
+      # --no-default-features disables the web renderer (dioxus/web).
+      # --features mobile-platform enables the mobile renderer (dioxus/mobile).
+      - name: Build Android APK
+        run: >-
+          dx build
+          --platform android
+          --release
+          --no-default-features
+          --features mobile-platform
+
+      # Locate the APK produced by dx and give it a user-friendly name.
+      - name: Locate APK
+        id: apk
+        run: |
+          [ -d target/dx ] || { echo "::error::target/dx directory missing – build may have failed"; exit 1; }
+          SRC=$(find target/dx -name "*.apk" -maxdepth 10 | head -1)
+          [ -n "$SRC" ] || { echo "::error::No APK found under target/dx"; exit 1; }
+          echo "Found APK: $SRC"
+          cp "$SRC" logout-android.apk
+          echo "path=logout-android.apk" >> "$GITHUB_OUTPUT"
+
+      - name: Upload APK as workflow artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: logout-android-apk
+          path: ${{ steps.apk.outputs.path }}
+          if-no-files-found: error
+
+      # ── On published release: attach APK to that release ────────────────────
+      - name: Attach APK to published release
+        if: github.event_name == 'release'
+        uses: softprops/action-gh-release@v2
+        with:
+          files: ${{ steps.apk.outputs.path }}
+
+      # ── On push to main / manual trigger: maintain a rolling pre-release ────
+      - name: Delete previous "latest-android" release
+        if: github.event_name != 'release'
+        continue-on-error: true   # no-op when the release doesn't exist yet
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release delete latest-android --yes --cleanup-tag
+
+      - name: Publish rolling "latest-android" pre-release
+        if: github.event_name != 'release'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: latest-android
+          name: "Android APK – latest build"
+          body: |
+            Automatically built from the latest commit on `main`.
+
+            **To install on Android (8.0+):**
+            1. Download `logout-android.apk` below.
+            2. Open the file on your device – you will be prompted to allow installation from your file manager or browser (this is a per-app setting since Android 8.0).
+            3. Follow the on-screen prompts to complete the installation.
+          prerelease: true
+          make_latest: false
+          files: ${{ steps.apk.outputs.path }}
