@@ -5,10 +5,11 @@ edition = "2021"
 
 [features]
 default = ["web-platform"]
-web-platform = []  # Enable web-specific features like Service Worker
+web-platform = ["dioxus/web"]  # Enable web renderer (WASM / browser)
+mobile-platform = ["dioxus/mobile"]  # Enable mobile renderer (Android / iOS)
 
 [dependencies]
-dioxus = { version = "0.7", features = ["web", "router"] }
+dioxus = { version = "0.7", features = ["router"] }
 dioxus-logger = "0.7"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
