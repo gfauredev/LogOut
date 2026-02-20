@@ -9,6 +9,12 @@ use dioxus::prelude::*;
 
 /// Default rest duration in seconds
 const DEFAULT_REST_DURATION: u64 = 30;
+/// Timer tick interval in milliseconds
+#[cfg(target_arch = "wasm32")]
+const TIMER_TICK_MS: u32 = 1_000;
+/// Snackbar auto-dismiss delay in milliseconds
+#[cfg(target_arch = "wasm32")]
+const SNACKBAR_DISMISS_MS: u32 = 3_000;
 
 #[component]
 pub fn SessionView() -> Element {
@@ -26,8 +32,20 @@ pub fn SessionView() -> Element {
     });
 
     let mut search_query = use_signal(String::new);
-    let mut current_exercise_id = use_signal(|| None::<String>);
-    let mut current_exercise_start = use_signal(|| None::<u64>);
+    let mut current_exercise_id = use_signal(move || {
+        sessions
+            .read()
+            .iter()
+            .find(|s| s.is_active())
+            .and_then(|s| s.current_exercise_id.clone())
+    });
+    let mut current_exercise_start = use_signal(move || {
+        sessions
+            .read()
+            .iter()
+            .find(|s| s.is_active())
+            .and_then(|s| s.current_exercise_start)
+    });
     let mut weight_input = use_signal(String::new);
     let mut reps_input = use_signal(String::new);
     let mut distance_input = use_signal(String::new);
@@ -46,8 +64,8 @@ pub fn SessionView() -> Element {
             .and_then(|s| s.rest_start_time)
     });
 
-    // Snackbar state for congratulatory message
-    let mut show_snackbar = use_signal(|| false);
+    // Congratulations toast (global context, survives session unmount)
+    let mut congratulations = use_context::<crate::CongratulationsSignal>().0;
 
     // Bell rung tracker: how many times the rest bell has rung this rest period
     let mut rest_bell_count = use_signal(|| 0u64);
@@ -110,15 +128,18 @@ pub fn SessionView() -> Element {
             }
 
             current_exercise_id.set(Some(exercise_id.clone()));
-            current_exercise_start.set(Some(get_current_timestamp()));
+            let exercise_start = get_current_timestamp();
+            current_exercise_start.set(Some(exercise_start));
             search_query.set(String::new());
             // Clear rest timer when starting a new exercise
             rest_start_time.set(None);
             rest_bell_count.set(0);
             duration_bell_rung.set(false);
-            // Persist cleared rest timer in session
+            // Persist exercise start and cleared rest timer in session
             let mut current_session = session.read().clone();
             current_session.rest_start_time = None;
+            current_session.current_exercise_id = Some(exercise_id.clone());
+            current_session.current_exercise_start = Some(exercise_start);
             session.set(current_session.clone());
             storage::save_session(current_session);
         };
@@ -180,6 +201,9 @@ pub fn SessionView() -> Element {
         // Save rest timer start time in the session for persistence across tab switches
         let rest_start = get_current_timestamp();
         current_session.rest_start_time = Some(rest_start);
+        // Clear performing exercise from session
+        current_session.current_exercise_id = None;
+        current_session.current_exercise_start = None;
         session.set(current_session.clone());
         storage::save_session(current_session);
 
@@ -203,13 +227,13 @@ pub fn SessionView() -> Element {
         }
         current_session.end_time = Some(get_current_timestamp());
         storage::save_session(current_session.clone());
-        // Show congratulatory snackbar if exercises were completed
-        show_snackbar.set(true);
+        // Show congratulatory toast (via global context so it survives unmount)
+        congratulations.set(true);
         #[cfg(target_arch = "wasm32")]
         {
             spawn(async move {
-                gloo_timers::future::TimeoutFuture::new(3_000).await;
-                show_snackbar.set(false);
+                gloo_timers::future::TimeoutFuture::new(SNACKBAR_DISMISS_MS).await;
+                congratulations.set(false);
             });
         }
     };
@@ -354,12 +378,15 @@ pub fn SessionView() -> Element {
                                                             true
                                                         }
                                                     });
+                                                    let pending_start = get_current_timestamp();
                                                     current_session.rest_start_time = None;
+                                                    current_session.current_exercise_id = Some(id.clone());
+                                                    current_session.current_exercise_start = Some(pending_start);
                                                     session.set(current_session.clone());
                                                     storage::save_session(current_session);
                                                     // Start the exercise
                                                     current_exercise_id.set(Some(id.clone()));
-                                                    current_exercise_start.set(Some(get_current_timestamp()));
+                                                    current_exercise_start.set(Some(pending_start));
                                                     search_query.set(String::new());
                                                     rest_start_time.set(None);
                                                     rest_bell_count.set(0);
@@ -381,18 +408,18 @@ pub fn SessionView() -> Element {
                         class: "form-group",
                         h3 { "Select Exercise" }
                         div { class: "search-with-add",
-                            Link {
-                                to: Route::AddCustomExercisePage {},
-                                class: "add-exercise-btn",
-                                title: "Add Custom Exercise",
-                                "+"
-                            }
                             input {
                                 r#type: "text",
                                 placeholder: "Search for an exercise...",
                                 value: "{search_query}",
                                 oninput: move |evt| search_query.set(evt.value()),
                                 class: "search-input",
+                            }
+                            Link {
+                                to: Route::AddCustomExercisePage {},
+                                class: "add-exercise-btn",
+                                title: "Add Custom Exercise",
+                                "+"
                             }
                         }
 
@@ -516,6 +543,12 @@ pub fn SessionView() -> Element {
                                                     weight_input.set(String::new());
                                                     reps_input.set(String::new());
                                                     distance_input.set(String::new());
+                                                    // Persist cleared performing state
+                                                    let mut current_session = session.read().clone();
+                                                    current_session.current_exercise_id = None;
+                                                    current_session.current_exercise_start = None;
+                                                    session.set(current_session.clone());
+                                                    storage::save_session(current_session);
                                                 },
                                                 class: "btn--cancel",
                                                 "Cancel"
@@ -543,14 +576,6 @@ pub fn SessionView() -> Element {
                             }
                         }
                     }
-                }
-            }
-
-            // Congratulatory snackbar
-            if *show_snackbar.read() {
-                div {
-                    class: "snackbar",
-                    "🎉 Great workout! Session complete!"
                 }
             }
         }
@@ -609,7 +634,7 @@ fn SessionDurationDisplay(session_start_time: u64, session_is_active: bool) -> E
     use_coroutine(move |_: UnboundedReceiver<()>| async move {
         loop {
             #[cfg(target_arch = "wasm32")]
-            gloo_timers::future::TimeoutFuture::new(1_000).await;
+            gloo_timers::future::TimeoutFuture::new(TIMER_TICK_MS).await;
             #[cfg(not(target_arch = "wasm32"))]
             std::future::pending::<()>().await;
             now_tick.set(get_current_timestamp());
@@ -635,7 +660,7 @@ fn RestTimerDisplay(
     use_coroutine(move |_: UnboundedReceiver<()>| async move {
         loop {
             #[cfg(target_arch = "wasm32")]
-            gloo_timers::future::TimeoutFuture::new(1_000).await;
+            gloo_timers::future::TimeoutFuture::new(TIMER_TICK_MS).await;
             #[cfg(not(target_arch = "wasm32"))]
             std::future::pending::<()>().await;
             now_tick.set(get_current_timestamp());
@@ -681,7 +706,7 @@ fn ExerciseElapsedTimer(
     use_coroutine(move |_: UnboundedReceiver<()>| async move {
         loop {
             #[cfg(target_arch = "wasm32")]
-            gloo_timers::future::TimeoutFuture::new(1_000).await;
+            gloo_timers::future::TimeoutFuture::new(TIMER_TICK_MS).await;
             #[cfg(not(target_arch = "wasm32"))]
             std::future::pending::<()>().await;
             now_tick.set(get_current_timestamp());

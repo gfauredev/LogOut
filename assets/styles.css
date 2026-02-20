@@ -12,6 +12,8 @@
 
 .container--form {
   margin: 0 auto;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 /* ===== General Layout ===== */
@@ -975,6 +977,7 @@ main {
   padding: 20px;
   border-bottom: 1px solid #333;
   color: #e0e0e0;
+  text-align: center;
 }
 
 .analytics-controls {
@@ -1025,6 +1028,7 @@ main {
 /* ===== Header / Navigation (used by exercise list and other pages) ===== */
 .page-header {
   margin-bottom: 20px;
+  text-align: center;
 }
 
 .back-link {
@@ -1045,6 +1049,7 @@ main {
 .page-title {
   margin: 15px 0;
   color: #fff;
+  text-align: center;
 }
 
 .page-subtitle {
@@ -1156,4 +1161,22 @@ main {
   padding-left: 20px;
   color: #999;
   line-height: 1.8;
+}
+
+.credits-card__hint {
+  margin: 4px 0 10px 0;
+  color: #777;
+  font-size: 0.9em;
+  line-height: 1.4;
+}
+
+.db-url-form {
+  display: flex;
+  gap: 8px;
+  align-items: stretch;
+}
+
+.db-url-input {
+  flex: 1;
+  min-width: 0;
 }

@@ -24,6 +24,15 @@ pub fn ExerciseListPage() -> Element {
         ids
     });
 
+    // Track the exercise currently being performed (if any) to pin it to the top
+    let current_exercise_id = use_memo(move || {
+        sessions
+            .read()
+            .iter()
+            .find(|s| s.is_active())
+            .and_then(|s| s.current_exercise_id.clone())
+    });
+
     // Merge DB exercises and user-created exercises into a unified list.
     // Unified search applies to both custom and DB exercises (by name, muscle, category, etc.).
     let exercises = use_memo(move || {
@@ -65,9 +74,14 @@ pub fn ExerciseListPage() -> Element {
             }
         }
 
-        // Pin exercises from the active session to the top
-        if !active_ids.is_empty() {
-            results.sort_by_key(|(ex, _)| !active_ids.contains(&ex.id));
+        // Pin exercises: currently-performing first, then completed in the session, then rest
+        let cur_id = current_exercise_id.read().clone();
+        if !active_ids.is_empty() || cur_id.is_some() {
+            results.sort_by_key(|(ex, _)| {
+                let is_current = cur_id.as_deref() == Some(ex.id.as_str());
+                let is_active = active_ids.contains(&ex.id);
+                (!is_current, !is_active)
+            });
         }
 
         results
@@ -76,6 +90,7 @@ pub fn ExerciseListPage() -> Element {
     // Current page items, annotated with whether instructions should be shown.
     let page_items = use_memo(move || {
         let active_ids = active_session_ids();
+        let cur_id = current_exercise_id.read().clone();
         let page_start = page() * PAGE_SIZE;
         exercises
             .read()
@@ -83,7 +98,8 @@ pub fn ExerciseListPage() -> Element {
             .skip(page_start)
             .take(PAGE_SIZE)
             .map(|(ex, is_custom)| {
-                let show_instructions = active_ids.contains(&ex.id);
+                let show_instructions = active_ids.contains(&ex.id)
+                    || cur_id.as_deref() == Some(ex.id.as_str());
                 (ex.clone(), *is_custom, show_instructions)
             })
             .collect::<Vec<_>>()
@@ -98,7 +114,7 @@ pub fn ExerciseListPage() -> Element {
 
             header {
                 class: "page-header",
-                h1 { class: "page-title", "Exercise Database" }
+                h1 { class: "page-title", "📚 Exercise Database" }
                 p { class: "page-subtitle",
                     "Browse {total} exercises"
                 }

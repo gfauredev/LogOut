@@ -3,6 +3,28 @@
 pub(crate) const EXERCISE_DB_BASE_URL: &str =
     "https://raw.githubusercontent.com/gfauredev/free-exercise-db/main/";
 
+/// localStorage key used to store a user-configured exercise database URL.
+pub(crate) const EXERCISE_DB_URL_STORAGE_KEY: &str = "exercise_db_url";
+
+/// Returns the effective exercise database base URL.
+/// On WASM, checks localStorage for a user-configured URL first.
+/// Falls back to [`EXERCISE_DB_BASE_URL`] if not set.
+pub fn get_exercise_db_url() -> String {
+    #[cfg(target_arch = "wasm32")]
+    {
+        if let Some(window) = web_sys::window() {
+            if let Ok(Some(storage)) = window.local_storage() {
+                if let Ok(Some(url)) = storage.get_item(EXERCISE_DB_URL_STORAGE_KEY) {
+                    if !url.is_empty() {
+                        return url;
+                    }
+                }
+            }
+        }
+    }
+    EXERCISE_DB_BASE_URL.to_string()
+}
+
 /// Format a session timestamp as a human-readable relative date string.
 pub fn format_session_date(timestamp: u64) -> String {
     let days_ago = days_since(timestamp);
@@ -116,5 +138,21 @@ mod tests {
         let midnight = today_midnight_local_secs();
         let days = super::days_since(midnight);
         assert_eq!(days, 0, "local midnight should be day 0");
+    }
+
+    #[test]
+    fn get_exercise_db_url_returns_default_on_native() {
+        // On non-wasm targets, get_exercise_db_url() must return the default constant.
+        #[cfg(not(target_arch = "wasm32"))]
+        {
+            let url = super::get_exercise_db_url();
+            assert_eq!(url, super::EXERCISE_DB_BASE_URL);
+        }
+    }
+
+    #[test]
+    fn exercise_db_url_storage_key_is_stable() {
+        // The localStorage key should not change accidentally.
+        assert_eq!(super::EXERCISE_DB_URL_STORAGE_KEY, "exercise_db_url");
     }
 }

@@ -68,7 +68,7 @@ test.describe("Exercise browser (Exercises tab)", () => {
   test("renders with search input and title", async ({ page }) => {
     await page.goto(`${BASE}/exercises`);
     await expect(page.locator(".search-input")).toBeVisible();
-    await expect(page.locator("h1")).toHaveText("Exercise Database");
+    await expect(page.locator("h1")).toHaveText("📚 Exercise Database");
   });
 
   test("has permanent bottom navigation", async ({ page }) => {
@@ -87,7 +87,7 @@ test.describe("Exercise browser (Exercises tab)", () => {
     await page.goto(`${BASE}/`);
     // Click the first tab (Exercises icon)
     await page.locator(".bottom-nav__tab").first().click();
-    await expect(page.locator("h1")).toHaveText("Exercise Database");
+    await expect(page.locator("h1")).toHaveText("📚 Exercise Database");
   });
 });
 
@@ -205,6 +205,78 @@ test.describe("Exercise search functionality", () => {
 
     // Still functional
     await expect(page.locator("h1")).toHaveText("Exercise Database");
+  });
+});
+
+test.describe("Credits / Extra tab", () => {
+  test("renders credits page with heading", async ({ page }) => {
+    await page.goto(`${BASE}/credits`);
+    await expect(page.locator("h1.page-title")).toHaveText("ℹ️ Credits");
+  });
+
+  test("has exercise database URL input", async ({ page }) => {
+    await page.goto(`${BASE}/credits`);
+    await expect(page.locator(".db-url-input")).toBeVisible();
+  });
+
+  test("has permanent bottom navigation", async ({ page }) => {
+    await page.goto(`${BASE}/credits`);
+    await expect(page.locator(".bottom-nav")).toBeVisible();
+  });
+
+  test("navigate to credits from home via bottom nav", async ({ page }) => {
+    await page.goto(`${BASE}/`);
+    // Credits is the 4th tab (index 3)
+    await page.locator(".bottom-nav__tab").nth(3).click();
+    await expect(page.locator("h1.page-title")).toHaveText("ℹ️ Credits");
+  });
+});
+
+test.describe("Tab heading consistency", () => {
+  test("exercise browser heading is centered and has emoji", async ({
+    page,
+  }) => {
+    await page.goto(`${BASE}/exercises`);
+    const heading = page.locator("h1.page-title");
+    await expect(heading).toBeVisible();
+    const text = await heading.textContent();
+    expect(text).toContain("📚");
+  });
+
+  test("analytics heading has emoji", async ({ page }) => {
+    await page.goto(`${BASE}/analytics`);
+    const heading = page.locator(".page-title");
+    await expect(heading).toBeVisible();
+    const text = await heading.textContent();
+    expect(text).toContain("📊");
+  });
+
+  test("credits heading is centered and has emoji", async ({ page }) => {
+    await page.goto(`${BASE}/credits`);
+    const heading = page.locator("h1.page-title");
+    await expect(heading).toBeVisible();
+    const text = await heading.textContent();
+    expect(text).toContain("ℹ️");
+  });
+});
+
+test.describe("Active session – add exercise button placement", () => {
+  test("add exercise (+) button appears after search bar", async ({ page }) => {
+    await page.goto(`${BASE}/`);
+    await page.click(".new-session-button");
+    await expect(page.locator(".session-header__title")).toContainText(
+      "Active Session"
+    );
+
+    const searchInput = page.locator('input[placeholder="Search for an exercise..."]');
+    const addBtn = page.locator(".add-exercise-btn");
+    await expect(searchInput).toBeVisible();
+    await expect(addBtn).toBeVisible();
+
+    // The add button must appear to the right of the search bar in the DOM
+    const searchBox = await searchInput.boundingBox();
+    const addBox = await addBtn.boundingBox();
+    expect(addBox!.x).toBeGreaterThan(searchBox!.x);
   });
 });
 
