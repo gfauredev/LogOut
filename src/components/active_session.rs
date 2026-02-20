@@ -197,8 +197,8 @@ pub fn SessionView() -> Element {
             // Persist cleared rest timer in session
             let mut current_session = session.read().clone();
             current_session.rest_start_time = None;
-            storage::save_session(current_session.clone());
-            session.set(current_session);
+            session.set(current_session.clone());
+            storage::save_session(current_session);
         };
 
     let complete_exercise = move |_| {
@@ -258,8 +258,8 @@ pub fn SessionView() -> Element {
         // Save rest timer start time in the session for persistence across tab switches
         let rest_start = get_current_timestamp();
         current_session.rest_start_time = Some(rest_start);
-        storage::save_session(current_session.clone());
-        session.set(current_session);
+        session.set(current_session.clone());
+        storage::save_session(current_session);
 
         current_exercise_id.set(None);
         current_exercise_start.set(None);
@@ -421,8 +421,8 @@ pub fn SessionView() -> Element {
                                                     let mut current_session = session.read().clone();
                                                     current_session.pending_exercise_ids.retain(|x| x != &id);
                                                     current_session.rest_start_time = None;
-                                                    storage::save_session(current_session.clone());
-                                                    session.set(current_session);
+                                                    session.set(current_session.clone());
+                                                    storage::save_session(current_session);
                                                     // Start the exercise
                                                     current_exercise_id.set(Some(id.clone()));
                                                     current_exercise_start.set(Some(get_current_timestamp()));
@@ -606,7 +606,7 @@ pub fn SessionView() -> Element {
                         class: "completed-exercises-section",
                         h3 { "Completed Exercises" }
 
-                        for (idx, log) in session.read().exercise_logs.iter().enumerate().collect::<Vec<_>>().into_iter().rev() {
+                        for (idx, log) in session.read().exercise_logs.iter().enumerate().rev() {
                             CompletedExerciseLog {
                                 key: "{idx}",
                                 idx,
