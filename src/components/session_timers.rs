@@ -59,7 +59,7 @@ pub(super) fn SessionDurationDisplay(session_start_time: u64, session_is_active:
             #[cfg(target_arch = "wasm32")]
             gloo_timers::future::TimeoutFuture::new(TIMER_TICK_MS).await;
             #[cfg(not(target_arch = "wasm32"))]
-            std::future::pending::<()>().await;
+            tokio::time::sleep(std::time::Duration::from_millis(1_000)).await;
             now_tick.set(get_current_timestamp());
         }
     });
@@ -85,7 +85,7 @@ pub(super) fn RestTimerDisplay(
             #[cfg(target_arch = "wasm32")]
             gloo_timers::future::TimeoutFuture::new(TIMER_TICK_MS).await;
             #[cfg(not(target_arch = "wasm32"))]
-            std::future::pending::<()>().await;
+            tokio::time::sleep(std::time::Duration::from_millis(1_000)).await;
             now_tick.set(get_current_timestamp());
         }
     });
@@ -131,7 +131,7 @@ pub(super) fn ExerciseElapsedTimer(
             #[cfg(target_arch = "wasm32")]
             gloo_timers::future::TimeoutFuture::new(TIMER_TICK_MS).await;
             #[cfg(not(target_arch = "wasm32"))]
-            std::future::pending::<()>().await;
+            tokio::time::sleep(std::time::Duration::from_millis(1_000)).await;
             now_tick.set(get_current_timestamp());
         }
     });

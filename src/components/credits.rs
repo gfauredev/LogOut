@@ -4,16 +4,7 @@ use dioxus::prelude::*;
 #[component]
 pub fn CreditsPage() -> Element {
     // Current exercise DB URL (defaults to the compile-time constant)
-    let mut url_input = use_signal(|| {
-        #[cfg(target_arch = "wasm32")]
-        {
-            crate::utils::get_exercise_db_url()
-        }
-        #[cfg(not(target_arch = "wasm32"))]
-        {
-            crate::utils::EXERCISE_DB_BASE_URL.to_string()
-        }
-    });
+    let mut url_input = use_signal(crate::utils::get_exercise_db_url);
 
     let save_url = move |evt: Event<FormData>| {
         evt.prevent_default();
@@ -29,6 +20,21 @@ pub fn CreditsPage() -> Element {
                         let _ = storage.set_item(crate::utils::EXERCISE_DB_URL_STORAGE_KEY, &url);
                     }
                 }
+            }
+            // Clear cached fetch timestamp so exercises refresh from the new URL
+            crate::services::exercise_db::clear_fetch_cache();
+        }
+        #[cfg(not(target_arch = "wasm32"))]
+        {
+            use crate::services::storage::native_storage;
+            if url.is_empty() || url == crate::utils::EXERCISE_DB_BASE_URL {
+                let _ =
+                    native_storage::remove_config_value(crate::utils::EXERCISE_DB_URL_STORAGE_KEY);
+            } else {
+                let _ = native_storage::set_config_value(
+                    crate::utils::EXERCISE_DB_URL_STORAGE_KEY,
+                    &url,
+                );
             }
             // Clear cached fetch timestamp so exercises refresh from the new URL
             crate::services::exercise_db::clear_fetch_cache();

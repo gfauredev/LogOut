@@ -249,9 +249,6 @@ fn ChartView(
     };
 
     let format_date = |timestamp: f64| -> String {
-        #[cfg(target_arch = "wasm32")]
-        let current_time = js_sys::Date::now() / 1000.0;
-        #[cfg(not(target_arch = "wasm32"))]
         let current_time = std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
             .unwrap_or_default()

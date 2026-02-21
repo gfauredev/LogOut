@@ -3,12 +3,12 @@
 pub(crate) const EXERCISE_DB_BASE_URL: &str =
     "https://raw.githubusercontent.com/gfauredev/free-exercise-db/main/";
 
-/// localStorage key used to store a user-configured exercise database URL.
-#[allow(dead_code)] // FIXME Why unused ?
+/// localStorage / config-file key used to store a user-configured exercise database URL.
 pub(crate) const EXERCISE_DB_URL_STORAGE_KEY: &str = "exercise_db_url";
 
 /// Returns the effective exercise database base URL.
 /// On WASM, checks localStorage for a user-configured URL first.
+/// On native, checks the app config file.
 /// Falls back to [`EXERCISE_DB_BASE_URL`] if not set.
 pub fn get_exercise_db_url() -> String {
     #[cfg(target_arch = "wasm32")]
@@ -20,6 +20,15 @@ pub fn get_exercise_db_url() -> String {
                         return url;
                     }
                 }
+            }
+        }
+    }
+    #[cfg(not(target_arch = "wasm32"))]
+    {
+        use crate::services::storage::native_storage;
+        if let Some(url) = native_storage::get_config_value(EXERCISE_DB_URL_STORAGE_KEY) {
+            if !url.is_empty() {
+                return url;
             }
         }
     }
@@ -38,48 +47,24 @@ pub fn format_session_date(timestamp: u64) -> String {
 
 /// Returns the number of elapsed calendar days between the local midnight of
 /// `timestamp`'s day and the local midnight of today.
+/// Uses the `time` crate on all platforms (local offset via `wasm-bindgen` on WASM,
+/// via OS on native), removing the need for direct `js_sys::Date` manipulation.
 fn days_since(timestamp: u64) -> i64 {
-    #[cfg(target_arch = "wasm32")]
-    {
-        use wasm_bindgen::JsValue;
+    use time::{OffsetDateTime, UtcOffset};
 
-        // Build a Date for the session timestamp and reset to local midnight.
-        let ts_ms = (timestamp as f64) * 1000.0;
-        let session_date = js_sys::Date::new(&JsValue::from_f64(ts_ms));
-        session_date.set_hours(0);
-        session_date.set_minutes(0);
-        session_date.set_seconds(0);
-        session_date.set_milliseconds(0);
+    // Obtain the local UTC offset; fall back to UTC if it cannot be determined
+    // (e.g. in sandboxed CI environments without /etc/localtime, or on WASM).
+    let offset = UtcOffset::current_local_offset().unwrap_or(UtcOffset::UTC);
 
-        // Build a Date for today and reset to local midnight.
-        let today_date = js_sys::Date::new_0();
-        today_date.set_hours(0);
-        today_date.set_minutes(0);
-        today_date.set_seconds(0);
-        today_date.set_milliseconds(0);
+    let now = OffsetDateTime::now_utc().to_offset(offset);
+    let ts_dt = OffsetDateTime::from_unix_timestamp(timestamp as i64)
+        .unwrap_or(OffsetDateTime::UNIX_EPOCH)
+        .to_offset(offset);
 
-        let diff_ms = today_date.get_time() - session_date.get_time();
-        (diff_ms / 86_400_000.0) as i64
-    }
+    let now_date = now.date();
+    let ts_date = ts_dt.date();
 
-    #[cfg(not(target_arch = "wasm32"))]
-    {
-        use time::{OffsetDateTime, UtcOffset};
-
-        // Obtain the local UTC offset; fall back to UTC if it cannot be determined
-        // (e.g. in sandboxed CI environments without /etc/localtime).
-        let offset = UtcOffset::current_local_offset().unwrap_or(UtcOffset::UTC);
-
-        let now = OffsetDateTime::now_utc().to_offset(offset);
-        let ts_dt = OffsetDateTime::from_unix_timestamp(timestamp as i64)
-            .unwrap_or(OffsetDateTime::UNIX_EPOCH)
-            .to_offset(offset);
-
-        let now_date = now.date();
-        let ts_date = ts_dt.date();
-
-        (now_date - ts_date).whole_days()
-    }
+    (now_date - ts_date).whole_days()
 }
 
 #[cfg(test)]
