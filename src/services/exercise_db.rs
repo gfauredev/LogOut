@@ -10,14 +10,9 @@ use dioxus::prelude::*;
 /// same `Signal<Vec<Exercise>>` and leading to doubled counts, missing DB
 /// exercises, and all exercises being treated as custom.
 #[derive(Clone, Copy)]
-struct AllExercisesSignal(Signal<Vec<Exercise>>);
+pub(crate) struct AllExercisesSignal(pub(crate) Signal<Vec<Exercise>>);
 
 /// Number of seconds between automatic exercise database refreshes (7 days).
-#[cfg(target_arch = "wasm32")]
-const EXERCISE_DB_REFRESH_INTERVAL_SECS: f64 = 7.0 * 24.0 * 60.0 * 60.0;
-
-/// Number of seconds between automatic exercise database refreshes (7 days).
-#[cfg(not(target_arch = "wasm32"))]
 const EXERCISE_DB_REFRESH_INTERVAL_SECS: u64 = 7 * 24 * 60 * 60;
 
 /// Storage key used to track when exercises were last downloaded
@@ -37,101 +32,15 @@ fn exercises_json_url() -> String {
 /// Provide the exercises signal in the Dioxus context.
 /// On first launch, downloads exercises from the API and stores them in IndexedDB
 /// (web) or a local file (native).  On subsequent launches, loads from cache.
-pub fn provide_exercises() {
-    let wrapper = use_context_provider(|| AllExercisesSignal(Signal::new(Vec::new())));
-    let sig = wrapper.0;
-
-    spawn(async move {
-        load_exercises(sig).await;
-    });
-}
-
-pub fn use_exercises() -> Signal<Vec<Exercise>> {
-    use_context::<AllExercisesSignal>().0
-}
-
-#[allow(unused_mut, unused_variables)]
-async fn load_exercises(mut sig: Signal<Vec<Exercise>>) {
-    // ── Web platform (wasm32 + IndexedDB) ────────────────────────────────────
-    #[cfg(target_arch = "wasm32")]
-    {
-        use crate::services::storage::idb_exercises;
-
-        let cached = idb_exercises::get_all_exercises().await.unwrap_or_default();
-        let needs_refresh = !cached.is_empty() && is_refresh_due();
-
-        if !cached.is_empty() {
-            log::info!("Loaded {} exercises from IndexedDB", cached.len());
-            sig.set(cached);
-
-            if !needs_refresh {
-                return;
-            }
-
-            // Re-fetch in the background to keep exercises up to date
-            log::info!("Exercise database is stale – refreshing in background");
-        }
-
-        // Download from the network (first run or periodic refresh)
-        match download_exercises().await {
-            Ok(exercises) if !exercises.is_empty() => {
-                log::info!(
-                    "Downloaded {} exercises, storing in IndexedDB",
-                    exercises.len()
-                );
-                idb_exercises::store_all_exercises(&exercises).await;
-                record_fetch_timestamp();
-                sig.set(exercises);
-                return;
-            }
-            Ok(_) => log::warn!("Downloaded exercises file was empty"),
-            Err(e) => log::warn!("Failed to download exercises: {:?}", e),
-        }
-    }
-
-    // ── Native platform (Android / desktop) ──────────────────────────────────
-    #[cfg(not(target_arch = "wasm32"))]
-    {
-        use crate::services::storage::native_exercises;
-
-        let cached = native_exercises::get_all_exercises();
-        let needs_refresh = !cached.is_empty() && is_refresh_due();
-
-        if !cached.is_empty() {
-            log::info!("Loaded {} exercises from local file", cached.len());
-            sig.set(cached);
-
-            if !needs_refresh {
-                return;
-            }
-
-            log::info!("Exercise database is stale – refreshing in background");
-        }
-
-        match download_exercises().await {
-            Ok(exercises) if !exercises.is_empty() => {
-                log::info!(
-                    "Downloaded {} exercises, storing in local file",
-                    exercises.len()
-                );
-                native_exercises::store_all_exercises(&exercises);
-                record_fetch_timestamp();
-                sig.set(exercises);
-                return;
-            }
-            Ok(_) => log::warn!("Downloaded exercises file was empty"),
-            Err(e) => log::warn!("Failed to download exercises: {:?}", e),
-        }
-    }
-
-    // No exercises available: database will remain empty until next launch or network becomes available
-    log::warn!("No exercises available: failed to load from cache and download from API");
-}
+// Dioxus integration (provide/use context hooks + async loader) lives in the
+// sibling `exercise_loader` module to keep this file focused on data-access
+// logic and testable at ≥90% coverage.
+pub use crate::services::exercise_loader::{provide_exercises, use_exercises};
 
 /// Returns true when the locally-cached exercise list is older than
 /// [`EXERCISE_DB_REFRESH_INTERVAL_SECS`] or has never been fetched.
 #[cfg(target_arch = "wasm32")]
-fn is_refresh_due() -> bool {
+pub(crate) fn is_refresh_due() -> bool {
     let Some(window) = web_sys::window() else {
         return true;
     };
@@ -144,14 +53,15 @@ fn is_refresh_due() -> bool {
     let Ok(last_fetch) = ts_str.parse::<f64>() else {
         return true;
     };
-    let now = js_sys::Date::now() / MILLIS_PER_SECOND;
-    (now - last_fetch) >= EXERCISE_DB_REFRESH_INTERVAL_SECS
+    let now_secs = (js_sys::Date::now() / MILLIS_PER_SECOND) as u64;
+    let last_secs = last_fetch as u64;
+    now_secs.saturating_sub(last_secs) >= EXERCISE_DB_REFRESH_INTERVAL_SECS
 }
 
 /// Returns true when the locally-cached exercise list is older than
 /// [`EXERCISE_DB_REFRESH_INTERVAL_SECS`] or has never been fetched.
 #[cfg(not(target_arch = "wasm32"))]
-fn is_refresh_due() -> bool {
+pub(crate) fn is_refresh_due() -> bool {
     use crate::services::storage::native_storage;
     let last_fetch =
         native_storage::get_config_value(LAST_FETCH_KEY).and_then(|s| s.parse::<u64>().ok());
@@ -173,7 +83,7 @@ fn is_refresh_due_for(now_secs: u64, last_fetch_secs: Option<u64>) -> bool {
 
 /// Stores the current timestamp as the last exercise-fetch time.
 #[cfg(target_arch = "wasm32")]
-fn record_fetch_timestamp() {
+pub(crate) fn record_fetch_timestamp() {
     let Some(window) = web_sys::window() else {
         return;
     };
@@ -186,7 +96,7 @@ fn record_fetch_timestamp() {
 
 /// Stores the current timestamp as the last exercise-fetch time.
 #[cfg(not(target_arch = "wasm32"))]
-fn record_fetch_timestamp() {
+pub(crate) fn record_fetch_timestamp() {
     use crate::services::storage::native_storage;
     let now = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
@@ -220,7 +130,7 @@ pub fn clear_fetch_cache() {
 /// Downloads the exercises JSON from the configured URL using `reqwest`.
 /// Works on all platforms: reqwest uses the browser's `fetch` on WASM and
 /// native TLS on Android / desktop.
-async fn download_exercises() -> Result<Vec<Exercise>, String> {
+pub(crate) async fn download_exercises() -> Result<Vec<Exercise>, String> {
     let url = exercises_json_url();
     let response = reqwest::get(&url)
         .await
@@ -600,5 +510,192 @@ mod tests {
         let muscles = get_muscle_groups(&exercises);
         // chest (bench_press), lats (pull_up), quadriceps+hamstrings (running)
         assert_eq!(muscles.len(), 4);
+    }
+
+    // ── Native-platform (non-wasm) integration tests ─────────────────────────
+    // These tests exercise the filesystem-backed functions that the coverage
+    // gate checks.  A single static mutex serialises ALL tests that touch the
+    // shared config file (LAST_FETCH_KEY and EXERCISE_DB_URL_STORAGE_KEY both
+    // live in the same JSON file, so one lock is sufficient).
+
+    #[cfg(not(target_arch = "wasm32"))]
+    mod native {
+        use super::*;
+        use crate::services::storage::native_storage;
+        use std::sync::{Mutex, MutexGuard, OnceLock};
+
+        /// One lock that serialises every test touching the shared config file.
+        fn cfg_lock() -> MutexGuard<'static, ()> {
+            static LOCK: OnceLock<Mutex<()>> = OnceLock::new();
+            let m = LOCK.get_or_init(|| Mutex::new(()));
+            // Recover from a poisoned mutex so a previous test failure does not
+            // cascade into every subsequent config-file test.
+            m.lock().unwrap_or_else(|e| e.into_inner())
+        }
+
+        /// RAII helper that removes a config key on drop, ensuring cleanup even
+        /// if the test body panics.
+        struct ConfigKeyGuard(&'static str);
+        impl Drop for ConfigKeyGuard {
+            fn drop(&mut self) {
+                let _ = native_storage::remove_config_value(self.0);
+            }
+        }
+
+        #[test]
+        fn record_fetch_timestamp_writes_numeric_value() {
+            let _g = cfg_lock();
+            let _ = native_storage::remove_config_value(LAST_FETCH_KEY);
+
+            record_fetch_timestamp();
+
+            let val = native_storage::get_config_value(LAST_FETCH_KEY)
+                .expect("timestamp should be written");
+            let ts: u64 = val.parse().expect("value should be a numeric timestamp");
+            assert!(ts > 0, "timestamp should be positive");
+        }
+
+        #[test]
+        fn clear_fetch_cache_removes_config_value() {
+            let _g = cfg_lock();
+            record_fetch_timestamp();
+            assert!(native_storage::get_config_value(LAST_FETCH_KEY).is_some());
+
+            clear_fetch_cache();
+
+            assert!(
+                native_storage::get_config_value(LAST_FETCH_KEY).is_none(),
+                "config value should be removed after clear_fetch_cache"
+            );
+        }
+
+        #[test]
+        fn is_refresh_due_true_when_no_config_entry() {
+            let _g = cfg_lock();
+            let _ = native_storage::remove_config_value(LAST_FETCH_KEY);
+
+            assert!(
+                is_refresh_due(),
+                "refresh should be due with no cached timestamp"
+            );
+        }
+
+        #[test]
+        fn is_refresh_due_false_after_fresh_timestamp() {
+            let _g = cfg_lock();
+            record_fetch_timestamp(); // writes "now" to config
+
+            assert!(
+                !is_refresh_due(),
+                "refresh should not be due immediately after recording a fresh timestamp"
+            );
+        }
+
+        /// Starts a minimal TCP server in a background thread that sends
+        /// `response_bytes` to the first incoming connection, then exits.
+        /// Returns the TCP port the server is listening on.
+        fn start_one_shot_server(response_bytes: Vec<u8>) -> u16 {
+            use std::io::{Read, Write};
+            use std::net::TcpListener;
+
+            let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+            let port = listener.local_addr().unwrap().port();
+            std::thread::spawn(move || {
+                if let Ok((mut stream, _)) = listener.accept() {
+                    let mut buf = [0u8; 4096];
+                    let _ = stream.read(&mut buf);
+                    let _ = stream.write_all(&response_bytes);
+                }
+            });
+            port
+        }
+
+        #[test]
+        fn download_exercises_returns_error_on_connection_refused() {
+            let _g = cfg_lock();
+            // Bind to an ephemeral port then drop the listener; connections will
+            // be immediately refused.
+            let port = {
+                let l = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+                l.local_addr().unwrap().port()
+            };
+            // RAII guard ensures the URL key is cleaned up even on panic.
+            let _url = ConfigKeyGuard(crate::utils::EXERCISE_DB_URL_STORAGE_KEY);
+            let _ = native_storage::set_config_value(
+                crate::utils::EXERCISE_DB_URL_STORAGE_KEY,
+                &format!("http://127.0.0.1:{port}/"),
+            );
+
+            let rt = tokio::runtime::Builder::new_current_thread()
+                .enable_all()
+                .build()
+                .unwrap();
+            let result = rt.block_on(download_exercises());
+
+            assert!(
+                result.is_err(),
+                "expected connection error, got: {result:?}"
+            );
+            assert!(
+                result.unwrap_err().contains("HTTP error"),
+                "error message should mention 'HTTP error'"
+            );
+        }
+
+        #[test]
+        fn download_exercises_returns_error_on_http_404() {
+            let _g = cfg_lock();
+            let response =
+                b"HTTP/1.1 404 Not Found\r\nContent-Length: 0\r\nConnection: close\r\n\r\n"
+                    .to_vec();
+            let port = start_one_shot_server(response);
+            let _url = ConfigKeyGuard(crate::utils::EXERCISE_DB_URL_STORAGE_KEY);
+            let _ = native_storage::set_config_value(
+                crate::utils::EXERCISE_DB_URL_STORAGE_KEY,
+                &format!("http://127.0.0.1:{port}/"),
+            );
+
+            let rt = tokio::runtime::Builder::new_current_thread()
+                .enable_all()
+                .build()
+                .unwrap();
+            let result = rt.block_on(download_exercises());
+
+            assert!(result.is_err(), "expected HTTP error, got: {result:?}");
+            let err = result.unwrap_err();
+            assert!(
+                err.contains("HTTP 404"),
+                "error should mention HTTP 404, got: {err}"
+            );
+        }
+
+        #[test]
+        fn download_exercises_returns_empty_vec_on_200_empty_json() {
+            let _g = cfg_lock();
+            let body = b"[]";
+            let response = format!(
+                "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n",
+                body.len()
+            )
+            .into_bytes()
+            .into_iter()
+            .chain(body.iter().copied())
+            .collect::<Vec<u8>>();
+            let port = start_one_shot_server(response);
+            let _url = ConfigKeyGuard(crate::utils::EXERCISE_DB_URL_STORAGE_KEY);
+            let _ = native_storage::set_config_value(
+                crate::utils::EXERCISE_DB_URL_STORAGE_KEY,
+                &format!("http://127.0.0.1:{port}/"),
+            );
+
+            let rt = tokio::runtime::Builder::new_current_thread()
+                .enable_all()
+                .build()
+                .unwrap();
+            let result = rt.block_on(download_exercises());
+
+            assert!(result.is_ok(), "expected Ok([]), got: {result:?}");
+            assert!(result.unwrap().is_empty());
+        }
     }
 }

@@ -52,9 +52,11 @@ pub fn format_session_date(timestamp: u64) -> String {
 fn days_since(timestamp: u64) -> i64 {
     use time::{OffsetDateTime, UtcOffset};
 
-    // Obtain the local UTC offset; fall back to UTC if it cannot be determined
-    // (e.g. in sandboxed CI environments without /etc/localtime, or on WASM).
+    // `local-offset` is only available on native targets; WASM uses UTC.
+    #[cfg(not(target_arch = "wasm32"))]
     let offset = UtcOffset::current_local_offset().unwrap_or(UtcOffset::UTC);
+    #[cfg(target_arch = "wasm32")]
+    let offset = UtcOffset::UTC;
 
     let now = OffsetDateTime::now_utc().to_offset(offset);
     let ts_dt = OffsetDateTime::from_unix_timestamp(timestamp as i64)
