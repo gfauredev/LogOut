@@ -514,7 +514,7 @@ mod tests {
         let interval = EXERCISE_DB_REFRESH_INTERVAL_SECS;
         let now = interval + 999_999u64;
         let last_fetch = 999_999u64;
-        // exactly at the boundary: now - last = interval, which is NOT < interval
+        // elapsed = now - last_fetch = interval → satisfies `>= interval`, so refresh IS due
         assert!(is_refresh_due_for(now, Some(last_fetch)));
     }
 
