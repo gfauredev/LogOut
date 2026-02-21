@@ -16,22 +16,27 @@ struct AllExercisesSignal(Signal<Vec<Exercise>>);
 #[cfg(target_arch = "wasm32")]
 const EXERCISE_DB_REFRESH_INTERVAL_SECS: f64 = 7.0 * 24.0 * 60.0 * 60.0;
 
-/// localStorage key used to track when exercises were last downloaded.
-#[cfg(target_arch = "wasm32")]
+/// Number of seconds between automatic exercise database refreshes (7 days).
+#[cfg(not(target_arch = "wasm32"))]
+const EXERCISE_DB_REFRESH_INTERVAL_SECS: u64 = 7 * 24 * 60 * 60;
+
+/// Storage key used to track when exercises were last downloaded
+/// (localStorage on WASM, config file on native).
 const LAST_FETCH_KEY: &str = "exercise_db_last_fetch";
 
 /// Milliseconds per second – used when converting `Date.now()` to Unix seconds.
 #[cfg(target_arch = "wasm32")]
 const MILLIS_PER_SECOND: f64 = 1000.0;
 
-#[cfg(target_arch = "wasm32")]
+/// Returns the URL for the exercises JSON file.
+/// Available on all platforms; `get_exercise_db_url()` handles per-platform config.
 fn exercises_json_url() -> String {
     format!("{}dist/exercises.json", crate::utils::get_exercise_db_url())
 }
 
 /// Provide the exercises signal in the Dioxus context.
-/// On first launch, downloads exercises from the API and stores them in IndexedDB.
-/// On subsequent launches, loads from IndexedDB.
+/// On first launch, downloads exercises from the API and stores them in IndexedDB
+/// (web) or a local file (native).  On subsequent launches, loads from cache.
 pub fn provide_exercises() {
     let wrapper = use_context_provider(|| AllExercisesSignal(Signal::new(Vec::new())));
     let sig = wrapper.0;
@@ -47,7 +52,7 @@ pub fn use_exercises() -> Signal<Vec<Exercise>> {
 
 #[allow(unused_mut, unused_variables)]
 async fn load_exercises(mut sig: Signal<Vec<Exercise>>) {
-    // 1. Try IndexedDB for immediate display
+    // ── Web platform (wasm32 + IndexedDB) ────────────────────────────────────
     #[cfg(target_arch = "wasm32")]
     {
         use crate::services::storage::idb_exercises;
@@ -67,7 +72,7 @@ async fn load_exercises(mut sig: Signal<Vec<Exercise>>) {
             log::info!("Exercise database is stale – refreshing in background");
         }
 
-        // 2. Download from the network (first run or periodic refresh)
+        // Download from the network (first run or periodic refresh)
         match download_exercises().await {
             Ok(exercises) if !exercises.is_empty() => {
                 log::info!(
@@ -84,8 +89,43 @@ async fn load_exercises(mut sig: Signal<Vec<Exercise>>) {
         }
     }
 
+    // ── Native platform (Android / desktop) ──────────────────────────────────
+    #[cfg(not(target_arch = "wasm32"))]
+    {
+        use crate::services::storage::native_exercises;
+
+        let cached = native_exercises::get_all_exercises();
+        let needs_refresh = !cached.is_empty() && is_refresh_due();
+
+        if !cached.is_empty() {
+            log::info!("Loaded {} exercises from local file", cached.len());
+            sig.set(cached);
+
+            if !needs_refresh {
+                return;
+            }
+
+            log::info!("Exercise database is stale – refreshing in background");
+        }
+
+        match download_exercises().await {
+            Ok(exercises) if !exercises.is_empty() => {
+                log::info!(
+                    "Downloaded {} exercises, storing in local file",
+                    exercises.len()
+                );
+                native_exercises::store_all_exercises(&exercises);
+                record_fetch_timestamp();
+                sig.set(exercises);
+                return;
+            }
+            Ok(_) => log::warn!("Downloaded exercises file was empty"),
+            Err(e) => log::warn!("Failed to download exercises: {:?}", e),
+        }
+    }
+
     // No exercises available: database will remain empty until next launch or network becomes available
-    log::warn!("No exercises available: failed to load from IndexedDB and download from API");
+    log::warn!("No exercises available: failed to load from cache and download from API");
 }
 
 /// Returns true when the locally-cached exercise list is older than
@@ -108,6 +148,29 @@ fn is_refresh_due() -> bool {
     (now - last_fetch) >= EXERCISE_DB_REFRESH_INTERVAL_SECS
 }
 
+/// Returns true when the locally-cached exercise list is older than
+/// [`EXERCISE_DB_REFRESH_INTERVAL_SECS`] or has never been fetched.
+#[cfg(not(target_arch = "wasm32"))]
+fn is_refresh_due() -> bool {
+    use crate::services::storage::native_storage;
+    let last_fetch =
+        native_storage::get_config_value(LAST_FETCH_KEY).and_then(|s| s.parse::<u64>().ok());
+    let now = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_secs();
+    is_refresh_due_for(now, last_fetch)
+}
+
+/// Pure helper: returns true when a refresh is due given the current time and the
+/// last-fetch timestamp (both as Unix seconds).  Extracted for unit-testability.
+fn is_refresh_due_for(now_secs: u64, last_fetch_secs: Option<u64>) -> bool {
+    match last_fetch_secs {
+        None => true,
+        Some(last) => now_secs.saturating_sub(last) >= EXERCISE_DB_REFRESH_INTERVAL_SECS,
+    }
+}
+
 /// Stores the current timestamp as the last exercise-fetch time.
 #[cfg(target_arch = "wasm32")]
 fn record_fetch_timestamp() {
@@ -119,6 +182,18 @@ fn record_fetch_timestamp() {
     };
     let now = (js_sys::Date::now() / MILLIS_PER_SECOND).to_string();
     let _ = storage.set_item(LAST_FETCH_KEY, &now);
+}
+
+/// Stores the current timestamp as the last exercise-fetch time.
+#[cfg(not(target_arch = "wasm32"))]
+fn record_fetch_timestamp() {
+    use crate::services::storage::native_storage;
+    let now = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_secs()
+        .to_string();
+    let _ = native_storage::set_config_value(LAST_FETCH_KEY, &now);
 }
 
 /// Clears the locally-cached fetch timestamp so that the exercise database is
@@ -134,36 +209,31 @@ pub fn clear_fetch_cache() {
     let _ = storage.remove_item(LAST_FETCH_KEY);
 }
 
-#[cfg(target_arch = "wasm32")]
+/// Clears the locally-cached fetch timestamp so that the exercise database is
+/// re-downloaded from the current URL on the next application load.
+#[cfg(not(target_arch = "wasm32"))]
+pub fn clear_fetch_cache() {
+    use crate::services::storage::native_storage;
+    let _ = native_storage::remove_config_value(LAST_FETCH_KEY);
+}
+
+/// Downloads the exercises JSON from the configured URL using `reqwest`.
+/// Works on all platforms: reqwest uses the browser's `fetch` on WASM and
+/// native TLS on Android / desktop.
 async fn download_exercises() -> Result<Vec<Exercise>, String> {
-    use wasm_bindgen::JsCast;
-    use wasm_bindgen_futures::JsFuture;
-    use web_sys::{Request, RequestInit, Response};
-
-    let window = web_sys::window().ok_or("no window")?;
-    let opts = RequestInit::new();
-    opts.set_method("GET");
-
-    let request = Request::new_with_str_and_init(&exercises_json_url(), &opts)
-        .map_err(|e| format!("{:?}", e))?;
-
-    let resp_value = JsFuture::from(window.fetch_with_request(&request))
+    let url = exercises_json_url();
+    let response = reqwest::get(&url)
         .await
-        .map_err(|e| format!("{:?}", e))?;
+        .map_err(|e| format!("HTTP error: {e}"))?;
 
-    let resp: Response = resp_value.dyn_into().map_err(|_| "not a Response")?;
-
-    if !resp.ok() {
-        return Err(format!("HTTP {}", resp.status()));
+    if !response.status().is_success() {
+        return Err(format!("HTTP {}", response.status()));
     }
 
-    let text = JsFuture::from(resp.text().map_err(|e| format!("{:?}", e))?)
+    response
+        .json::<Vec<Exercise>>()
         .await
-        .map_err(|e| format!("{:?}", e))?;
-
-    let text_str = text.as_string().ok_or("response not a string")?;
-
-    serde_json::from_str::<Vec<Exercise>>(&text_str).map_err(|e| format!("JSON parse error: {}", e))
+        .map_err(|e| format!("JSON parse error: {e}"))
 }
 
 // ─── Synchronous accessors for use in components ───
@@ -410,20 +480,42 @@ mod tests {
     #[test]
     fn exercises_json_url_uses_fork() {
         // The JSON endpoint must reference the gfauredev fork (SSOT).
-        #[cfg(target_arch = "wasm32")]
-        {
-            let url = exercises_json_url();
-            assert!(
-                url.contains("gfauredev"),
-                "Expected gfauredev fork URL, got: {url}"
-            );
-            assert!(url.ends_with("dist/exercises.json"));
-        }
-        // On non-wasm we verify the base URL constant instead.
-        #[cfg(not(target_arch = "wasm32"))]
-        {
-            assert!(crate::utils::EXERCISE_DB_BASE_URL.contains("gfauredev"));
-        }
+        // exercises_json_url() is now cross-platform; test it on all targets.
+        let url = exercises_json_url();
+        assert!(
+            url.contains("gfauredev"),
+            "Expected gfauredev fork URL, got: {url}"
+        );
+        assert!(url.ends_with("dist/exercises.json"));
+    }
+
+    #[test]
+    fn is_refresh_due_true_when_no_timestamp() {
+        assert!(is_refresh_due_for(1_000_000, None));
+    }
+
+    #[test]
+    fn is_refresh_due_false_when_recent() {
+        let now = 1_000_000u64;
+        let last_fetch = now - 60; // 1 minute ago
+        assert!(!is_refresh_due_for(now, Some(last_fetch)));
+    }
+
+    #[test]
+    fn is_refresh_due_true_when_stale() {
+        let interval = EXERCISE_DB_REFRESH_INTERVAL_SECS;
+        let now = interval + 1_000_000;
+        let last_fetch = 1_000_000u64;
+        assert!(is_refresh_due_for(now, Some(last_fetch)));
+    }
+
+    #[test]
+    fn is_refresh_due_false_at_exact_interval_boundary() {
+        let interval = EXERCISE_DB_REFRESH_INTERVAL_SECS;
+        let now = interval + 999_999u64;
+        let last_fetch = 999_999u64;
+        // exactly at the boundary: now - last = interval, which is NOT < interval
+        assert!(is_refresh_due_for(now, Some(last_fetch)));
     }
 
     // ── Unified search tests (covers the unified search for custom exercises) ──

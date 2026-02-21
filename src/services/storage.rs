@@ -124,6 +124,7 @@ pub(crate) mod idb {
 // ──────────────────────────────────────────
 
 async fn load_storage_data() {
+    // ── Web platform (wasm32 + IndexedDB) ────────────────────────────────────
     #[cfg(target_arch = "wasm32")]
     {
         let mut workouts_sig = use_workouts();
@@ -158,6 +159,30 @@ async fn load_storage_data() {
         // Fall back to localStorage (one-time migration)
         if !from_idb {
             migrate_from_local_storage(workouts_sig, sessions_sig, custom_sig).await;
+        }
+    }
+
+    // ── Native platform (Android / desktop) ──────────────────────────────────
+    #[cfg(not(target_arch = "wasm32"))]
+    {
+        let mut workouts_sig = use_workouts();
+        let mut sessions_sig = use_sessions();
+        let mut custom_sig = use_custom_exercises();
+
+        let workouts = native_storage::get_all::<Workout>(native_storage::STORE_WORKOUTS);
+        if !workouts.is_empty() {
+            log::info!("Loaded {} workouts from local file", workouts.len());
+            workouts_sig.set(workouts);
+        }
+        let sessions = native_storage::get_all::<WorkoutSession>(native_storage::STORE_SESSIONS);
+        if !sessions.is_empty() {
+            log::info!("Loaded {} sessions from local file", sessions.len());
+            sessions_sig.set(sessions);
+        }
+        let custom = native_storage::get_all::<Exercise>(native_storage::STORE_CUSTOM_EXERCISES);
+        if !custom.is_empty() {
+            log::info!("Loaded {} custom exercises from local file", custom.len());
+            custom_sig.set(custom);
         }
     }
 }
@@ -241,6 +266,12 @@ pub fn add_workout(workout: Workout) {
             error!("Failed to persist workout: {e}");
         }
     });
+
+    #[cfg(not(target_arch = "wasm32"))]
+    if let Err(e) = native_storage::put_item(native_storage::STORE_WORKOUTS, &workout.id, &workout)
+    {
+        error!("Failed to persist workout: {e}");
+    }
 }
 
 pub fn save_session(session: WorkoutSession) {
@@ -263,6 +294,12 @@ pub fn save_session(session: WorkoutSession) {
             error!("Failed to persist session: {e}");
         }
     });
+
+    #[cfg(not(target_arch = "wasm32"))]
+    if let Err(e) = native_storage::put_item(native_storage::STORE_SESSIONS, &session.id, &session)
+    {
+        error!("Failed to persist session: {e}");
+    }
 }
 
 pub fn delete_session(id: &str) {
@@ -276,6 +313,9 @@ pub fn delete_session(id: &str) {
             let _ = idb::delete_item(idb::STORE_SESSIONS, &id).await;
         });
     }
+
+    #[cfg(not(target_arch = "wasm32"))]
+    let _ = native_storage::delete_item(native_storage::STORE_SESSIONS, id);
 }
 
 pub fn add_custom_exercise(exercise: Exercise) {
@@ -288,6 +328,15 @@ pub fn add_custom_exercise(exercise: Exercise) {
             error!("Failed to persist custom exercise: {e}");
         }
     });
+
+    #[cfg(not(target_arch = "wasm32"))]
+    if let Err(e) = native_storage::put_item(
+        native_storage::STORE_CUSTOM_EXERCISES,
+        &exercise.id,
+        &exercise,
+    ) {
+        error!("Failed to persist custom exercise: {e}");
+    }
 }
 
 pub fn update_custom_exercise(exercise: Exercise) {
@@ -305,6 +354,15 @@ pub fn update_custom_exercise(exercise: Exercise) {
             error!("Failed to persist updated custom exercise: {e}");
         }
     });
+
+    #[cfg(not(target_arch = "wasm32"))]
+    if let Err(e) = native_storage::put_item(
+        native_storage::STORE_CUSTOM_EXERCISES,
+        &exercise.id,
+        &exercise,
+    ) {
+        error!("Failed to persist updated custom exercise: {e}");
+    }
 }
 
 // Helper to get last values for an exercise (for prefilling)
@@ -322,9 +380,10 @@ pub fn get_last_exercise_log(exercise_id: &str) -> Option<ExerciseLog> {
 }
 
 // ──────────────────────────────────────────
-// Exercise IndexedDB helpers (used by exercise_db)
+// Exercise storage helpers (used by exercise_db)
 // ──────────────────────────────────────────
 
+/// IndexedDB-backed exercise storage for the web platform.
 #[cfg(target_arch = "wasm32")]
 pub mod idb_exercises {
     use super::idb;
@@ -340,5 +399,162 @@ pub mod idb_exercises {
                 log::error!("Failed to store exercise {}: {e}", ex.id);
             }
         }
+    }
+}
+
+/// File-backed exercise storage for native platforms (Android / desktop).
+#[cfg(not(target_arch = "wasm32"))]
+pub mod native_exercises {
+    use super::native_storage;
+    use crate::models::Exercise;
+
+    pub fn get_all_exercises() -> Vec<Exercise> {
+        native_storage::get_all::<Exercise>(native_storage::STORE_EXERCISES)
+    }
+
+    pub fn store_all_exercises(exercises: &[Exercise]) {
+        for ex in exercises {
+            if let Err(e) = native_storage::put_item(native_storage::STORE_EXERCISES, &ex.id, ex) {
+                log::error!("Failed to store exercise {}: {e}", ex.id);
+            }
+        }
+    }
+}
+
+// ──────────────────────────────────────────
+// Native file-based storage (non-wasm platforms: Android / desktop)
+// ──────────────────────────────────────────
+
+/// File-backed JSON storage for Android and desktop builds.
+///
+/// Each "store" maps to a `<store>.json` file inside the app-specific data
+/// directory (`dirs::data_local_dir()/log-workout/`).  All writes are
+/// synchronous; files are small (KiB range) so this is acceptable.
+///
+/// A separate `config.json` file holds key/value strings (e.g. the user-
+/// configured exercise-database URL and the last-fetch timestamp).
+#[cfg(not(target_arch = "wasm32"))]
+pub(crate) mod native_storage {
+    use serde::{de::DeserializeOwned, Serialize};
+    use std::path::PathBuf;
+
+    pub const STORE_WORKOUTS: &str = "workouts";
+    pub const STORE_SESSIONS: &str = "sessions";
+    pub const STORE_CUSTOM_EXERCISES: &str = "custom_exercises";
+    pub const STORE_EXERCISES: &str = "exercises";
+
+    /// Returns the application data directory, creating it if necessary.
+    pub fn data_dir() -> PathBuf {
+        dirs::data_local_dir()
+            .unwrap_or_else(|| PathBuf::from("."))
+            .join("log-workout")
+    }
+
+    fn store_path(store_name: &str) -> PathBuf {
+        data_dir().join(format!("{store_name}.json"))
+    }
+
+    fn ensure_data_dir() -> Result<(), String> {
+        std::fs::create_dir_all(data_dir()).map_err(|e| e.to_string())
+    }
+
+    /// Reads all items from a store file, returning an empty `Vec` on any error.
+    pub fn get_all<T: DeserializeOwned>(store_name: &str) -> Vec<T> {
+        std::fs::read_to_string(store_path(store_name))
+            .ok()
+            .and_then(|s| serde_json::from_str(&s).ok())
+            .unwrap_or_default()
+    }
+
+    /// Upserts an item in a store file (matched by `id`).
+    pub fn put_item<T: Serialize>(store_name: &str, id: &str, item: &T) -> Result<(), String> {
+        ensure_data_dir()?;
+        let path = store_path(store_name);
+        let mut items: Vec<serde_json::Value> = std::fs::read_to_string(&path)
+            .ok()
+            .and_then(|s| serde_json::from_str(&s).ok())
+            .unwrap_or_default();
+        let new_val = serde_json::to_value(item).map_err(|e| e.to_string())?;
+        match items
+            .iter()
+            .position(|v| v.get("id").and_then(|v| v.as_str()) == Some(id))
+        {
+            Some(pos) => items[pos] = new_val,
+            None => items.push(new_val),
+        }
+        std::fs::write(
+            &path,
+            serde_json::to_string(&items).map_err(|e| e.to_string())?,
+        )
+        .map_err(|e| e.to_string())
+    }
+
+    /// Removes an item from a store file by `id`.
+    pub fn delete_item(store_name: &str, id: &str) -> Result<(), String> {
+        let path = store_path(store_name);
+        if !path.exists() {
+            return Ok(());
+        }
+        let mut items: Vec<serde_json::Value> = std::fs::read_to_string(&path)
+            .ok()
+            .and_then(|s| serde_json::from_str(&s).ok())
+            .unwrap_or_default();
+        items.retain(|v| v.get("id").and_then(|v| v.as_str()) != Some(id));
+        std::fs::write(
+            &path,
+            serde_json::to_string(&items).map_err(|e| e.to_string())?,
+        )
+        .map_err(|e| e.to_string())
+    }
+
+    // ── Config file (key/value strings) ──────────────────────────────────────
+
+    const CONFIG_FILE: &str = "config.json";
+
+    fn config_path() -> PathBuf {
+        data_dir().join(CONFIG_FILE)
+    }
+
+    fn read_config() -> serde_json::Map<String, serde_json::Value> {
+        std::fs::read_to_string(config_path())
+            .ok()
+            .and_then(|s| serde_json::from_str::<serde_json::Value>(&s).ok())
+            .and_then(|v| v.as_object().cloned())
+            .unwrap_or_default()
+    }
+
+    fn write_config(map: &serde_json::Map<String, serde_json::Value>) -> Result<(), String> {
+        ensure_data_dir()?;
+        std::fs::write(
+            config_path(),
+            serde_json::to_string(map).map_err(|e| e.to_string())?,
+        )
+        .map_err(|e| e.to_string())
+    }
+
+    /// Returns the string value for `key` from the config file, or `None`.
+    pub fn get_config_value(key: &str) -> Option<String> {
+        read_config()
+            .get(key)
+            .and_then(|v| v.as_str())
+            .map(|s| s.to_owned())
+    }
+
+    /// Sets `key` to `value` in the config file.
+    /// Passing an empty `value` removes the key (same semantics as
+    /// `localStorage.removeItem`).
+    pub fn set_config_value(key: &str, value: &str) -> Result<(), String> {
+        let mut map = read_config();
+        if value.is_empty() {
+            map.remove(key);
+        } else {
+            map.insert(key.to_owned(), serde_json::Value::String(value.to_owned()));
+        }
+        write_config(&map)
+    }
+
+    /// Removes `key` from the config file.
+    pub fn remove_config_value(key: &str) -> Result<(), String> {
+        set_config_value(key, "")
     }
 }

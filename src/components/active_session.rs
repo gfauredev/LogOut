@@ -13,7 +13,6 @@ use super::session_timers::{RestTimerDisplay, SessionDurationDisplay};
 /// Default rest duration in seconds
 const DEFAULT_REST_DURATION: u64 = 30;
 /// Snackbar auto-dismiss delay in milliseconds
-#[cfg(target_arch = "wasm32")]
 const SNACKBAR_DISMISS_MS: u32 = 3_000;
 
 // ── Helpers ────────────────────────────────────────────────────────────────
@@ -259,6 +258,14 @@ pub fn SessionView() -> Element {
         {
             spawn(async move {
                 gloo_timers::future::TimeoutFuture::new(SNACKBAR_DISMISS_MS).await;
+                congratulations.set(false);
+            });
+        }
+        #[cfg(not(target_arch = "wasm32"))]
+        {
+            spawn(async move {
+                tokio::time::sleep(std::time::Duration::from_millis(SNACKBAR_DISMISS_MS as u64))
+                    .await;
                 congratulations.set(false);
             });
         }
