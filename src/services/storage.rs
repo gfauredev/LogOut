@@ -413,10 +413,8 @@ pub mod native_exercises {
     }
 
     pub fn store_all_exercises(exercises: &[Exercise]) {
-        for ex in exercises {
-            if let Err(e) = native_storage::put_item(native_storage::STORE_EXERCISES, &ex.id, ex) {
-                log::error!("Failed to store exercise {}: {e}", ex.id);
-            }
+        if let Err(e) = native_storage::store_all(native_storage::STORE_EXERCISES, exercises) {
+            log::error!("Failed to store exercises: {e}");
         }
     }
 }
@@ -464,6 +462,17 @@ pub(crate) mod native_storage {
             .ok()
             .and_then(|s| serde_json::from_str(&s).ok())
             .unwrap_or_default()
+    }
+
+    /// Replaces the entire contents of a store file with `items` in a single write.
+    /// Use this for bulk loads (e.g. the exercise catalogue) to avoid N individual reads.
+    pub fn store_all<T: Serialize>(store_name: &str, items: &[T]) -> Result<(), String> {
+        ensure_data_dir()?;
+        std::fs::write(
+            store_path(store_name),
+            serde_json::to_string(items).map_err(|e| e.to_string())?,
+        )
+        .map_err(|e| e.to_string())
     }
 
     /// Upserts an item in a store file (matched by `id`).
