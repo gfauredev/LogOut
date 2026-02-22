@@ -303,10 +303,10 @@ jobs:
           distribution: temurin
 
       # Build for x86_64 so the APK runs on the CI emulator.
-      # Omit --release so Rust compiles with debug_assertions=true, which causes
-      # wry (the Dioxus WebView engine) to call
-      # WebView.setWebContentsDebuggingEnabled(true). Without this flag Maestro
-      # cannot read WebView content via the Android Accessibility API.
+      # Omit --release so Rust compiles with debug_assertions=true. wry 0.53+
+      # defaults devtools=true when debug_assertions is on, which calls
+      # WebView.setWebContentsDebuggingEnabled(true) — enabling the Chrome
+      # DevTools Protocol (CDP) socket that Maestro uses to read WebView content.
       - name: Install x86_64 Android Rust target
         uses: dtolnay/rust-toolchain@stable
         with:
@@ -353,4 +353,16 @@ jobs:
           arch: x86_64
           script: |
             adb install "${{ steps.apk.outputs.path }}"
+            # Pre-launch the app so the WebView is fully initialized and the
+            # Chrome DevTools Protocol (CDP) socket is ready before Maestro
+            # starts polling. Without this, Maestro may try to enumerate CDP
+            # endpoints before setWebContentsDebuggingEnabled(true) has been
+            # called, fall back to accessibility mode, and fail to find text.
+            adb shell monkey -p com.gfaure.logworkout \
+              -c android.intent.category.LAUNCHER 1
+            # Wait for the Dioxus runtime to initialise the WebView and for wry
+            # to call setWebContentsDebuggingEnabled(true), which creates the
+            # CDP Unix-socket that Maestro uses to read WebView content.
+            # 15 s is generous but avoids flakiness on slow CI workers.
+            sleep 15
             maestro test maestro/

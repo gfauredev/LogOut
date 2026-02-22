@@ -1,11 +1,13 @@
 # Test: navigate to the exercise browser via the bottom navigation bar.
 appId: com.gfaure.logworkout
 ---
-- launchApp
+- launchApp:
+    stopApp: false
+- waitForAnimationsToEnd
 - extendedWaitUntil:
     visible:
       text: "LogOut"
-    timeout: 15000
+    timeout: 30000
 - tapOn: "📚"
 - assertVisible: "Exercise Database"
 - tapOn: "💪"
