@@ -358,23 +358,9 @@ jobs:
             # starts polling. Without this, Maestro may try to enumerate CDP
             # endpoints before setWebContentsDebuggingEnabled(true) has been
             # called, fall back to accessibility mode, and fail to find text.
-            # NOTE: keep on ONE LINE — the emulator-runner uses `sh`, not bash,
-            # and `\` line-continuation is not guaranteed to be joined.
+            # IMPORTANT: reactivecircus/android-emulator-runner runs each LINE
+            # of this script block as a separate "sh -c" invocation, so all
+            # commands must be single-line (no multi-line shell constructs).
             adb shell monkey -p com.gfaure.logworkout -c android.intent.category.LAUNCHER 1
-            # Poll /proc/net/unix (up to 30 s) until the abstract CDP socket
-            # "@com.gfaure.logworkout_devtools_remote" appears, which confirms
-            # that wry has called setWebContentsDebuggingEnabled(true) and
-            # Maestro can connect via CDP instead of falling back to accessibility.
-            i=0
-            while [ "$i" -lt 30 ]; do
-              if adb shell cat /proc/net/unix 2>/dev/null | grep -q "@com.gfaure.logworkout_devtools_remote"; then
-                echo "CDP socket ready after ${i}s"
-                break
-              fi
-              sleep 1
-              i=$((i + 1))
-            done
-            if [ "$i" -ge 30 ]; then
-              echo "Warning: CDP socket not detected after 30s; Maestro may fall back to accessibility mode"
-            fi
+            sleep 20
             maestro test maestro/
