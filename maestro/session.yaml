@@ -3,7 +3,7 @@ appId: com.gfaure.logworkout
 ---
 - launchApp:
     stopApp: false
-- waitForAnimationsToEnd
+- waitForAnimationToEnd
 - extendedWaitUntil:
     visible:
       text: "LogOut"
