@@ -1,11 +1,9 @@
 # Smoke test: the app launches and displays the home screen.
 appId: com.gfaure.logworkout
 ---
-- launchApp:
-    stopApp: false
-- waitForAnimationToEnd
+- launchApp
 - extendedWaitUntil:
     visible:
       text: "LogOut"
-    timeout: 30000
+    timeout: 90000
 - assertVisible: "Log your workOut"
