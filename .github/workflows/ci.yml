@@ -353,14 +353,4 @@ jobs:
           arch: x86_64
           script: |
             adb install "${{ steps.apk.outputs.path }}"
-            # Pre-launch the app so the WebView is fully initialized and the
-            # Chrome DevTools Protocol (CDP) socket is ready before Maestro
-            # starts polling. Without this, Maestro may try to enumerate CDP
-            # endpoints before setWebContentsDebuggingEnabled(true) has been
-            # called, fall back to accessibility mode, and fail to find text.
-            # IMPORTANT: reactivecircus/android-emulator-runner runs each LINE
-            # of this script block as a separate "sh -c" invocation, so all
-            # commands must be single-line (no multi-line shell constructs).
-            adb shell monkey -p com.gfaure.logworkout -c android.intent.category.LAUNCHER 1
-            sleep 20
             maestro test maestro/
