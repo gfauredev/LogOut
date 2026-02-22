@@ -289,3 +289,68 @@ jobs:
       - name: Fail if any E2E test failed
         if: steps.e2e.outcome == 'failure'
         run: exit 1
+
+  e2e-android:
+    name: Android E2E Tests (Maestro)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: "17"
+          distribution: temurin
+
+      # Build for x86_64 so the APK runs on the CI emulator.
+      # Omit --release so Rust compiles with debug_assertions=true, which causes
+      # wry (the Dioxus WebView engine) to call
+      # WebView.setWebContentsDebuggingEnabled(true). Without this flag Maestro
+      # cannot read WebView content via the Android Accessibility API.
+      - name: Install x86_64 Android Rust target
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: x86_64-linux-android
+
+      - uses: swatinem/rust-cache@v2
+
+      - name: Install Dioxus CLI
+        uses: taiki-e/install-action@v2
+        with:
+          tool: dioxus-cli
+
+      - name: Build x86_64 APK for emulator testing
+        run: >-
+          dx build
+          --platform android
+          --no-default-features
+          --features mobile-platform
+
+      - name: Locate x86_64 APK
+        id: apk
+        run: |
+          SRC=$(find target/dx -name "*.apk" -maxdepth 10 | head -1)
+          [ -n "$SRC" ] || { echo "::error::No APK found under target/dx"; exit 1; }
+          echo "Found APK: $SRC"
+          echo "path=$(realpath "$SRC")" >> "$GITHUB_OUTPUT"
+
+      # Enable KVM for hardware-accelerated Android emulation on ubuntu-latest.
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      - name: Install Maestro
+        run: |
+          curl -Ls "https://get.maestro.mobile.dev" | bash
+          echo "$HOME/.maestro/bin" >> "$GITHUB_PATH"
+
+      - name: Run Maestro flows on Android emulator
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 33
+          arch: x86_64
+          script: |
+            adb install "${{ steps.apk.outputs.path }}"
+            maestro test maestro/
