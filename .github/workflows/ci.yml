@@ -351,6 +351,11 @@ jobs:
         with:
           api-level: 33
           arch: x86_64
+          # google_apis provides the Google Chrome WebView (chromium-based) with
+          # full Chrome DevTools Protocol (CDP) support. The default AOSP system
+          # image ships a stripped-down WebView that Maestro cannot inspect via
+          # CDP, causing all text assertions to time out.
+          target: google_apis
           script: |
             adb install "${{ steps.apk.outputs.path }}"
             maestro test maestro/
