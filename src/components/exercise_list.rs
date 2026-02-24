@@ -136,7 +136,7 @@ pub fn ExerciseListPage() -> Element {
 
             header {
                 class: "page-header",
-                h1 { class: "page-title", "📚 Exercise Database" }
+                h1 { class: "page-title", tabindex: 0, "📚 Exercise Database" }
                 p { class: "page-subtitle",
                     "Browse {total} exercises"
                 }
