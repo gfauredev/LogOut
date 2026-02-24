@@ -348,6 +348,9 @@ jobs:
           echo "$HOME/.maestro/bin" >> "$GITHUB_PATH"
 
       - name: Run Maestro flows on Android emulator
+        id: maestro
+        # continue-on-error so the artifact upload step below always runs
+        continue-on-error: true
         uses: reactivecircus/android-emulator-runner@v2
         with:
           api-level: 33
@@ -359,7 +362,26 @@ jobs:
           target: google_apis
           script: |
             adb install "${{ steps.apk.outputs.path }}"
+            adb logcat -c
             adb shell monkey -p com.gfaure.logworkout -c android.intent.category.LAUNCHER 1
-            sleep 15
+            sleep 20
+            adb exec-out screencap -p > /tmp/before-maestro.png && echo "Screenshot saved" || echo "Screenshot failed"
             adb shell uiautomator dump /sdcard/ui.xml && adb shell cat /sdcard/ui.xml || echo "UI dump failed"
-            maestro test maestro/
+            adb logcat -d -v time | grep -E "Console|AndroidRuntime|System.err|logworkout|dioxus|wry|WebView|chromium" | head -100 || echo "No relevant logcat entries"
+            adb forward tcp:9222 localabstract:com.gfaure.logworkout_devtools_remote 2>&1 && echo "CDP forward OK" || echo "CDP forward FAILED"
+            curl -s --max-time 3 http://localhost:9222/json 2>&1 || echo "CDP HTTP FAILED"
+            MAESTRO_CLI_NO_ANALYTICS=1 maestro test maestro/
+
+      - name: Upload diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-e2e-diagnostics
+          path: |
+            /tmp/before-maestro.png
+          if-no-files-found: ignore
+          retention-days: 7
+
+      - name: Fail if Maestro tests failed
+        if: steps.maestro.outcome == 'failure'
+        run: exit 1
