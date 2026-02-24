@@ -281,7 +281,7 @@ pub fn SessionView() -> Element {
             header {
                 class: "session-header",
                 div {
-                    h2 { class: "session-header__title", "⏱️ Active Session" }
+                    h2 { class: "session-header__title", tabindex: 0, "⏱️ Active Session" }
                     p {
                         class: "session-header__timer",
                         onclick: move |_| {
