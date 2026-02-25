@@ -362,11 +362,6 @@ jobs:
           target: google_apis
           script: |
             adb install "${{ steps.apk.outputs.path }}"
-            adb shell monkey -p com.gfaure.logworkout -c android.intent.category.LAUNCHER 1
-            for i in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20; do adb shell cat /proc/net/unix 2>/dev/null | grep -q webview_devtools_remote_ && echo "CDP socket ready" && break; sleep 3; done
-            sleep 15
-            adb exec-out screencap -p > /tmp/before-maestro.png && echo "Screenshot saved" || true
-            adb shell uiautomator dump /sdcard/ui.xml && adb shell cat /sdcard/ui.xml | head -c 2000 || true
             MAESTRO_CLI_NO_ANALYTICS=1 maestro test maestro/
 
       - name: Upload diagnostics
@@ -375,7 +370,7 @@ jobs:
         with:
           name: android-e2e-diagnostics
           path: |
-            /tmp/before-maestro.png
+            ~/.maestro/tests/
           if-no-files-found: ignore
           retention-days: 7
 
