@@ -1,11 +1,12 @@
 # Test: start a new workout session then cancel it.
 appId: com.gfaure.logworkout
 ---
-- launchApp
+- launchApp:
+    stopApp: false
 - extendedWaitUntil:
     visible:
       text: "LogOut"
-    timeout: 90000
+    timeout: 30000
 - tapOn: "+"
 - assertVisible: "Active Session"
 - tapOn: "Cancel Session"
