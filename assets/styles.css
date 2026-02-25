@@ -1,3 +1,9 @@
+/* ===== Base / Reset ===== */
+body {
+  background-color: #111;
+  color: #e0e0e0;
+}
+
 /* ===== Global / Shared ===== */
 .container {
   padding: 20px;
