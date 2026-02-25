@@ -127,7 +127,10 @@ npx playwright test # E2E tests (starts dev server)
 
 ## TODO
 
-- …
+- Past Sessions
+  - Make clicking on an Exercise Tag bring to the corresponding Exercise in List
+- HTML structure, CSS
+  - DRY CSS rules, classes, make proper use of inheritance
 
 ### Optimization
 
