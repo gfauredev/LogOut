@@ -1,8 +1,6 @@
 # Test: navigate to the exercise browser via the bottom navigation bar.
 appId: com.gfaure.logworkout
 ---
-- launchApp:
-    stopApp: false
 - extendedWaitUntil:
     visible:
       text: "LogOut"
