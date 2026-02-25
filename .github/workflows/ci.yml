@@ -362,14 +362,10 @@ jobs:
           target: google_apis
           script: |
             adb install "${{ steps.apk.outputs.path }}"
-            adb logcat -c
             adb shell monkey -p com.gfaure.logworkout -c android.intent.category.LAUNCHER 1
-            sleep 20
-            adb exec-out screencap -p > /tmp/before-maestro.png && echo "Screenshot saved" || echo "Screenshot failed"
-            adb shell uiautomator dump /sdcard/ui.xml && adb shell cat /sdcard/ui.xml || echo "UI dump failed"
-            adb logcat -d -v time | grep -E "Console|AndroidRuntime|System.err|logworkout|dioxus|wry|WebView|chromium" | head -100 || echo "No relevant logcat entries"
-            adb forward tcp:9222 localabstract:com.gfaure.logworkout_devtools_remote 2>&1 && echo "CDP forward OK" || echo "CDP forward FAILED"
-            curl -s --max-time 3 http://localhost:9222/json 2>&1 || echo "CDP HTTP FAILED"
+            for i in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20; do adb shell cat /proc/net/unix 2>/dev/null | grep -q logworkout_devtools_remote && echo "CDP socket ready" && break; sleep 3; done
+            sleep 30
+            adb exec-out screencap -p > /tmp/before-maestro.png && echo "Screenshot saved" || true
             MAESTRO_CLI_NO_ANALYTICS=1 maestro test maestro/
 
       - name: Upload diagnostics
