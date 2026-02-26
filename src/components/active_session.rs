@@ -429,7 +429,6 @@ pub fn SessionView() -> Element {
                 if current_exercise_id.read().is_none() {
                     div {
                         class: "form-group",
-                        h3 { "Select Exercise" }
                         div { class: "search-with-add",
                             input {
                                 r#type: "text",

@@ -140,10 +140,12 @@ npx playwright test # E2E tests (starts dev server)
     <main>articles/sections</main>
     <nav>bottom tab bar</nav>
     ```
+  - Remove unused CSS
 
 ### Optimization
 
 - Remove any magic number, making then into clearly named constants
+  - Especially in CSS
 - Reduce allocations to the heap, especially in search loop
 - Split the SessionView god component into modular child components
 - Improve indexedDB error handling with thiserror

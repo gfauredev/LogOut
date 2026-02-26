@@ -28,25 +28,22 @@ pub fn HomePage() -> Element {
     });
 
     rsx! {
-        main { if *has_active.read() {
+        if !*has_active.read() {
+            header {
+                h1 { tabindex: 0, "💪 LogOut" }
+                p { tabindex: 0, "Turn off your computer, Log your workOut" }
+            }
+        }
+        main { class: "sessions",
+            if *has_active.read() {
                 SessionView {}
             } else {
-                section { class: "sessions-tab",
-                    header { class: "sessions-tab__header",
-                        h1 { tabindex: 0, "💪 LogOut" }
-                        p { tabindex: 0, "Turn off your computer, Log your workOut" }
-                    }
-                    if completed_sessions().is_empty() {
-                        div { class: "sessions-empty",
-                            p { "No past sessions yet." }
-                            p { "Tap + to start your first workout!" }
-                        }
-                    } else {
-                        div { class: "sessions-list",
-                            for session in completed_sessions() {
-                                SessionCard { key: "{session.id}", session: session.clone() }
-                            }
-                        }
+                if completed_sessions().is_empty() {
+                    p { "No past sessions yet." br {}
+                    "Tap + to start your first workout!" }
+                } else {
+                    for session in completed_sessions() {
+                        SessionCard { key: "{session.id}", session: session.clone() }
                     }
                 }
             }

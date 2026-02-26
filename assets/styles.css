@@ -51,17 +51,7 @@ main {
 }
 
 /* ===== Sessions Tab (center tab home page) ===== */
-.sessions-tab {
-  padding: 20px;
-  padding-bottom: 80px;
-}
-
-.sessions-tab__header {
-  text-align: center;
-  margin-bottom: 30px;
-}
-
-.sessions-empty {
+.sessions > p {
   text-align: center;
   color: #777;
   margin-top: 60px;
