@@ -12,8 +12,6 @@ use super::session_timers::{RestTimerDisplay, SessionDurationDisplay};
 
 /// Default rest duration in seconds
 const DEFAULT_REST_DURATION: u64 = 30;
-/// Snackbar auto-dismiss delay in milliseconds
-const SNACKBAR_DISMISS_MS: u32 = 3_000;
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 
@@ -252,23 +250,8 @@ pub fn SessionView() -> Element {
         }
         current_session.end_time = Some(get_current_timestamp());
         storage::save_session(current_session.clone());
-        // Show congratulatory toast (via global context so it survives unmount)
+        // Show congratulatory toast (auto-dismiss is handled by CongratulationsToast)
         congratulations.set(true);
-        #[cfg(target_arch = "wasm32")]
-        {
-            spawn(async move {
-                gloo_timers::future::TimeoutFuture::new(SNACKBAR_DISMISS_MS).await;
-                congratulations.set(false);
-            });
-        }
-        #[cfg(not(target_arch = "wasm32"))]
-        {
-            spawn(async move {
-                tokio::time::sleep(std::time::Duration::from_millis(SNACKBAR_DISMISS_MS as u64))
-                    .await;
-                congratulations.set(false);
-            });
-        }
     };
 
     let exercise_count = session.read().exercise_logs.len();
@@ -478,12 +461,24 @@ pub fn SessionView() -> Element {
                 if !session.read().exercise_logs.is_empty() {
                     section {
                         h3 { "Completed Exercises" }
-                        for (idx, log) in session.read().exercise_logs.iter().enumerate().rev() {
-                            CompletedExerciseLog {
-                                key: "{idx}",
-                                idx,
-                                log: log.clone(),
-                                session,
+                        {
+                            let no_exercise_active = current_exercise_id.read().is_none();
+                            rsx! {
+                                for (idx, log) in session.read().exercise_logs.iter().enumerate().rev() {
+                                    CompletedExerciseLog {
+                                        key: "{idx}",
+                                        idx,
+                                        log: log.clone(),
+                                        session,
+                                        show_replay: no_exercise_active,
+                                        on_replay: {
+                                            let id = log.exercise_id.clone();
+                                            let name = log.exercise_name.clone();
+                                            let cat = log.category;
+                                            move |_| start_exercise(id.clone(), name.clone(), cat)
+                                        },
+                                    }
+                                }
                             }
                         }
                     }

@@ -16,6 +16,14 @@ jobs:
   deploy-web:
     name: Deploy to GitHub Pages
     runs-on: ubuntu-latest
+    if: >-
+      github.event_name != 'push' ||
+      startsWith(github.event.head_commit.message, 'feat:') ||
+      startsWith(github.event.head_commit.message, 'feat(') ||
+      startsWith(github.event.head_commit.message, 'fix:') ||
+      startsWith(github.event.head_commit.message, 'fix(') ||
+      startsWith(github.event.head_commit.message, 'perf:') ||
+      startsWith(github.event.head_commit.message, 'perf(')
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
@@ -55,6 +63,14 @@ jobs:
   build-android:
     name: Build Android APK (arm64) & AAB (all archs)
     runs-on: ubuntu-latest
+    if: >-
+      github.event_name != 'push' ||
+      startsWith(github.event.head_commit.message, 'feat:') ||
+      startsWith(github.event.head_commit.message, 'feat(') ||
+      startsWith(github.event.head_commit.message, 'fix:') ||
+      startsWith(github.event.head_commit.message, 'fix(') ||
+      startsWith(github.event.head_commit.message, 'perf:') ||
+      startsWith(github.event.head_commit.message, 'perf(')
 
     steps:
       - uses: actions/checkout@v4
