@@ -69,7 +69,8 @@ fn App() -> Element {
     #[cfg(all(target_arch = "wasm32", feature = "web-platform"))]
     {
         let mut toast = use_context::<ToastSignal>().0;
-        use_effect(move || {
+        // Run once on mount: `use_hook` ensures the check is only performed on first render.
+        use_hook(move || {
             use web_sys::NotificationPermission;
             match web_sys::Notification::permission() {
                 NotificationPermission::Default => {
