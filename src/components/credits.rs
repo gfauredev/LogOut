@@ -42,9 +42,9 @@ pub fn CreditsPage() -> Element {
     };
 
     rsx! {
-        main {
-            header { h1 { "ℹ️ Credits" } }
-            article { class: "credits-card",
+        header { h1 { "ℹ️ Credits" } }
+        main { class: "credits",
+            article {
                 h2 { "LogOut" }
                 p { "Turn off your computer, Log your workOut." }
                 p { "A simple, efficient and cross-platform workout "
@@ -52,20 +52,18 @@ pub fn CreditsPage() -> Element {
                     a {
                         href: "https://github.com/yuhonas/free-exercise-db",
                         target: "_blank",
-                        class: "credits-link",
                         "800+ exercises"
                     }
                     " built-in, by "
                     a {
                         href: "https://www.guilhemfau.re",
                         target: "_blank",
-                        class: "credits-link",
                         "Guilhem Fauré."
                     }
                 }
             }
-            article { class: "credits-card",
-                h3 { "⚙️ Exercise Database URL" }
+            article {
+                h2 { "⚙️ Exercise Database URL" }
                 p { "Override the exercise database source. "
                     "Save to trigger a re-download on next reload."
                 }
@@ -87,15 +85,14 @@ pub fn CreditsPage() -> Element {
                     }
                 }
             }
-            article { class: "credits-card",
-                h3 { "Open Source & Licences" }
+            article {
+                h2 { "Open Source & Licences" }
                 p { "This project is open-source under the GPL-3.0, "
                     "and uses other open-source projects. See its "
                     a {
                         href: "https://github.com/gfauredev/LogOut",
                         target: "_blank",
                         rel: "noopener noreferrer",
-                        class: "credits-link",
                         "code repository"
                     }
                     " for details. We happily accept contributions, "
@@ -103,27 +100,24 @@ pub fn CreditsPage() -> Element {
                     //     href: "https://github.com/gfauredev/LogOut",
                     //     target: "_blank",
                     //     rel: "noopener noreferrer",
-                    //     class: "credits-link",
                     //     "on LogOut"
                     // }
                     " including to the "
                     a {
                         href: "https://github.com/gfauredev/free-exercise-db",
                         target: "_blank",
-                        class: "credits-link",
                         "exercise database"
                     }
                     "."
                 }
             }
-            article { class: "credits-card",
-                h3 { "Built With" }
-                ul { class: "credits-list",
+            article {
+                h2 { "Built With" }
+                ul {
                     li {
                         a {
                             href: "https://rust-lang.org",
                             target: "_blank",
-                            class: "credits-link",
                             "Rust"
                         }
                         " — Systems programming language"
@@ -132,7 +126,6 @@ pub fn CreditsPage() -> Element {
                         a {
                             href: "https://dioxuslabs.com",
                             target: "_blank",
-                            class: "credits-link",
                             "Dioxus"
                         }
                         " — Rust framework for cross-platform apps"
@@ -141,7 +134,6 @@ pub fn CreditsPage() -> Element {
                         a {
                             href: "https://github.com/yuhonas/free-exercise-db",
                             target: "_blank",
-                            class: "credits-link",
                             "Free Exercise DB"
                         }
                         " — Exercise data and images, by yuhonas"

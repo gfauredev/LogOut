@@ -1,4 +1,4 @@
-main > header {
+main > header, #main > header {
   margin-top: 1em;
   margin-bottom: 1em;
   text-align: center;
@@ -1048,17 +1048,7 @@ main {
 }
 
 /* ===== Credits Page ===== */
-.credits-section {
-  padding: 20px;
-  padding-bottom: 80px;
-}
-
-.credits-header {
-  text-align: center;
-  margin-bottom: 20px;
-}
-
-.credits-card {
+.credits article {
   padding: 16px;
   border: 1px solid #333;
   border-radius: 12px;
@@ -1066,43 +1056,31 @@ main {
   margin-bottom: 14px;
 }
 
-.credits-card h2 {
+.credits h2 {
   margin: 0 0 8px 0;
   color: #fff;
 }
 
-.credits-card h3 {
-  margin: 0 0 8px 0;
-  color: #ccc;
-}
-
-.credits-card p {
+.credits p {
   margin: 4px 0;
   color: #999;
   line-height: 1.5;
 }
 
-.credits-link {
+.credits a {
   color: #667eea;
   text-decoration: none;
 }
 
-.credits-link:hover {
+.credits a:hover {
   text-decoration: underline;
 }
 
-.credits-list {
+.credits ul {
   margin: 8px 0 0 0;
   padding-left: 20px;
   color: #999;
   line-height: 1.8;
-}
-
-.credits-card__hint {
-  margin: 4px 0 10px 0;
-  color: #777;
-  font-size: 0.9em;
-  line-height: 1.4;
 }
 
 .db-url-form {
