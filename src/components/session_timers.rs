@@ -21,6 +21,17 @@ pub(super) fn send_notification(is_duration_bell: bool) {
     let send = |t: &str, b: &str| {
         let opts = NotificationOptions::new();
         opts.set_body(b);
+        opts.set_tag(if is_duration_bell {
+            "logout-duration"
+        } else {
+            "logout-rest"
+        });
+        // Vibrate to ensure the notification is felt on mobile devices
+        let vibrate = js_sys::Array::new();
+        vibrate.push(&200.into());
+        vibrate.push(&100.into());
+        vibrate.push(&200.into());
+        opts.set_vibrate(&vibrate.into());
         let _ = Notification::new_with_options(t, &opts);
     };
 

@@ -2,6 +2,7 @@ use crate::components::{ActiveTab, BottomNav, SessionView};
 use crate::models::{format_time, WorkoutSession};
 use crate::services::storage;
 use crate::utils::format_session_date;
+use crate::{ExerciseSearchSignal, Route};
 use dioxus::prelude::*;
 
 #[component]
@@ -65,6 +66,8 @@ fn SessionCard(session: WorkoutSession) -> Element {
     let mut show_delete_confirm = use_signal(|| false);
     let mut show_all_exercises = use_signal(|| false);
     let session_id = session.id.clone();
+    let mut search_signal = use_context::<ExerciseSearchSignal>().0;
+    let navigator = use_navigator();
 
     let duration = session
         .end_time
@@ -139,7 +142,17 @@ fn SessionCard(session: WorkoutSession) -> Element {
             if !unique_exercises.is_empty() {
                 div { class: "session-card__exercises",
                     for (_, name) in unique_exercises.iter().take(visible_count) {
-                        span { class: "session-card__exercise-name", "{name}" }
+                        span {
+                            class: "session-card__exercise-name session-card__exercise-name--clickable",
+                            onclick: {
+                                let name = name.clone();
+                                move |_| {
+                                    search_signal.set(Some(name.clone()));
+                                    navigator.push(Route::ExerciseListPage {});
+                                }
+                            },
+                            "{name}"
+                        }
                     }
                     if hidden_count > 0 {
                         button {

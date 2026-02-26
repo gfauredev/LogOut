@@ -1,6 +1,6 @@
 use crate::components::{ActiveTab, BottomNav, ExerciseCard};
 use crate::services::{exercise_db, storage};
-use crate::Route;
+use crate::{ExerciseSearchSignal, Route};
 use dioxus::prelude::*;
 
 /// Number of exercises loaded per scroll increment.
@@ -13,6 +13,16 @@ pub fn ExerciseListPage() -> Element {
     let sessions = storage::use_sessions();
     let mut search_query = use_signal(String::new);
     let mut visible_count = use_signal(|| PAGE_SIZE);
+
+    // If another page set a search query via the global signal, consume it.
+    let mut search_signal = use_context::<ExerciseSearchSignal>().0;
+    use_effect(move || {
+        let q = search_signal.read().clone();
+        if let Some(q) = q {
+            search_query.set(q);
+            search_signal.set(None);
+        }
+    });
 
     // Collect exercise IDs from the active session (if any)
     let active_session_ids = use_memo(move || {
