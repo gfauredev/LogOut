@@ -10,6 +10,7 @@ pub fn CompletedExerciseLog(
     idx: usize,
     log: ExerciseLog,
     session: Signal<WorkoutSession>,
+    on_replay: EventHandler<()>,
 ) -> Element {
     let mut is_editing = use_signal(|| false);
     let mut edit_weight_input = use_signal(String::new);
@@ -68,6 +69,12 @@ pub fn CompletedExerciseLog(
                 class: "completed-log__header",
                 h4 { class: "completed-log__title", "{log.exercise_name}" }
                 div { class: "completed-log__actions",
+                    button {
+                        class: "btn--replay-log",
+                        title: "Do another set",
+                        onclick: move |_| on_replay.call(()),
+                        "▶"
+                    }
                     button {
                         class: "btn--edit-log",
                         onclick: start_edit,

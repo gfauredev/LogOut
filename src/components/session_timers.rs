@@ -5,12 +5,18 @@ use dioxus::prelude::*;
 #[cfg(target_arch = "wasm32")]
 const TIMER_TICK_MS: u32 = 1_000;
 
-/// Send a notification using the Web Notifications API.
-/// The system decides whether to play audio or vibrate.
+/// Send a notification using the service worker Notifications API.
+/// Using `registration.showNotification()` instead of `new Notification()` ensures
+/// notifications work on Android PWAs where the constructor is not available.
+/// Falls back to `new Notification()` if the service worker is not ready.
 /// `is_duration_bell` selects a different message to distinguish from rest alerts.
 #[cfg(target_arch = "wasm32")]
 pub(super) fn send_notification(is_duration_bell: bool) {
-    use web_sys::{Notification, NotificationOptions, NotificationPermission};
+    use web_sys::{Notification, NotificationPermission};
+
+    if Notification::permission() != NotificationPermission::Granted {
+        return;
+    }
 
     let (title, body) = if is_duration_bell {
         ("Duration reached", "Target exercise duration reached!")
@@ -18,31 +24,17 @@ pub(super) fn send_notification(is_duration_bell: bool) {
         ("Rest over", "Time to start your next set!")
     };
 
-    let send = |t: &str, b: &str| {
-        let opts = NotificationOptions::new();
-        opts.set_body(b);
-        let _ = Notification::new_with_options(t, &opts);
-    };
-
-    match Notification::permission() {
-        NotificationPermission::Granted => send(title, body),
-        NotificationPermission::Default => {
-            let title = title.to_string();
-            let body = body.to_string();
-            if let Ok(promise) = Notification::request_permission() {
-                wasm_bindgen_futures::spawn_local(async move {
-                    if wasm_bindgen_futures::JsFuture::from(promise).await.is_ok()
-                        && Notification::permission() == NotificationPermission::Granted
-                    {
-                        let opts = NotificationOptions::new();
-                        opts.set_body(&body);
-                        let _ = Notification::new_with_options(&title, &opts);
-                    }
-                });
-            }
-        }
-        _ => {}
-    }
+    // Prefer service worker showNotification for PWA/mobile (Android) compatibility.
+    // new Notification() is not supported in Android PWAs; service worker must be used.
+    // Use JSON-encoded strings to safely handle any special characters.
+    let title_json = serde_json::to_string(title).unwrap_or_default();
+    let body_json = serde_json::to_string(body).unwrap_or_default();
+    let script = format!(
+        "(async()=>{{try{{const r=await navigator.serviceWorker.ready;\
+         r.showNotification({title_json},{{body:{body_json},requireInteraction:false}});\
+         }}catch(e){{new Notification({title_json},{{body:{body_json}}})}}}}})();"
+    );
+    let _ = js_sys::eval(&script);
 }
 
 // ── Isolated timer components ──────────────────────────────────────────────

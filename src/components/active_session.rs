@@ -12,8 +12,6 @@ use super::session_timers::{RestTimerDisplay, SessionDurationDisplay};
 
 /// Default rest duration in seconds
 const DEFAULT_REST_DURATION: u64 = 30;
-/// Snackbar auto-dismiss delay in milliseconds
-const SNACKBAR_DISMISS_MS: u32 = 3_000;
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 
@@ -257,15 +255,17 @@ pub fn SessionView() -> Element {
         #[cfg(target_arch = "wasm32")]
         {
             spawn(async move {
-                gloo_timers::future::TimeoutFuture::new(SNACKBAR_DISMISS_MS).await;
+                gloo_timers::future::TimeoutFuture::new(crate::SNACKBAR_DISMISS_MS).await;
                 congratulations.set(false);
             });
         }
         #[cfg(not(target_arch = "wasm32"))]
         {
             spawn(async move {
-                tokio::time::sleep(std::time::Duration::from_millis(SNACKBAR_DISMISS_MS as u64))
-                    .await;
+                tokio::time::sleep(std::time::Duration::from_millis(
+                    crate::SNACKBAR_DISMISS_MS as u64,
+                ))
+                .await;
                 congratulations.set(false);
             });
         }
@@ -479,11 +479,39 @@ pub fn SessionView() -> Element {
                     section {
                         h3 { "Completed Exercises" }
                         for (idx, log) in session.read().exercise_logs.iter().enumerate().rev() {
-                            CompletedExerciseLog {
-                                key: "{idx}",
-                                idx,
-                                log: log.clone(),
-                                session,
+                            {
+                                let ex_id = log.exercise_id.clone();
+                                rsx! {
+                                    CompletedExerciseLog {
+                                        key: "{idx}",
+                                        idx,
+                                        log: log.clone(),
+                                        session,
+                                        on_replay: move |_| {
+                                            prefill_inputs_from_last_log(
+                                                &ex_id,
+                                                weight_input,
+                                                reps_input,
+                                                distance_input,
+                                            );
+                                            current_exercise_id.set(Some(ex_id.clone()));
+                                            let exercise_start = get_current_timestamp();
+                                            current_exercise_start.set(Some(exercise_start));
+                                            search_query.set(String::new());
+                                            rest_start_time.set(None);
+                                            rest_bell_count.set(0);
+                                            duration_bell_rung.set(false);
+                                            let mut current_session = session.read().clone();
+                                            current_session.rest_start_time = None;
+                                            current_session.current_exercise_id =
+                                                Some(ex_id.clone());
+                                            current_session.current_exercise_start =
+                                                Some(exercise_start);
+                                            session.set(current_session.clone());
+                                            storage::save_session(current_session);
+                                        },
+                                    }
+                                }
                             }
                         }
                     }

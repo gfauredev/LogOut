@@ -1,6 +1,7 @@
 use crate::components::{ActiveTab, BottomNav, ExerciseCard};
 use crate::services::{exercise_db, storage};
 use crate::Route;
+use crate::ExerciseFocusSignal;
 use dioxus::prelude::*;
 
 /// Number of exercises loaded per scroll increment.
@@ -13,6 +14,15 @@ pub fn ExerciseListPage() -> Element {
     let sessions = storage::use_sessions();
     let mut search_query = use_signal(String::new);
     let mut visible_count = use_signal(|| PAGE_SIZE);
+    let mut exercise_focus = use_context::<ExerciseFocusSignal>().0;
+
+    // Pre-fill search from focus signal set by exercise tag click in past sessions
+    use_effect(move || {
+        if let Some(name) = exercise_focus.write().take() {
+            search_query.set(name);
+            visible_count.set(PAGE_SIZE);
+        }
+    });
 
     // Collect exercise IDs from the active session (if any)
     let active_session_ids = use_memo(move || {
