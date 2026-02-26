@@ -129,18 +129,19 @@ npx playwright test # E2E tests (starts dev server)
 
 - Past Sessions
   - Make clicking on an Exercise Tag bring to the corresponding Exercise in List
-- HTML structure, CSS
-  - DRY CSS rules, classes, make proper use of inheritance
-- Maky any toast last for only 3 seconds, consider using a common component
+- Make any toast last for only 3 seconds, consider using a common component
 - Sign Android app and make it properly installable
 - Make Maestro tests pass
 
 ### Optimization
 
 - Remove any magic number, making then into clearly named constants
-  - Especially in CSS, DRY same looking elements, classes
-- Reduce allocations to the heap, especially in search loop
+  - In Rust and (especially) in CSS
+- HTML structure, CSS
+  - DRY CSS rules, classes, make proper use of inheritance
+  - Remove unused (dead) CSS
 - Split the SessionView god component into modular child components
+- Reduce allocations to the heap, especially in search loop
 - Improve indexedDB error handling with thiserror
 - Reduce boilerplate by using strum crate for enums serializations
 
