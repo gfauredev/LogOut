@@ -4,9 +4,7 @@ use dioxus::prelude::*;
 #[component]
 pub fn AnalyticsPage() -> Element {
     rsx! {
-        main { class: "page-content",
-            AnalyticsPanel {}
-        }
+        main { AnalyticsPanel {} }
         BottomNav { active_tab: ActiveTab::Analytics }
     }
 }

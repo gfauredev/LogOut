@@ -132,36 +132,32 @@ pub fn ExerciseListPage() -> Element {
     let total = all_exercises.read().len();
 
     rsx! {
-        main { class: "page-content container container--narrow",
-
+        main { class: "container container--narrow",
             header {
-                class: "page-header",
-                h1 { class: "page-title", tabindex: 0, "📚 Exercise Database" }
-                p { class: "page-subtitle",
-                    "Browse {total} exercises"
+                h1 { tabindex: 0, "📚 Exercise Database" }
+                p { "Browse {total} exercises" }
+            }
+            div { class: "form-group",
+                div {
+                    class: "search-with-add",
+                    input {
+                        r#type: "text",
+                        placeholder: "Search exercises, muscles, or categories...",
+                        value: "{search_query}",
+                        oninput: move |evt| {
+                            search_query.set(evt.value());
+                            visible_count.set(PAGE_SIZE);
+                        },
+                        class: "search-input",
+                    }
+                    Link {
+                        to: Route::AddCustomExercisePage {},
+                        class: "add-exercise-btn",
+                        title: "Add Custom Exercise",
+                        "+"
+                    }
                 }
             }
-
-            div {
-                class: "search-with-add",
-                input {
-                    r#type: "text",
-                    placeholder: "Search exercises, muscles, or categories...",
-                    value: "{search_query}",
-                    oninput: move |evt| {
-                        search_query.set(evt.value());
-                        visible_count.set(PAGE_SIZE);
-                    },
-                    class: "search-input",
-                }
-                Link {
-                    to: Route::AddCustomExercisePage {},
-                    class: "add-exercise-btn",
-                    title: "Add Custom Exercise",
-                    "+"
-                }
-            }
-
             section {
                 class: "exercise-list",
                 for (exercise, is_custom, show_instructions) in visible_items() {

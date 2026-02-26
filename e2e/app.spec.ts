@@ -7,8 +7,8 @@ const BASE = "";
 test.describe("Sessions tab (home page)", () => {
   test("renders title and tagline", async ({ page }) => {
     await page.goto(`${BASE}/`);
-    await expect(page.locator(".app-title")).toHaveText("💪 LogOut");
-    await expect(page.locator(".app-tagline")).toHaveText(
+    await expect(page.locator("header > h1")).toHaveText("💪 LogOut");
+    await expect(page.locator("header > p")).toHaveText(
       "Turn off your computer, Log your workOut"
     );
   });
@@ -53,7 +53,7 @@ test.describe("Sessions tab (home page)", () => {
       "Active Session"
     );
     await page.click("button:has-text('Cancel Session')");
-    await expect(page.locator(".app-title")).toHaveText("💪 LogOut");
+    await expect(page.locator("header > h1")).toHaveText("💪 LogOut");
     await expect(page.locator(".new-session-button")).toBeVisible();
   });
 
@@ -144,7 +144,7 @@ test.describe("Active session view", () => {
     await page.goto(`${BASE}/`);
     await page.click(".new-session-button");
     await page.click("button:has-text('Cancel Session')");
-    await expect(page.locator(".app-title")).toHaveText("💪 LogOut");
+    await expect(page.locator("header > h1")).toHaveText("💪 LogOut");
   });
 
   test("search does not crash app (regression test for duplicate keys)", async ({
@@ -211,7 +211,7 @@ test.describe("Exercise search functionality", () => {
 test.describe("Credits / Extra tab", () => {
   test("renders credits page with heading", async ({ page }) => {
     await page.goto(`${BASE}/credits`);
-    await expect(page.locator("h1.page-title")).toHaveText("ℹ️ Credits");
+    await expect(page.locator("header > h1")).toHaveText("ℹ️ Credits");
   });
 
   test("has exercise database URL input", async ({ page }) => {
@@ -228,7 +228,7 @@ test.describe("Credits / Extra tab", () => {
     await page.goto(`${BASE}/`);
     // Credits is the 4th tab (index 3)
     await page.locator(".bottom-nav__tab").nth(3).click();
-    await expect(page.locator("h1.page-title")).toHaveText("ℹ️ Credits");
+    await expect(page.locator("header > h1")).toHaveText("ℹ️ Credits");
   });
 });
 
@@ -237,7 +237,7 @@ test.describe("Tab heading consistency", () => {
     page,
   }) => {
     await page.goto(`${BASE}/exercises`);
-    const heading = page.locator("h1.page-title");
+    const heading = page.locator("header > h1");
     await expect(heading).toBeVisible();
     const text = await heading.textContent();
     expect(text).toContain("📚");
@@ -245,7 +245,7 @@ test.describe("Tab heading consistency", () => {
 
   test("analytics heading has emoji", async ({ page }) => {
     await page.goto(`${BASE}/analytics`);
-    const heading = page.locator(".page-title");
+    const heading = page.locator("header > h1");
     await expect(heading).toBeVisible();
     const text = await heading.textContent();
     expect(text).toContain("📊");
@@ -253,7 +253,7 @@ test.describe("Tab heading consistency", () => {
 
   test("credits heading is centered and has emoji", async ({ page }) => {
     await page.goto(`${BASE}/credits`);
-    const heading = page.locator("h1.page-title");
+    const heading = page.locator("header > h1");
     await expect(heading).toBeVisible();
     const text = await heading.textContent();
     expect(text).toContain("ℹ️");

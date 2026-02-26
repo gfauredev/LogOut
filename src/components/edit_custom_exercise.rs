@@ -70,17 +70,14 @@ pub fn EditCustomExercisePage(id: String) -> Element {
     rsx! {
         div {
             class: "container container--form",
-
             header {
-                class: "page-header",
                 button {
                     onclick: move |_| navigator().go_back(),
                     class: "back-btn",
                     "← Back"
                 }
-                h1 { class: "page-title", "Edit Exercise" }
+                h1 { "Edit Exercise" }
             }
-
             ExerciseFormFields {
                 name_input,
                 category_input,

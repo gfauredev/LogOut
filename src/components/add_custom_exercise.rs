@@ -49,13 +49,12 @@ pub fn AddCustomExercisePage() -> Element {
             class: "container container--form",
 
             header {
-                class: "page-header",
                 button {
                     onclick: move |_| navigator().go_back(),
                     class: "back-btn",
                     "← Back"
                 }
-                h1 { class: "page-title", "Add Exercise" }
+                h1 { "Add Exercise" }
             }
 
             ExerciseFormFields {

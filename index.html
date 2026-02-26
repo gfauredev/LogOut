@@ -6,17 +6,17 @@
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="mobile-web-app-status-bar-style" content="black">
     <meta name="theme-color" content="#000000">
-    <meta name="description" content="LogOut - Turn off your computer, Log your workOut. A workout logging PWA.">
+    <meta name="description" content="{app_title}">
     <link rel="manifest" href="./manifest.json">
     <title>{app_title}</title>
     <script>
-        // Restore the original URL after a 404-redirect from GitHub Pages.
+        // Restore the original URL after a 404-redirect from GitHub Pages
         (function () {
-            var redirect = new URLSearchParams(window.location.search).get('redirect');
+            const redirect = new URLSearchParams(window.location.search).get('redirect');
             if (redirect) {
-                // Remove trailing slash from pathname, then join with redirect path.
-                var base = window.location.pathname.replace(/\/$/, '');
-                var url = base + '/' + redirect.replace(/^\//, '');
+                // Remove trailing slash from pathname, then join with redirect path
+                const base = window.location.pathname.replace(/\/$/, '');
+                const url = base + '/' + redirect.replace(/^\//, '');
                 window.history.replaceState(null, '', url);
             }
         }());
@@ -32,7 +32,6 @@
             background: #000;
             color: #e0e0e0;
             min-height: 100vh;
-            -webkit-font-smoothing: antialiased;
         }
     </style>
 </head>

@@ -478,9 +478,7 @@ pub fn SessionView() -> Element {
                 // Completed exercises list (antichronological order)
                 if !session.read().exercise_logs.is_empty() {
                     section {
-                        class: "completed-exercises-section",
                         h3 { "Completed Exercises" }
-
                         for (idx, log) in session.read().exercise_logs.iter().enumerate().rev() {
                             CompletedExerciseLog {
                                 key: "{idx}",

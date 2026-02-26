@@ -133,6 +133,13 @@ npx playwright test # E2E tests (starts dev server)
   - DRY CSS rules, classes, make proper use of inheritance
 - Maky any toast last for only 3 seconds, consider using a common component
 - Sign Android app and make it properly installable
+- Simplify and harmonize page structure (for each tab)
+  - ```html
+    <header>title/subtitle</header>
+    <nav>eventual search</nav>
+    <main>articles/sections</main>
+    <nav>bottom tab bar</nav>
+    ```
 
 ### Optimization
 

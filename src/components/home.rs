@@ -33,8 +33,8 @@ pub fn HomePage() -> Element {
             } else {
                 section { class: "sessions-tab",
                     header { class: "sessions-tab__header",
-                        h1 { class: "app-title", tabindex: 0, "💪 LogOut" }
-                        p { class: "app-tagline", tabindex: 0, "Turn off your computer, Log your workOut" }
+                        h1 { tabindex: 0, "💪 LogOut" }
+                        p { tabindex: 0, "Turn off your computer, Log your workOut" }
                     }
                     if completed_sessions().is_empty() {
                         div { class: "sessions-empty",

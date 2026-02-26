@@ -74,18 +74,14 @@ pub fn WorkoutLogPage() -> Element {
     rsx! {
         div {
             class: "container container--narrow",
-
             header {
-                class: "page-header",
                 Link {
                     to: Route::HomePage {},
                     class: "back-link",
                     "← Back"
                 }
-                h1 { class: "page-title", "Log Your Workout" }
+                h1 { "Log Your Workout" }
             }
-
-            // Exercise Search
             div {
                 class: "form-group",
                 h3 { "Add Exercise" }

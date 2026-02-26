@@ -102,18 +102,13 @@ pub fn AnalyticsPanel() -> Element {
     rsx! {
         div {
             class: "analytics-panel",
-
-            // Header
             div {
                 class: "analytics-panel__header",
-                h2 { class: "page-title", "📊 Analytics" }
+                h1 { "📊 Analytics" }
                 p { "Track your progress over time" }
             }
-
-            // Controls
             div {
                 class: "analytics-controls",
-
                 div {
                     class: "analytics-metric-selector",
                     label { class: "form-label form-label--color", "Select Metric" }
@@ -135,15 +130,12 @@ pub fn AnalyticsPanel() -> Element {
                         option { value: "Duration", "Duration (minutes)" }
                     }
                 }
-
                 div {
                     label { class: "form-label form-label--color", "Select Exercises (up to 8)" }
-
                     for i in 0..8 {
                         {
                             let current_selections = selected_exercises.read().clone();
                             let is_visible = i == 0 || current_selections.get(i - 1).and_then(|x| x.as_ref()).is_some();
-
                             if is_visible {
                                 Some(rsx! {
                                     div {
@@ -175,11 +167,8 @@ pub fn AnalyticsPanel() -> Element {
                     }
                 }
             }
-
-            // Chart
             div {
                 class: "analytics-chart",
-
                 if chart_data.is_empty() || chart_data.iter().all(|(_, points)| points.is_empty()) {
                     div {
                         class: "chart-empty",
