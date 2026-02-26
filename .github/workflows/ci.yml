@@ -366,7 +366,7 @@ jobs:
             # Without this, Maestro's UIAutomator2 polling during extendedWaitUntil slows
             # cold-start rendering from ~22 s to ~60 s, hitting the timeout boundary.
             adb shell monkey -p com.gfaure.logworkout -c android.intent.category.LAUNCHER 1
-            sleep 30
+            sleep 60
             MAESTRO_CLI_NO_ANALYTICS=1 maestro test maestro/
 
       - name: Upload diagnostics
