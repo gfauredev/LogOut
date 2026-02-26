@@ -1,7 +1,7 @@
 use crate::components::{ActiveTab, BottomNav, ExerciseCard};
 use crate::services::{exercise_db, storage};
-use crate::Route;
 use crate::ExerciseFocusSignal;
+use crate::Route;
 use dioxus::prelude::*;
 
 /// Number of exercises loaded per scroll increment.
