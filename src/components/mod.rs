@@ -1,7 +1,6 @@
 pub mod active_session;
 pub mod add_custom_exercise;
 pub mod analytics;
-pub mod analytics_panel;
 pub mod bottom_nav;
 pub mod completed_exercise_log;
 pub mod credits;
@@ -17,7 +16,6 @@ pub mod workout_log;
 pub use active_session::SessionView;
 pub use add_custom_exercise::AddCustomExercisePage;
 pub use analytics::AnalyticsPage;
-pub use analytics_panel::AnalyticsPanel;
 pub use bottom_nav::{ActiveTab, BottomNav};
 pub use completed_exercise_log::CompletedExerciseLog;
 pub use credits::CreditsPage;
