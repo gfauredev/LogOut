@@ -15,10 +15,7 @@ pub fn ExerciseCard(
     let image_count = exercise.images.len();
 
     rsx! {
-        article {
-            key: "{exercise.id}",
-            class: "exercise-card",
-
+        article { key: "{exercise.id}", class: "exercise-card",
             div {
                 class: "exercise-card__custom-header",
                 if is_custom {
@@ -57,8 +54,7 @@ pub fn ExerciseCard(
                     }
                 }
             }
-
-            h3 {
+            h2 {
                 class: "exercise-card__title",
                 onclick: move |_| {
                     let current = *show_instructions.read();
@@ -66,7 +62,6 @@ pub fn ExerciseCard(
                 },
                 "{exercise.name}"
             }
-
             if *show_instructions.read() && !exercise.instructions.is_empty() {
                 ol { class: "exercise-card__instructions",
                     for instruction in &exercise.instructions {
@@ -74,7 +69,6 @@ pub fn ExerciseCard(
                     }
                 }
             }
-
             if let Some(image_url) = exercise.get_image_url(*img_index.read()) {
                 img {
                     src: "{image_url}",
@@ -89,7 +83,6 @@ pub fn ExerciseCard(
                     },
                 }
             }
-
             div {
                 class: "tag-row",
                 span { class: "tag tag--category", "{exercise.category}" }
@@ -103,7 +96,6 @@ pub fn ExerciseCard(
                     span { class: "tag tag--level", "{level}" }
                 }
             }
-
             if !exercise.primary_muscles.is_empty() {
                 div {
                     class: "tag-row",
@@ -112,7 +104,6 @@ pub fn ExerciseCard(
                     }
                 }
             }
-
             if !exercise.secondary_muscles.is_empty() {
                 div {
                     class: "tag-row",

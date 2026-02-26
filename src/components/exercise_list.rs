@@ -132,14 +132,13 @@ pub fn ExerciseListPage() -> Element {
     let total = all_exercises.read().len();
 
     rsx! {
-        main { class: "container container--narrow",
-            header {
-                h1 { tabindex: 0, "📚 Exercise Database" }
-                p { "Browse {total} exercises" }
-            }
+        header {
+            h1 { tabindex: 0, "📚 Exercise Database" }
+            p { "Browse {total} exercises" }
+        }
+        main { class: "exercises",
             div { class: "form-group",
-                div {
-                    class: "search-with-add",
+                div { class: "search-with-add",
                     input {
                         r#type: "text",
                         placeholder: "Search exercises, muscles, or categories...",
