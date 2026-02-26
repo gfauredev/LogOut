@@ -4,15 +4,16 @@ lang: en
 
 <!--toc:start-->
 
-- [Structure](#structure)
-- [Development Server (with hot-reload)](#development-server-with-hot-reload)
-- [Web Build (PWA)](#web-build-pwa)
+- [Project Structure](#project-structure)
+- [Tooling](#tooling)
+- [Building & Running](#building-running)
   - [GitHub Pages deployment](#github-pages-deployment)
-- [Unit Testing](#unit-testing)
-- [End-to-End Testing](#end-to-end-testing)
-- [Code Quality Standards](#code-quality-standards)
-  - [Run quality checks locally](#run-quality-checks-locally)
+- [Code Quality Conventions](#code-quality-conventions)
+  - [Unit Testing](#unit-testing)
+  - [End-to-End Testing](#end-to-end-testing)
+  - [Documentation](#documentation)
 - [TODO](#todo)
+  - [Optimization & Technical](#optimization-technical)
 
 <!--toc:end-->
 
@@ -29,7 +30,9 @@ A simple, efficient and cross-platform workout logging application with
   - Easily add your custom exercises or customize existing ones
 - 📱 Mobile-first responsive design, bottom navigation bar, local-first
 
-## Structure
+## Project Structure
+
+<!-- TODO Update -->
 
 ```
 src/
@@ -45,13 +48,28 @@ public/
   sw.js         # Service worker (JavaScript, required by the browser SW spec)
 ```
 
-## Development Server (with hot-reload)
+## Tooling
 
-```sh
-dx serve # Serves at http://localhost:8080
-```
+| Function                      | Tool                   |
+| ----------------------------- | ---------------------- |
+| Rust compilation              | [rustc]                |
+| Build system                  | [Cargo]                |
+| Dependencies and environment  | [Nix]                  |
+| Versionning and collaboration | [Git] hosted on GitHub |
+| Unit tests                    | [Cargo test]           |
+| End-to-end tests (PWA)        | [Playwright]           |
+| End-to-end tests (Android)    | [Maestro]              |
+| Code coverage                 | [cargo llvm-cov]       |
+| Rust language assistance      | [rust-analyzer] (LSP)  |
+| Documentation from code       | [rustdoc]              |
+| Rust formatting               | [rustfmt]              |
+| Rust quality control          | [Clippy]               |
+| Rust debugging                | [lldb]                 |
+| Code edition                  | [VS Code], [Helix]…    |
 
-## Web Build (PWA)
+## Building & Running
+
+To build for web as a PWA, run
 
 ```sh
 dx build --platform web --release
@@ -59,12 +77,40 @@ dx build --platform web --release
 
 Output is written to `target/dx/log-workout/release/web/public/`.
 
+To serve the PWA locally with hot-reload during development, run
+
+```sh
+dx serve # Serves at http://localhost:8080
+```
+
 ### GitHub Pages deployment
 
 The PWA is deployed automatically on every push to `main` via
 `.github/workflows/deploy.yml` on `https://gfauredev.github.io/LogOut`.
 
-## Unit Testing
+## Code Quality Conventions
+
+Every pull request is validated by `.github/workflows/ci.yml`, ensuring that all
+five jobs pass before a PR can be merged.
+
+| Job            | Command                       | Requirement                                                 |
+| -------------- | ----------------------------- | ----------------------------------------------------------- |
+| **Formatting** | `cargo fmt --check`           | Code must match `rustfmt` style exactly                     |
+| **Linting**    | `cargo clippy -- -D warnings` | Zero Clippy warnings                                        |
+| **Unit tests** | `cargo llvm-cov …`            | All unit tests pass, covering more than 90% of the codebase |
+| **E2E tests**  | `npx playwright test`         | All Playwright tests pass                                   |
+| **PageSpeed**  | Lighthouse CLI                | Performance scores posted as PR comment                     |
+
+You can run them locally with the commands
+
+```sh
+cargo fmt --check # Formatting
+cargo clippy -- -D warnings # Linting
+cargo test # Unit tests
+npx playwright test # E2E tests (starts dev server)
+```
+
+### Unit Testing
 
 Unit tests cover pure-Rust model functions (formatting, parsing, serialization),
 service stubs, and utility helpers. They compile and run on the native target —
@@ -87,7 +133,7 @@ cargo llvm-cov --bin log-workout # Summary inline
 cargo llvm-cov --bin log-workout --lcov --output-path lcov.info # LCOV report
 ```
 
-## End-to-End Testing
+### End-to-End Testing
 
 End-to-end tests exercise the full application running with [Playwright]. They
 start `dx serve` automatically before the test run.
@@ -103,47 +149,43 @@ npx playwright test --headed # Run tests within a visible browser
 The `main` branch must always pass `100%` of E2E tests. When a test fails,
 Playwright captures a screenshot automatically and saves it to `test-results/`.
 
-## Code Quality Standards
+### Documentation
 
-Every pull request is validated by `.github/workflows/ci.yml`, ensuring that all
-five jobs pass before a PR can be merged.
+<!-- TODO -->
 
-| Job            | Command                       | Requirement                                                 |
-| -------------- | ----------------------------- | ----------------------------------------------------------- |
-| **Formatting** | `cargo fmt --check`           | Code must match `rustfmt` style exactly                     |
-| **Linting**    | `cargo clippy -- -D warnings` | Zero Clippy warnings                                        |
-| **Unit tests** | `cargo llvm-cov …`            | All unit tests pass, covering more than 90% of the codebase |
-| **E2E tests**  | `npx playwright test`         | All Playwright tests pass                                   |
-| **PageSpeed**  | Lighthouse CLI                | Performance scores posted as PR comment                     |
+### Other
 
-### Run quality checks locally
-
-```sh
-cargo fmt --check # Formatting
-cargo clippy -- -D warnings # Linting
-cargo test # Unit tests
-npx playwright test # E2E tests (starts dev server)
-```
+- Simple, flat structures are always preffered, do not nest if not necessary
+  - Especially in HTML, a node with only one child can be replaced by it
 
 ## TODO
 
+Always prefer simpler, leaner structure with less nesting
+
+- Active Session
+  - Add replay button on done exercises to quickly do another set
+  - Fix notification not sending on phone, not producing sound even with all
+    audio controls set to maximum
+  - Ensure on every app start that notification permission is granted and
+    display a toast warning if not
 - Past Sessions
   - Make clicking on an Exercise Tag bring to the corresponding Exercise in List
-- Make any toast last for only 3 seconds, consider using a common component
-- Sign Android app and make it properly installable
-- Make Maestro tests pass
+- Make toasts last only 3s (currently stuck), consider using common component
 
-### Optimization
+### Optimization & Technical
 
+- HTML structure, CSS
+  - Prefer HTML semantic hierarchy over classes
+  - Keep similar items styled by the same CSS
+  - Remove unused (dead) CSS
 - Remove any magic number, making then into clearly named constants
   - In Rust and (especially) in CSS
-- HTML structure, CSS
-  - DRY CSS rules, classes, make proper use of inheritance
-  - Remove unused (dead) CSS
+- Sign Android app and make it properly installable
+- Make Maestro tests pass
 - Split the SessionView god component into modular child components
 - Reduce allocations to the heap, especially in search loop
 - Improve indexedDB error handling with thiserror
-- Reduce boilerplate by using strum crate for enums serializations
+- Reduce boilerplate by using strum crate for enums serialization
 
 [Guilhem Fauré]: https://www.guilhemfau.re
 [free-exercise-db]: https://github.com/yuhonas/free-exercise-db
