@@ -105,7 +105,7 @@ pub fn AnalyticsPage() -> Element {
             h1 { "📊 Analytics" }
             p { "Track your progress over time" }
         }
-        main { class: "analytics",
+        main { class: "analytics-panel",
             section { class: "controls",
                 label { class: "form-label form-label--color", "Select Metric" }
                 select {
