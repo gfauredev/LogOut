@@ -516,6 +516,23 @@ pub(crate) mod native_storage {
     pub const STORE_CUSTOM_EXERCISES: &str = "custom_exercises";
     pub const STORE_EXERCISES: &str = "exercises";
 
+    const KNOWN_STORES: &[&str] = &[
+        STORE_WORKOUTS,
+        STORE_SESSIONS,
+        STORE_CUSTOM_EXERCISES,
+        STORE_EXERCISES,
+    ];
+
+    /// Validates `store_name` against the known store constants to prevent SQL
+    /// injection from unexpected callers.  Returns `Err` when the name is unknown.
+    fn validate_store(store_name: &str) -> Result<(), String> {
+        if KNOWN_STORES.contains(&store_name) {
+            Ok(())
+        } else {
+            Err(format!("Unknown store: {store_name}"))
+        }
+    }
+
     /// Returns the application data directory, creating it if necessary.
     pub fn data_dir() -> PathBuf {
         dirs::data_local_dir()
@@ -600,6 +617,7 @@ pub(crate) mod native_storage {
 
     /// Reads all items from a store, deserialising each row's JSON `data` column.
     pub fn get_all<T: DeserializeOwned>(store_name: &str) -> Result<Vec<T>, String> {
+        validate_store(store_name)?;
         let conn = open_db()?;
         let mut stmt = conn
             .prepare(&format!("SELECT data FROM {store_name}"))
@@ -610,7 +628,7 @@ pub(crate) mod native_storage {
             .filter_map(|r| r.ok())
             .filter_map(|data| {
                 serde_json::from_str::<T>(&data)
-                    .map_err(|e| log::warn!("Skipping corrupt SQLite row: {e}"))
+                    .inspect_err(|e| log::warn!("Skipping corrupt SQLite row: {e}"))
                     .ok()
             })
             .collect();
@@ -619,6 +637,7 @@ pub(crate) mod native_storage {
 
     /// Replaces the entire contents of a store with `items` in a single transaction.
     pub fn store_all<T: Serialize>(store_name: &str, items: &[T]) -> Result<(), String> {
+        validate_store(store_name)?;
         let conn = open_db()?;
         let tx = conn.unchecked_transaction().map_err(|e| e.to_string())?;
         tx.execute(&format!("DELETE FROM {store_name}"), [])
@@ -642,6 +661,7 @@ pub(crate) mod native_storage {
 
     /// Upserts one item (identified by `id`) into a store.
     pub fn put_item<T: Serialize>(store_name: &str, id: &str, item: &T) -> Result<(), String> {
+        validate_store(store_name)?;
         let conn = open_db()?;
         let data = serde_json::to_string(item).map_err(|e| e.to_string())?;
         conn.execute(
@@ -654,6 +674,7 @@ pub(crate) mod native_storage {
 
     /// Deletes the item with `id` from a store (no-op if absent).
     pub fn delete_item(store_name: &str, id: &str) -> Result<(), String> {
+        validate_store(store_name)?;
         let conn = open_db()?;
         conn.execute(
             &format!("DELETE FROM {store_name} WHERE id = ?1"),
