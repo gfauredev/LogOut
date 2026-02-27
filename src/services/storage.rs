@@ -1,4 +1,5 @@
 use crate::models::{Exercise, ExerciseLog, Workout, WorkoutSession};
+use crate::ToastSignal;
 use dioxus::prelude::*;
 
 #[cfg(target_arch = "wasm32")]
@@ -130,30 +131,46 @@ async fn load_storage_data() {
         let mut workouts_sig = use_workouts();
         let mut sessions_sig = use_sessions();
         let mut custom_sig = use_custom_exercises();
+        let mut toast = consume_context::<ToastSignal>().0;
 
         // First try IndexedDB, then fall back to localStorage for migration
         let mut from_idb = false;
 
-        if let Ok(workouts) = idb::get_all::<Workout>(idb::STORE_WORKOUTS).await {
-            if !workouts.is_empty() {
+        match idb::get_all::<Workout>(idb::STORE_WORKOUTS).await {
+            Ok(workouts) if !workouts.is_empty() => {
                 info!("Loaded {} workouts from IndexedDB", workouts.len());
                 workouts_sig.set(workouts);
                 from_idb = true;
             }
+            Err(e) => {
+                error!("Failed to load workouts from IndexedDB: {e}");
+                toast.set(Some(format!("⚠️ Failed to load workouts: {e}")));
+            }
+            _ => {}
         }
-        if let Ok(sessions) = idb::get_all::<WorkoutSession>(idb::STORE_SESSIONS).await {
-            if !sessions.is_empty() {
+        match idb::get_all::<WorkoutSession>(idb::STORE_SESSIONS).await {
+            Ok(sessions) if !sessions.is_empty() => {
                 info!("Loaded {} sessions from IndexedDB", sessions.len());
                 sessions_sig.set(sessions);
                 from_idb = true;
             }
+            Err(e) => {
+                error!("Failed to load sessions from IndexedDB: {e}");
+                toast.set(Some(format!("⚠️ Failed to load sessions: {e}")));
+            }
+            _ => {}
         }
-        if let Ok(custom) = idb::get_all::<Exercise>(idb::STORE_CUSTOM_EXERCISES).await {
-            if !custom.is_empty() {
+        match idb::get_all::<Exercise>(idb::STORE_CUSTOM_EXERCISES).await {
+            Ok(custom) if !custom.is_empty() => {
                 info!("Loaded {} custom exercises from IndexedDB", custom.len());
                 custom_sig.set(custom);
                 from_idb = true;
             }
+            Err(e) => {
+                error!("Failed to load custom exercises from IndexedDB: {e}");
+                toast.set(Some(format!("⚠️ Failed to load custom exercises: {e}")));
+            }
+            _ => {}
         }
 
         // Fall back to localStorage (one-time migration)
@@ -168,21 +185,40 @@ async fn load_storage_data() {
         let mut workouts_sig = use_workouts();
         let mut sessions_sig = use_sessions();
         let mut custom_sig = use_custom_exercises();
+        let mut toast = consume_context::<ToastSignal>().0;
 
-        let workouts = native_storage::get_all::<Workout>(native_storage::STORE_WORKOUTS);
-        if !workouts.is_empty() {
-            log::info!("Loaded {} workouts from local file", workouts.len());
-            workouts_sig.set(workouts);
+        match native_storage::get_all::<Workout>(native_storage::STORE_WORKOUTS) {
+            Ok(workouts) if !workouts.is_empty() => {
+                log::info!("Loaded {} workouts from storage", workouts.len());
+                workouts_sig.set(workouts);
+            }
+            Err(e) => {
+                log::error!("Failed to load workouts: {e}");
+                toast.set(Some(format!("⚠️ Failed to load workouts: {e}")));
+            }
+            _ => {}
         }
-        let sessions = native_storage::get_all::<WorkoutSession>(native_storage::STORE_SESSIONS);
-        if !sessions.is_empty() {
-            log::info!("Loaded {} sessions from local file", sessions.len());
-            sessions_sig.set(sessions);
+        match native_storage::get_all::<WorkoutSession>(native_storage::STORE_SESSIONS) {
+            Ok(sessions) if !sessions.is_empty() => {
+                log::info!("Loaded {} sessions from storage", sessions.len());
+                sessions_sig.set(sessions);
+            }
+            Err(e) => {
+                log::error!("Failed to load sessions: {e}");
+                toast.set(Some(format!("⚠️ Failed to load sessions: {e}")));
+            }
+            _ => {}
         }
-        let custom = native_storage::get_all::<Exercise>(native_storage::STORE_CUSTOM_EXERCISES);
-        if !custom.is_empty() {
-            log::info!("Loaded {} custom exercises from local file", custom.len());
-            custom_sig.set(custom);
+        match native_storage::get_all::<Exercise>(native_storage::STORE_CUSTOM_EXERCISES) {
+            Ok(custom) if !custom.is_empty() => {
+                log::info!("Loaded {} custom exercises from storage", custom.len());
+                custom_sig.set(custom);
+            }
+            Err(e) => {
+                log::error!("Failed to load custom exercises: {e}");
+                toast.set(Some(format!("⚠️ Failed to load custom exercises: {e}")));
+            }
+            _ => {}
         }
     }
 }
@@ -261,16 +297,23 @@ pub fn add_workout(workout: Workout) {
     sig.write().push(workout.clone());
 
     #[cfg(target_arch = "wasm32")]
-    spawn_local(async move {
-        if let Err(e) = idb::put_item(idb::STORE_WORKOUTS, &workout).await {
-            error!("Failed to persist workout: {e}");
-        }
-    });
+    {
+        let mut toast = consume_context::<ToastSignal>().0;
+        spawn_local(async move {
+            if let Err(e) = idb::put_item(idb::STORE_WORKOUTS, &workout).await {
+                error!("Failed to persist workout: {e}");
+                toast.set(Some(format!("⚠️ Failed to save workout: {e}")));
+            }
+        });
+    }
 
     #[cfg(not(target_arch = "wasm32"))]
     if let Err(e) = native_storage::put_item(native_storage::STORE_WORKOUTS, &workout.id, &workout)
     {
-        error!("Failed to persist workout: {e}");
+        log::error!("Failed to persist workout: {e}");
+        consume_context::<ToastSignal>()
+            .0
+            .set(Some(format!("⚠️ Failed to save workout: {e}")));
     }
 }
 
@@ -289,16 +332,23 @@ pub fn save_session(session: WorkoutSession) {
     // IndexedDB write is not cancelled when the calling component unmounts
     // (e.g. when finishing a session causes SessionView to be removed).
     #[cfg(target_arch = "wasm32")]
-    wasm_bindgen_futures::spawn_local(async move {
-        if let Err(e) = idb::put_item(idb::STORE_SESSIONS, &session).await {
-            error!("Failed to persist session: {e}");
-        }
-    });
+    {
+        let mut toast = consume_context::<ToastSignal>().0;
+        wasm_bindgen_futures::spawn_local(async move {
+            if let Err(e) = idb::put_item(idb::STORE_SESSIONS, &session).await {
+                error!("Failed to persist session: {e}");
+                toast.set(Some(format!("⚠️ Failed to save session: {e}")));
+            }
+        });
+    }
 
     #[cfg(not(target_arch = "wasm32"))]
     if let Err(e) = native_storage::put_item(native_storage::STORE_SESSIONS, &session.id, &session)
     {
-        error!("Failed to persist session: {e}");
+        log::error!("Failed to persist session: {e}");
+        consume_context::<ToastSignal>()
+            .0
+            .set(Some(format!("⚠️ Failed to save session: {e}")));
     }
 }
 
@@ -309,13 +359,22 @@ pub fn delete_session(id: &str) {
     #[cfg(target_arch = "wasm32")]
     {
         let id = id.to_owned();
+        let mut toast = consume_context::<ToastSignal>().0;
         spawn_local(async move {
-            let _ = idb::delete_item(idb::STORE_SESSIONS, &id).await;
+            if let Err(e) = idb::delete_item(idb::STORE_SESSIONS, &id).await {
+                error!("Failed to delete session: {e}");
+                toast.set(Some(format!("⚠️ Failed to delete session: {e}")));
+            }
         });
     }
 
     #[cfg(not(target_arch = "wasm32"))]
-    let _ = native_storage::delete_item(native_storage::STORE_SESSIONS, id);
+    if let Err(e) = native_storage::delete_item(native_storage::STORE_SESSIONS, id) {
+        log::error!("Failed to delete session: {e}");
+        consume_context::<ToastSignal>()
+            .0
+            .set(Some(format!("⚠️ Failed to delete session: {e}")));
+    }
 }
 
 pub fn add_custom_exercise(exercise: Exercise) {
@@ -323,11 +382,15 @@ pub fn add_custom_exercise(exercise: Exercise) {
     sig.write().push(exercise.clone());
 
     #[cfg(target_arch = "wasm32")]
-    spawn_local(async move {
-        if let Err(e) = idb::put_item(idb::STORE_CUSTOM_EXERCISES, &exercise).await {
-            error!("Failed to persist custom exercise: {e}");
-        }
-    });
+    {
+        let mut toast = consume_context::<ToastSignal>().0;
+        spawn_local(async move {
+            if let Err(e) = idb::put_item(idb::STORE_CUSTOM_EXERCISES, &exercise).await {
+                error!("Failed to persist custom exercise: {e}");
+                toast.set(Some(format!("⚠️ Failed to save exercise: {e}")));
+            }
+        });
+    }
 
     #[cfg(not(target_arch = "wasm32"))]
     if let Err(e) = native_storage::put_item(
@@ -335,7 +398,10 @@ pub fn add_custom_exercise(exercise: Exercise) {
         &exercise.id,
         &exercise,
     ) {
-        error!("Failed to persist custom exercise: {e}");
+        log::error!("Failed to persist custom exercise: {e}");
+        consume_context::<ToastSignal>()
+            .0
+            .set(Some(format!("⚠️ Failed to save exercise: {e}")));
     }
 }
 
@@ -349,11 +415,15 @@ pub fn update_custom_exercise(exercise: Exercise) {
     }
 
     #[cfg(target_arch = "wasm32")]
-    spawn_local(async move {
-        if let Err(e) = idb::put_item(idb::STORE_CUSTOM_EXERCISES, &exercise).await {
-            error!("Failed to persist updated custom exercise: {e}");
-        }
-    });
+    {
+        let mut toast = consume_context::<ToastSignal>().0;
+        spawn_local(async move {
+            if let Err(e) = idb::put_item(idb::STORE_CUSTOM_EXERCISES, &exercise).await {
+                error!("Failed to persist updated custom exercise: {e}");
+                toast.set(Some(format!("⚠️ Failed to update exercise: {e}")));
+            }
+        });
+    }
 
     #[cfg(not(target_arch = "wasm32"))]
     if let Err(e) = native_storage::put_item(
@@ -361,7 +431,10 @@ pub fn update_custom_exercise(exercise: Exercise) {
         &exercise.id,
         &exercise,
     ) {
-        error!("Failed to persist updated custom exercise: {e}");
+        log::error!("Failed to persist updated custom exercise: {e}");
+        consume_context::<ToastSignal>()
+            .0
+            .set(Some(format!("⚠️ Failed to update exercise: {e}")));
     }
 }
 
@@ -409,7 +482,7 @@ pub mod native_exercises {
     use crate::models::Exercise;
 
     pub fn get_all_exercises() -> Vec<Exercise> {
-        native_storage::get_all::<Exercise>(native_storage::STORE_EXERCISES)
+        native_storage::get_all::<Exercise>(native_storage::STORE_EXERCISES).unwrap_or_default()
     }
 
     pub fn store_all_exercises(exercises: &[Exercise]) {
@@ -420,19 +493,21 @@ pub mod native_exercises {
 }
 
 // ──────────────────────────────────────────
-// Native file-based storage (non-wasm platforms: Android / desktop)
+// Native SQLite-based storage (non-wasm platforms: Android / desktop)
 // ──────────────────────────────────────────
 
-/// File-backed JSON storage for Android and desktop builds.
+/// SQLite-backed storage for Android and desktop builds.
 ///
-/// Each "store" maps to a `<store>.json` file inside the app-specific data
-/// directory (`dirs::data_local_dir()/log-workout/`).  All writes are
-/// synchronous; files are small (KiB range) so this is acceptable.
+/// A single `log-workout.db` SQLite database file is kept inside the app-
+/// specific data directory (`dirs::data_local_dir()/log-workout/`).
+/// Each "store" maps to a table with columns `id TEXT PRIMARY KEY, data TEXT`.
+/// A separate `config` table holds arbitrary key/value string pairs.
 ///
-/// A separate `config.json` file holds key/value strings (e.g. the user-
-/// configured exercise-database URL and the last-fetch timestamp).
+/// On first launch, existing JSON files from the old file-based backend are
+/// automatically migrated into the database and then deleted.
 #[cfg(not(target_arch = "wasm32"))]
 pub(crate) mod native_storage {
+    use rusqlite::{params, Connection};
     use serde::{de::DeserializeOwned, Serialize};
     use std::path::PathBuf;
 
@@ -448,121 +523,176 @@ pub(crate) mod native_storage {
             .join("log-workout")
     }
 
-    fn store_path(store_name: &str) -> PathBuf {
-        data_dir().join(format!("{store_name}.json"))
+    fn db_path() -> PathBuf {
+        data_dir().join("log-workout.db")
     }
 
-    fn ensure_data_dir() -> Result<(), String> {
-        std::fs::create_dir_all(data_dir()).map_err(|e| e.to_string())
+    /// Opens (or creates) the SQLite database and ensures all required tables exist.
+    fn open_db() -> Result<Connection, String> {
+        std::fs::create_dir_all(data_dir()).map_err(|e| e.to_string())?;
+        let conn = Connection::open(db_path()).map_err(|e| e.to_string())?;
+        conn.execute_batch(
+            "CREATE TABLE IF NOT EXISTS workouts (id TEXT PRIMARY KEY, data TEXT NOT NULL);
+             CREATE TABLE IF NOT EXISTS sessions (id TEXT PRIMARY KEY, data TEXT NOT NULL);
+             CREATE TABLE IF NOT EXISTS custom_exercises (id TEXT PRIMARY KEY, data TEXT NOT NULL);
+             CREATE TABLE IF NOT EXISTS exercises (id TEXT PRIMARY KEY, data TEXT NOT NULL);
+             CREATE TABLE IF NOT EXISTS config (key TEXT PRIMARY KEY, value TEXT NOT NULL);",
+        )
+        .map_err(|e| e.to_string())?;
+        // Run one-time migration from old JSON files (no-op if already migrated).
+        migrate_from_json(&conn);
+        Ok(conn)
     }
 
-    /// Reads all items from a store file, returning an empty `Vec` on any error.
-    pub fn get_all<T: DeserializeOwned>(store_name: &str) -> Vec<T> {
-        std::fs::read_to_string(store_path(store_name))
-            .ok()
-            .and_then(|s| serde_json::from_str(&s).ok())
-            .unwrap_or_default()
+    /// One-time migration: reads any existing `<store>.json` files and inserts
+    /// their contents into SQLite, then deletes the JSON files.
+    fn migrate_from_json(conn: &Connection) {
+        for store in &[
+            STORE_WORKOUTS,
+            STORE_SESSIONS,
+            STORE_CUSTOM_EXERCISES,
+            STORE_EXERCISES,
+        ] {
+            let json_path = data_dir().join(format!("{store}.json"));
+            if !json_path.exists() {
+                continue;
+            }
+            let Ok(text) = std::fs::read_to_string(&json_path) else {
+                continue;
+            };
+            let Ok(items) = serde_json::from_str::<Vec<serde_json::Value>>(&text) else {
+                continue;
+            };
+            for item in &items {
+                let Some(id) = item.get("id").and_then(|v| v.as_str()) else {
+                    continue;
+                };
+                let Ok(data) = serde_json::to_string(item) else {
+                    continue;
+                };
+                let _ = conn.execute(
+                    &format!("INSERT OR IGNORE INTO {store} (id, data) VALUES (?1, ?2)"),
+                    params![id, data],
+                );
+            }
+            let _ = std::fs::remove_file(&json_path);
+            log::info!("Migrated {} from JSON to SQLite", store);
+        }
+        // Migrate config.json
+        let config_path = data_dir().join("config.json");
+        if config_path.exists() {
+            if let Ok(text) = std::fs::read_to_string(&config_path) {
+                if let Ok(serde_json::Value::Object(map)) = serde_json::from_str(&text) {
+                    for (key, val) in &map {
+                        if let Some(value) = val.as_str() {
+                            let _ = conn.execute(
+                                "INSERT OR IGNORE INTO config (key, value) VALUES (?1, ?2)",
+                                params![key, value],
+                            );
+                        }
+                    }
+                }
+            }
+            let _ = std::fs::remove_file(&config_path);
+            log::info!("Migrated config.json to SQLite");
+        }
     }
 
-    /// Replaces the entire contents of a store file with `items` in a single write.
-    /// Use this for bulk loads (e.g. the exercise catalogue) to avoid N individual reads.
+    /// Reads all items from a store, deserialising each row's JSON `data` column.
+    pub fn get_all<T: DeserializeOwned>(store_name: &str) -> Result<Vec<T>, String> {
+        let conn = open_db()?;
+        let mut stmt = conn
+            .prepare(&format!("SELECT data FROM {store_name}"))
+            .map_err(|e| e.to_string())?;
+        let items = stmt
+            .query_map([], |row| row.get::<_, String>(0))
+            .map_err(|e| e.to_string())?
+            .filter_map(|r| r.ok())
+            .filter_map(|data| {
+                serde_json::from_str::<T>(&data)
+                    .map_err(|e| log::warn!("Skipping corrupt SQLite row: {e}"))
+                    .ok()
+            })
+            .collect();
+        Ok(items)
+    }
+
+    /// Replaces the entire contents of a store with `items` in a single transaction.
     pub fn store_all<T: Serialize>(store_name: &str, items: &[T]) -> Result<(), String> {
-        ensure_data_dir()?;
-        std::fs::write(
-            store_path(store_name),
-            serde_json::to_string(items).map_err(|e| e.to_string())?,
-        )
-        .map_err(|e| e.to_string())
+        let conn = open_db()?;
+        let tx = conn.unchecked_transaction().map_err(|e| e.to_string())?;
+        tx.execute(&format!("DELETE FROM {store_name}"), [])
+            .map_err(|e| e.to_string())?;
+        for item in items {
+            let val = serde_json::to_value(item).map_err(|e| e.to_string())?;
+            let id = val
+                .get("id")
+                .and_then(|v| v.as_str())
+                .unwrap_or("")
+                .to_string();
+            let data = serde_json::to_string(item).map_err(|e| e.to_string())?;
+            tx.execute(
+                &format!("INSERT OR REPLACE INTO {store_name} (id, data) VALUES (?1, ?2)"),
+                params![id, data],
+            )
+            .map_err(|e| e.to_string())?;
+        }
+        tx.commit().map_err(|e| e.to_string())
     }
 
-    /// Upserts an item in a store file (matched by `id`).
+    /// Upserts one item (identified by `id`) into a store.
     pub fn put_item<T: Serialize>(store_name: &str, id: &str, item: &T) -> Result<(), String> {
-        ensure_data_dir()?;
-        let path = store_path(store_name);
-        let mut items: Vec<serde_json::Value> = std::fs::read_to_string(&path)
-            .ok()
-            .and_then(|s| serde_json::from_str(&s).ok())
-            .unwrap_or_default();
-        let new_val = serde_json::to_value(item).map_err(|e| e.to_string())?;
-        match items
-            .iter()
-            .position(|v| v.get("id").and_then(|v| v.as_str()) == Some(id))
-        {
-            Some(pos) => items[pos] = new_val,
-            None => items.push(new_val),
-        }
-        std::fs::write(
-            &path,
-            serde_json::to_string(&items).map_err(|e| e.to_string())?,
+        let conn = open_db()?;
+        let data = serde_json::to_string(item).map_err(|e| e.to_string())?;
+        conn.execute(
+            &format!("INSERT OR REPLACE INTO {store_name} (id, data) VALUES (?1, ?2)"),
+            params![id, data],
         )
-        .map_err(|e| e.to_string())
+        .map_err(|e| e.to_string())?;
+        Ok(())
     }
 
-    /// Removes an item from a store file by `id`.
+    /// Deletes the item with `id` from a store (no-op if absent).
     pub fn delete_item(store_name: &str, id: &str) -> Result<(), String> {
-        let path = store_path(store_name);
-        if !path.exists() {
-            return Ok(());
-        }
-        let mut items: Vec<serde_json::Value> = std::fs::read_to_string(&path)
-            .ok()
-            .and_then(|s| serde_json::from_str(&s).ok())
-            .unwrap_or_default();
-        items.retain(|v| v.get("id").and_then(|v| v.as_str()) != Some(id));
-        std::fs::write(
-            &path,
-            serde_json::to_string(&items).map_err(|e| e.to_string())?,
+        let conn = open_db()?;
+        conn.execute(
+            &format!("DELETE FROM {store_name} WHERE id = ?1"),
+            params![id],
         )
-        .map_err(|e| e.to_string())
+        .map_err(|e| e.to_string())?;
+        Ok(())
     }
 
-    // ── Config file (key/value strings) ──────────────────────────────────────
+    // ── Config (key/value pairs) ──────────────────────────────────────────────
 
-    const CONFIG_FILE: &str = "config.json";
-
-    fn config_path() -> PathBuf {
-        data_dir().join(CONFIG_FILE)
-    }
-
-    fn read_config() -> serde_json::Map<String, serde_json::Value> {
-        std::fs::read_to_string(config_path())
-            .ok()
-            .and_then(|s| serde_json::from_str::<serde_json::Value>(&s).ok())
-            .and_then(|v| v.as_object().cloned())
-            .unwrap_or_default()
-    }
-
-    fn write_config(map: &serde_json::Map<String, serde_json::Value>) -> Result<(), String> {
-        ensure_data_dir()?;
-        std::fs::write(
-            config_path(),
-            serde_json::to_string(map).map_err(|e| e.to_string())?,
-        )
-        .map_err(|e| e.to_string())
-    }
-
-    /// Returns the string value for `key` from the config file, or `None`.
+    /// Returns the string value for `key`, or `None` if absent.
     pub fn get_config_value(key: &str) -> Option<String> {
-        read_config()
-            .get(key)
-            .and_then(|v| v.as_str())
-            .map(|s| s.to_owned())
+        let conn = open_db().ok()?;
+        conn.query_row(
+            "SELECT value FROM config WHERE key = ?1",
+            params![key],
+            |row| row.get(0),
+        )
+        .ok()
     }
 
-    /// Sets `key` to `value` in the config file.
-    /// Passing an empty `value` removes the key (same semantics as
-    /// `localStorage.removeItem`).
+    /// Sets `key` to `value`.  Passing an empty `value` removes the key.
     pub fn set_config_value(key: &str, value: &str) -> Result<(), String> {
-        let mut map = read_config();
+        let conn = open_db()?;
         if value.is_empty() {
-            map.remove(key);
+            conn.execute("DELETE FROM config WHERE key = ?1", params![key])
+                .map_err(|e| e.to_string())?;
         } else {
-            map.insert(key.to_owned(), serde_json::Value::String(value.to_owned()));
+            conn.execute(
+                "INSERT OR REPLACE INTO config (key, value) VALUES (?1, ?2)",
+                params![key, value],
+            )
+            .map_err(|e| e.to_string())?;
         }
-        write_config(&map)
+        Ok(())
     }
 
-    /// Removes `key` from the config file.
+    /// Removes `key` from the config (no-op if absent).
     pub fn remove_config_value(key: &str) -> Result<(), String> {
         set_config_value(key, "")
     }
