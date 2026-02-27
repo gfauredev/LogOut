@@ -169,7 +169,8 @@ fn Toast() -> Element {
 /// The toast does **not** auto-dismiss so the user can act on it at their pace.
 #[component]
 fn NotificationPermissionToast() -> Element {
-    let show = use_context::<NotificationPermissionToastSignal>().0;
+    #[allow(unused_mut)]
+    let mut show = use_context::<NotificationPermissionToastSignal>().0;
 
     if !*show.read() {
         return rsx! {};
