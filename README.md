@@ -65,7 +65,7 @@ public/
 | Rust formatting               | [rustfmt]              |
 | Rust quality control          | [Clippy]               |
 | Rust debugging                | [lldb]                 |
-| Code edition                  | [VS Code], [Helix]…    |
+| Code edition                  | [Helix], [VS Code] …   |
 
 ## Building & Running
 
@@ -85,10 +85,10 @@ dx serve # Serves at http://localhost:8080
 
 ### GitHub Pages deployment
 
-The PWA is deployed automatically on every push to `main` via
-`.github/workflows/deploy.yml` on `https://gfauredev.github.io/LogOut`.
+The PWA is deployed automatically on every push to `main` by
+`.github/workflows/cd.yml` on `https://gfauredev.github.io/LogOut`.
 
-## Code Quality Conventions
+## Code Quality & Conventions
 
 Every pull request is validated by `.github/workflows/ci.yml`, ensuring that all
 five jobs pass before a PR can be merged.
@@ -160,17 +160,9 @@ Playwright captures a screenshot automatically and saves it to `test-results/`.
 
 ## TODO
 
-Always prefer simpler, leaner structure with less nesting
+Always prefer simpler, leaner structure with less nesting.
 
-- Active Session
-  - Add replay button on done exercises to quickly do another set
-  - Fix notification not sending on phone, not producing sound even with all
-    audio controls set to maximum
-  - Ensure on every app start that notification permission is granted and
-    display a toast warning if not
-- Past Sessions
-  - Make clicking on an Exercise Tag bring to the corresponding Exercise in List
-- Make toasts last only 3s (currently stuck), consider using common component
+Ensure that all edits respect code conventions and pass all checks.
 
 ### Optimization & Technical
 
@@ -179,20 +171,39 @@ Always prefer simpler, leaner structure with less nesting
   - Keep similar items styled by the same CSS
   - Remove unused (dead) CSS
 - Remove any magic number, making then into clearly named constants
-  - In Rust and (especially) in CSS
+  - In Rust and (especially) in CSS (:root variables)
 - Sign Android app and make it properly installable
-- Make Maestro tests pass
+- Maestro End-to-End Tests
+  - Make native Android tests pass
+  - Unifiying: consider replacing Playwright with Maestro (beta) web testing
 - Split the SessionView god component into modular child components
 - Reduce allocations to the heap, especially in search loop
 - Improve indexedDB error handling with thiserror
 - Reduce boilerplate by using strum crate for enums serialization
 
-[Guilhem Fauré]: https://www.guilhemfau.re
-[free-exercise-db]: https://github.com/yuhonas/free-exercise-db
 [800+ exercises]: https://github.com/yuhonas/free-exercise-db
-[Rust]: https://rust-lang.org
-[rust]: https://rust-lang.org
+[Cargo]: https://rust-lang.org
+[cargo test]: https://rust-lang.org
+[cargo llvm-cov]: https://llvm.org/docs/CommandGuide/llvm-cov.html
+[Clippy]: https://rust-lang.org
 [Dioxus]: https://dioxuslabs.com
-[dioxuslabs]: https://dioxuslabs.com
+[direnv]: https://direnv.net
+[`direnv`]: https://direnv.net
+[free-exercise-db]: https://github.com/yuhonas/free-exercise-db
+[Guilhem Fauré]: https://www.guilhemfau.re
+[Git]: https://git-scm.com
+[Helix]: https://helix-editor.com
+[lcov]: https://github.com/linux-test-project/lcov
+[lldb]: https://lldb.llvm.org
+[llvm-cov]: https://llvm.org/docs/CommandGuide/llvm-cov.html
+[Maestro]: https://maestro.dev
+[Nix]: https://nixos.org
 [Node.js]: https://nodejs.org
 [Playwright]: https://playwright.dev
+[Rust]: https://rust-lang.org
+[rust-analyzer]: https://rust-lang.org
+[rust]: https://rust-lang.org
+[rustc]: https://rust-lang.org
+[rustdoc]: https://rust-lang.org
+[rustfmt]: https://rust-lang.org
+[VS Code]: https://code.visualstudio.com
