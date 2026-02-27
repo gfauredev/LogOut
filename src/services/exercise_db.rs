@@ -91,9 +91,7 @@ pub(crate) fn record_fetch_timestamp() {
 #[cfg(not(target_arch = "wasm32"))]
 pub(crate) fn record_fetch_timestamp() {
     use crate::services::storage::native_storage;
-    let now = time::OffsetDateTime::now_utc()
-        .unix_timestamp()
-        .to_string();
+    let now = time::OffsetDateTime::now_utc().unix_timestamp().to_string();
     let _ = native_storage::set_config_value(LAST_FETCH_KEY, &now);
 }
 
