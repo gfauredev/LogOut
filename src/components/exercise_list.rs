@@ -98,28 +98,43 @@ pub fn ExerciseListPage() -> Element {
         results
     });
 
-    // Set up scroll-based auto-pagination: load more items as the user scrolls down.
-    // Uses eval to run JavaScript in the underlying renderer (browser or WebView).
-    // window.onscroll assignment (rather than addEventListener) avoids accumulating
+    // Set up scroll-based auto-pagination via a web-sys scroll event listener.
+    // Using `use_hook` ensures the listener is registered once per component mount.
+    // `window.onscroll` assignment (rather than addEventListener) avoids accumulating
     // duplicate listeners across component remounts.
-    let _scroll_listener = use_resource(move || async move {
-        let mut rx = dioxus::document::eval(
-            r#"window.onscroll = function() {
-                var scrollTop = window.scrollY || document.documentElement.scrollTop;
-                var clientHeight = window.innerHeight || document.documentElement.clientHeight;
-                var scrollHeight = document.documentElement.scrollHeight || document.body.scrollHeight;
-                if (scrollTop + clientHeight >= scrollHeight - 300) {
-                    dioxus.send(true);
+    #[cfg(target_arch = "wasm32")]
+    use_hook(move || {
+        use wasm_bindgen::prelude::*;
+        use wasm_bindgen::JsCast;
+
+        let closure = Closure::<dyn FnMut()>::new(move || {
+            let Some(window) = web_sys::window() else {
+                return;
+            };
+            let Some(doc) = window.document() else { return };
+            let Some(el) = doc.document_element() else {
+                return;
+            };
+
+            let scroll_top = window.scroll_y().unwrap_or(0.0);
+            let client_height = el.client_height() as f64;
+            let scroll_height = el.scroll_height() as f64;
+
+            if scroll_top + client_height >= scroll_height - 300.0 {
+                let cur = *visible_count.peek();
+                let total = exercises.peek().len();
+                if cur < total {
+                    visible_count.set(cur + PAGE_SIZE);
                 }
-            };"#,
-        );
-        while rx.recv::<bool>().await.is_ok() {
-            let cur = *visible_count.peek();
-            let total = exercises.peek().len();
-            if cur < total {
-                visible_count.set(cur + PAGE_SIZE);
             }
+        });
+
+        if let Some(window) = web_sys::window() {
+            let js_fn: &js_sys::Function = closure.as_ref().unchecked_ref();
+            let _ = js_sys::Reflect::set(&window, &"onscroll".into(), js_fn);
         }
+        // Leak the closure so it lives for the page lifetime.
+        closure.forget();
     });
 
     // Visible items, annotated with whether instructions should be shown.

@@ -520,22 +520,10 @@ impl WorkoutSession {
 }
 
 /// Get current timestamp compatible with WASM and native platforms.
-/// On WASM uses JavaScript's `Date.now()` via `js_sys`; on native uses
-/// `std::time::SystemTime`.
+/// Uses the `time` crate which handles both WASM (via `wasm-bindgen` feature)
+/// and native seamlessly.
 pub fn get_current_timestamp() -> u64 {
-    #[cfg(target_arch = "wasm32")]
-    {
-        (js_sys::Date::now() / 1000.0) as u64
-    }
-
-    #[cfg(not(target_arch = "wasm32"))]
-    {
-        use std::time::{SystemTime, UNIX_EPOCH};
-        SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .unwrap_or_default()
-            .as_secs()
-    }
+    time::OffsetDateTime::now_utc().unix_timestamp() as u64
 }
 
 /// Format a duration in seconds as HH:MM:SS or MM:SS

@@ -27,11 +27,8 @@ pub(super) fn send_notification(is_duration_bell: bool) {
             "logout-rest"
         });
         // Vibrate to ensure the notification is felt on mobile devices
-        let vibrate = js_sys::Array::new();
-        vibrate.push(&200.into());
-        vibrate.push(&100.into());
-        vibrate.push(&200.into());
-        opts.set_vibrate(&vibrate.into());
+        let vibrate = serde_wasm_bindgen::to_value(&[200u32, 100, 200]).unwrap();
+        opts.set_vibrate(&vibrate);
         let _ = Notification::new_with_options(t, &opts);
     };
 
