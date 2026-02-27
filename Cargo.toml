@@ -20,7 +20,7 @@ reqwest = { version = "0.12", default-features = false, features = ["json"] }
 web-sys = { version = "0.3", features = [
     "Window", "Storage", "Navigator",
     "ServiceWorkerContainer", "ServiceWorkerRegistration",
-    "Document", "EventTarget", "VisibilityState",
+    "Document", "Element", "EventTarget", "VisibilityState",
     "Notification", "NotificationPermission", "NotificationOptions",
 ] }
 wasm-bindgen = "0.2"

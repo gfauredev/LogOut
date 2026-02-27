@@ -19,10 +19,6 @@ const EXERCISE_DB_REFRESH_INTERVAL_SECS: u64 = 7 * 24 * 60 * 60;
 /// (localStorage on WASM, config file on native).
 const LAST_FETCH_KEY: &str = "exercise_db_last_fetch";
 
-/// Milliseconds per second – used when converting `Date.now()` to Unix seconds.
-#[cfg(target_arch = "wasm32")]
-const MILLIS_PER_SECOND: f64 = 1000.0;
-
 /// Returns the URL for the exercises JSON file.
 /// Available on all platforms; `get_exercise_db_url()` handles per-platform config.
 fn exercises_json_url() -> String {
@@ -53,7 +49,7 @@ pub(crate) fn is_refresh_due() -> bool {
     let Ok(last_fetch) = ts_str.parse::<f64>() else {
         return true;
     };
-    let now_secs = (js_sys::Date::now() / MILLIS_PER_SECOND) as u64;
+    let now_secs = time::OffsetDateTime::now_utc().unix_timestamp() as u64;
     let last_secs = last_fetch as u64;
     now_secs.saturating_sub(last_secs) >= EXERCISE_DB_REFRESH_INTERVAL_SECS
 }
@@ -65,10 +61,7 @@ pub(crate) fn is_refresh_due() -> bool {
     use crate::services::storage::native_storage;
     let last_fetch =
         native_storage::get_config_value(LAST_FETCH_KEY).and_then(|s| s.parse::<u64>().ok());
-    let now = std::time::SystemTime::now()
-        .duration_since(std::time::UNIX_EPOCH)
-        .unwrap_or_default()
-        .as_secs();
+    let now = time::OffsetDateTime::now_utc().unix_timestamp() as u64;
     is_refresh_due_for(now, last_fetch)
 }
 
@@ -90,7 +83,7 @@ pub(crate) fn record_fetch_timestamp() {
     let Ok(Some(storage)) = window.local_storage() else {
         return;
     };
-    let now = (js_sys::Date::now() / MILLIS_PER_SECOND).to_string();
+    let now = time::OffsetDateTime::now_utc().unix_timestamp().to_string();
     let _ = storage.set_item(LAST_FETCH_KEY, &now);
 }
 
@@ -98,10 +91,8 @@ pub(crate) fn record_fetch_timestamp() {
 #[cfg(not(target_arch = "wasm32"))]
 pub(crate) fn record_fetch_timestamp() {
     use crate::services::storage::native_storage;
-    let now = std::time::SystemTime::now()
-        .duration_since(std::time::UNIX_EPOCH)
-        .unwrap_or_default()
-        .as_secs()
+    let now = time::OffsetDateTime::now_utc()
+        .unix_timestamp()
         .to_string();
     let _ = native_storage::set_config_value(LAST_FETCH_KEY, &now);
 }
