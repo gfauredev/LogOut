@@ -1,3 +1,49 @@
+/* ===== Design Tokens ===== */
+:root {
+  /* ── Colour palette ── */
+  --color-primary: #667eea;
+  --color-secondary: #764ba2;
+  --color-accent: #4facfe;
+  --color-accent-light: #00f2fe;
+  --color-danger: #e74c3c;
+  --color-success: #43e97b;
+  --color-success-light: #38f9d7;
+  --color-pink: #f093fb;
+  --color-pink-dark: #f5576c;
+
+  /* ── Gradients ── */
+  --gradient-primary: linear-gradient(135deg, var(--color-primary) 0%, var(--color-secondary) 100%);
+  --gradient-accent: linear-gradient(135deg, var(--color-accent) 0%, var(--color-accent-light) 100%);
+  --gradient-success: linear-gradient(135deg, var(--color-success) 0%, var(--color-success-light) 100%);
+  --gradient-pink: linear-gradient(135deg, var(--color-pink) 0%, var(--color-pink-dark) 100%);
+
+  /* ── Surfaces ── */
+  --bg-body: #000;
+  --bg-card: #111;
+  --bg-elevated: #1a1a2e;
+  --bg-muted: #222;
+
+  /* ── Borders ── */
+  --border-color: #333;
+
+  /* ── Text ── */
+  --text-primary: #fff;
+  --text-secondary: #ccc;
+  --text-muted: #999;
+  --text-dim: #777;
+  --text-faint: #aaa;
+  --text-soft: #e0e0e0;
+
+  /* ── Radius ── */
+  --radius: .8em;
+
+  /* ── Muscles (tag colours) ── */
+  --muscle-primary-bg: #2d7a3a;
+  --muscle-primary-fg: #c8f7d0;
+  --muscle-secondary-bg: #1a4a4a;
+  --muscle-secondary-fg: #a8edea;
+}
+
 main > header, #main > header {
   margin-top: 1em;
   margin-bottom: 1em;
@@ -5,7 +51,7 @@ main > header, #main > header {
 }
 
 h1 {
-  color: #fff;
+  color: var(--text-primary);
 }
 
 /* ===== Global / Shared ===== */
@@ -53,7 +99,7 @@ main {
 /* ===== Sessions Tab (center tab home page) ===== */
 .sessions > p {
   text-align: center;
-  color: #777;
+  color: var(--text-dim);
   margin-top: 60px;
   font-size: 1.1em;
 }
@@ -67,9 +113,9 @@ main {
 /* ===== Session Card ===== */
 .session-card {
   padding: 16px;
-  border: 1px solid #333;
-  border-radius: .8em;
-  background: #111;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius);
+  background: var(--bg-card);
   box-shadow: 0 2px 6px rgba(0,0,0,0.3);
 }
 
@@ -82,7 +128,7 @@ main {
 
 .session-card__date {
   font-size: 0.85em;
-  color: #999;
+  color: var(--text-muted);
   font-weight: 500;
   text-transform: uppercase;
   letter-spacing: 0.04em;
@@ -95,7 +141,7 @@ main {
   cursor: pointer;
   font-size: 1.1em;
   padding: 4px 8px;
-  border-radius: .8em;
+  border-radius: var(--radius);
   opacity: 0.6;
   transition: opacity 0.2s;
 }
@@ -116,7 +162,7 @@ main {
   cursor: pointer;
   font-size: 1.1em;
   padding: 4px 8px;
-  border-radius: .8em;
+  border-radius: var(--radius);
   opacity: 0.6;
   transition: opacity 0.2s;
 }
@@ -128,7 +174,7 @@ main {
 .session-card__stat {
   font-size: 0.9em;
   font-weight: 600;
-  color: #ccc;
+  color: var(--text-secondary);
   white-space: nowrap;
 }
 
@@ -140,25 +186,25 @@ main {
 
 .session-card__exercise-name {
   padding: 3px 10px;
-  background: #1a1a2e;
-  color: #667eea;
-  border-radius: .8em;
+  background: var(--bg-elevated);
+  color: var(--color-primary);
+  border-radius: var(--radius);
   font-size: 0.85em;
 }
 
 .session-card__more {
   padding: 3px 10px;
-  background: #222;
-  color: #777;
-  border-radius: .8em;
+  background: var(--bg-muted);
+  color: var(--text-dim);
+  border-radius: var(--radius);
   font-size: 0.85em;
   border: none;
   cursor: pointer;
 }
 
 .session-card__more:hover {
-  background: #333;
-  color: #aaa;
+  background: var(--border-color);
+  color: var(--text-faint);
 }
 
 /* ===== Delete Confirmation Modal ===== */
@@ -175,8 +221,8 @@ main {
   left: 50%;
   transform: translate(-50%, -50%);
   background: #1a1a1a;
-  border: 1px solid #333;
-  border-radius: .8em;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius);
   padding: 24px;
   text-align: center;
   min-width: 260px;
@@ -196,10 +242,10 @@ main {
 
 .btn--danger {
   padding: 10px 20px;
-  background: #e74c3c;
-  color: #fff;
+  background: var(--color-danger);
+  color: var(--text-primary);
   border: none;
-  border-radius: .8em;
+  border-radius: var(--radius);
   font-weight: bold;
   cursor: pointer;
 }
@@ -209,9 +255,9 @@ main {
   display: block;
   width: 56px;
   height: 56px;
-  border-radius: .8em;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: #fff;
+  border-radius: var(--radius);
+  background: var(--gradient-primary);
+  color: var(--text-primary);
   font-size: 2em;
   border: none;
   cursor: pointer;
@@ -226,8 +272,8 @@ main {
   bottom: 0;
   margin: auto 0 0 0;
   height: max-contents;
-  background: #111;
-  border-top: 1px solid #333;
+  background: var(--bg-card);
+  border-top: 1px solid var(--border-color);
   display: flex;
   justify-content: space-around;
   align-items: stretch;
@@ -271,11 +317,11 @@ main {
 .form-input, .search-input, .form-select, .muscle-select {
   width: 100%;
   padding: .6em;
-  border: 1px solid #333;
-  border-radius: .8em;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius);
   font-size: 16px;
   box-sizing: border-box;
-  background: #111;
+  background: var(--bg-card);
   color: inherit;
   margin-bottom: 1em;
 }
@@ -283,7 +329,7 @@ main {
   flex: 1;
 }
 .form-input--invalid {
-  border-color: #e74c3c;
+  border-color: var(--color-danger);
 }
 .form-input--rest {
   width: 80px;
@@ -296,7 +342,7 @@ main {
 .form-select--chart {
   border-width: 2px;
   font-size: 14px;
-  background: #111;
+  background: var(--bg-card);
   cursor: pointer;
 }
 .muscle-select {
@@ -310,10 +356,10 @@ main {
   width: 42px;
   height: 42px;
   flex-shrink: 0;
-  background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
-  color: #fff;
+  background: var(--gradient-pink);
+  color: var(--text-primary);
   text-decoration: none;
-  border-radius: .8em;
+  border-radius: var(--radius);
   font-size: 1.6em;
   font-weight: bold;
   line-height: 1;
@@ -330,9 +376,9 @@ main {
 
 .exercise-card {
   padding: 15px;
-  border: 1px solid #333;
-  border-radius: .8em;
-  background: #111;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius);
+  background: var(--bg-card);
   box-shadow: 0 2px 4px rgba(0,0,0,0.2);
 }
 
@@ -340,19 +386,19 @@ main {
   margin: 0 0 8px 0;
   font-size: 1.2em;
   cursor: pointer;
-  color: #fff;
+  color: var(--text-primary);
 }
 
 .exercise-card__title:hover {
-  color: #667eea;
+  color: var(--color-primary);
 }
 
 .exercise-card__custom-badge {
   display: inline-block;
   padding: 2px 10px;
-  background: #764ba2;
-  color: #fff;
-  border-radius: .8em;
+  background: var(--color-secondary);
+  color: var(--text-primary);
+  border-radius: var(--radius);
   font-size: 0.75em;
   font-weight: bold;
   text-transform: uppercase;
@@ -364,7 +410,7 @@ main {
   width: auto;
   max-width: 100%;
   max-height: 20vh;
-  border-radius: .8em;
+  border-radius: var(--radius);
   margin: 0 auto 10px auto;
   cursor: pointer;
 }
@@ -378,37 +424,37 @@ main {
 
 .tag {
   padding: 3px 8px;
-  color: #fff;
-  border-radius: .8em;
+  color: var(--text-primary);
+  border-radius: var(--radius);
   font-size: 0.8em;
 }
 
-.tag--category { background: #667eea; }
-.tag--force    { background: #764ba2; }
-.tag--equipment { background: #4facfe; }
-.tag--level    { background: #f5576c; }
-.tag--muscle-primary { background: #2d7a3a; color: #c8f7d0; }
-.tag--muscle-secondary { background: #1a4a4a; color: #a8edea; }
+.tag--category { background: var(--color-primary); }
+.tag--force    { background: var(--color-secondary); }
+.tag--equipment { background: var(--color-accent); }
+.tag--level    { background: var(--color-pink-dark); }
+.tag--muscle-primary { background: var(--muscle-primary-bg); color: var(--muscle-primary-fg); }
+.tag--muscle-secondary { background: var(--muscle-secondary-bg); color: var(--muscle-secondary-fg); }
 
 .exercise-card__instructions {
   margin: 10px 0;
   padding-left: 20px;
-  color: #aaa;
+  color: var(--text-faint);
   font-size: 0.9em;
   line-height: 1.5;
 }
 
 .exercise-card__muscles {
-  color: #999;
+  color: var(--text-muted);
   font-size: 0.9em;
 }
 
 /* ===== Search Results Dropdown ===== */
 .search-results {
   margin-top: 10px;
-  border: 1px solid #333;
-  border-radius: .8em;
-  background: #111;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius);
+  background: var(--bg-card);
   max-height: 200px;
   overflow-y: auto;
 }
@@ -431,7 +477,7 @@ main {
 }
 
 .search-result-item:hover {
-  background: #1a1a2e;
+  background: var(--bg-elevated);
 }
 
 /* ===== Form Controls ===== */
@@ -449,42 +495,42 @@ main {
   display: block;
   margin-bottom: 5px;
   font-weight: bold;
-  color: #ccc;
+  color: var(--text-secondary);
 }
 
 .form-label--color {
-  color: #ccc;
+  color: var(--text-secondary);
   margin-bottom: 8px;
 }
 
 .input-small {
   padding: 8px;
-  border: 1px solid #333;
-  border-radius: .8em;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius);
   width: 80px;
-  background: #111;
+  background: var(--bg-card);
 }
 
 .input-medium {
   padding: 8px;
-  border: 1px solid #333;
-  border-radius: .8em;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius);
   width: 100px;
-  background: #111;
+  background: var(--bg-card);
 }
 
 /* ===== Buttons ===== */
 .btn {
   border: none;
-  border-radius: .8em;
+  border-radius: var(--radius);
   font-weight: bold;
   cursor: pointer;
 }
 
 .btn--primary {
   padding: 15px;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: #fff;
+  background: var(--gradient-primary);
+  color: var(--text-primary);
   font-size: 1.2em;
   width: 100%;
   margin-top: 10px;
@@ -492,20 +538,20 @@ main {
 
 .btn--accent {
   padding: 8px 16px;
-  background: #4facfe;
-  color: #fff;
+  background: var(--color-accent);
+  color: var(--text-primary);
   border: none;
-  border-radius: .8em;
+  border-radius: var(--radius);
   font-weight: bold;
   cursor: pointer;
 }
 
 .btn--accent-lg {
   padding: 10px 20px;
-  background: #4facfe;
-  color: #fff;
+  background: var(--color-accent);
+  color: var(--text-primary);
   border: none;
-  border-radius: .8em;
+  border-radius: var(--radius);
   font-weight: bold;
   cursor: pointer;
 }
@@ -513,10 +559,10 @@ main {
 .btn--complete {
   flex: 1;
   padding: 15px;
-  background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
-  color: #fff;
+  background: var(--gradient-accent);
+  color: var(--text-primary);
   border: none;
-  border-radius: .8em;
+  border-radius: var(--radius);
   font-size: 1.1em;
   font-weight: bold;
   cursor: pointer;
@@ -524,10 +570,10 @@ main {
 
 .btn--cancel {
   padding: 15px 25px;
-  background: #333;
-  color: #ccc;
+  background: var(--border-color);
+  color: var(--text-secondary);
   border: none;
-  border-radius: .8em;
+  border-radius: var(--radius);
   font-size: 1.1em;
   font-weight: bold;
   cursor: pointer;
@@ -535,10 +581,10 @@ main {
 
 .btn--finish {
   padding: 12px 24px;
-  background: #1a1a2e;
-  color: #667eea;
+  background: var(--bg-elevated);
+  color: var(--color-primary);
   border: none;
-  border-radius: .8em;
+  border-radius: var(--radius);
   font-size: 1.1em;
   font-weight: bold;
   cursor: pointer;
@@ -548,9 +594,9 @@ main {
 .btn--cancel-session {
   padding: 12px 24px;
   background: #2a1a1a;
-  color: #e74c3c;
+  color: var(--color-danger);
   border: none;
-  border-radius: .8em;
+  border-radius: var(--radius);
   font-size: 1.1em;
   font-weight: bold;
   cursor: pointer;
@@ -571,20 +617,20 @@ main {
 
 .set-line {
   padding: 5px 0;
-  color: #999;
+  color: var(--text-muted);
 }
 
 .workout-exercise-card {
   padding: 15px;
   margin-bottom: 15px;
-  border: 1px solid #333;
-  border-radius: .8em;
-  background: #111;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius);
+  background: var(--bg-card);
 }
 
 .workout-exercise-card__title {
   margin: 0 0 10px 0;
-  color: #fff;
+  color: var(--text-primary);
 }
 
 /* ===== Active Session ===== */
@@ -594,13 +640,13 @@ main {
   height: 100dvh;
   position: relative;
   margin: 0 auto;
-  color: #e0e0e0;
+  color: var(--text-soft);
 }
 
 .session-header {
   position: sticky;
   top: 0;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: var(--gradient-primary);
   color: white;
   padding: 15px 20px;
   box-shadow: 0 2px 10px rgba(0,0,0,0.3);
@@ -644,8 +690,8 @@ main {
 
 .exercise-form {
   padding: 20px;
-  border: 2px solid #667eea;
-  border-radius: .8em;
+  border: 2px solid var(--color-primary);
+  border-radius: var(--radius);
   background: #0a0a1e;
   margin-bottom: 20px;
   position: relative;
@@ -658,7 +704,7 @@ main {
 
 .exercise-form__title {
   margin-top: 0;
-  color: #fff;
+  color: var(--text-primary);
 }
 
 .exercise-form__last-duration {
@@ -674,9 +720,9 @@ main {
 .completed-log {
   padding: 15px;
   margin-bottom: 10px;
-  border: 1px solid #333;
-  border-radius: .8em;
-  background: #111;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius);
+  background: var(--bg-card);
 }
 
 .completed-log__header {
@@ -688,7 +734,7 @@ main {
 
 .completed-log__title {
   margin: 0;
-  color: #fff;
+  color: var(--text-primary);
 }
 
 .completed-log__actions {
@@ -710,8 +756,8 @@ main {
   cursor: pointer;
   font-size: 1em;
   padding: 2px 6px;
-  border-radius: .8em;
-  color: #667eea;
+  border-radius: var(--radius);
+  color: var(--color-primary);
   opacity: 0.7;
   transition: opacity 0.2s;
 }
@@ -726,7 +772,7 @@ main {
   cursor: pointer;
   font-size: 1em;
   padding: 2px 6px;
-  border-radius: .8em;
+  border-radius: var(--radius);
   opacity: 0.6;
   transition: opacity 0.2s;
 }
@@ -740,14 +786,14 @@ main {
   margin-bottom: 20px;
   padding: 14px;
   border: 1px dashed #4a4a6a;
-  border-radius: .8em;
+  border-radius: var(--radius);
   background: #0a0a1a;
 }
 
 .pending-exercises h3 {
   margin: 0 0 12px 0;
   font-size: 1em;
-  color: #999;
+  color: var(--text-muted);
   text-transform: uppercase;
   letter-spacing: 0.06em;
 }
@@ -768,15 +814,15 @@ main {
 .pending-exercise-item__name {
   flex: 1;
   font-weight: 500;
-  color: #ccc;
+  color: var(--text-secondary);
 }
 
 .btn--start {
   padding: 7px 14px;
-  background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
+  background: var(--gradient-success);
   color: #1a3a1a;
   border: none;
-  border-radius: .8em;
+  border-radius: var(--radius);
   font-weight: bold;
   font-size: 0.9em;
   cursor: pointer;
@@ -793,13 +839,13 @@ main {
   padding: 10px 16px;
   font-size: 2em;
   font-weight: bold;
-  color: #ccc;
+  color: var(--text-secondary);
   letter-spacing: 0.05em;
   margin-bottom: 12px;
 }
 
 .exercise-static-timer--reached {
-  color: #43e97b;
+  color: var(--color-success);
 }
 
 /* ===== Custom Exercise Card Header ===== */
@@ -812,29 +858,29 @@ main {
 
 .exercise-card__edit-btn {
   font-size: 0.85em;
-  color: #667eea;
+  color: var(--color-primary);
   text-decoration: none;
   padding: 2px 8px;
-  border-radius: .8em;
-  border: 1px solid #667eea;
+  border-radius: var(--radius);
+  border: 1px solid var(--color-primary);
 }
 
 .exercise-card__edit-btn:hover {
-  background: #1a1a2e;
+  background: var(--bg-elevated);
 }
 
 .completed-log__details {
-  color: #999;
+  color: var(--text-muted);
   font-size: 0.9em;
 }
 
 .add-custom-link {
   display: inline-block;
   padding: 12px 24px;
-  background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+  background: var(--gradient-pink);
   color: white;
   text-decoration: none;
-  border-radius: .8em;
+  border-radius: var(--radius);
   font-weight: bold;
 }
 
@@ -850,13 +896,13 @@ main {
   font-size: 1.2em;
   font-weight: bold;
   background: #0a1a0a;
-  color: #43e97b;
-  border-bottom: 1px solid #333;
+  color: var(--color-success);
+  border-bottom: 1px solid var(--border-color);
 }
 
 .rest-timer--exceeded {
   background: #1a0a0a;
-  color: #e74c3c;
+  color: var(--color-danger);
 }
 
 /* ===== Rest Duration Input ===== */
@@ -865,9 +911,9 @@ main {
   align-items: center;
   gap: 10px;
   padding: 10px 20px;
-  background: #111;
-  border-bottom: 1px solid #333;
-  color: #ccc;
+  background: var(--bg-card);
+  border-bottom: 1px solid var(--border-color);
+  color: var(--text-secondary);
   font-size: 0.9em;
 }
 
@@ -877,10 +923,10 @@ main {
   bottom: 80px;
   left: 50%;
   transform: translateX(-50%);
-  background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
+  background: var(--gradient-success);
   color: #1a3a1a;
   padding: 14px 28px;
-  border-radius: .8em;
+  border-radius: var(--radius);
   font-weight: bold;
   font-size: 1.1em;
   z-index: 3000;
@@ -897,7 +943,7 @@ main {
 .instructions-list {
   margin: 10px 0 0 0;
   padding-left: 20px;
-  color: #ccc;
+  color: var(--text-secondary);
   font-size: 0.9em;
   line-height: 1.6;
 }
@@ -918,20 +964,20 @@ main {
   height: 100%;
   display: flex;
   flex-direction: column;
-  background: #000;
+  background: var(--bg-body);
   overflow-y: auto;
 }
 
 .analytics-panel__header {
   padding: 20px;
-  border-bottom: 1px solid #333;
-  color: #e0e0e0;
+  border-bottom: 1px solid var(--border-color);
+  color: var(--text-soft);
   text-align: center;
 }
 
 .analytics-panel .controls {
   padding: 20px;
-  border-bottom: 1px solid #333;
+  border-bottom: 1px solid var(--border-color);
 }
 
 .analytics-panel .chart {
@@ -945,7 +991,7 @@ main {
   align-items: center;
   justify-content: center;
   height: 300px;
-  color: #777;
+  color: var(--text-dim);
   text-align: center;
 }
 
@@ -964,7 +1010,7 @@ main {
 .color-dot {
   width: 20px;
   height: 20px;
-  border-radius: .8em;
+  border-radius: var(--radius);
   flex-shrink: 0;
 }
 
@@ -975,14 +1021,14 @@ main {
 /* ===== Header / Navigation (used by exercise list and other pages) ===== */
 .back-link {
   text-decoration: none;
-  color: #667eea;
+  color: var(--color-primary);
   font-size: 1.1em;
 }
 
 .back-btn {
   background: none;
   border: none;
-  color: #667eea;
+  color: var(--color-primary);
   font-size: 1.1em;
   cursor: pointer;
   padding: 0;
@@ -1003,17 +1049,17 @@ main {
 
 .muscle-tag {
   padding: 6px 12px;
-  background: #667eea;
+  background: var(--color-primary);
   color: white;
-  border-radius: .8em;
+  border-radius: var(--radius);
   display: flex;
   align-items: center;
   gap: 8px;
 }
 
 .muscle-tag--secondary {
-  background: #1a4a4a;
-  color: #a8edea;
+  background: var(--muscle-secondary-bg);
+  color: var(--muscle-secondary-fg);
 }
 
 .muscle-tag__remove {
@@ -1037,25 +1083,25 @@ main {
 /* ===== Credits Page ===== */
 .credits article {
   padding: 16px;
-  border: 1px solid #333;
+  border: 1px solid var(--border-color);
   border-radius: 12px;
-  background: #111;
+  background: var(--bg-card);
   margin-bottom: 14px;
 }
 
 .credits h2 {
   margin: 0 0 8px 0;
-  color: #fff;
+  color: var(--text-primary);
 }
 
 .credits p {
   margin: 4px 0;
-  color: #999;
+  color: var(--text-muted);
   line-height: 1.5;
 }
 
 .credits a {
-  color: #667eea;
+  color: var(--color-primary);
   text-decoration: none;
 }
 
@@ -1066,7 +1112,7 @@ main {
 .credits ul {
   margin: 8px 0 0 0;
   padding-left: 20px;
-  color: #999;
+  color: var(--text-muted);
   line-height: 1.8;
 }
 
