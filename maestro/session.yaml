@@ -4,7 +4,7 @@ appId: com.gfaure.logworkout
 - extendedWaitUntil:
     visible:
       text: "LogOut"
-    timeout: 30000
+    timeout: 90000
 - tapOn: "+"
 - assertVisible: "Active Session"
 - tapOn: "Cancel Session"

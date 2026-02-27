@@ -15,6 +15,7 @@ export default defineConfig({
     baseURL: "http://localhost:8080",
     headless: true,
     screenshot: "only-on-failure",
+    permissions: ["notifications"],
   },
   projects: [
     {

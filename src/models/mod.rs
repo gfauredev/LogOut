@@ -913,6 +913,8 @@ mod tests {
 
     #[test]
     fn exercise_get_first_image_url_some() {
+        #[cfg(not(target_arch = "wasm32"))]
+        let _g = crate::services::storage::native_storage::test_lock();
         let ex = Exercise {
             id: "ex1".into(),
             name: "Squat".into(),
@@ -1330,6 +1332,8 @@ mod tests {
 
     #[test]
     fn exercise_get_image_url_by_index() {
+        #[cfg(not(target_arch = "wasm32"))]
+        let _g = crate::services::storage::native_storage::test_lock();
         let ex = Exercise {
             id: "ex1".into(),
             name: "Squat".into(),
