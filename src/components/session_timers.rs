@@ -5,12 +5,18 @@ use dioxus::prelude::*;
 #[cfg(target_arch = "wasm32")]
 const TIMER_TICK_MS: u32 = 1_000;
 
-/// Send a notification using the Web Notifications API.
-/// The system decides whether to play audio or vibrate.
+/// Send a notification using the Web Notifications API via the active service
+/// worker registration. Using the service-worker path instead of `new
+/// Notification()` is required on mobile browsers (Android Chrome) to fire
+/// sound and vibration correctly.
 /// `is_duration_bell` selects a different message to distinguish from rest alerts.
 #[cfg(target_arch = "wasm32")]
 pub(super) fn send_notification(is_duration_bell: bool) {
-    use web_sys::{Notification, NotificationOptions, NotificationPermission};
+    use web_sys::{NotificationOptions, NotificationPermission};
+
+    if web_sys::Notification::permission() != NotificationPermission::Granted {
+        return;
+    }
 
     let (title, body) = if is_duration_bell {
         ("Duration reached", "Target exercise duration reached!")
@@ -18,39 +24,39 @@ pub(super) fn send_notification(is_duration_bell: bool) {
         ("Rest over", "Time to start your next set!")
     };
 
-    let send = |t: &str, b: &str| {
-        let opts = NotificationOptions::new();
-        opts.set_body(b);
-        opts.set_tag(if is_duration_bell {
-            "logout-duration"
-        } else {
-            "logout-rest"
-        });
-        // Vibrate to ensure the notification is felt on mobile devices
-        let vibrate = serde_wasm_bindgen::to_value(&[200u32, 100, 200]).unwrap();
-        opts.set_vibrate(&vibrate);
-        let _ = Notification::new_with_options(t, &opts);
-    };
+    let title = title.to_string();
+    let opts = NotificationOptions::new();
+    opts.set_body(body);
+    opts.set_tag(if is_duration_bell {
+        "logout-duration"
+    } else {
+        "logout-rest"
+    });
+    // Vibrate is only honoured by service-worker notifications on mobile.
+    let vibrate = serde_wasm_bindgen::to_value(&[200u32, 100, 200]).unwrap();
+    opts.set_vibrate(&vibrate);
 
-    match Notification::permission() {
-        NotificationPermission::Granted => send(title, body),
-        NotificationPermission::Default => {
-            let title = title.to_string();
-            let body = body.to_string();
-            if let Ok(promise) = Notification::request_permission() {
-                wasm_bindgen_futures::spawn_local(async move {
-                    if wasm_bindgen_futures::JsFuture::from(promise).await.is_ok()
-                        && Notification::permission() == NotificationPermission::Granted
-                    {
-                        let opts = NotificationOptions::new();
-                        opts.set_body(&body);
-                        let _ = Notification::new_with_options(&title, &opts);
+    // Prefer service-worker showNotification (works on mobile); fall back to
+    // direct Notification API when no service worker is registered.
+    wasm_bindgen_futures::spawn_local(async move {
+        if let Some(window) = web_sys::window() {
+            let sw = window.navigator().service_worker();
+            if let Ok(ready_promise) = sw.ready() {
+                match wasm_bindgen_futures::JsFuture::from(ready_promise).await {
+                    Ok(reg_val) => {
+                        let reg: web_sys::ServiceWorkerRegistration = reg_val.into();
+                        let _ = reg.show_notification_with_options(&title, &opts);
+                        return;
                     }
-                });
+                    Err(e) => {
+                        log::warn!("Service worker not ready for notification: {:?}", e);
+                    }
+                }
             }
         }
-        _ => {}
-    }
+        // Fallback: direct Notification API (desktop / no service worker)
+        let _ = web_sys::Notification::new_with_options(&title, &opts);
+    });
 }
 
 // ── Isolated timer components ──────────────────────────────────────────────

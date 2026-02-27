@@ -18,6 +18,12 @@ pub struct CongratulationsSignal(pub Signal<bool>);
 #[derive(Clone, Copy)]
 pub struct ToastSignal(pub Signal<Option<String>>);
 
+/// Global context signal that, when `true`, shows a persistent notification-
+/// permission warning toast.  The toast prompts the user to click it in order
+/// to trigger the browser permission dialog.
+#[derive(Clone, Copy)]
+pub struct NotificationPermissionToastSignal(pub Signal<bool>);
+
 /// Auto-dismiss delay for toasts in milliseconds.
 const TOAST_DISMISS_MS: u32 = 3_000;
 
@@ -63,23 +69,20 @@ fn App() -> Element {
     services::exercise_db::provide_exercises();
     use_context_provider(|| CongratulationsSignal(Signal::new(false)));
     use_context_provider(|| ToastSignal(Signal::new(None)));
+    use_context_provider(|| NotificationPermissionToastSignal(Signal::new(false)));
     use_context_provider(|| ExerciseSearchSignal(Signal::new(None)));
 
-    // Ensure notification permission is granted on every app start
+    // Show the notification permission warning toast when permission has not yet
+    // been granted.  The toast prompts the user to click it — respecting browsers
+    // that require a user gesture before the permission dialog can be shown.
     #[cfg(all(target_arch = "wasm32", feature = "web-platform"))]
     {
-        let mut toast = use_context::<ToastSignal>().0;
-        // Run once on mount: `use_hook` ensures the check is only performed on first render.
+        let mut notif_toast = use_context::<NotificationPermissionToastSignal>().0;
         use_hook(move || {
             use web_sys::NotificationPermission;
             match web_sys::Notification::permission() {
-                NotificationPermission::Default => {
-                    let _ = web_sys::Notification::request_permission();
-                }
-                NotificationPermission::Denied => {
-                    toast.set(Some(
-                        "⚠️ Notifications are blocked – timer alerts won't fire".to_string(),
-                    ));
+                NotificationPermission::Default | NotificationPermission::Denied => {
+                    notif_toast.set(true);
                 }
                 _ => {}
             }
@@ -91,6 +94,7 @@ fn App() -> Element {
         Router::<Route> {}
         CongratulationsToast {}
         Toast {}
+        NotificationPermissionToast {}
     }
 }
 
@@ -156,4 +160,46 @@ fn Toast() -> Element {
     } else {
         rsx! {}
     }
+}
+
+/// Persistent notification-permission warning toast.
+///
+/// Shown when notification permission is `default` or `denied`.  Clicking the
+/// toast triggers the browser permission dialog (user gesture required by spec).
+/// The toast does **not** auto-dismiss so the user can act on it at their pace.
+#[component]
+fn NotificationPermissionToast() -> Element {
+    let show = use_context::<NotificationPermissionToastSignal>().0;
+
+    if !*show.read() {
+        return rsx! {};
+    }
+
+    #[cfg(all(target_arch = "wasm32", feature = "web-platform"))]
+    {
+        use web_sys::NotificationPermission;
+        let msg = match web_sys::Notification::permission() {
+            NotificationPermission::Denied => {
+                "⚠️ Notifications blocked — re-enable in browser settings for timer alerts"
+            }
+            _ => "⚠️ Tap here to enable notifications for timer alerts",
+        };
+        rsx! {
+            div {
+                class: "snackbar",
+                onclick: move |_| {
+                    show.set(false);
+                    if let Ok(promise) = web_sys::Notification::request_permission() {
+                        wasm_bindgen_futures::spawn_local(async move {
+                            let _ = wasm_bindgen_futures::JsFuture::from(promise).await;
+                        });
+                    }
+                },
+                "{msg}"
+            }
+        }
+    }
+
+    #[cfg(not(all(target_arch = "wasm32", feature = "web-platform")))]
+    rsx! {}
 }

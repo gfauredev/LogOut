@@ -523,7 +523,7 @@ impl WorkoutSession {
 /// Uses the `time` crate which handles both WASM (via `wasm-bindgen` feature)
 /// and native seamlessly.
 pub fn get_current_timestamp() -> u64 {
-    time::OffsetDateTime::now_utc().unix_timestamp() as u64
+    time::OffsetDateTime::now_utc().unix_timestamp().max(0) as u64
 }
 
 /// Format a duration in seconds as HH:MM:SS or MM:SS
