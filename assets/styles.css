@@ -466,7 +466,7 @@ main {
 .search-result-item {
   padding: 10px;
   cursor: pointer;
-  border-bottom: 1px solid #222;
+  border-bottom: 1px solid var(--bg-muted);
 }
 
 .search-result-item--flex {
@@ -803,7 +803,7 @@ main {
   align-items: center;
   gap: 10px;
   padding: 10px 0;
-  border-bottom: 1px solid #222;
+  border-bottom: 1px solid var(--bg-muted);
 }
 
 .pending-exercise-item:last-child {
