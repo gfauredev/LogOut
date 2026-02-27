@@ -53,6 +53,9 @@
         {
           default = pkgs.mkShell {
             # TODO Directly use packages’ inputs, keep DRY, keep SSOT
+            packages = with pkgs; [
+              strace
+            ];
             nativeBuildInputs = with pkgs; [
               pkg-config
               dioxus-cli
