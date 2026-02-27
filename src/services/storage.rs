@@ -717,4 +717,17 @@ pub(crate) mod native_storage {
     pub fn remove_config_value(key: &str) -> Result<(), String> {
         set_config_value(key, "")
     }
+
+    /// Global mutex that serialises all tests touching native storage.
+    ///
+    /// Tests in any module that read or write native-storage config or data
+    /// should hold this guard for their duration to prevent data races.
+    /// Recovers from a poisoned mutex so a previous test failure does not
+    /// cascade into every subsequent test that needs storage isolation.
+    #[cfg(test)]
+    pub(crate) fn test_lock() -> std::sync::MutexGuard<'static, ()> {
+        static LOCK: std::sync::OnceLock<std::sync::Mutex<()>> = std::sync::OnceLock::new();
+        let m = LOCK.get_or_init(|| std::sync::Mutex::new(()));
+        m.lock().unwrap_or_else(|e| e.into_inner())
+    }
 }

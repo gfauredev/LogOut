@@ -133,6 +133,7 @@ mod tests {
         // On non-wasm targets, get_exercise_db_url() must return the default constant.
         #[cfg(not(target_arch = "wasm32"))]
         {
+            let _g = crate::services::storage::native_storage::test_lock();
             let url = super::get_exercise_db_url();
             assert_eq!(url, super::EXERCISE_DB_BASE_URL);
         }

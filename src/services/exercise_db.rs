@@ -380,6 +380,8 @@ mod tests {
     fn exercises_json_url_uses_fork() {
         // The JSON endpoint must reference the gfauredev fork (SSOT).
         // exercises_json_url() is now cross-platform; test it on all targets.
+        #[cfg(not(target_arch = "wasm32"))]
+        let _g = crate::services::storage::native_storage::test_lock();
         let url = exercises_json_url();
         assert!(
             url.contains("gfauredev"),
@@ -511,15 +513,10 @@ mod tests {
     mod native {
         use super::*;
         use crate::services::storage::native_storage;
-        use std::sync::{Mutex, MutexGuard, OnceLock};
 
         /// One lock that serialises every test touching the shared config file.
-        fn cfg_lock() -> MutexGuard<'static, ()> {
-            static LOCK: OnceLock<Mutex<()>> = OnceLock::new();
-            let m = LOCK.get_or_init(|| Mutex::new(()));
-            // Recover from a poisoned mutex so a previous test failure does not
-            // cascade into every subsequent config-file test.
-            m.lock().unwrap_or_else(|e| e.into_inner())
+        fn cfg_lock() -> std::sync::MutexGuard<'static, ()> {
+            native_storage::test_lock()
         }
 
         /// RAII helper that removes a config key on drop, ensuring cleanup even
