@@ -326,8 +326,8 @@ jobs:
           # Disable animations for deterministic, faster tests.
           disable-animations: true
           script: |
-            # Force-enable WebView debugging at the OS level so Maestro can
-            # inspect the Dioxus WebView via CDP regardless of app flags.
+            # Disable WebView multi-process mode so Maestro can inspect the
+            # Dioxus WebView via CDP more reliably in the single-process path.
             adb shell settings put global webview_multiprocess 0
 
             adb install "${{ steps.apk.outputs.path }}"
