@@ -40,6 +40,164 @@ fn prefill_inputs_from_last_log(
     }
 }
 
+// ── Sub-components ─────────────────────────────────────────────────────────
+
+/// Sticky session header showing the elapsed timer and the cancel/finish button.
+#[component]
+fn SessionHeader(
+    session_start_time: u64,
+    session_is_active: bool,
+    exercise_count: usize,
+    on_click_timer: EventHandler<()>,
+    on_finish: EventHandler<()>,
+) -> Element {
+    rsx! {
+        header {
+            class: "session-header",
+            div {
+                h2 { class: "session-header__title", tabindex: 0, "⏱️ Active Session" }
+                p {
+                    class: "session-header__timer",
+                    onclick: move |_| on_click_timer.call(()),
+                    title: "Click to set rest duration",
+                    SessionDurationDisplay {
+                        session_start_time,
+                        session_is_active,
+                    }
+                }
+            }
+            div { class: "session-header__actions",
+                if exercise_count == 0 {
+                    button {
+                        onclick: move |_| on_finish.call(()),
+                        class: "btn--cancel-session",
+                        "Cancel Session"
+                    }
+                } else {
+                    button {
+                        onclick: move |_| on_finish.call(()),
+                        class: "btn--finish",
+                        "Finish Session"
+                    }
+                }
+            }
+        }
+    }
+}
+
+/// Collapsible form for configuring the rest duration between sets.
+#[component]
+fn RestDurationInput(
+    mut show_rest_input: Signal<bool>,
+    mut rest_input_value: Signal<String>,
+    mut rest_duration: Signal<u64>,
+) -> Element {
+    rsx! {
+        form {
+            class: "rest-duration-input",
+            aria_label: "Set rest duration",
+            onsubmit: move |evt| {
+                evt.prevent_default();
+                if let Ok(val) = rest_input_value.read().parse::<u64>() {
+                    rest_duration.set(val);
+                }
+                show_rest_input.set(false);
+            },
+            label { r#for: "rest-duration-field", "Rest duration (seconds):" }
+            input {
+                id: "rest-duration-field",
+                r#type: "number",
+                value: "{rest_input_value}",
+                oninput: move |evt| rest_input_value.set(evt.value()),
+                class: "form-input form-input--rest",
+            }
+            button {
+                r#type: "submit",
+                class: "btn btn--accent",
+                "Set"
+            }
+        }
+    }
+}
+
+/// List of exercises pre-added to the session that haven't been started yet.
+/// Fires `on_start` with the exercise ID when the user taps ▶ Start.
+#[component]
+fn PendingExercisesSection(pending_ids: Vec<String>, on_start: EventHandler<String>) -> Element {
+    let all_exercises = exercise_db::use_exercises();
+    let custom_exercises = storage::use_custom_exercises();
+    rsx! {
+        section { class: "pending-exercises",
+            h3 { "Pre-added Exercises" }
+            for exercise_id in pending_ids {
+                {
+                    let (name, category) = {
+                        let all = all_exercises.read();
+                        if let Some(ex) = exercise_db::get_exercise_by_id(&all, &exercise_id) {
+                            (ex.name.clone(), ex.category)
+                        } else {
+                            let custom = custom_exercises.read();
+                            if let Some(ex) = custom.iter().find(|e| e.id == exercise_id) {
+                                (ex.name.clone(), ex.category)
+                            } else {
+                                ("Unknown".to_string(), Category::Strength)
+                            }
+                        }
+                    };
+                    rsx! {
+                        article { class: "pending-exercise-item",
+                            span { class: "pending-exercise-item__name", "{name}" }
+                            span { class: "tag tag--category", "{category}" }
+                            button {
+                                class: "btn--start",
+                                onclick: {
+                                    let id = exercise_id.clone();
+                                    move |_| on_start.call(id.clone())
+                                },
+                                "▶ Start"
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+/// Antichronological list of completed exercise logs with replay and edit actions.
+/// Fires `on_replay` with the exercise ID when the user taps 🔁.
+#[component]
+fn CompletedExercisesSection(
+    session: Signal<WorkoutSession>,
+    no_exercise_active: bool,
+    on_replay: EventHandler<String>,
+) -> Element {
+    rsx! {
+        section {
+            h3 { "Completed Exercises" }
+            {
+                rsx! {
+                    for (idx, log) in session.read().exercise_logs.iter().enumerate().rev() {
+                        CompletedExerciseLog {
+                            key: "{idx}",
+                            idx,
+                            log: log.clone(),
+                            session,
+                            show_replay: no_exercise_active,
+                            on_replay: {
+                                let id = log.exercise_id.clone();
+                                move |_| on_replay.call(id.clone())
+                            },
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+// ── SessionView ────────────────────────────────────────────────────────────
+
 #[component]
 pub fn SessionView() -> Element {
     // use_sessions() must be called at the top level of the component, not inside
@@ -75,7 +233,7 @@ pub fn SessionView() -> Element {
     let mut distance_input = use_signal(String::new);
 
     // Rest duration setting (configurable by clicking the timer)
-    let mut rest_duration = use_signal(|| DEFAULT_REST_DURATION);
+    let rest_duration = use_signal(|| DEFAULT_REST_DURATION);
     let mut show_rest_input = use_signal(|| false);
     let mut rest_input_value = use_signal(|| DEFAULT_REST_DURATION.to_string());
 
@@ -123,7 +281,7 @@ pub fn SessionView() -> Element {
             // Add DB exercises, skipping any IDs already added from custom exercises
             let all = all_exercises.read();
             let db_results = exercise_db::search_exercises(&all, &query);
-            for ex in db_results.iter().take(10) {
+            for ex in db_results.into_iter().take(10) {
                 if seen_ids.insert(ex.id.clone()) {
                     results.push((ex.id.clone(), ex.name.clone(), ex.category));
                 }
@@ -133,25 +291,24 @@ pub fn SessionView() -> Element {
         }
     });
 
-    let mut start_exercise =
-        move |exercise_id: String, _exercise_name: String, _category: Category| {
-            prefill_inputs_from_last_log(&exercise_id, weight_input, reps_input, distance_input);
-            current_exercise_id.set(Some(exercise_id.clone()));
-            let exercise_start = get_current_timestamp();
-            current_exercise_start.set(Some(exercise_start));
-            search_query.set(String::new());
-            // Clear rest timer when starting a new exercise
-            rest_start_time.set(None);
-            rest_bell_count.set(0);
-            duration_bell_rung.set(false);
-            // Persist exercise start and cleared rest timer in session
-            let mut current_session = session.read().clone();
-            current_session.rest_start_time = None;
-            current_session.current_exercise_id = Some(exercise_id.clone());
-            current_session.current_exercise_start = Some(exercise_start);
-            session.set(current_session.clone());
-            storage::save_session(current_session);
-        };
+    let mut start_exercise = move |exercise_id: String| {
+        prefill_inputs_from_last_log(&exercise_id, weight_input, reps_input, distance_input);
+        current_exercise_id.set(Some(exercise_id.clone()));
+        let exercise_start = get_current_timestamp();
+        current_exercise_start.set(Some(exercise_start));
+        search_query.set(String::new());
+        // Clear rest timer when starting a new exercise
+        rest_start_time.set(None);
+        rest_bell_count.set(0);
+        duration_bell_rung.set(false);
+        // Persist exercise start and cleared rest timer in session
+        let mut current_session = session.read().clone();
+        current_session.rest_start_time = None;
+        current_session.current_exercise_id = Some(exercise_id.clone());
+        current_session.current_exercise_start = Some(exercise_start);
+        session.set(current_session.clone());
+        storage::save_session(current_session);
+    };
 
     let complete_exercise = move |_| {
         let exercise_id = match current_exercise_id.read().as_ref() {
@@ -260,67 +417,24 @@ pub fn SessionView() -> Element {
         section {
             class: "session-container",
 
-            // Sticky timer header
-            header {
-                class: "session-header",
-                div {
-                    h2 { class: "session-header__title", tabindex: 0, "⏱️ Active Session" }
-                    p {
-                        class: "session-header__timer",
-                        onclick: move |_| {
-                            rest_input_value.set(rest_duration.read().to_string());
-                            let current = *show_rest_input.read();
-                            show_rest_input.set(!current);
-                        },
-                        title: "Click to set rest duration",
-                        SessionDurationDisplay {
-                            session_start_time: session.read().start_time,
-                            session_is_active: session.read().is_active(),
-                        }
-                    }
-                }
-                div { class: "session-header__actions",
-                    if exercise_count == 0 {
-                        button {
-                            onclick: finish_session,
-                            class: "btn--cancel-session",
-                            "Cancel Session"
-                        }
-                    } else {
-                        button {
-                            onclick: finish_session,
-                            class: "btn--finish",
-                            "Finish Session"
-                        }
-                    }
-                }
+            SessionHeader {
+                session_start_time: session.read().start_time,
+                session_is_active: session.read().is_active(),
+                exercise_count,
+                on_click_timer: move |_| {
+                    rest_input_value.set(rest_duration.read().to_string());
+                    let current = *show_rest_input.read();
+                    show_rest_input.set(!current);
+                },
+                on_finish: finish_session,
             }
 
             // Rest duration input (shown when clicking timer)
             if *show_rest_input.read() {
-                form {
-                    class: "rest-duration-input",
-                    aria_label: "Set rest duration",
-                    onsubmit: move |evt| {
-                        evt.prevent_default();
-                        if let Ok(val) = rest_input_value.read().parse::<u64>() {
-                            rest_duration.set(val);
-                        }
-                        show_rest_input.set(false);
-                    },
-                    label { r#for: "rest-duration-field", "Rest duration (seconds):" }
-                    input {
-                        id: "rest-duration-field",
-                        r#type: "number",
-                        value: "{rest_input_value}",
-                        oninput: move |evt| rest_input_value.set(evt.value()),
-                        class: "form-input form-input--rest",
-                    }
-                    button {
-                        r#type: "submit",
-                        class: "btn btn--accent",
-                        "Set"
-                    }
+                RestDurationInput {
+                    show_rest_input,
+                    rest_input_value,
+                    rest_duration,
                 }
             }
 
@@ -339,72 +453,42 @@ pub fn SessionView() -> Element {
 
                 // Pending exercises (pre-added from a previous session)
                 if current_exercise_id.read().is_none() && !pending_ids().is_empty() {
-                    section { class: "pending-exercises",
-                        h3 { "Pre-added Exercises" }
-                        for exercise_id in pending_ids() {
-                            {
-                                let (name, category) = {
-                                    let all = all_exercises.read();
-                                    if let Some(ex) = exercise_db::get_exercise_by_id(&all, &exercise_id) {
-                                        (ex.name.clone(), ex.category)
-                                    } else {
-                                        let custom = custom_exercises.read();
-                                        if let Some(ex) = custom.iter().find(|e| e.id == exercise_id) {
-                                            (ex.name.clone(), ex.category)
-                                        } else {
-                                            ("Unknown".to_string(), Category::Strength)
-                                        }
-                                    }
-                                };
-                                rsx! {
-                                    article { class: "pending-exercise-item",
-                                        span { class: "pending-exercise-item__name", "{name}" }
-                                        span { class: "tag tag--category", "{category}" }
-                                        button {
-                                            class: "btn--start",
-                                            onclick: {
-                                                let id = exercise_id.clone();
-                                                move |_| {
-                                                    prefill_inputs_from_last_log(
-                                                        &id,
-                                                        weight_input,
-                                                        reps_input,
-                                                        distance_input,
-                                                    );
-                                                    // Remove from pending and save
-                                                    let mut current_session = session.read().clone();
-                                                    // Remove only the first occurrence so that repeated
-                                                    // exercises are consumed one at a time.
-                                                    let mut removed = false;
-                                                    current_session.pending_exercise_ids.retain(|x| {
-                                                        if !removed && x == &id {
-                                                            removed = true;
-                                                            false
-                                                        } else {
-                                                            true
-                                                        }
-                                                    });
-                                                    let pending_start = get_current_timestamp();
-                                                    current_session.rest_start_time = None;
-                                                    current_session.current_exercise_id = Some(id.clone());
-                                                    current_session.current_exercise_start = Some(pending_start);
-                                                    session.set(current_session.clone());
-                                                    storage::save_session(current_session);
-                                                    // Start the exercise
-                                                    current_exercise_id.set(Some(id.clone()));
-                                                    current_exercise_start.set(Some(pending_start));
-                                                    search_query.set(String::new());
-                                                    rest_start_time.set(None);
-                                                    rest_bell_count.set(0);
-                                                    duration_bell_rung.set(false);
-                                                }
-                                            },
-                                            "▶ Start"
-                                        }
-                                    }
+                    PendingExercisesSection {
+                        pending_ids: pending_ids(),
+                        on_start: move |exercise_id: String| {
+                            prefill_inputs_from_last_log(
+                                &exercise_id,
+                                weight_input,
+                                reps_input,
+                                distance_input,
+                            );
+                            // Remove from pending and save
+                            let mut current_session = session.read().clone();
+                            // Remove only the first occurrence so that repeated
+                            // exercises are consumed one at a time.
+                            let mut removed = false;
+                            current_session.pending_exercise_ids.retain(|x| {
+                                if !removed && x == &exercise_id {
+                                    removed = true;
+                                    false
+                                } else {
+                                    true
                                 }
-                            }
-                        }
+                            });
+                            let pending_start = get_current_timestamp();
+                            current_session.rest_start_time = None;
+                            current_session.current_exercise_id = Some(exercise_id.clone());
+                            current_session.current_exercise_start = Some(pending_start);
+                            session.set(current_session.clone());
+                            storage::save_session(current_session);
+                            // Start the exercise
+                            current_exercise_id.set(Some(exercise_id.clone()));
+                            current_exercise_start.set(Some(pending_start));
+                            search_query.set(String::new());
+                            rest_start_time.set(None);
+                            rest_bell_count.set(0);
+                            duration_bell_rung.set(false);
+                        },
                     }
                 }
 
@@ -434,7 +518,7 @@ pub fn SessionView() -> Element {
                                 for (id, name, category) in search_results() {
                                     div {
                                         key: "{id}",
-                                        onclick: move |_| start_exercise(id.clone(), name.clone(), category),
+                                        onclick: move |_| start_exercise(id.clone()),
                                         class: "search-result-item search-result-item--flex",
                                         span { "{name}" }
                                         span { class: "tag tag--category", "{category}" }
@@ -459,28 +543,10 @@ pub fn SessionView() -> Element {
 
                 // Completed exercises list (antichronological order)
                 if !session.read().exercise_logs.is_empty() {
-                    section {
-                        h3 { "Completed Exercises" }
-                        {
-                            let no_exercise_active = current_exercise_id.read().is_none();
-                            rsx! {
-                                for (idx, log) in session.read().exercise_logs.iter().enumerate().rev() {
-                                    CompletedExerciseLog {
-                                        key: "{idx}",
-                                        idx,
-                                        log: log.clone(),
-                                        session,
-                                        show_replay: no_exercise_active,
-                                        on_replay: {
-                                            let id = log.exercise_id.clone();
-                                            let name = log.exercise_name.clone();
-                                            let cat = log.category;
-                                            move |_| start_exercise(id.clone(), name.clone(), cat)
-                                        },
-                                    }
-                                }
-                            }
-                        }
+                    CompletedExercisesSection {
+                        session,
+                        no_exercise_active: current_exercise_id.read().is_none(),
+                        on_replay: move |exercise_id: String| start_exercise(exercise_id),
                     }
                 }
             }

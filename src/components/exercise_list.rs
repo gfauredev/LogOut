@@ -74,13 +74,13 @@ pub fn ExerciseListPage() -> Element {
             let custom_results = exercise_db::search_exercises(&custom, &query);
             for ex in custom_results {
                 if seen_ids.insert(ex.id.clone()) {
-                    results.push((ex, true));
+                    results.push((ex.clone(), true));
                 }
             }
             let db_results = exercise_db::search_exercises(&all, &query);
             for ex in db_results {
                 if seen_ids.insert(ex.id.clone()) {
-                    results.push((ex, false));
+                    results.push((ex.clone(), false));
                 }
             }
         }

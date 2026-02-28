@@ -137,7 +137,7 @@ pub(crate) async fn download_exercises() -> Result<Vec<Exercise>, String> {
 
 // ─── Synchronous accessors for use in components ───
 
-pub fn search_exercises(exercises: &[Exercise], query: &str) -> Vec<Exercise> {
+pub fn search_exercises<'a>(exercises: &'a [Exercise], query: &str) -> Vec<&'a Exercise> {
     let query_lower = query.to_lowercase();
     exercises
         .iter()
@@ -165,7 +165,6 @@ pub fn search_exercises(exercises: &[Exercise], query: &str) -> Vec<Exercise> {
                     .map(|l| l.as_str().contains(&query_lower))
                     .unwrap_or(false)
         })
-        .cloned()
         .collect()
 }
 

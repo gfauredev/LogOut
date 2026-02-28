@@ -363,10 +363,8 @@ jobs:
           script: |
             adb install "${{ steps.apk.outputs.path }}"
             # Pre-launch the app so the JVM and Chrome WebView warm up before Maestro starts.
-            # Without this, Maestro's UIAutomator2 polling during extendedWaitUntil slows
-            # cold-start rendering from ~22 s to ~60 s, hitting the timeout boundary.
+            # extendedWaitUntil in each flow dynamically waits up to 120 s for the first render.
             adb shell monkey -p com.gfaure.logworkout -c android.intent.category.LAUNCHER 1
-            sleep 60
             MAESTRO_CLI_NO_ANALYTICS=1 maestro test maestro/
 
       - name: Upload diagnostics
