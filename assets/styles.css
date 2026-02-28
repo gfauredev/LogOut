@@ -75,7 +75,6 @@ div#main {
   display: flex;
   flex-direction: column;
   min-height: 100dvh;
-  max-width: 550px;
   margin: 0 auto;
 }
 
@@ -270,7 +269,7 @@ main {
 .bottom-nav {
   position: sticky;
   bottom: 0;
-  margin: auto 0 0 0;
+  margin: auto auto 0 auto;
   height: max-contents;
   background: var(--bg-card);
   border-top: 1px solid var(--border-color);
