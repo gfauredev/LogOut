@@ -15,10 +15,11 @@ appId: com.gfaure.logworkout
 # Search for and select an exercise
 - tapOn: "Search for an exercise..."
 - inputText: "squat"
+# The exercise database is fetched from a remote URL on first load.
 - extendedWaitUntil:
     visible:
       text: "Barbell Squat"
-    timeout: 10000
+    timeout: 30000
 - tapOn: "Barbell Squat"
 
 # The exercise form is shown

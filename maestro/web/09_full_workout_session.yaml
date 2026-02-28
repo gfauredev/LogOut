@@ -17,11 +17,13 @@ url: http://localhost:8080
 - tapOn: "Search for an exercise..."
 - inputText: "bench press"
 
-# Wait for search results to appear and tap the first result
+# Wait for search results to appear and tap the first result.
+# The exercise database is fetched from a remote URL on first load,
+# so allow extra time for the download to complete.
 - extendedWaitUntil:
     visible:
       text: "Barbell Bench Press - Medium Grip"
-    timeout: 10000
+    timeout: 30000
 - tapOn: "Barbell Bench Press - Medium Grip"
 
 # The exercise form should now be visible
