@@ -229,9 +229,11 @@ jobs:
             curl -sf http://localhost:8080 > /dev/null && break
             sleep 1
           done
-          # Use --device chromium to explicitly select the Chromium web driver.
-          # Flow files use 'url:' field (Maestro 2.0+) for web test detection.
-          MAESTRO_CLI_NO_ANALYTICS=1 maestro test --device chromium maestro/web/
+          # Maestro's embedded ChromeDriver launches Chrome with a GUI.
+          # CI runners have no display, so wrap in xvfb-run to provide a
+          # virtual framebuffer and prevent "Chrome instance exited" errors.
+          MAESTRO_CLI_NO_ANALYTICS=1 xvfb-run --auto-servernum \
+            maestro test --device chromium maestro/web/
           TEST_EXIT=$?
           kill $SERVER_PID 2>/dev/null || true
           exit $TEST_EXIT
@@ -253,6 +255,8 @@ jobs:
   e2e-android:
     name: Android E2E Tests (Maestro)
     runs-on: ubuntu-latest
+    # Hard cap so the job never hangs if the emulator or Maestro stalls.
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
 
@@ -313,18 +317,25 @@ jobs:
         continue-on-error: true
         uses: reactivecircus/android-emulator-runner@v2
         with:
-          api-level: 33
+          api-level: 34
           arch: x86_64
-          # google_apis provides the Google Chrome WebView (chromium-based) with
-          # full Chrome DevTools Protocol (CDP) support. The default AOSP system
-          # image ships a stripped-down WebView that Maestro cannot inspect via
-          # CDP, causing all text assertions to time out.
+          # google_apis provides a Chrome-based WebView with full CDP support.
+          # The default AOSP image ships a stripped-down WebView that Maestro
+          # cannot inspect, causing all text assertions to time out.
           target: google_apis
+          # Disable animations for deterministic, faster tests.
+          disable-animations: true
           script: |
+            # Force-enable WebView debugging at the OS level so Maestro can
+            # inspect the Dioxus WebView via CDP regardless of app flags.
+            adb shell settings put global webview_multiprocess 0
+
             adb install "${{ steps.apk.outputs.path }}"
-            # Pre-launch the app so the JVM and Chrome WebView warm up before Maestro starts.
-            # extendedWaitUntil in each flow dynamically waits up to 120 s for the first render.
+
+            # Pre-launch the app and give the WebView time to initialise.
             adb shell monkey -p com.gfaure.logworkout -c android.intent.category.LAUNCHER 1
+            sleep 10
+
             MAESTRO_CLI_NO_ANALYTICS=1 maestro test maestro/android/
 
       - name: Upload diagnostics
