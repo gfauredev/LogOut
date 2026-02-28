@@ -162,24 +162,20 @@ Playwright captures a screenshot automatically and saves it to `test-results/`.
 
 Always prefer simpler, leaner structure with less nesting.
 
-- Notifications
-  - Fix notifications don’t fire on mobile, don’t do any sound even when allowed
-  - Request notification only by a direct user click on the warning toast
-    instead of aggressively at launch to respect browsers
-    - Indicate in the toast that the user should click it
-- Inform user of uncatched failures / errors (especially storage) with toasts
-- Clamp timestamps to 0 before casting
-- Use SQLite (rusqlite) for native storage instead of inneficiant JSON files
-
-Ensure that all edits respect code conventions and pass all checks.
-
-### Optimization & Technical
-
+- Reduce allocations to the heap (clone), especially in search loops
+  - Consider debouncing, using fuzzy search crate…
+- Split the SessionView god component into modular child components
+- Consider storing log by log rather than rewriting the whole session
 - Maestro End-to-End Tests
   - Make native Android tests pass
   - Unifiying: consider replacing Playwright with Maestro (beta) web testing
   - Use `extendedWaitUntil` commands to dynamically wait for the app's first
     render instead of hardcoded 60 seconds sleep
+
+Ensure that all edits respect code conventions and pass all checks.
+
+### Optimization & Technical
+
 - Sign Android app and make it properly installable
 - HTML structure, CSS
   - Prefer HTML semantic hierarchy over classes
@@ -187,8 +183,6 @@ Ensure that all edits respect code conventions and pass all checks.
   - Remove unused (dead) CSS
 - Remove any magic number, making then into clearly named constants
   - In Rust and (especially) in CSS (:root variables)
-- Reduce allocations to the heap (clone), especially in search loops
-- Split the SessionView god component into modular child components
 - Improve indexedDB error handling with thiserror
 - Reduce boilerplate by using strum crate for enums serialization
 
