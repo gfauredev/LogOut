@@ -5,15 +5,19 @@ lang: en
 <!--toc:start-->
 
 - [Project Structure](#project-structure)
-- [Tooling](#tooling)
+- [Tooling & Dependencies](#tooling-dependencies)
+  - [Development & Testing Tools](#development-testing-tools)
 - [Building & Running](#building-running)
+  - [Building the PWA](#building-the-pwa)
   - [GitHub Pages deployment](#github-pages-deployment)
-- [Code Quality Conventions](#code-quality-conventions)
+- [Code Quality & Conventions](#code-quality-conventions)
   - [Unit Testing](#unit-testing)
   - [End-to-End Testing](#end-to-end-testing)
   - [Documentation](#documentation)
+  - [Other](#other)
 - [TODO](#todo)
   - [Optimization & Technical](#optimization-technical)
+    - [To consider](#to-consider)
 
 <!--toc:end-->
 
@@ -25,30 +29,62 @@ A simple, efficient and cross-platform workout logging application with
 [800+ exercises] built-in, by [Guilhem Fauré].
 
 - 💪 Easily log workout sessions with sets, reps, weights, distances, durations
-- 📊 **Analytics panel** with line charts to track progress over time
+- 📊 Analytics panel with line charts to track progress over time
 - 🏋️ Browse the 870+ included exercises with search functionality
   - Easily add your custom exercises or customize existing ones
 - 📱 Mobile-first responsive design, bottom navigation bar, local-first
 
 ## Project Structure
 
-<!-- TODO Update -->
+The project follows a modular Rust structure for a Dioxus application:
 
-```
-src/
-  main.rs       # Application entry point and routing
-  models/       # Data models: exercises, sessions, sets, enums
-  services/     # Business: exercise DB, storage (IndexedDB), service worker
-  components/   # UI components: home, exercise list, session view, analytics
-  utils.rs      # Pure utility functions (date formatting, etc.)
-e2e/app.spec.ts   # Playwright end-to-end tests
-assets/styles.css # Application stylesheet
-public/
-  manifest.json # PWA manifest
-  sw.js         # Service worker (JavaScript, required by the browser SW spec)
+```text
+LogOut/
+├─ src/
+│  ├─ main.rs  App entry point, routing (Dioxus Router), global state management
+│  ├─ models/  Data models (Exercise, WorkoutSession, Enums) and unit-safe types (Weight, Distance)
+│  ├─ services/  Business logic and persistence layers
+│  │  ├─ storage.rs          Unified storage interface (IndexedDB on web, SQLite on native)
+│  │  ├─ exercise_db.rs      Exercise library management and search logic
+│  │  ├─ exercise_loader.rs  Logic for loading exercise data from JSON
+│  │  ├─ wake_lock.rs        Keeps the screen on during active workout sessions
+│  │  └─ service_worker.rs   Integration logic for the PWA service worker
+│  ├─ components/  Functional Dioxus UI components
+│  │  ├─ active_session.rs  Complex "Active Session" view with timers and logging
+│  │  ├─ home.rs            Main landing page with session history
+│  │  ├─ analytics.rs       Progress tracking with interactive charts
+│  │  └─ …                  Other modular UI components (BottomNav, ExerciseCard…)
+│  └─ utils.rs  Pure, side-effect-free utility functions (formatting, timestamps, URLs)
+├─ e2e/      Playwright end-to-end tests for progressive web app
+├─ maestro/  Maestro end-to-end tests for native mobile app
+├─ public/   PWA static assets required by the browser
+│  ├─ manifest.json  Web app manifest for PWA installation
+│  ├─ sw.js          JavaScript Service Worker for PWA
+│  └─ 404.html       Fallback page for single-page app routing
+├─ assets/       Application-wide static assets (styles.css…)
+├─ Cargo.toml    Rust manifest (dependencies, features, targets)
+├─ Dioxus.toml   Configuration for the Dioxus CLI (build, serve, platform options)
+├─ flake.nix     Nix flake for reproducible development environments
+└─ package.json  Node.js manifest for E2E testing tools (Playwright)
 ```
 
-## Tooling
+## Tooling & Dependencies
+
+| Library     | Role                                                                            |
+| ----------- | ------------------------------------------------------------------------------- |
+| [Dioxus]    | Main UI framework for building reactive components with a Rust-native DSL       |
+| [Serde]     | Serialization and deserialization framework for all data models and persistence |
+| [IndexedDB] | Local-first browser storage for workouts and custom exercises (via [Rexie])     |
+| [SQLite]    | Native-first storage for workout data on Android/Linux (via [Rusqlite])         |
+
+| Library   | Role                                                                           |
+| --------- | ------------------------------------------------------------------------------ |
+| [Reqwest] | Asynchronous HTTP client for loading exercise data and external assets         |
+| [Time]    | Type-safe date and time manipulation (UTC/Local offsets)                       |
+| [Tokio]   | Async runtime for the native application target.                               |
+| [Web-sys] | Low-level bindings to browser APIs (Service Worker, Notifications, Visibility) |
+
+### Development & Testing Tools
 
 | Function                      | Tool                   |
 | ----------------------------- | ---------------------- |
@@ -59,7 +95,7 @@ public/
 | Unit tests                    | [Cargo test]           |
 | End-to-end tests (PWA)        | [Playwright]           |
 | End-to-end tests (Android)    | [Maestro]              |
-| Code coverage                 | [cargo llvm-cov]       |
+| Code coverage                 | [cargo-llvm-cov]       |
 | Rust language assistance      | [rust-analyzer] (LSP)  |
 | Documentation from code       | [rustdoc]              |
 | Rust formatting               | [rustfmt]              |
@@ -68,6 +104,13 @@ public/
 | Code edition                  | [Helix], [VS Code] …   |
 
 ## Building & Running
+
+The project provides a [Nix] development shell with all required dependencies
+(Rust, Dioxus CLI, Android SDK…). With Nix installed, enter the shell with
+`nix develop`. Preferably, with Direnv installed, allow the automatic
+development shell loading with `direnv allow`.
+
+### Building the PWA
 
 To build for web as a PWA, run
 
@@ -151,7 +194,15 @@ Playwright captures a screenshot automatically and saves it to `test-results/`.
 
 ### Documentation
 
-<!-- TODO -->
+The project uses `rustdoc` for code documentation. To generate and open the
+documentation in your browser:
+
+```sh
+cargo doc --open
+```
+
+This generates HTML documentation for all internal modules, models, and
+services, providing a detailed view of the codebase's API.
 
 ### Other
 
@@ -162,53 +213,56 @@ Playwright captures a screenshot automatically and saves it to `test-results/`.
 
 Always prefer simpler, leaner structure with less nesting.
 
-- Reduce allocations to the heap (clone), especially in search loops
-  - Consider debouncing, using fuzzy search crate…
-- Split the SessionView god component into modular child components
-- Consider storing log by log rather than rewriting the whole session
-- Maestro End-to-End Tests
-  - Make native Android tests pass
-  - Unifiying: consider replacing Playwright with Maestro (beta) web testing
-  - Use `extendedWaitUntil` commands to dynamically wait for the app's first
-    render instead of hardcoded 60 seconds sleep
+- HTML structure, CSS
+  - Prefer HTML semantic hierarchy over classes
+  - Keep similar items styled by the same CSS
+  - Remove unused (dead) CSS
 
 Ensure that all edits respect code conventions and pass all checks.
 
 ### Optimization & Technical
 
 - Sign Android app and make it properly installable
-- HTML structure, CSS
-  - Prefer HTML semantic hierarchy over classes
-  - Keep similar items styled by the same CSS
-  - Remove unused (dead) CSS
-- Remove any magic number, making then into clearly named constants
-  - In Rust and (especially) in CSS (:root variables)
+- Storing log by log rather than rewriting the whole session
+
+#### To consider
+
+- Unifiying: replace Playwright with Maestro (beta) web testing
 - Improve indexedDB error handling with thiserror
 - Reduce boilerplate by using strum crate for enums serialization
 
 [800+ exercises]: https://github.com/yuhonas/free-exercise-db
-[Cargo]: https://rust-lang.org
-[cargo test]: https://rust-lang.org
-[cargo llvm-cov]: https://llvm.org/docs/CommandGuide/llvm-cov.html
-[Clippy]: https://rust-lang.org
-[Dioxus]: https://dioxuslabs.com
-[direnv]: https://direnv.net
-[`direnv`]: https://direnv.net
+[Cargo]: https://doc.rust-lang.org/cargo/
+[cargo test]: https://doc.rust-lang.org/cargo/commands/cargo-test.html
+[cargo-llvm-cov]: https://github.com/taiki-e/cargo-llvm-cov
+[Clippy]: https://github.com/rust-lang/rust-clippy
+[Dioxus]: https://dioxuslabs.com/
+[direnv]: https://direnv.net/
+[`direnv`]: https://direnv.net/
 [free-exercise-db]: https://github.com/yuhonas/free-exercise-db
 [Guilhem Fauré]: https://www.guilhemfau.re
-[Git]: https://git-scm.com
-[Helix]: https://helix-editor.com
+[Git]: https://git-scm.com/
+[Helix]: https://helix-editor.com/
 [lcov]: https://github.com/linux-test-project/lcov
-[lldb]: https://lldb.llvm.org
+[lldb]: https://lldb.llvm.org/
 [llvm-cov]: https://llvm.org/docs/CommandGuide/llvm-cov.html
-[Maestro]: https://maestro.dev
-[Nix]: https://nixos.org
-[Node.js]: https://nodejs.org
-[Playwright]: https://playwright.dev
-[Rust]: https://rust-lang.org
-[rust-analyzer]: https://rust-lang.org
-[rust]: https://rust-lang.org
-[rustc]: https://rust-lang.org
-[rustdoc]: https://rust-lang.org
-[rustfmt]: https://rust-lang.org
-[VS Code]: https://code.visualstudio.com
+[Maestro]: https://maestro.dev/
+[Nix]: https://nixos.org/
+[Node.js]: https://nodejs.org/
+[Playwright]: https://playwright.dev/
+[Rust]: https://www.rust-lang.org/
+[rust-analyzer]: https://rust-analyzer.github.io/
+[rust]: https://www.rust-lang.org/
+[rustc]: https://doc.rust-lang.org/rustc/
+[rustdoc]: https://doc.rust-lang.org/rustdoc/
+[rustfmt]: https://github.com/rust-lang/rustfmt
+[VS Code]: https://code.visualstudio.com/
+[Serde]: https://serde.rs/
+[IndexedDB]: https://developer.mozilla.org/en-US/docs/Web/API/IndexedDB_API
+[Rexie]: https://github.com/wasmerio/rexie
+[SQLite]: https://www.sqlite.org/index.html
+[Rusqlite]: https://github.com/rusqlite/rusqlite
+[Reqwest]: https://github.com/seanmonstar/reqwest
+[Time]: https://github.com/time-rs/time
+[Tokio]: https://tokio.rs/
+[Web-sys]: https://rustwasm.github.io/wasm-bindgen/web-sys/index.html
