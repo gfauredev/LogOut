@@ -1,4 +1,5 @@
-# Test: navigate to the exercise browser via the bottom navigation bar.
+# User Story 4 – Navigate to Exercise Browser (Android)
+# Navigate to the exercise database via the bottom navigation bar.
 appId: com.gfaure.logworkout
 ---
 - extendedWaitUntil:

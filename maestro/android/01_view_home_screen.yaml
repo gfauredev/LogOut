@@ -1,0 +1,13 @@
+# User Story 1 – View Home Screen (Android)
+# The app launches and displays the home screen with title and tagline.
+appId: com.gfaure.logworkout
+---
+- extendedWaitUntil:
+    visible:
+      text: "LogOut"
+    timeout: 120000
+- assertVisible: "Log your workOut"
+- assertVisible: "📚"
+- assertVisible: "💪"
+- assertVisible: "📊"
+- assertVisible: "ℹ️"

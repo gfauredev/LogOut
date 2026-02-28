@@ -1,0 +1,13 @@
+# User Story 5 – Search Exercises in Browser (Web PWA)
+# Search for exercises in the exercise database.
+appId: http://localhost:8080
+---
+- extendedWaitUntil:
+    visible:
+      text: "LogOut"
+    timeout: 120000
+- tapOn: "📚"
+- assertVisible: "Exercise Database"
+- tapOn: "Search exercises, muscles, or categories..."
+- inputText: "push"
+- assertVisible: "Exercise Database"

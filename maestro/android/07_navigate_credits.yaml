@@ -1,0 +1,10 @@
+# User Story 7 – Navigate to Credits (Android)
+# Navigate to the credits page via the bottom navigation bar.
+appId: com.gfaure.logworkout
+---
+- extendedWaitUntil:
+    visible:
+      text: "LogOut"
+    timeout: 120000
+- tapOn: "ℹ️"
+- assertVisible: "Credits"

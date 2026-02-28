@@ -1,0 +1,13 @@
+# User Story 8 – Search Exercises in Active Session (Web PWA)
+# Search for exercises while in an active workout session.
+appId: http://localhost:8080
+---
+- extendedWaitUntil:
+    visible:
+      text: "LogOut"
+    timeout: 120000
+- tapOn: "+"
+- assertVisible: "Active Session"
+- tapOn: "Search for an exercise..."
+- inputText: "squat"
+- assertVisible: "Active Session"

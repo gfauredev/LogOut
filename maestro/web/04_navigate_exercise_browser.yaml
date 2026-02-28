@@ -1,0 +1,12 @@
+# User Story 4 – Navigate to Exercise Browser (Web PWA)
+# Navigate to the exercise database via the bottom navigation bar.
+appId: http://localhost:8080
+---
+- extendedWaitUntil:
+    visible:
+      text: "LogOut"
+    timeout: 120000
+- tapOn: "📚"
+- assertVisible: "Exercise Database"
+- tapOn: "💪"
+- assertVisible: "LogOut"
