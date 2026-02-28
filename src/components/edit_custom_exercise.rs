@@ -14,7 +14,7 @@ pub fn EditCustomExercisePage(id: String) -> Element {
         Some(e) => e,
         None => {
             return rsx! {
-                div { class: "container container--form",
+                main { class: "container--form",
                     p { "Exercise not found." }
                     button {
                         onclick: move |_| navigator().go_back(),
@@ -68,16 +68,15 @@ pub fn EditCustomExercisePage(id: String) -> Element {
     };
 
     rsx! {
-        div {
-            class: "container container--form",
-            header {
-                button {
-                    onclick: move |_| navigator().go_back(),
-                    class: "back-btn",
-                    "← Back"
-                }
-                h1 { "Edit Exercise" }
+        header {
+            button {
+                onclick: move |_| navigator().go_back(),
+                class: "back-btn",
+                "← Back"
             }
+            h1 { "Edit Exercise" }
+        }
+        main { class: "container--form",
             ExerciseFormFields {
                 name_input,
                 category_input,

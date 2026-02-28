@@ -107,7 +107,7 @@ pub fn AnalyticsPage() -> Element {
         }
         main { class: "analytics-panel",
             section { class: "controls",
-                label { class: "form-label form-label--color", "Select Metric" }
+                label { class: "form-label", "Select Metric" }
                 select {
                     value: "{selected_metric:?}",
                     onchange: move |evt| {
@@ -125,7 +125,7 @@ pub fn AnalyticsPage() -> Element {
                     option { value: "Distance", "Distance (km)" }
                     option { value: "Duration", "Duration (minutes)" }
                 }
-                label { class: "form-label form-label--color", "Select Exercises (up to 8)" }
+                label { class: "form-label", "Select Exercises (up to 8)" }
                 for i in 0..8 {
                     {
                         let current_selections = selected_exercises.read().clone();

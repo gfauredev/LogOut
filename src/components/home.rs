@@ -112,9 +112,9 @@ fn SessionCard(session: WorkoutSession) -> Element {
 
     rsx! {
         article { class: "session-card",
-            div { class: "session-card__top-line",
-                time { class: "session-card__date", "{date_str}" }
-                span { class: "session-card__stat", "⏱ {format_time(duration)}" }
+            header {
+                time { "{date_str}" }
+                span { "⏱ {format_time(duration)}" }
                 div { class: "session-card__actions",
                     if !pending_ids.is_empty() {
                         button {
@@ -126,14 +126,12 @@ fn SessionCard(session: WorkoutSession) -> Element {
                                     storage::save_session(new_session);
                                 }
                             },
-                            class: "session-card__repeat-btn",
                             title: "Start a new session based on this one",
                             "🔄"
                         }
                     }
                     button {
                         onclick: move |_| show_delete_confirm.set(true),
-                        class: "session-card__delete-btn",
                         title: "Delete session",
                         "🗑️"
                     }

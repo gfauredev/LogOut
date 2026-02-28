@@ -45,18 +45,15 @@ pub fn AddCustomExercisePage() -> Element {
     };
 
     rsx! {
-        div {
-            class: "container container--form",
-
-            header {
-                button {
-                    onclick: move |_| navigator().go_back(),
-                    class: "back-btn",
-                    "← Back"
-                }
-                h1 { "Add Exercise" }
+        header {
+            button {
+                onclick: move |_| navigator().go_back(),
+                class: "back-btn",
+                "← Back"
             }
-
+            h1 { "Add Exercise" }
+        }
+        main { class: "container--form",
             ExerciseFormFields {
                 name_input,
                 category_input,
