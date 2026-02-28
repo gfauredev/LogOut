@@ -10,6 +10,7 @@
   --color-success-light: #38f9d7;
   --color-pink: #f093fb;
   --color-pink-dark: #f5576c;
+  --color-primary-light: #668efa;
 
   /* ── Gradients ── */
   --gradient-primary: linear-gradient(135deg, var(--color-primary) 0%, var(--color-secondary) 100%);
@@ -22,9 +23,16 @@
   --bg-card: #111;
   --bg-elevated: #1a1a2e;
   --bg-muted: #222;
+  --bg-modal: #1a1a1a;
+  --bg-session-form: #0a0a1e;
+  --bg-pending: #0a0a1a;
+  --bg-success-muted: #0a1a0a;
+  --bg-danger-muted: #2a1a1a;
+  --bg-danger-light: #1a0a0a;
 
   /* ── Borders ── */
   --border-color: #333;
+  --border-pending: #4a4a6a;
 
   /* ── Text ── */
   --text-primary: #fff;
@@ -37,6 +45,34 @@
   /* ── Radius ── */
   --radius: .8em;
 
+  /* ── Spacing ── */
+  --spacing-xs: 4px;
+  --spacing-sm: 12px;
+  --spacing-md: 20px;
+
+  /* ── Layout ── */
+  --nav-height: 70px;
+  --col-min-width: 350px;
+  --modal-min-width: 260px;
+  --btn-fab-size: 56px;
+  --btn-add-size: 42px;
+  --font-size-base: 1rem;
+
+  /* ── Shadows ── */
+  --shadow-card: 0 2px 6px rgba(0,0,0,.3);
+  --shadow-card-sm: 0 2px 4px rgba(0,0,0,.2);
+  --shadow-nav: 0 -2px 10px rgba(0,0,0,.3);
+  --shadow-primary: 0 4px 12px rgba(102, 126, 234, .5);
+  --shadow-toast: 0 4px 16px rgba(67, 233, 123, .4);
+  --shadow-btn: 0 2px 4px rgba(0,0,0,.3);
+
+  /* ── Z-indices ── */
+  --z-backdrop: 99;
+  --z-modal: 100;
+  --z-fab: 500;
+  --z-nav: 1000;
+  --z-toast: 3000;
+
   /* ── Muscles (tag colours) ── */
   --muscle-primary-bg: #2d7a3a;
   --muscle-primary-fg: #c8f7d0;
@@ -44,7 +80,7 @@
   --muscle-secondary-fg: #a8edea;
 }
 
-main > header, #main > header {
+#main > header {
   margin-top: 1em;
   margin-bottom: 1em;
   text-align: center;
@@ -54,24 +90,8 @@ h1 {
   color: var(--text-primary);
 }
 
-/* ===== Global / Shared ===== */
-.container {
-  padding: 20px;
-  margin: 0 auto;
-}
-
-.container--narrow {
-  margin: 0 auto;
-}
-
-.container--form {
-  margin: 0 auto;
-  width: 100%;
-  box-sizing: border-box;
-}
-
 /* ===== General Layout ===== */
-div#main {
+#main {
   display: flex;
   flex-direction: column;
   min-height: 100dvh;
@@ -80,52 +100,57 @@ div#main {
 
 main {
   flex: 1;
-  flex: 1;
-  padding-bottom: 70px;
+  padding-bottom: var(--nav-height);
   width: 100%;
   box-sizing: border-box;
 }
 
-
-/* ===== Page Layout (exercise, analytics pages) ===== */
-.page-container {
-  min-height: 100dvh;
-  display: flex;
-  flex-direction: column;
-  margin: 0 auto;
+.container--form {
+  padding: var(--spacing-md);
 }
 
 /* ===== Sessions Tab (center tab home page) ===== */
+.sessions {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(var(--col-min-width), 1fr));
+  gap: var(--spacing-sm);
+  padding: var(--spacing-md);
+}
+
+.sessions > p,
+.session-container {
+  grid-column: 1 / -1;
+}
+
 .sessions > p {
   text-align: center;
   color: var(--text-dim);
-  margin-top: 60px;
+  margin-top: var(--spacing-md);
   font-size: 1.1em;
 }
 
-.sessions-list {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
+/* ===== Exercises page ===== */
+.exercises {
+  padding: var(--spacing-md);
 }
 
 /* ===== Session Card ===== */
 .session-card {
-  padding: 16px;
+  padding: var(--spacing-md);
   border: 1px solid var(--border-color);
   border-radius: var(--radius);
   background: var(--bg-card);
-  box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+  box-shadow: var(--shadow-card);
 }
 
-.session-card__top-line {
+.session-card > header {
   display: flex;
   align-items: center;
-  gap: 10px;
-  margin-bottom: 10px;
+  gap: var(--spacing-xs);
+  margin-bottom: var(--spacing-xs);
 }
 
-.session-card__date {
+.session-card > header time {
   font-size: 0.85em;
   color: var(--text-muted);
   font-weight: 500;
@@ -134,47 +159,33 @@ main {
   flex: 1;
 }
 
-.session-card__delete-btn {
+.session-card > header span {
+  font-size: 0.9em;
+  font-weight: 600;
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+
+/* Shared ghost icon button style for session card actions */
+.session-card > header button {
   background: none;
   border: none;
   cursor: pointer;
   font-size: 1.1em;
-  padding: 4px 8px;
+  padding: var(--spacing-xs) 8px;
   border-radius: var(--radius);
   opacity: 0.6;
   transition: opacity 0.2s;
 }
 
-.session-card__delete-btn:hover {
+.session-card > header button:hover {
   opacity: 1;
 }
 
 .session-card__actions {
   display: flex;
-  gap: 4px;
+  gap: var(--spacing-xs);
   align-items: center;
-}
-
-.session-card__repeat-btn {
-  background: none;
-  border: none;
-  cursor: pointer;
-  font-size: 1.1em;
-  padding: 4px 8px;
-  border-radius: var(--radius);
-  opacity: 0.6;
-  transition: opacity 0.2s;
-}
-
-.session-card__repeat-btn:hover {
-  opacity: 1;
-}
-
-.session-card__stat {
-  font-size: 0.9em;
-  font-weight: 600;
-  color: var(--text-secondary);
-  white-space: nowrap;
 }
 
 .session-card__exercises {
@@ -211,7 +222,7 @@ main {
   position: fixed;
   inset: 0;
   background: rgba(0, 0, 0, 0.7);
-  z-index: 99;
+  z-index: var(--z-backdrop);
 }
 
 .delete-modal {
@@ -219,28 +230,28 @@ main {
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
-  background: #1a1a1a;
+  background: var(--bg-modal);
   border: 1px solid var(--border-color);
   border-radius: var(--radius);
-  padding: 24px;
+  padding: var(--spacing-md);
   text-align: center;
-  min-width: 260px;
-  z-index: 100;
+  min-width: var(--modal-min-width);
+  z-index: var(--z-modal);
 }
 
 .delete-modal p {
-  margin-bottom: 20px;
+  margin-bottom: var(--spacing-md);
   font-size: 1.1em;
 }
 
 .delete-modal__buttons {
   display: flex;
-  gap: 12px;
+  gap: var(--spacing-sm);
   justify-content: center;
 }
 
 .btn--danger {
-  padding: 10px 20px;
+  padding: 10px var(--spacing-md);
   background: var(--color-danger);
   color: var(--text-primary);
   border: none;
@@ -252,17 +263,17 @@ main {
 /* ===== Start Session ===== */
 .new-session-button {
   display: block;
-  width: 56px;
-  height: 56px;
+  width: var(--btn-fab-size);
+  height: var(--btn-fab-size);
   border-radius: var(--radius);
   background: var(--gradient-primary);
   color: var(--text-primary);
   font-size: 2em;
   border: none;
   cursor: pointer;
-  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.5);
-  z-index: 500;
-  margin: 16px auto;
+  box-shadow: var(--shadow-primary);
+  z-index: var(--z-fab);
+  margin: var(--spacing-sm) auto;
 }
 
 /* ===== Bottom Navigation ===== */
@@ -270,43 +281,28 @@ main {
   position: sticky;
   bottom: 0;
   margin: auto auto 0 auto;
-  height: max-contents;
+  height: max-content;
   background: var(--bg-card);
   border-top: 1px solid var(--border-color);
   display: flex;
   justify-content: space-around;
   align-items: stretch;
-  z-index: 1000;
-  box-shadow: 0 -2px 10px rgba(0,0,0,0.3);
+  z-index: var(--z-nav);
+  box-shadow: var(--shadow-nav);
 }
 
 .bottom-nav__tab {
-  padding: 16px;
+  padding: var(--spacing-sm);
   text-decoration: none;
+  font-size: 1.8em;
+  line-height: 1;
 }
 
 .bottom-nav__tab--active {
   transform: scale(1.25);
 }
 
-.bottom-nav__icon {
-  font-size: 1.8em;
-  line-height: 1;
-}
-
-.bottom-nav__label {
-  font-size: 0.65em;
-  line-height: 1;
-  margin-top: 2px;
-}
-
 /* ===== Search Input ===== */
-.search-wrapper {
-  margin-bottom: 20px;
-}
-
-
-/* Search bar with inline "+" add button */
 .search-with-add {
   display: flex;
   align-items: center;
@@ -318,7 +314,7 @@ main {
   padding: .6em;
   border: 1px solid var(--border-color);
   border-radius: var(--radius);
-  font-size: 16px;
+  font-size: var(--font-size-base);
   box-sizing: border-box;
   background: var(--bg-card);
   color: inherit;
@@ -352,8 +348,8 @@ main {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 42px;
-  height: 42px;
+  width: var(--btn-add-size);
+  height: var(--btn-add-size);
   flex-shrink: 0;
   background: var(--gradient-pink);
   color: var(--text-primary);
@@ -366,9 +362,9 @@ main {
 
 /* ===== Exercise List ===== */
 .exercise-list {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(var(--col-min-width), 1fr));
+  gap: var(--spacing-sm);
   width: 100%;
   box-sizing: border-box;
 }
@@ -378,33 +374,47 @@ main {
   border: 1px solid var(--border-color);
   border-radius: var(--radius);
   background: var(--bg-card);
-  box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+  box-shadow: var(--shadow-card-sm);
 }
 
-.exercise-card__title {
+.exercise-card__edit-btn {
+  font-size: 0.85em;
+  color: var(--color-primary);
+  text-decoration: none;
+  padding: 2px 8px;
+  border-radius: var(--radius);
+  border: 1px solid var(--color-primary);
+  background: none;
+  cursor: pointer;
+  float: right;
+  margin-bottom: 4px;
+}
+
+.exercise-card__edit-btn:hover {
+  background: var(--bg-elevated);
+}
+
+.exercise-card h2 {
   margin: 0 0 8px 0;
   font-size: 1.2em;
   cursor: pointer;
   color: var(--text-primary);
+  clear: both;
 }
 
-.exercise-card__title:hover {
+.exercise-card h2:hover {
   color: var(--color-primary);
 }
 
-.exercise-card__custom-badge {
-  display: inline-block;
-  padding: 2px 10px;
-  background: var(--color-secondary);
-  color: var(--text-primary);
-  border-radius: var(--radius);
-  font-size: 0.75em;
-  font-weight: bold;
-  text-transform: uppercase;
-  margin-bottom: 8px;
+.exercise-card ol {
+  margin: 10px 0;
+  padding-left: var(--spacing-md);
+  color: var(--text-faint);
+  font-size: 0.9em;
+  line-height: 1.5;
 }
 
-.exercise-card__image {
+.exercise-card img {
   display: block;
   width: auto;
   max-width: 100%;
@@ -435,22 +445,9 @@ main {
 .tag--muscle-primary { background: var(--muscle-primary-bg); color: var(--muscle-primary-fg); }
 .tag--muscle-secondary { background: var(--muscle-secondary-bg); color: var(--muscle-secondary-fg); }
 
-.exercise-card__instructions {
-  margin: 10px 0;
-  padding-left: 20px;
-  color: var(--text-faint);
-  font-size: 0.9em;
-  line-height: 1.5;
-}
-
-.exercise-card__muscles {
-  color: var(--text-muted);
-  font-size: 0.9em;
-}
-
 /* ===== Search Results Dropdown ===== */
 .search-results {
-  margin-top: 10px;
+  margin-top: var(--spacing-xs);
   border: 1px solid var(--border-color);
   border-radius: var(--radius);
   background: var(--bg-card);
@@ -472,7 +469,7 @@ main {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 12px;
+  padding: var(--spacing-sm);
 }
 
 .search-result-item:hover {
@@ -481,25 +478,20 @@ main {
 
 /* ===== Form Controls ===== */
 .form-group {
-  margin-bottom: 20px;
+  margin-bottom: var(--spacing-md);
 }
 
 .form-stack {
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: var(--spacing-md);
 }
 
 .form-label {
   display: block;
-  margin-bottom: 5px;
+  margin-bottom: 8px;
   font-weight: bold;
   color: var(--text-secondary);
-}
-
-.form-label--color {
-  color: var(--text-secondary);
-  margin-bottom: 8px;
 }
 
 .input-small {
@@ -532,27 +524,20 @@ main {
   color: var(--text-primary);
   font-size: 1.2em;
   width: 100%;
-  margin-top: 10px;
+  margin-top: var(--spacing-xs);
 }
 
+/* Shared style for accent buttons; --accent-lg uses larger padding */
 .btn--accent {
-  padding: 8px 16px;
+  padding: 8px var(--spacing-sm);
   background: var(--color-accent);
   color: var(--text-primary);
-  border: none;
   border-radius: var(--radius);
   font-weight: bold;
-  cursor: pointer;
 }
 
 .btn--accent-lg {
-  padding: 10px 20px;
-  background: var(--color-accent);
-  color: var(--text-primary);
-  border: none;
-  border-radius: var(--radius);
-  font-weight: bold;
-  cursor: pointer;
+  padding: 10px var(--spacing-md);
 }
 
 .btn--complete {
@@ -579,7 +564,7 @@ main {
 }
 
 .btn--finish {
-  padding: 12px 24px;
+  padding: var(--spacing-sm) var(--spacing-md);
   background: var(--bg-elevated);
   color: var(--color-primary);
   border: none;
@@ -587,30 +572,30 @@ main {
   font-size: 1.1em;
   font-weight: bold;
   cursor: pointer;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+  box-shadow: var(--shadow-btn);
 }
 
 .btn--cancel-session {
-  padding: 12px 24px;
-  background: #2a1a1a;
+  padding: var(--spacing-sm) var(--spacing-md);
+  background: var(--bg-danger-muted);
   color: var(--color-danger);
   border: none;
   border-radius: var(--radius);
   font-size: 1.1em;
   font-weight: bold;
   cursor: pointer;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+  box-shadow: var(--shadow-btn);
 }
 
 .btn-row {
   display: flex;
-  gap: 10px;
+  gap: var(--spacing-xs);
 }
 
 /* ===== Workout Log ===== */
 .set-inputs {
   display: flex;
-  gap: 10px;
+  gap: var(--spacing-xs);
   align-items: center;
 }
 
@@ -647,9 +632,9 @@ main {
   top: 0;
   background: var(--gradient-primary);
   color: white;
-  padding: 15px 20px;
-  box-shadow: 0 2px 10px rgba(0,0,0,0.3);
-  z-index: 100;
+  padding: 15px var(--spacing-md);
+  box-shadow: var(--shadow-card);
+  z-index: var(--z-modal);
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -681,18 +666,18 @@ main {
   flex: 1;
   overflow-y: auto;
   overflow-x: hidden;
-  padding: 20px;
-  padding-bottom: 80px;
+  padding: var(--spacing-md);
+  padding-bottom: var(--nav-height);
   margin: 0 auto;
   width: 100%;
 }
 
 .exercise-form {
-  padding: 20px;
+  padding: var(--spacing-md);
   border: 2px solid var(--color-primary);
   border-radius: var(--radius);
-  background: #0a0a1e;
-  margin-bottom: 20px;
+  background: var(--bg-session-form);
+  margin-bottom: var(--spacing-md);
   position: relative;
 }
 
@@ -707,18 +692,18 @@ main {
 }
 
 .exercise-form__last-duration {
-  color: #668efa;
+  color: var(--color-primary-light);
 }
 
 .exercise-form__fields {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: var(--spacing-sm);
 }
 
 .completed-log {
   padding: 15px;
-  margin-bottom: 10px;
+  margin-bottom: var(--spacing-xs);
   border: 1px solid var(--border-color);
   border-radius: var(--radius);
   background: var(--bg-card);
@@ -738,59 +723,52 @@ main {
 
 .completed-log__actions {
   display: flex;
-  gap: 4px;
+  gap: var(--spacing-xs);
   align-items: center;
 }
 
 .completed-log__edit-form {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: var(--spacing-xs);
   margin-top: 8px;
 }
 
-.btn--edit-log {
+/* Shared ghost icon button style for log actions */
+.btn--edit-log,
+.btn--delete-log,
+.btn--replay-log {
   background: none;
   border: none;
   cursor: pointer;
   font-size: 1em;
   padding: 2px 6px;
   border-radius: var(--radius);
-  color: var(--color-primary);
   opacity: 0.7;
   transition: opacity 0.2s;
 }
 
-.btn--edit-log:hover {
-  opacity: 1;
+.btn--edit-log {
+  color: var(--color-primary);
 }
 
-.btn--delete-log {
-  background: none;
-  border: none;
-  cursor: pointer;
-  font-size: 1em;
-  padding: 2px 6px;
-  border-radius: var(--radius);
-  opacity: 0.6;
-  transition: opacity 0.2s;
-}
-
-.btn--delete-log:hover {
+.btn--edit-log:hover,
+.btn--delete-log:hover,
+.btn--replay-log:hover {
   opacity: 1;
 }
 
 /* ===== Pending Exercises (pre-added from a previous session) ===== */
 .pending-exercises {
-  margin-bottom: 20px;
+  margin-bottom: var(--spacing-md);
   padding: 14px;
-  border: 1px dashed #4a4a6a;
+  border: 1px dashed var(--border-pending);
   border-radius: var(--radius);
-  background: #0a0a1a;
+  background: var(--bg-pending);
 }
 
 .pending-exercises h3 {
-  margin: 0 0 12px 0;
+  margin: 0 0 var(--spacing-sm) 0;
   font-size: 1em;
   color: var(--text-muted);
   text-transform: uppercase;
@@ -800,8 +778,8 @@ main {
 .pending-exercise-item {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 10px 0;
+  gap: var(--spacing-xs);
+  padding: var(--spacing-xs) 0;
   border-bottom: 1px solid var(--bg-muted);
 }
 
@@ -835,37 +813,16 @@ main {
 /* ===== Exercise Static Timer ===== */
 .exercise-static-timer {
   text-align: center;
-  padding: 10px 16px;
+  padding: var(--spacing-xs) var(--spacing-sm);
   font-size: 2em;
   font-weight: bold;
   color: var(--text-secondary);
   letter-spacing: 0.05em;
-  margin-bottom: 12px;
+  margin-bottom: var(--spacing-sm);
 }
 
 .exercise-static-timer--reached {
   color: var(--color-success);
-}
-
-/* ===== Custom Exercise Card Header ===== */
-.exercise-card__custom-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 8px;
-}
-
-.exercise-card__edit-btn {
-  font-size: 0.85em;
-  color: var(--color-primary);
-  text-decoration: none;
-  padding: 2px 8px;
-  border-radius: var(--radius);
-  border: 1px solid var(--color-primary);
-}
-
-.exercise-card__edit-btn:hover {
-  background: var(--bg-elevated);
 }
 
 .completed-log__details {
@@ -873,34 +830,19 @@ main {
   font-size: 0.9em;
 }
 
-.add-custom-link {
-  display: inline-block;
-  padding: 12px 24px;
-  background: var(--gradient-pink);
-  color: white;
-  text-decoration: none;
-  border-radius: var(--radius);
-  font-weight: bold;
-}
-
-.center-text {
-  text-align: center;
-  margin-top: 30px;
-}
-
 /* ===== Rest Timer ===== */
 .rest-timer {
   text-align: center;
-  padding: 10px 20px;
+  padding: var(--spacing-xs) var(--spacing-md);
   font-size: 1.2em;
   font-weight: bold;
-  background: #0a1a0a;
+  background: var(--bg-success-muted);
   color: var(--color-success);
   border-bottom: 1px solid var(--border-color);
 }
 
 .rest-timer--exceeded {
-  background: #1a0a0a;
+  background: var(--bg-danger-light);
   color: var(--color-danger);
 }
 
@@ -908,8 +850,8 @@ main {
 .rest-duration-input {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 10px 20px;
+  gap: var(--spacing-xs);
+  padding: var(--spacing-xs) var(--spacing-md);
   background: var(--bg-card);
   border-bottom: 1px solid var(--border-color);
   color: var(--text-secondary);
@@ -919,7 +861,7 @@ main {
 /* ===== Snackbar ===== */
 .snackbar {
   position: fixed;
-  bottom: 80px;
+  bottom: var(--nav-height);
   left: 50%;
   transform: translateX(-50%);
   background: var(--gradient-success);
@@ -928,8 +870,8 @@ main {
   border-radius: var(--radius);
   font-weight: bold;
   font-size: 1.1em;
-  z-index: 3000;
-  box-shadow: 0 4px 16px rgba(67, 233, 123, 0.4);
+  z-index: var(--z-toast);
+  box-shadow: var(--shadow-toast);
   animation: snackbar-in 0.3s ease-out;
 }
 
@@ -940,8 +882,8 @@ main {
 
 /* ===== Instructions List (Custom Exercise form) ===== */
 .instructions-list {
-  margin: 10px 0 0 0;
-  padding-left: 20px;
+  margin: var(--spacing-xs) 0 0 0;
+  padding-left: var(--spacing-md);
   color: var(--text-secondary);
   font-size: 0.9em;
   line-height: 1.6;
@@ -951,7 +893,7 @@ main {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 4px 0;
+  padding: var(--spacing-xs) 0;
 }
 
 /* ===== Analytics ===== */
@@ -967,21 +909,14 @@ main {
   overflow-y: auto;
 }
 
-.analytics-panel__header {
-  padding: 20px;
-  border-bottom: 1px solid var(--border-color);
-  color: var(--text-soft);
-  text-align: center;
-}
-
 .analytics-panel .controls {
-  padding: 20px;
+  padding: var(--spacing-md);
   border-bottom: 1px solid var(--border-color);
 }
 
 .analytics-panel .chart {
   flex: 1;
-  padding: 20px;
+  padding: var(--spacing-md);
   min-height: 300px;
 }
 
@@ -1000,10 +935,10 @@ main {
 }
 
 .exercise-selector {
-  margin-bottom: 10px;
+  margin-bottom: var(--spacing-xs);
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: var(--spacing-xs);
 }
 
 .color-dot {
@@ -1036,8 +971,8 @@ main {
 /* ===== Muscle Tags (Add Custom Exercise) ===== */
 .muscle-row {
   display: flex;
-  gap: 10px;
-  margin-bottom: 10px;
+  gap: var(--spacing-xs);
+  margin-bottom: var(--spacing-xs);
 }
 
 .muscle-tags {
@@ -1047,7 +982,7 @@ main {
 }
 
 .muscle-tag {
-  padding: 6px 12px;
+  padding: 6px var(--spacing-sm);
   background: var(--color-primary);
   color: white;
   border-radius: var(--radius);
@@ -1080,10 +1015,14 @@ main {
 }
 
 /* ===== Credits Page ===== */
+.credits {
+  padding: var(--spacing-md);
+}
+
 .credits article {
-  padding: 16px;
+  padding: var(--spacing-sm);
   border: 1px solid var(--border-color);
-  border-radius: 12px;
+  border-radius: var(--radius);
   background: var(--bg-card);
   margin-bottom: 14px;
 }
@@ -1094,7 +1033,7 @@ main {
 }
 
 .credits p {
-  margin: 4px 0;
+  margin: var(--spacing-xs) 0;
   color: var(--text-muted);
   line-height: 1.5;
 }
@@ -1110,7 +1049,7 @@ main {
 
 .credits ul {
   margin: 8px 0 0 0;
-  padding-left: 20px;
+  padding-left: var(--spacing-md);
   color: var(--text-muted);
   line-height: 1.8;
 }
