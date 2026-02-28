@@ -97,3 +97,33 @@ native Android build (`maestro/android/`).
 - An exercise search input is visible in the active session view
 - Typing a search term does not crash the app
 - The active session remains functional after searching
+
+## 9. Full Workout Session
+
+**As a** user,
+**I want to** complete a full workout session from start to finish,
+**so that** my workout is saved and visible in my session history.
+
+### Acceptance Criteria
+
+- Start a new session and search for an exercise (e.g. "bench press")
+- Select the exercise from the search results to open the exercise form
+- Input weight and repetitions, then complete the exercise
+- The completed exercise appears in the "Completed Exercises" section
+- Replay the exercise (another set) using the 🔁 button
+- Complete the second set successfully
+- Finish the session using "Finish Session"
+- The home screen shows the completed session with the exercise name
+
+## 10. Remove Exercise from Session
+
+**As a** user,
+**I want to** remove a completed exercise from my active session,
+**so that** I can correct mistakes or remove unwanted entries.
+
+### Acceptance Criteria
+
+- Complete an exercise in an active session
+- Delete the completed exercise using the 🗑️ button
+- The session reverts to an empty state showing "Cancel Session"
+- Cancelling the empty session returns to the home screen

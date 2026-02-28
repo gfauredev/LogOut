@@ -1,0 +1,55 @@
+# User Story 10 – Remove Exercise from Session (Web PWA)
+# Add an exercise, complete it, delete it, then cancel the empty session.
+url: http://localhost:8080
+---
+# Wait for the app to load
+- extendedWaitUntil:
+    visible:
+      text: "LogOut"
+    timeout: 120000
+
+# Start a new session
+- tapOn: "+"
+- assertVisible: "Active Session"
+
+# Search for and select an exercise
+- tapOn: "Search for an exercise..."
+- inputText: "squat"
+- extendedWaitUntil:
+    visible:
+      text: "Barbell Squat"
+    timeout: 10000
+- tapOn: "Barbell Squat"
+
+# The exercise form is shown
+- assertVisible: "Barbell Squat"
+- assertVisible: "Weight (kg)"
+- assertVisible: "Repetitions"
+
+# Input values and complete
+- tapOn:
+    text: "Optional"
+- inputText: "80"
+- tapOn:
+    text: "Reps"
+- inputText: "8"
+- tapOn: "✓ Complete Exercise"
+
+# Verify it appears in completed exercises
+- assertVisible: "Completed Exercises"
+- assertVisible: "Barbell Squat"
+
+# Delete the completed exercise using the 🗑️ button
+- tapOn: "🗑️"
+
+# After deleting the only exercise, the session should show Cancel Session
+- assertVisible: "Cancel Session"
+
+# Cancel the now-empty session
+- tapOn: "Cancel Session"
+
+# Verify we're back on the home screen
+- extendedWaitUntil:
+    visible:
+      text: "LogOut"
+    timeout: 10000

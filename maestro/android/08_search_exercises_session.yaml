@@ -11,3 +11,6 @@ appId: com.gfaure.logworkout
 - tapOn: "Search for an exercise..."
 - inputText: "squat"
 - assertVisible: "Active Session"
+# Clean up: cancel the empty session so subsequent tests start fresh
+- tapOn: "Cancel Session"
+- assertVisible: "LogOut"

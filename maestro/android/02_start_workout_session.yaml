@@ -8,3 +8,6 @@ appId: com.gfaure.logworkout
     timeout: 120000
 - tapOn: "+"
 - assertVisible: "Active Session"
+# Clean up: cancel the empty session so subsequent tests start fresh
+- tapOn: "Cancel Session"
+- assertVisible: "LogOut"

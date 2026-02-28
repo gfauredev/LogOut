@@ -1,6 +1,6 @@
 # User Story 6 – Navigate to Analytics (Web PWA)
 # Navigate to the analytics page via the bottom navigation bar.
-appId: http://localhost:8080
+url: http://localhost:8080
 ---
 - extendedWaitUntil:
     visible:
