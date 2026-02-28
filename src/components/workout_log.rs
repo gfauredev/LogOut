@@ -23,6 +23,7 @@ pub fn WorkoutLogPage() -> Element {
             exercise_db::search_exercises(&all, &query)
                 .into_iter()
                 .take(10)
+                .cloned()
                 .collect::<Vec<_>>()
         }
     });

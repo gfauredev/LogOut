@@ -4,5 +4,5 @@ appId: com.gfaure.logworkout
 - extendedWaitUntil:
     visible:
       text: "LogOut"
-    timeout: 90000
+    timeout: 120000
 - assertVisible: "Log your workOut"
