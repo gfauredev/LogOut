@@ -1,0 +1,10 @@
+# User Story 2 – Start Workout Session (Android)
+# Start a new workout session from the home screen.
+appId: com.gfaure.logworkout
+---
+- extendedWaitUntil:
+    visible:
+      text: "LogOut"
+    timeout: 120000
+- tapOn: "+"
+- assertVisible: "Active Session"

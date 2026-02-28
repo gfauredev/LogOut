@@ -55,8 +55,9 @@ LogOut/
 │  │  ├─ analytics.rs       Progress tracking with interactive charts
 │  │  └─ …                  Other modular UI components (BottomNav, ExerciseCard…)
 │  └─ utils.rs  Pure, side-effect-free utility functions (formatting, timestamps, URLs)
-├─ e2e/      Playwright end-to-end tests for progressive web app
-├─ maestro/  Maestro end-to-end tests for native mobile app
+├─ maestro/  Maestro end-to-end tests
+│  ├─ web/      PWA browser tests (beta)
+│  └─ android/  Native Android tests
 ├─ public/   PWA static assets required by the browser
 │  ├─ manifest.json  Web app manifest for PWA installation
 │  ├─ sw.js          JavaScript Service Worker for PWA
@@ -64,8 +65,7 @@ LogOut/
 ├─ assets/       Application-wide static assets (styles.css…)
 ├─ Cargo.toml    Rust manifest (dependencies, features, targets)
 ├─ Dioxus.toml   Configuration for the Dioxus CLI (build, serve, platform options)
-├─ flake.nix     Nix flake for reproducible development environments
-└─ package.json  Node.js manifest for E2E testing tools (Playwright)
+└─ flake.nix     Nix flake for reproducible development environments
 ```
 
 ## Tooling & Dependencies
@@ -93,7 +93,7 @@ LogOut/
 | Dependencies and environment  | [Nix]                  |
 | Versionning and collaboration | [Git] hosted on GitHub |
 | Unit tests                    | [Cargo test]           |
-| End-to-end tests (PWA)        | [Playwright]           |
+| End-to-end tests (PWA)        | [Maestro] (beta web)   |
 | End-to-end tests (Android)    | [Maestro]              |
 | Code coverage                 | [cargo-llvm-cov]       |
 | Rust language assistance      | [rust-analyzer] (LSP)  |
@@ -136,13 +136,14 @@ The PWA is deployed automatically on every push to `main` by
 Every pull request is validated by `.github/workflows/ci.yml`, ensuring that all
 five jobs pass before a PR can be merged.
 
-| Job            | Command                       | Requirement                                                 |
-| -------------- | ----------------------------- | ----------------------------------------------------------- |
-| **Formatting** | `cargo fmt --check`           | Code must match `rustfmt` style exactly                     |
-| **Linting**    | `cargo clippy -- -D warnings` | Zero Clippy warnings                                        |
-| **Unit tests** | `cargo llvm-cov …`            | All unit tests pass, covering more than 90% of the codebase |
-| **E2E tests**  | `npx playwright test`         | All Playwright tests pass                                   |
-| **PageSpeed**  | Lighthouse CLI                | Performance scores posted as PR comment                     |
+| Job                | Command                         | Requirement                                                 |
+| ------------------ | ------------------------------- | ----------------------------------------------------------- |
+| **Formatting**     | `cargo fmt --check`             | Code must match `rustfmt` style exactly                     |
+| **Linting**        | `cargo clippy -- -D warnings`   | Zero Clippy warnings                                        |
+| **Unit tests**     | `cargo llvm-cov …`              | All unit tests pass, covering more than 90% of the codebase |
+| **E2E (web)**      | `maestro test --platform web …` | All Maestro web tests pass                                  |
+| **E2E (Android)**  | `maestro test maestro/android/` | All Maestro Android tests pass                              |
+| **PageSpeed**      | Lighthouse CLI                  | Performance scores posted as PR comment                     |
 
 You can run them locally with the commands
 
@@ -150,7 +151,8 @@ You can run them locally with the commands
 cargo fmt --check # Formatting
 cargo clippy -- -D warnings # Linting
 cargo test # Unit tests
-npx playwright test # E2E tests (starts dev server)
+maestro test --platform web maestro/web/ # Web E2E tests (requires built PWA served on localhost:8080)
+maestro test maestro/android/ # Android E2E tests (requires running emulator)
 ```
 
 ### Unit Testing
@@ -178,19 +180,19 @@ cargo llvm-cov --bin log-workout --lcov --output-path lcov.info # LCOV report
 
 ### End-to-End Testing
 
-End-to-end tests exercise the full application running with [Playwright]. They
-start `dx serve` automatically before the test run.
+End-to-end tests exercise the full application using [Maestro]. User stories
+are documented in `USER_STORIES.md`, and each story has two test flows: one for
+the PWA (beta web platform) and one for native Android.
 
 ```sh
-npx playwright test # Run the tests (headless by default)
+maestro test --platform web maestro/web/ # PWA tests (serve the app on localhost:8080 first)
 ```
 
 ```sh
-npx playwright test --headed # Run tests within a visible browser
+maestro test maestro/android/ # Android tests (start an emulator first)
 ```
 
-The `main` branch must always pass `100%` of E2E tests. When a test fails,
-Playwright captures a screenshot automatically and saves it to `test-results/`.
+The `main` branch must always pass `100%` of E2E tests.
 
 ### Documentation
 
@@ -216,8 +218,6 @@ services, providing a detailed view of the codebase's API.
 ## TODO
 
 Check README for code conventions and guidelines.
-
-- Unifiying: replace Playwright with Maestro (beta) web testing
 
 Always ensure that all lints, end-to-end tests and unit tests pass.
 
@@ -248,8 +248,6 @@ Always ensure that all lints, end-to-end tests and unit tests pass.
 [llvm-cov]: https://llvm.org/docs/CommandGuide/llvm-cov.html
 [Maestro]: https://maestro.dev/
 [Nix]: https://nixos.org/
-[Node.js]: https://nodejs.org/
-[Playwright]: https://playwright.dev/
 [Rust]: https://www.rust-lang.org/
 [rust-analyzer]: https://rust-analyzer.github.io/
 [rust]: https://www.rust-lang.org/

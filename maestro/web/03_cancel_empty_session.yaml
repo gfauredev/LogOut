@@ -1,0 +1,12 @@
+# User Story 3 – Cancel Empty Session (Web PWA)
+# Cancel an empty workout session and return to the home screen.
+appId: http://localhost:8080
+---
+- extendedWaitUntil:
+    visible:
+      text: "LogOut"
+    timeout: 120000
+- tapOn: "+"
+- assertVisible: "Active Session"
+- tapOn: "Cancel Session"
+- assertVisible: "LogOut"

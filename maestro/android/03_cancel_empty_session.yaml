@@ -1,4 +1,5 @@
-# Test: start a new workout session then cancel it.
+# User Story 3 – Cancel Empty Session (Android)
+# Cancel an empty workout session and return to the home screen.
 appId: com.gfaure.logworkout
 ---
 - extendedWaitUntil:

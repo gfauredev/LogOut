@@ -186,15 +186,15 @@ jobs:
           echo "::error::Coverage gate failed: one or more tested files have less than 90% line coverage."
           exit 1
 
-  e2e:
-    name: E2E Tests
+  e2e-web:
+    name: Web E2E Tests (Maestro)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
       - uses: dtolnay/rust-toolchain@stable
         with:
-          target: wasm32-unknown-unknown
+          targets: wasm32-unknown-unknown
 
       - uses: swatinem/rust-cache@v2
 
@@ -203,91 +203,43 @@ jobs:
         with:
           tool: dioxus-cli
 
-      - uses: actions/setup-node@v4
-        with:
-          node-version: "20"
-          cache: "npm"
+      - name: Build web release
+        run: dx build --release --platform web
 
-      - run: npm ci
-
-      - name: Install Playwright browsers
-        run: npx playwright install --with-deps chromium
-
-      - name: Run E2E tests
-        id: e2e
-        run: npx playwright test
-        continue-on-error: true
-
-      - name: Upload screenshots to Cloudinary
-        if: steps.e2e.outcome == 'failure'
-        id: cloudinary
-        env:
-          CLOUDINARY_CLOUD_NAME: ${{ secrets.CLOUDINARY_CLOUD_NAME }}
-          CLOUDINARY_UPLOAD_PRESET: ${{ secrets.CLOUDINARY_UPLOAD_PRESET }}
+      - name: Install Maestro
         run: |
-          CLOUDINARY_URLS=""
-          if [ -n "$CLOUDINARY_CLOUD_NAME" ] && [ -n "$CLOUDINARY_UPLOAD_PRESET" ] && [ -d test-results ]; then
-            while IFS= read -r -d '' f; do
-              RESPONSE=$(curl -sf --location \
-                "https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/image/upload" \
-                --form "file=@$f" \
-                --form "upload_preset=${CLOUDINARY_UPLOAD_PRESET}" \
-                || echo '{"error":{"message":"curl failed"}}')
-              if echo "$RESPONSE" | jq -e '.error' > /dev/null 2>&1; then
-                echo "Warning: failed to upload $f to Cloudinary: $(echo "$RESPONSE" | jq -r '.error.message')"
-                continue
-              fi
-              URL=$(echo "$RESPONSE" | jq -r '.secure_url // empty')
-              if [ -n "$URL" ]; then
-                TITLE=$(basename "$f" .png)
-                CLOUDINARY_URLS="${CLOUDINARY_URLS}![${TITLE}](${URL})\n"
-              fi
-            done < <(find test-results -name "*.png" -print0)
-          fi
-          echo "cloudinary_urls<<EOF" >> "$GITHUB_OUTPUT"
-          echo -e "$CLOUDINARY_URLS" >> "$GITHUB_OUTPUT"
-          echo "EOF" >> "$GITHUB_OUTPUT"
+          curl -Ls "https://get.maestro.mobile.dev" | bash
+          echo "$HOME/.maestro/bin" >> "$GITHUB_PATH"
 
-      - name: Post failure-screenshots comment
-        if: steps.e2e.outcome == 'failure'
-        uses: actions/github-script@v7
-        env:
-          CLOUDINARY_URLS: ${{ steps.cloudinary.outputs.cloudinary_urls }}
+      - name: Serve PWA and run Maestro web tests
+        id: maestro
+        continue-on-error: true
+        run: |
+          # Start a static file server in the background
+          python3 -m http.server 8080 -d target/dx/log-workout/release/web/public &
+          SERVER_PID=$!
+          # Wait for the server to be ready
+          for i in $(seq 1 30); do
+            curl -sf http://localhost:8080 > /dev/null && break
+            sleep 1
+          done
+          MAESTRO_CLI_NO_ANALYTICS=1 maestro test --platform web maestro/web/
+          TEST_EXIT=$?
+          kill $SERVER_PID 2>/dev/null || true
+          exit $TEST_EXIT
+
+      - name: Upload diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
         with:
-          script: |
-            const tag = '<!-- e2e-screenshots -->';
-            const runUrl = `https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
-            const cloudinaryUrls = process.env.CLOUDINARY_URLS || '';
-            let body = `${tag}\n## 📸 E2E Test Failures\n\n`;
-            if (cloudinaryUrls.trim()) {
-              body += cloudinaryUrls;
-            } else {
-              body += `Test failures were detected. Screenshots are available in the **Artifacts** section of the [Action Run](${runUrl}).\n`;
-            }
-            const { data: comments } = await github.rest.issues.listComments({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number: context.issue.number,
-            });
-            const existing = comments.find(c => c.body.includes(tag));
-            if (existing) {
-              await github.rest.issues.updateComment({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                comment_id: existing.id,
-                body,
-              });
-            } else {
-              await github.rest.issues.createComment({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                issue_number: context.issue.number,
-                body,
-              });
-            }
+          name: web-e2e-diagnostics
+          path: |
+            ~/.maestro/tests/
+          if-no-files-found: ignore
+          retention-days: 7
 
-      - name: Fail if any E2E test failed
-        if: steps.e2e.outcome == 'failure'
+      - name: Fail if Maestro tests failed
+        if: steps.maestro.outcome == 'failure'
         run: exit 1
 
   e2e-android:
@@ -365,7 +317,7 @@ jobs:
             # Pre-launch the app so the JVM and Chrome WebView warm up before Maestro starts.
             # extendedWaitUntil in each flow dynamically waits up to 120 s for the first render.
             adb shell monkey -p com.gfaure.logworkout -c android.intent.category.LAUNCHER 1
-            MAESTRO_CLI_NO_ANALYTICS=1 maestro test maestro/
+            MAESTRO_CLI_NO_ANALYTICS=1 maestro test maestro/android/
 
       - name: Upload diagnostics
         if: always()

@@ -1,0 +1,13 @@
+# User Story 5 – Search Exercises in Browser (Android)
+# Search for exercises in the exercise database.
+appId: com.gfaure.logworkout
+---
+- extendedWaitUntil:
+    visible:
+      text: "LogOut"
+    timeout: 120000
+- tapOn: "📚"
+- assertVisible: "Exercise Database"
+- tapOn: "Search exercises, muscles, or categories..."
+- inputText: "push"
+- assertVisible: "Exercise Database"

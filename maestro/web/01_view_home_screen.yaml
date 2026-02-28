@@ -1,0 +1,13 @@
+# User Story 1 – View Home Screen (Web PWA)
+# The app loads and displays the home screen with title and tagline.
+appId: http://localhost:8080
+---
+- extendedWaitUntil:
+    visible:
+      text: "LogOut"
+    timeout: 120000
+- assertVisible: "Log your workOut"
+- assertVisible: "📚"
+- assertVisible: "💪"
+- assertVisible: "📊"
+- assertVisible: "ℹ️"

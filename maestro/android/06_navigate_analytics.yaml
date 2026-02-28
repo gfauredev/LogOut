@@ -1,0 +1,10 @@
+# User Story 6 – Navigate to Analytics (Android)
+# Navigate to the analytics page via the bottom navigation bar.
+appId: com.gfaure.logworkout
+---
+- extendedWaitUntil:
+    visible:
+      text: "LogOut"
+    timeout: 120000
+- tapOn: "📊"
+- assertVisible: "Analytics"

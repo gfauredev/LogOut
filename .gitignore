@@ -15,10 +15,8 @@ target
 # WebAssembly build output
 dist/
 
-# Node.js / Playwright
+# Node.js
 node_modules/
-test-results/
-playwright-report/
 
 # Environemnt
 .direnv/
