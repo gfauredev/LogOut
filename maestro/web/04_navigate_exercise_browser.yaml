@@ -1,6 +1,6 @@
 # User Story 4 – Navigate to Exercise Browser (Web PWA)
 # Navigate to the exercise database via the bottom navigation bar.
-appId: http://localhost:8080
+url: http://localhost:8080
 ---
 - extendedWaitUntil:
     visible:

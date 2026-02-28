@@ -1,6 +1,6 @@
 # User Story 5 – Search Exercises in Browser (Web PWA)
 # Search for exercises in the exercise database.
-appId: http://localhost:8080
+url: http://localhost:8080
 ---
 - extendedWaitUntil:
     visible:

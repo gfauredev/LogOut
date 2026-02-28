@@ -1,0 +1,68 @@
+# User Story 9 – Full Workout Session (Web PWA)
+# Complete a full workout: add an exercise, input values, complete it,
+# replay (another set), complete again, finish session, verify on home.
+url: http://localhost:8080
+---
+# Wait for the app to load
+- extendedWaitUntil:
+    visible:
+      text: "LogOut"
+    timeout: 120000
+
+# Start a new session
+- tapOn: "+"
+- assertVisible: "Active Session"
+
+# Search for "bench press" (a Push exercise with reps)
+- tapOn: "Search for an exercise..."
+- inputText: "bench press"
+
+# Wait for search results to appear and tap the first result
+- extendedWaitUntil:
+    visible:
+      text: "Barbell Bench Press - Medium Grip"
+    timeout: 10000
+- tapOn: "Barbell Bench Press - Medium Grip"
+
+# The exercise form should now be visible
+- assertVisible: "Barbell Bench Press - Medium Grip"
+- assertVisible: "Weight (kg)"
+- assertVisible: "Repetitions"
+
+# Input weight and reps
+- tapOn:
+    text: "Optional"
+- inputText: "60"
+- tapOn:
+    text: "Reps"
+- inputText: "10"
+
+# Complete the exercise
+- tapOn: "✓ Complete Exercise"
+
+# Verify the completed exercise appears in the list
+- assertVisible: "Completed Exercises"
+- assertVisible: "Barbell Bench Press - Medium Grip"
+
+# Replay the exercise (another set) using the 🔁 button
+- tapOn: "🔁"
+
+# The exercise form should appear again with prefilled values
+- assertVisible: "Barbell Bench Press - Medium Grip"
+- assertVisible: "✓ Complete Exercise"
+
+# Complete the second set
+- tapOn: "✓ Complete Exercise"
+
+# Verify completed exercises section still shows
+- assertVisible: "Completed Exercises"
+
+# Finish the session
+- tapOn: "Finish Session"
+
+# Verify we're back on the home screen with the session card
+- extendedWaitUntil:
+    visible:
+      text: "LogOut"
+    timeout: 10000
+- assertVisible: "Barbell Bench Press - Medium Grip"
