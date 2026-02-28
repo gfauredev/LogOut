@@ -208,19 +208,16 @@ services, providing a detailed view of the codebase's API.
 
 - Simple, flat structures are always preffered, do not nest if not necessary
   - Especially in HTML, a node with only one child can be replaced by it
+- Keep the HTML structure as simple as possible
+- Class-light styling mainly based on HTML semantic hierarchy
+- Same CSS rules for similarly looking components, don’t overcomplicate
+- Never hardcode values (except 0, 1, 100%), use clearly named constants
 
 ## TODO
 
 Check README for code conventions and guidelines.
 
-- Keep the HTML structure as simple as possible
-- Switch to class-light styling mainly based on HTML semantic hierarchy
-- Use same CSS rules for similarly looking components, don’t overcomplicate
-- Never hardcode values (except 0, 1, 100%), use clearly named :root constant
-  - Replace existing magic numbers
-- Switch to a grid with up to 3 columns at least 350px wide for past sessions
-  and exercises list
-- Remove unused (dead) CSS
+- Unifiying: replace Playwright with Maestro (beta) web testing
 
 Always ensure that all lints, end-to-end tests and unit tests pass.
 
@@ -231,7 +228,6 @@ Always ensure that all lints, end-to-end tests and unit tests pass.
 
 #### To consider
 
-- Unifiying: replace Playwright with Maestro (beta) web testing
 - Improve indexedDB error handling with thiserror
 - Reduce boilerplate by using strum crate for enums serialization
 
