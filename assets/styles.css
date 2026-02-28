@@ -528,12 +528,14 @@ main {
 }
 
 /* Shared style for accent buttons; --accent-lg uses larger padding */
-.btn--accent {
-  padding: 8px var(--spacing-sm);
+.btn--accent,
+.btn--accent-lg {
   background: var(--color-accent);
   color: var(--text-primary);
-  border-radius: var(--radius);
-  font-weight: bold;
+}
+
+.btn--accent {
+  padding: 8px var(--spacing-sm);
 }
 
 .btn--accent-lg {
