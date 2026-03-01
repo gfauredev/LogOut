@@ -60,6 +60,7 @@
             pkg-config
             dioxus-cli
             rustToolchain
+            binaryen
           ];
           commonBuildInputs =
             with pkgs;
@@ -128,7 +129,7 @@
             '';
             installPhase = ''
               mkdir -p $out
-              cp -r dist/* $out/
+              cp -r target/dx/log-workout/release/web/public/* $out/
             '';
             doCheck = false; # TODO
           };
