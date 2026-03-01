@@ -127,3 +127,40 @@ native Android build (`maestro/android/`).
 - Delete the completed exercise using the 🗑️ button
 - The session reverts to an empty state showing "Cancel Session"
 - Cancelling the empty session returns to the home screen
+
+## 11. Delete a Past Session
+
+**As a** user,
+**I want to** delete a completed session from my history,
+**so that** I can remove unwanted or accidental entries.
+
+### Acceptance Criteria
+
+- A completed session is visible on the home screen
+- Tapping the 🗑️ button on a session card opens a confirmation dialog
+- Confirming the deletion removes the session from the home screen
+- The home screen returns to its empty state
+
+## 12. Repeat Session from History
+
+**As a** user,
+**I want to** start a new session based on a past workout,
+**so that** I can quickly repeat the same exercises.
+
+### Acceptance Criteria
+
+- A completed session with at least one exercise is visible on the home screen
+- Tapping the 🔄 button on a session card opens a new active session
+- The new session shows the exercises from the original session in the "Pre-added Exercises" section
+
+## 13. Add Custom Exercise
+
+**As a** user,
+**I want to** add a custom exercise to the exercise database,
+**so that** I can log exercises that are not in the built-in list.
+
+### Acceptance Criteria
+
+- Tapping the "+" button in the exercise browser opens the "Add Exercise" form
+- Filling in the exercise name and saving creates a new exercise
+- The new exercise is visible when searching in the exercise browser
