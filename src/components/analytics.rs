@@ -104,72 +104,64 @@ pub fn AnalyticsPage() -> Element {
         header {
             h1 { "📊 Analytics" }
             p { "Track your progress over time" }
-        }
-        main { class: "analytics-panel",
-            section { class: "controls",
-                label { class: "form-label", "Select Metric" }
-                select {
-                    value: "{selected_metric:?}",
-                    onchange: move |evt| {
-                        selected_metric.set(match evt.value().as_str() {
-                            "Weight" => Metric::Weight,
-                            "Reps" => Metric::Reps,
-                            "Distance" => Metric::Distance,
-                            "Duration" => Metric::Duration,
-                            _ => Metric::Weight,
-                        });
-                    },
-                    class: "form-select form-select--chart",
-                    option { value: "Weight", "Weight (kg)" }
-                    option { value: "Reps", "Repetitions" }
-                    option { value: "Distance", "Distance (km)" }
-                    option { value: "Duration", "Duration (minutes)" }
-                }
-                label { class: "form-label", "Select Exercises (up to 8)" }
-                for i in 0..8 {
-                    {
-                        let current_selections = selected_exercises.read().clone();
-                        let is_visible = i == 0 || current_selections.get(i - 1).and_then(|x| x.as_ref()).is_some();
-                        if is_visible {
-                            Some(rsx! {
+            label { "Metric" }
+            select {
+                value: "{selected_metric:?}",
+                onchange: move |evt| {
+                    selected_metric.set(match evt.value().as_str() {
+                        "Weight" => Metric::Weight,
+                        "Reps" => Metric::Reps,
+                        "Distance" => Metric::Distance,
+                        "Duration" => Metric::Duration,
+                        _ => Metric::Weight,
+                    });
+                },
+                option { value: "Weight", "Weight (kg)" }
+                option { value: "Reps", "Repetitions" }
+                option { value: "Distance", "Distance (km)" }
+                option { value: "Duration", "Duration (minutes)" }
+            }
+            label { "Exercises (⩽ 8)" }
+            for i in 0..8 {
+                {
+                    let current_selections = selected_exercises.read().clone();
+                    let is_visible = i == 0 || current_selections.get(i - 1).and_then(|x| x.as_ref()).is_some();
+                    if is_visible {
+                        Some(rsx! {
+                            div {
+                                key: "{i}",
+                                class: "exercise-selector",
                                 div {
-                                    key: "{i}",
-                                    class: "exercise-selector",
-                                    div {
-                                        class: "color-dot",
-                                        style: "background: {COLORS[i]};",
-                                    }
-                                    select {
-                                        value: "{current_selections.get(i).and_then(|x| x.as_ref()).unwrap_or(&String::new())}",
-                                        onchange: move |evt| {
-                                            let mut selections = selected_exercises.write();
-                                            let value = evt.value();
-                                            selections[i] = if value.is_empty() { None } else { Some(value) };
-                                        },
-                                        class: "form-select form-select--chart",
-                                        option { value: "", "-- Select Exercise --" }
-                                        for (id, name) in available_exercises.read().iter() {
-                                            option { value: "{id}", "{name}" }
-                                        }
+                                    class: "color-dot",
+                                    style: "background: {COLORS[i]};",
+                                }
+                                select {
+                                    value: "{current_selections.get(i).and_then(|x| x.as_ref()).unwrap_or(&String::new())}",
+                                    onchange: move |evt| {
+                                        let mut selections = selected_exercises.write();
+                                        let value = evt.value();
+                                        selections[i] = if value.is_empty() { None } else { Some(value) };
+                                    },
+                                    class: "form-select form-select--chart",
+                                    option { value: "", "-- Select Exercise --" }
+                                    for (id, name) in available_exercises.read().iter() {
+                                        option { value: "{id}", "{name}" }
                                     }
                                 }
-                            })
-                        } else { None }
-                    }
+                            }
+                        })
+                    } else { None }
                 }
             }
-            section { class: "chart",
-                if chart_data.is_empty() || chart_data.iter().all(|(_, points)| points.is_empty()) {
-                    div {
-                        class: "chart-empty",
-                        p { "Select exercises to view analytics" }
-                    }
-                } else {
-                    ChartView {
-                        data: chart_data.clone(),
-                        metric: *selected_metric.read(),
-                        colors: COLORS.to_vec(),
-                    }
+        }
+        main { class: "analytics",
+            if chart_data.is_empty() || chart_data.iter().all(|(_, points)| points.is_empty()) {
+                p { "Select exercises to view analytics" }
+            } else {
+                ChartView {
+                    data: chart_data.clone(),
+                    metric: *selected_metric.read(),
+                    colors: COLORS.to_vec(),
                 }
             }
         }
