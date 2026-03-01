@@ -1,6 +1,5 @@
 {
   description = "LogOut dev envs";
-
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
     rust-overlay = {
@@ -8,7 +7,6 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
   };
-
   outputs =
     {
       self,
@@ -32,9 +30,7 @@
           };
         }
       );
-    in
-    {
-      devShells = forAllSystems (
+      sharedEnvFor =
         system:
         let
           pkgs = nixpkgsFor.${system};
@@ -46,37 +42,65 @@
             targets = [
               "wasm32-unknown-unknown"
               "aarch64-linux-android"
-              "armv7-linux-androideabi"
             ];
           };
+          androidComposition = pkgs.androidenv.composeAndroidPackages {
+            platformVersions = [ "33" ]; # Targeting Android 13
+            buildToolsVersions = [ "33.0.2" ];
+            includeNDK = true;
+            includeEmulator = true;
+            includeSystemImages = true;
+            systemImageTypes = [ "google_apis" ];
+            abiVersions = [
+              "x86_64"
+              # "arm64-v8a"
+            ];
+          };
+          commonNativeBuildInputs = with pkgs; [
+            pkg-config
+            dioxus-cli
+            rustToolchain
+          ];
+          commonBuildInputs =
+            with pkgs;
+            [ openssl ]
+            ++ pkgs.lib.optionals pkgs.stdenv.isDarwin [
+              pkgs.darwin.apple_sdk.frameworks.Security
+              pkgs.darwin.apple_sdk.frameworks.SystemConfiguration
+            ];
         in
         {
-          default = pkgs.mkShell {
-            # TODO Directly use packages’ inputs, keep DRY, keep SSOT
-            packages = with pkgs; [
+          inherit
+            pkgs
+            rustToolchain
+            androidComposition
+            commonNativeBuildInputs
+            commonBuildInputs
+            ;
+        };
+    in
+    {
+      devShells = forAllSystems (
+        system:
+        let
+          env = sharedEnvFor system;
+        in
+        {
+          default = env.pkgs.mkShell {
+            packages = with env.pkgs; [
               strace
             ];
-            nativeBuildInputs = with pkgs; [
-              pkg-config
-              dioxus-cli
-              rustToolchain
-              cargo-ndk
-              android-tools
-              androidenv.androidPkgs.ndk-bundle
-              androidenv.androidPkgs.androidsdk # WARN Very large TODO Configure a subset of it
-              openjdk
-            ];
-            buildInputs =
-              with pkgs;
-              [
-                openssl
-              ]
-              ++ pkgs.lib.optionals pkgs.stdenv.isDarwin [
-                pkgs.darwin.apple_sdk.frameworks.Security
-                pkgs.darwin.apple_sdk.frameworks.SystemConfiguration
-              ];
-            OPENSSL_DIR = "${pkgs.openssl.dev}";
-            OPENSSL_LIB_DIR = "${pkgs.openssl.out}/lib";
+            nativeBuildInputs =
+              env.commonNativeBuildInputs
+              ++ (with env.pkgs; [
+                cargo-ndk
+                android-tools
+                env.androidComposition.ndk-bundle
+                openjdk
+              ]);
+            buildInputs = env.commonBuildInputs;
+            OPENSSL_DIR = "${env.pkgs.openssl.dev}";
+            OPENSSL_LIB_DIR = "${env.pkgs.openssl.out}/lib";
             shellHook = ''
               echo "💪 LogOut Dev Environment Ready"
               echo "- Rust $(rustc --version)"
@@ -88,37 +112,16 @@
       packages = forAllSystems (
         system:
         let
-          pkgs = nixpkgsFor.${system};
-          rustToolchainWeb = pkgs.rust-bin.stable.latest.default.override {
-            targets = [ "wasm32-unknown-unknown" ];
-          };
-          rustToolchainAndroid = pkgs.rust-bin.stable.latest.default.override {
-            targets = [
-              "aarch64-linux-android"
-              "armv7-linux-androideabi"
-            ];
-          };
+          env = sharedEnvFor system;
         in
         {
-          web = pkgs.rustPlatform.buildRustPackage {
+          web = env.pkgs.rustPlatform.buildRustPackage {
             pname = "log-workout-web";
             version = "0.1.0";
             src = self;
             cargoLock.lockFile = ./Cargo.lock;
-            nativeBuildInputs = with pkgs; [
-              pkg-config
-              dioxus-cli
-              rustToolchainWeb
-            ];
-            buildInputs =
-              with pkgs;
-              [
-                openssl
-              ]
-              ++ pkgs.lib.optionals pkgs.stdenv.isDarwin [
-                pkgs.darwin.apple_sdk.frameworks.Security
-                pkgs.darwin.apple_sdk.frameworks.SystemConfiguration
-              ];
+            nativeBuildInputs = env.commonNativeBuildInputs;
+            buildInputs = env.commonBuildInputs;
             buildPhase = ''
               export CARGO_TARGET_DIR=target
               dx build --release --platform web
@@ -129,34 +132,24 @@
             '';
             doCheck = false; # TODO
           };
-
-          android = pkgs.rustPlatform.buildRustPackage {
+          android = env.pkgs.rustPlatform.buildRustPackage {
             pname = "log-workout-android";
             version = "0.1.0";
             src = self;
             cargoLock.lockFile = ./Cargo.lock;
-            nativeBuildInputs = with pkgs; [
-              pkg-config
-              dioxus-cli
-              rustToolchainAndroid
-              cargo-ndk
-              android-tools
-              androidenv.androidPkgs.androidsdk # WARN Very large TODO Configure a subset of it
-              androidenv.androidPkgs.ndk-bundle
-              openjdk
-            ];
-            buildInputs =
-              with pkgs;
-              [
-                openssl
-              ]
-              ++ pkgs.lib.optionals pkgs.stdenv.isDarwin [
-                pkgs.darwin.apple_sdk.frameworks.Security
-                pkgs.darwin.apple_sdk.frameworks.SystemConfiguration
-              ];
+            nativeBuildInputs =
+              env.commonNativeBuildInputs
+              ++ (with env.pkgs; [
+                cargo-ndk
+                android-tools
+                env.androidComposition.androidsdk
+                env.androidComposition.ndk-bundle
+                openjdk
+              ]);
+            buildInputs = env.commonBuildInputs;
             buildPhase = ''
               export CARGO_TARGET_DIR=target
-              # dx build --release --platform android # TODO When code OK
+              dx build --release --platform android
             '';
             installPhase = ''
               mkdir -p $out
@@ -164,7 +157,7 @@
             '';
             doCheck = false; # TODO
           };
-          default = pkgs.lib.attrValues {
+          default = env.pkgs.lib.attrValues {
             inherit (self.packages.${system}) web android;
           };
         }
