@@ -43,9 +43,11 @@
   --text-soft: #e0e0e0;
 
   /* ── Radius ── */
-  --radius: 8px;
+  --radius: 12px;
 
   /* ── Spacing ── */
+  --spacing: 8px;
+  --spacing-ul: 14px;
   --spacing-xs: 8px;
   --spacing-sm: 8px;
   --spacing-md: 8px;
@@ -62,12 +64,12 @@
   --font-size-base: 1rem;
 
   /* ── Shadows ── */
-  --shadow-card: 0 2px 6px rgba(0,0,0,.3);
-  --shadow-card-sm: 0 2px 4px rgba(0,0,0,.2);
-  --shadow-nav: 0 -2px 10px rgba(0,0,0,.3);
+  --shadow-card: 0 2px 6px rgba(0, 0, 0, .3);
+  --shadow-card-sm: 0 2px 4px rgba(0, 0, 0, .2);
+  --shadow-nav: 0 -2px 10px rgba(0, 0, 0, .3);
   --shadow-primary: 0 4px 12px rgba(102, 126, 234, .5);
   --shadow-toast: 0 4px 16px rgba(67, 233, 123, .4);
-  --shadow-btn: 0 2px 4px rgba(0,0,0,.3);
+  --shadow-btn: 0 2px 4px rgba(0, 0, 0, .3);
 
   /* ── Z-indices ── */
   --z-backdrop: 1;
@@ -81,8 +83,38 @@
   --muscle-primary-fg: #c8f7d0;
   --muscle-secondary-bg: #1a4a4a;
   --muscle-secondary-fg: #a8edea
-
 }
+
+/* GENERIC */
+/* h1 { color: var(--text-primary); } */
+
+h2 {
+  margin: 0 0 8px 0;
+  color: var(--text-primary);
+}
+
+p {
+  margin: var(--spacing-xs) 0;
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+
+a {
+  color: var(--color-primary);
+  text-decoration: none;
+}
+
+a:hover {
+  text-decoration: underline;
+}
+
+ul {
+  margin: 8px 0 0 0;
+  padding-left: var(--spacing-ul);
+  color: var(--text-muted);
+  line-height: 1.8;
+}
+
 
 /* TOP LEVEL */
 #main {
@@ -90,22 +122,73 @@
   flex-direction: column;
   min-height: 100dvh;
   margin: 0;
-  padding: 1em 1em 0 1em;
+  padding: var(--spacing) var(--spacing) 0 var(--spacing);
 }
 
-#main > header {
-  /* margin-top: 1em; */
-  /* margin-bottom: 1em; */
+#main>header {
   text-align: center;
+  margin-bottom: var(--spacing);
+  /* margin-top: 1em; */
 }
-
-/* h1 { color: var(--text-primary); } */
 
 main {
   flex: 1;
-  /* padding-bottom: var(--nav-height); */
   width: 100%;
   box-sizing: border-box;
+  display: grid;
+  gap: var(--spacing);
+  grid-auto-rows: max-content;
+  /* padding-bottom: var(--nav-height); */
+}
+
+main+button {
+  display: block;
+  width: var(--btn-fab-size);
+  height: var(--btn-fab-size);
+  border-radius: 50%;
+  background: var(--gradient-primary);
+  color: var(--text-primary);
+  font-size: 2em;
+  border: none;
+  cursor: pointer;
+  box-shadow: var(--shadow-primary);
+  z-index: var(--z-fab);
+  margin: var(--spacing-sm) auto;
+}
+
+#main>nav {
+  position: sticky;
+  bottom: 0;
+  margin: auto auto 0 auto;
+  height: max-content;
+  background: var(--bg-card);
+  border-top: 1px solid var(--border-color);
+  display: flex;
+  border-radius: var(--radius) var(--radius) 0 0;
+  z-index: var(--z-nav);
+  /* justify-content: space-around; */
+  /* align-items: stretch; */
+  /* box-shadow: var(--shadow-nav); */
+
+  a {
+    padding: var(--spacing);
+    text-decoration: none;
+    font-size: 1.8rem;
+    line-height: 1;
+  }
+}
+
+.active,
+.bottom-nav__tab--active {
+  transform: scale(1.25);
+}
+
+/* DEPTH 1 */
+article {
+  padding: var(--spacing);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius);
+  background: var(--bg-card);
 }
 
 .container--form {
@@ -114,28 +197,27 @@ main {
 
 /* ===== Sessions Tab (center tab home page) ===== */
 .sessions {
-  display: grid;
   grid-template-columns: repeat(auto-fill, minmax(var(--col-min-width), 1fr));
-  gap: var(--spacing-sm);
-  padding: var(--spacing-md);
+  /* display: grid; */
+  /* gap: var(--spacing-sm); */
+  /* padding: var(--spacing-md); */
 }
 
-.sessions > p,
+.sessions>p,
 .session-container {
   grid-column: 1 / -1;
 }
 
-.sessions > p {
+.sessions>p {
   text-align: center;
   color: var(--text-dim);
   margin-top: var(--spacing-md);
   font-size: 1.1em;
 }
 
-/* ===== Exercises page ===== */
-.exercises {
+/* .exercises {
   padding: var(--spacing-md);
-}
+} */
 
 /* ===== Session Card ===== */
 .session-card {
@@ -146,14 +228,14 @@ main {
   box-shadow: var(--shadow-card);
 }
 
-.session-card > header {
+.session-card>header {
   display: flex;
   align-items: center;
   gap: var(--spacing-xs);
   margin-bottom: var(--spacing-xs);
 }
 
-.session-card > header time {
+.session-card>header time {
   font-size: 0.85em;
   color: var(--text-muted);
   font-weight: 500;
@@ -162,7 +244,7 @@ main {
   flex: 1;
 }
 
-.session-card > header span {
+.session-card>header span {
   font-size: 0.9em;
   font-weight: 600;
   color: var(--text-secondary);
@@ -170,7 +252,7 @@ main {
 }
 
 /* Shared ghost icon button style for session card actions */
-.session-card > header button {
+.session-card>header button {
   background: none;
   border: none;
   cursor: pointer;
@@ -181,7 +263,7 @@ main {
   transition: opacity 0.2s;
 }
 
-.session-card > header button:hover {
+.session-card>header button:hover {
   opacity: 1;
 }
 
@@ -263,48 +345,6 @@ main {
   cursor: pointer;
 }
 
-/* ===== Start Session ===== */
-.new-session-button {
-  display: block;
-  width: var(--btn-fab-size);
-  height: var(--btn-fab-size);
-  border-radius: var(--radius);
-  background: var(--gradient-primary);
-  color: var(--text-primary);
-  font-size: 2em;
-  border: none;
-  cursor: pointer;
-  box-shadow: var(--shadow-primary);
-  z-index: var(--z-fab);
-  margin: var(--spacing-sm) auto;
-}
-
-/* ===== Bottom Navigation ===== */
-.bottom-nav {
-  position: sticky;
-  bottom: 0;
-  margin: auto auto 0 auto;
-  height: max-content;
-  background: var(--bg-card);
-  border-top: 1px solid var(--border-color);
-  display: flex;
-  justify-content: space-around;
-  align-items: stretch;
-  z-index: var(--z-nav);
-  box-shadow: var(--shadow-nav);
-}
-
-.bottom-nav__tab {
-  padding: var(--spacing-sm);
-  text-decoration: none;
-  font-size: 1.8em;
-  line-height: 1;
-}
-
-.bottom-nav__tab--active {
-  transform: scale(1.25);
-}
-
 /* ===== Search Input ===== */
 .search-with-add {
   display: flex;
@@ -312,7 +352,10 @@ main {
   gap: 8px;
 }
 
-.form-input, .search-input, .form-select, .muscle-select {
+.form-input,
+.search-input,
+.form-select,
+.muscle-select {
   width: 100%;
   padding: .6em;
   border: 1px solid var(--border-color);
@@ -323,26 +366,32 @@ main {
   color: inherit;
   margin-bottom: 1em;
 }
+
 .form-input--flex {
   flex: 1;
 }
+
 .form-input--invalid {
   border-color: var(--color-danger);
 }
+
 .form-input--rest {
   width: 80px;
   text-align: center;
 }
+
 .search-with-add .search-input {
   flex: 1;
   min-width: 0;
 }
+
 .form-select--chart {
   border-width: 2px;
   font-size: 14px;
   background: var(--bg-card);
   cursor: pointer;
 }
+
 .muscle-select {
   flex: 1;
 }
@@ -441,13 +490,25 @@ main {
   font-size: 0.8em;
 }
 
-.tag--category { background: var(--color-primary); }
-.tag--force    { background: var(--color-secondary); }
-.tag--equipment { background: var(--color-accent); }
-.tag--level    { background: var(--color-pink-dark); }
+.tag--category {
+  background: var(--color-primary);
+}
+
+.tag--force {
+  background: var(--color-secondary);
+}
+
+.tag--equipment {
+  background: var(--color-accent);
+}
+
+.tag--level {
+  background: var(--color-pink-dark);
+}
+
 .tag--muscle-primary {
-   background: var(--muscle-primary-bg);
-   color: var(--muscle-primary-fg); 
+  background: var(--muscle-primary-bg);
+  color: var(--muscle-primary-fg);
 }
 
 /* ===== Search Results Dropdown ===== */
@@ -883,8 +944,15 @@ main {
 }
 
 @keyframes snackbar-in {
-  from { opacity: 0; transform: translateX(-50%) translateY(20px); }
-  to { opacity: 1; transform: translateX(-50%) translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(20px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
 }
 
 /* ===== Instructions List (Custom Exercise form) ===== */
@@ -1021,12 +1089,11 @@ main {
   font-size: 0.85em;
 }
 
-/* ===== Credits Page ===== */
-.credits {
+/* credits {
   padding: var(--spacing-md);
-}
+} */
 
-.credits article {
+/* .credits article {
   padding: var(--spacing-sm);
   border: 1px solid var(--border-color);
   border-radius: var(--radius);
@@ -1059,7 +1126,7 @@ main {
   padding-left: var(--spacing-md);
   color: var(--text-muted);
   line-height: 1.8;
-}
+} */
 
 .db-url-form {
   display: flex;
