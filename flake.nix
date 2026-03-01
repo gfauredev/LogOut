@@ -158,8 +158,12 @@
             '';
             doCheck = false; # TODO
           };
-          default = env.pkgs.lib.attrValues {
-            inherit (self.packages.${system}) web android;
+          default = env.pkgs.symlinkJoin {
+            name = "log-workout-all";
+            paths = [
+              self.packages.${system}.web
+              self.packages.${system}.android
+            ];
           };
         }
       );
