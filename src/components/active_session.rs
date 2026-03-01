@@ -107,6 +107,7 @@ fn RestDurationInput(
             input {
                 id: "rest-duration-field",
                 r#type: "number",
+                inputmode: "numeric",
                 value: "{rest_input_value}",
                 oninput: move |evt| rest_input_value.set(evt.value()),
                 class: "form-input form-input--rest",
@@ -168,7 +169,7 @@ fn PendingExercisesSection(pending_ids: Vec<String>, on_start: EventHandler<Stri
 /// Fires `on_replay` with the exercise ID when the user taps 🔁.
 #[component]
 fn CompletedExercisesSection(
-    session: Signal<WorkoutSession>,
+    session: Memo<WorkoutSession>,
     no_exercise_active: bool,
     on_replay: EventHandler<String>,
 ) -> Element {
@@ -200,11 +201,8 @@ fn CompletedExercisesSection(
 
 #[component]
 pub fn SessionView() -> Element {
-    // use_sessions() must be called at the top level of the component, not inside
-    // use_signal's initializer. Calling use_context (via use_sessions) inside another
-    // use_hook's initializer causes a double-borrow of the hooks RefCell → panic.
     let sessions = storage::use_sessions();
-    let mut session = use_signal(move || {
+    let session = use_memo(move || {
         sessions
             .read()
             .iter()
@@ -306,7 +304,6 @@ pub fn SessionView() -> Element {
         current_session.rest_start_time = None;
         current_session.current_exercise_id = Some(exercise_id.clone());
         current_session.current_exercise_start = Some(exercise_start);
-        session.set(current_session.clone());
         storage::save_session(current_session);
     };
 
@@ -370,7 +367,6 @@ pub fn SessionView() -> Element {
         // Clear performing exercise from session
         current_session.current_exercise_id = None;
         current_session.current_exercise_start = None;
-        session.set(current_session.clone());
         storage::save_session(current_session);
 
         current_exercise_id.set(None);
@@ -394,7 +390,6 @@ pub fn SessionView() -> Element {
         let mut current_session = session.read().clone();
         current_session.current_exercise_id = None;
         current_session.current_exercise_start = None;
-        session.set(current_session.clone());
         storage::save_session(current_session);
     };
 
@@ -479,7 +474,6 @@ pub fn SessionView() -> Element {
                             current_session.rest_start_time = None;
                             current_session.current_exercise_id = Some(exercise_id.clone());
                             current_session.current_exercise_start = Some(pending_start);
-                            session.set(current_session.clone());
                             storage::save_session(current_session);
                             // Start the exercise
                             current_exercise_id.set(Some(exercise_id.clone()));

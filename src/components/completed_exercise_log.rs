@@ -9,7 +9,7 @@ use dioxus::prelude::*;
 pub fn CompletedExerciseLog(
     idx: usize,
     log: ExerciseLog,
-    session: Signal<WorkoutSession>,
+    session: Memo<WorkoutSession>,
     /// Called when the user clicks the replay button to start another set.
     #[props(default)]
     on_replay: EventHandler<()>,
@@ -55,7 +55,6 @@ pub fn CompletedExerciseLog(
             }
         }
         storage::save_session(current_session.clone());
-        session.set(current_session);
         is_editing.set(false);
         edit_weight_input.set(String::new());
         edit_reps_input.set(String::new());
@@ -94,7 +93,6 @@ pub fn CompletedExerciseLog(
                             let mut current_session = session.read().clone();
                             current_session.exercise_logs.remove(idx);
                             storage::save_session(current_session.clone());
-                            session.set(current_session);
                         },
                         "🗑️"
                     }
@@ -108,6 +106,7 @@ pub fn CompletedExerciseLog(
                         label { class: "form-label", "Weight (kg)" }
                         input {
                             r#type: "number",
+                            inputmode: "decimal",
                             step: "0.5",
                             placeholder: "Optional",
                             value: "{edit_weight_input}",
@@ -120,6 +119,7 @@ pub fn CompletedExerciseLog(
                             label { class: "form-label", "Distance (km)" }
                             input {
                                 r#type: "number",
+                                inputmode: "decimal",
                                 step: "0.1",
                                 placeholder: "Distance",
                                 value: "{edit_distance_input}",
@@ -133,6 +133,7 @@ pub fn CompletedExerciseLog(
                             label { class: "form-label", "Repetitions" }
                             input {
                                 r#type: "number",
+                                inputmode: "numeric",
                                 placeholder: "Reps",
                                 value: "{edit_reps_input}",
                                 oninput: move |evt| edit_reps_input.set(evt.value()),
