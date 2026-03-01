@@ -15,16 +15,16 @@ pub fn ExerciseCard(
     let image_count = exercise.images.len();
 
     rsx! {
-        article { key: "{exercise.id}", class: "exercise-card",
+        article { key: "{exercise.id}",
             if is_custom {
                 Link {
                     to: Route::EditCustomExercisePage { id: exercise.id.clone() },
-                    class: "exercise-card__edit-btn",
+                    class: "edit",
                     "✏️ Edit"
                 }
             } else {
                 button {
-                    class: "exercise-card__edit-btn",
+                    class: "edit",
                     onclick: {
                         let exercise = exercise.clone();
                         move |_| {

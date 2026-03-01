@@ -111,30 +111,28 @@ fn SessionCard(session: WorkoutSession) -> Element {
     let hidden_count = total_unique.saturating_sub(visible_count);
 
     rsx! {
-        article { class: "session-card",
+        article {
             header {
                 time { "{date_str}" }
                 span { "⏱ {format_time(duration)}" }
-                div { class: "session-card__actions",
-                    if !pending_ids.is_empty() {
-                        button {
-                            onclick: {
-                                let pending_ids = pending_ids.clone();
-                                move |_| {
-                                    let mut new_session = WorkoutSession::new();
-                                    new_session.pending_exercise_ids = pending_ids.clone();
-                                    storage::save_session(new_session);
-                                }
-                            },
-                            title: "Start a new session based on this one",
-                            "🔄"
-                        }
-                    }
+                if !pending_ids.is_empty() {
                     button {
-                        onclick: move |_| show_delete_confirm.set(true),
-                        title: "Delete session",
-                        "🗑️"
+                        onclick: {
+                            let pending_ids = pending_ids.clone();
+                            move |_| {
+                                let mut new_session = WorkoutSession::new();
+                                new_session.pending_exercise_ids = pending_ids.clone();
+                                storage::save_session(new_session);
+                            }
+                        },
+                        title: "Start a new session based on this one",
+                        "🔄"
                     }
+                }
+                button {
+                    onclick: move |_| show_delete_confirm.set(true),
+                    title: "Delete session",
+                    "🗑️"
                 }
             }
             if !unique_exercises.is_empty() {
