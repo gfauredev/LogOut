@@ -152,8 +152,9 @@
               dx build --release --platform android
             '';
             installPhase = ''
-              mkdir -p $out
-              # TODO Copy android apk to $out
+              mkdir -p $out/bin
+              find . -type f -name "*.apk" -exec cp {} $out/ \;
+              echo "APK successfully copied to $out"
             '';
             doCheck = false; # TODO
           };
