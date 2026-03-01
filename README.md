@@ -136,14 +136,14 @@ The PWA is deployed automatically on every push to `main` by
 Every pull request is validated by `.github/workflows/ci.yml`, ensuring that all
 five jobs pass before a PR can be merged.
 
-| Job                | Command                         | Requirement                                                 |
-| ------------------ | ------------------------------- | ----------------------------------------------------------- |
-| **Formatting**     | `cargo fmt --check`             | Code must match `rustfmt` style exactly                     |
-| **Linting**        | `cargo clippy -- -D warnings`   | Zero Clippy warnings                                        |
-| **Unit tests**     | `cargo llvm-cov …`              | All unit tests pass, covering more than 90% of the codebase |
-| **E2E (web)**      | `maestro test --platform web …` | All Maestro web tests pass                                  |
-| **E2E (Android)**  | `maestro test maestro/android/` | All Maestro Android tests pass                              |
-| **PageSpeed**      | Lighthouse CLI                  | Performance scores posted as PR comment                     |
+| Job               | Command                         | Requirement                                                 |
+| ----------------- | ------------------------------- | ----------------------------------------------------------- |
+| **Formatting**    | `cargo fmt --check`             | Code must match `rustfmt` style exactly                     |
+| **Linting**       | `cargo clippy -- -D warnings`   | Zero Clippy warnings                                        |
+| **Unit tests**    | `cargo llvm-cov …`              | All unit tests pass, covering more than 90% of the codebase |
+| **E2E (web)**     | `maestro test --platform web …` | All Maestro web tests pass                                  |
+| **E2E (Android)** | `maestro test maestro/android/` | All Maestro Android tests pass                              |
+| **PageSpeed**     | Lighthouse CLI                  | Performance scores posted as PR comment                     |
 
 You can run them locally with the commands
 
@@ -180,9 +180,9 @@ cargo llvm-cov --bin log-workout --lcov --output-path lcov.info # LCOV report
 
 ### End-to-End Testing
 
-End-to-end tests exercise the full application using [Maestro]. User stories
-are documented in `USER_STORIES.md`, and each story has two test flows: one for
-the PWA (beta web platform) and one for native Android.
+End-to-end tests exercise the full application using [Maestro]. User stories are
+documented in `USER_STORIES.md`, and each story has two test flows: one for the
+PWA (beta web platform) and one for native Android.
 
 ```sh
 maestro test --platform web maestro/web/ # PWA tests (serve the app on localhost:8080 first)
@@ -219,15 +219,20 @@ services, providing a detailed view of the codebase's API.
 
 Check README for code conventions and guidelines.
 
+- Class-light styling based on clean HTML semantic structure
+  - Merge CSS rules of similar components
+  - 3 columns for Exercises and Sessions, pleasant width
+  - Harmonize widths of pages and components, responsive
+  - Align exercise search and add button properly
+- Complete user stories to cover more than 100 % of use cases
+  - Add E2E tests derived from stories, make them pass
+- Sign Android app and make it properly installable
+
 Always ensure that all lints, end-to-end tests and unit tests pass.
 
 ### Optimization & Technical
 
-- Sign Android app and make it properly installable
 - Storing log by log rather than rewriting the whole session
-
-#### To consider
-
 - Improve indexedDB error handling with thiserror
 - Reduce boilerplate by using strum crate for enums serialization
 
