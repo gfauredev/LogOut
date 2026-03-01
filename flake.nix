@@ -89,7 +89,15 @@
         {
           default = env.pkgs.mkShell {
             packages = with env.pkgs; [
+              # biome
+              # bun # JS runtime, bundler, package manager
               strace
+              # taplo # TOML LSP
+              # typescript
+              # typescript-language-server # TS LSP
+              vscode-langservers-extracted # HTML/CSS/JS(ON)
+              # yaml-language-server # YAML LSP
+
             ];
             nativeBuildInputs =
               env.commonNativeBuildInputs
