@@ -219,22 +219,28 @@ services, providing a detailed view of the codebase's API.
 
 Check README for code conventions and guidelines.
 
+- Add HTML attributes like type="number", inputmode="decimal", step to inputs
+- Remove any data migration code, nobody’s using the app yet
+- Ensure UI updates when asynchronous database load completes
+  - Replace local use_signal in SessionView with reactive use_memo that derives
+    the active session directly from the global sessions state
+- Complete user stories to cover absolutely all the use cases
+  - Add E2E tests derived from stories, make them pass
+
+Always ensure that all lints, end-to-end and unit tests pass.
+
+### Optimization & Technical
+
 - Class-light styling based on clean HTML semantic structure
   - Merge CSS rules of similar components
   - 3 columns for Exercises and Sessions, pleasant width
   - Harmonize widths of pages and components, responsive
   - Align exercise search and add button properly
-- Complete user stories to cover more than 100 % of use cases
-  - Add E2E tests derived from stories, make them pass
 - Sign Android app and make it properly installable
-
-Always ensure that all lints, end-to-end tests and unit tests pass.
-
-### Optimization & Technical
-
+- Ensure DB operations don’t block the UI thread
 - Storing log by log rather than rewriting the whole session
 - Improve indexedDB error handling with thiserror
-- Reduce boilerplate by using strum crate for enums serialization
+- Avoid enums boilerplate with strum `#[derive(EnumIter, Display, AsRefStr)]`
 
 [800+ exercises]: https://github.com/yuhonas/free-exercise-db
 [Cargo]: https://doc.rust-lang.org/cargo/
