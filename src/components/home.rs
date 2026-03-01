@@ -136,10 +136,9 @@ fn SessionCard(session: WorkoutSession) -> Element {
                 }
             }
             if !unique_exercises.is_empty() {
-                div { class: "session-card__exercises",
+                div { class: "tags",
                     for (_, name) in unique_exercises.iter().take(visible_count) {
                         span {
-                            class: "session-card__exercise-name session-card__exercise-name--clickable",
                             onclick: {
                                 let name = name.clone();
                                 move |_| {
@@ -152,7 +151,7 @@ fn SessionCard(session: WorkoutSession) -> Element {
                     }
                     if hidden_count > 0 {
                         button {
-                            class: "session-card__more",
+                            class: "more",
                             onclick: move |_| show_all_exercises.set(true),
                             "+{hidden_count} more"
                         }
