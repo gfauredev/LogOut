@@ -133,14 +133,10 @@ async fn load_storage_data() {
         let mut custom_sig = use_custom_exercises();
         let mut toast = consume_context::<ToastSignal>().0;
 
-        // First try IndexedDB, then fall back to localStorage for migration
-        let mut from_idb = false;
-
         match idb::get_all::<Workout>(idb::STORE_WORKOUTS).await {
             Ok(workouts) if !workouts.is_empty() => {
                 info!("Loaded {} workouts from IndexedDB", workouts.len());
                 workouts_sig.set(workouts);
-                from_idb = true;
             }
             Err(e) => {
                 error!("Failed to load workouts from IndexedDB: {e}");
@@ -152,7 +148,6 @@ async fn load_storage_data() {
             Ok(sessions) if !sessions.is_empty() => {
                 info!("Loaded {} sessions from IndexedDB", sessions.len());
                 sessions_sig.set(sessions);
-                from_idb = true;
             }
             Err(e) => {
                 error!("Failed to load sessions from IndexedDB: {e}");
@@ -164,18 +159,12 @@ async fn load_storage_data() {
             Ok(custom) if !custom.is_empty() => {
                 info!("Loaded {} custom exercises from IndexedDB", custom.len());
                 custom_sig.set(custom);
-                from_idb = true;
             }
             Err(e) => {
                 error!("Failed to load custom exercises from IndexedDB: {e}");
                 toast.set(Some(format!("⚠️ Failed to load custom exercises: {e}")));
             }
             _ => {}
-        }
-
-        // Fall back to localStorage (one-time migration)
-        if !from_idb {
-            migrate_from_local_storage(workouts_sig, sessions_sig, custom_sig).await;
         }
     }
 
@@ -219,67 +208,6 @@ async fn load_storage_data() {
                 toast.set(Some(format!("⚠️ Failed to load custom exercises: {e}")));
             }
             _ => {}
-        }
-    }
-}
-
-#[cfg(target_arch = "wasm32")]
-async fn migrate_from_local_storage(
-    mut workouts_sig: Signal<Vec<Workout>>,
-    mut sessions_sig: Signal<Vec<WorkoutSession>>,
-    mut custom_sig: Signal<Vec<Exercise>>,
-) {
-    let window = match web_sys::window() {
-        Some(w) => w,
-        None => return,
-    };
-    let storage = match window.local_storage() {
-        Ok(Some(s)) => s,
-        _ => return,
-    };
-
-    // Workouts
-    if let Ok(Some(data)) = storage.get_item("log_workout_workouts") {
-        if let Ok(workouts) = serde_json::from_str::<Vec<Workout>>(&data) {
-            info!(
-                "Migrating {} workouts from localStorage → IndexedDB",
-                workouts.len()
-            );
-            for w in &workouts {
-                let _ = idb::put_item(idb::STORE_WORKOUTS, w).await;
-            }
-            workouts_sig.set(workouts);
-            let _ = storage.remove_item("log_workout_workouts");
-        }
-    }
-
-    // Sessions
-    if let Ok(Some(data)) = storage.get_item("log_workout_sessions") {
-        if let Ok(sessions) = serde_json::from_str::<Vec<WorkoutSession>>(&data) {
-            info!(
-                "Migrating {} sessions from localStorage → IndexedDB",
-                sessions.len()
-            );
-            for s in &sessions {
-                let _ = idb::put_item(idb::STORE_SESSIONS, s).await;
-            }
-            sessions_sig.set(sessions);
-            let _ = storage.remove_item("log_workout_sessions");
-        }
-    }
-
-    // Custom exercises
-    if let Ok(Some(data)) = storage.get_item("log_workout_custom_exercises") {
-        if let Ok(custom) = serde_json::from_str::<Vec<Exercise>>(&data) {
-            info!(
-                "Migrating {} custom exercises from localStorage → IndexedDB",
-                custom.len()
-            );
-            for c in &custom {
-                let _ = idb::put_item(idb::STORE_CUSTOM_EXERCISES, c).await;
-            }
-            custom_sig.set(custom);
-            let _ = storage.remove_item("log_workout_custom_exercises");
         }
     }
 }
@@ -556,63 +484,7 @@ pub(crate) mod native_storage {
              CREATE TABLE IF NOT EXISTS config (key TEXT PRIMARY KEY, value TEXT NOT NULL);",
         )
         .map_err(|e| e.to_string())?;
-        // Run one-time migration from old JSON files (no-op if already migrated).
-        migrate_from_json(&conn);
         Ok(conn)
-    }
-
-    /// One-time migration: reads any existing `<store>.json` files and inserts
-    /// their contents into SQLite, then deletes the JSON files.
-    fn migrate_from_json(conn: &Connection) {
-        for store in &[
-            STORE_WORKOUTS,
-            STORE_SESSIONS,
-            STORE_CUSTOM_EXERCISES,
-            STORE_EXERCISES,
-        ] {
-            let json_path = data_dir().join(format!("{store}.json"));
-            if !json_path.exists() {
-                continue;
-            }
-            let Ok(text) = std::fs::read_to_string(&json_path) else {
-                continue;
-            };
-            let Ok(items) = serde_json::from_str::<Vec<serde_json::Value>>(&text) else {
-                continue;
-            };
-            for item in &items {
-                let Some(id) = item.get("id").and_then(|v| v.as_str()) else {
-                    continue;
-                };
-                let Ok(data) = serde_json::to_string(item) else {
-                    continue;
-                };
-                let _ = conn.execute(
-                    &format!("INSERT OR IGNORE INTO {store} (id, data) VALUES (?1, ?2)"),
-                    params![id, data],
-                );
-            }
-            let _ = std::fs::remove_file(&json_path);
-            log::info!("Migrated {} from JSON to SQLite", store);
-        }
-        // Migrate config.json
-        let config_path = data_dir().join("config.json");
-        if config_path.exists() {
-            if let Ok(text) = std::fs::read_to_string(&config_path) {
-                if let Ok(serde_json::Value::Object(map)) = serde_json::from_str(&text) {
-                    for (key, val) in &map {
-                        if let Some(value) = val.as_str() {
-                            let _ = conn.execute(
-                                "INSERT OR IGNORE INTO config (key, value) VALUES (?1, ?2)",
-                                params![key, value],
-                            );
-                        }
-                    }
-                }
-            }
-            let _ = std::fs::remove_file(&config_path);
-            log::info!("Migrated config.json to SQLite");
-        }
     }
 
     /// Reads all items from a store, deserialising each row's JSON `data` column.

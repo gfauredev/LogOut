@@ -86,6 +86,7 @@ pub(super) fn ExerciseFormPanel(
                             label { class: "form-label", "Weight (kg)" }
                             input {
                                 r#type: "number",
+                                inputmode: "decimal",
                                 step: "0.1",
                                 placeholder: "Optional",
                                 value: "{weight_input}",
@@ -105,6 +106,7 @@ pub(super) fn ExerciseFormPanel(
                                 label { class: "form-label", "Distance (km)" }
                                 input {
                                     r#type: "number",
+                                    inputmode: "decimal",
                                     step: "0.1",
                                     placeholder: "Distance",
                                     value: "{distance_input}",
@@ -125,6 +127,7 @@ pub(super) fn ExerciseFormPanel(
                                 label { class: "form-label", "Repetitions" }
                                 input {
                                     r#type: "number",
+                                    inputmode: "numeric",
                                     placeholder: "Reps",
                                     value: "{reps_input}",
                                     oninput: move |evt| reps_input.set(evt.value()),
