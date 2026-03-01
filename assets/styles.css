@@ -115,6 +115,41 @@ ul {
   line-height: 1.8;
 }
 
+.search-with-add {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing);
+}
+
+/* .form-input, */
+/* .form-select, */
+/* .muscle-select, */
+input[type=text] {
+  width: 100%;
+  padding: var(--spacing);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius);
+  font-size: var(--font-size-base);
+  box-sizing: border-box;
+  background: var(--bg-card);
+  color: inherit;
+}
+
+input[type=text]+a {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--btn-add-size);
+  height: var(--btn-add-size);
+  flex-shrink: 0;
+  background: var(--gradient-pink);
+  color: var(--text-primary);
+  text-decoration: none;
+  border-radius: 50%;
+  font-size: 1.6em;
+  font-weight: bold;
+  line-height: 1;
+}
 
 /* TOP LEVEL */
 #main {
@@ -138,7 +173,10 @@ main {
   display: grid;
   gap: var(--spacing);
   grid-auto-rows: max-content;
-  /* padding-bottom: var(--nav-height); */
+}
+
+main.exercises {
+  grid-template-columns: repeat(auto-fill, minmax(var(--col-min-width), 1fr));
 }
 
 main+button {
@@ -178,6 +216,7 @@ main+button {
   }
 }
 
+/* TODO Clean */
 .active,
 .bottom-nav__tab--active {
   transform: scale(1.25);
@@ -191,6 +230,7 @@ article {
   background: var(--bg-card);
 }
 
+/* CRAP */
 .container--form {
   padding: var(--spacing-md);
 }
@@ -345,14 +385,7 @@ article {
   cursor: pointer;
 }
 
-/* ===== Search Input ===== */
-.search-with-add {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.form-input,
+/* .form-input,
 .search-input,
 .form-select,
 .muscle-select {
@@ -365,7 +398,7 @@ article {
   background: var(--bg-card);
   color: inherit;
   margin-bottom: 1em;
-}
+} */
 
 .form-input--flex {
   flex: 1;
@@ -380,10 +413,10 @@ article {
   text-align: center;
 }
 
-.search-with-add .search-input {
+/* .search-with-add .search-input {
   flex: 1;
   min-width: 0;
-}
+} */
 
 .form-select--chart {
   border-width: 2px;
@@ -396,7 +429,7 @@ article {
   flex: 1;
 }
 
-.add-exercise-btn {
+/* .add-exercise-btn {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -410,16 +443,15 @@ article {
   font-size: 1.6em;
   font-weight: bold;
   line-height: 1;
-}
+} */
 
-/* ===== Exercise List ===== */
-.exercise-list {
+/* .exercise-list {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(var(--col-min-width), 1fr));
   gap: var(--spacing-sm);
   width: 100%;
   box-sizing: border-box;
-}
+} */
 
 .exercise-card {
   padding: 15px;
@@ -542,10 +574,9 @@ article {
   background: var(--bg-elevated);
 }
 
-/* ===== Form Controls ===== */
-.form-group {
+/* .form-group {
   margin-bottom: var(--spacing-md);
-}
+} */
 
 .form-stack {
   display: flex;
