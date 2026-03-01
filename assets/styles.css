@@ -47,7 +47,7 @@
 
   /* ── Spacing ── */
   --spacing: 8px;
-  --spacing-ul: 14px;
+  --padding-left-list: 14px;
   --spacing-xs: 8px;
   --spacing-sm: 8px;
   --spacing-md: 8px;
@@ -89,8 +89,11 @@
 /* h1 { color: var(--text-primary); } */
 
 h2 {
-  margin: 0 0 8px 0;
+  margin: 0 0 var(--spacing) 0;
   color: var(--text-primary);
+  font-size: 1.2em;
+  cursor: pointer;
+  clear: both;
 }
 
 p {
@@ -110,7 +113,7 @@ a:hover {
 
 ul {
   margin: 8px 0 0 0;
-  padding-left: var(--spacing-ul);
+  padding-left: var(--padding-left-list);
   color: var(--text-muted);
   line-height: 1.8;
 }
@@ -175,7 +178,8 @@ main {
   grid-auto-rows: max-content;
 }
 
-main.exercises {
+main.exercises,
+main.sessions {
   grid-template-columns: repeat(auto-fill, minmax(var(--col-min-width), 1fr));
 }
 
@@ -228,19 +232,77 @@ article {
   border: 1px solid var(--border-color);
   border-radius: var(--radius);
   background: var(--bg-card);
+  box-shadow: var(--shadow-card-sm);
+}
+
+article>header {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  margin-bottom: var(--spacing-xs);
+}
+
+article>header time {
+  font-size: 0.85em;
+  color: var(--text-muted);
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  flex: 1;
+}
+
+article>header span {
+  font-size: 0.9em;
+  font-weight: 600;
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+
+article .edit {
+  font-size: 0.85em;
+  color: var(--color-primary);
+  text-decoration: none;
+  padding: 2px 8px;
+  border-radius: var(--radius);
+  border: 1px solid var(--color-primary);
+  background: none;
+  cursor: pointer;
+  float: right;
+  margin-bottom: 4px;
+}
+
+article button:hover {
+  background: var(--bg-elevated);
+}
+
+article ol {
+  margin: var(--spacing) 0;
+  padding-left: var(--padding-left-list);
+  color: var(--text-faint);
+  font-size: 0.9em;
+  line-height: 1.5;
+}
+
+article img {
+  display: block;
+  width: auto;
+  max-width: 100%;
+  max-height: 20vh;
+  border-radius: var(--radius);
+  margin: 0 auto 10px auto;
+  cursor: pointer;
 }
 
 /* CRAP */
-.container--form {
+/* .container--form {
   padding: var(--spacing-md);
-}
+} */
 
-/* ===== Sessions Tab (center tab home page) ===== */
-.sessions {
+/* .sessions {
   grid-template-columns: repeat(auto-fill, minmax(var(--col-min-width), 1fr));
-  /* display: grid; */
-  /* gap: var(--spacing-sm); */
-  /* padding: var(--spacing-md); */
+  display: grid;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-md);
 }
 
 .sessions>p,
@@ -253,14 +315,13 @@ article {
   color: var(--text-dim);
   margin-top: var(--spacing-md);
   font-size: 1.1em;
-}
+} */
 
 /* .exercises {
   padding: var(--spacing-md);
 } */
 
-/* ===== Session Card ===== */
-.session-card {
+/* .session-card {
   padding: var(--spacing-md);
   border: 1px solid var(--border-color);
   border-radius: var(--radius);
@@ -289,7 +350,7 @@ article {
   font-weight: 600;
   color: var(--text-secondary);
   white-space: nowrap;
-}
+} */
 
 /* Shared ghost icon button style for session card actions */
 .session-card>header button {
@@ -307,11 +368,11 @@ article {
   opacity: 1;
 }
 
-.session-card__actions {
+/* .session-card__actions {
   display: flex;
   gap: var(--spacing-xs);
   align-items: center;
-}
+} */
 
 .session-card__exercises {
   display: flex;
@@ -453,15 +514,15 @@ article {
   box-sizing: border-box;
 } */
 
-.exercise-card {
+/* .exercise-card {
   padding: 15px;
   border: 1px solid var(--border-color);
   border-radius: var(--radius);
   background: var(--bg-card);
   box-shadow: var(--shadow-card-sm);
-}
+} */
 
-.exercise-card__edit-btn {
+/* .exercise-card__edit-btn {
   font-size: 0.85em;
   color: var(--color-primary);
   text-decoration: none;
@@ -506,7 +567,7 @@ article {
   border-radius: var(--radius);
   margin: 0 auto 10px auto;
   cursor: pointer;
-}
+} */
 
 .tag-row {
   display: flex;
