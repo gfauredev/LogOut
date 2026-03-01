@@ -63,6 +63,7 @@
               cargo-ndk
               android-tools
               androidenv.androidPkgs.ndk-bundle
+              androidenv.androidPkgs.androidsdk # WARN Very large TODO Configure a subset of it
               openjdk
             ];
             buildInputs =
