@@ -1,4 +1,5 @@
 :root {
+
   /* ── Colour palette ── */
   --color-primary: #667eea;
   --color-secondary: #764ba2;
@@ -42,16 +43,19 @@
   --text-soft: #e0e0e0;
 
   /* ── Radius ── */
-  --radius: .8em;
+  --radius: 8px;
 
   /* ── Spacing ── */
-  --spacing-xs: 4px;
-  --spacing-sm: 12px;
-  --spacing-md: 20px;
+  --spacing-xs: 8px;
+  --spacing-sm: 8px;
+  --spacing-md: 8px;
+  /* --spacing-xs: 4px; */
+  /* --spacing-sm: 12px; */
+  /* --spacing-md: 20px; */
 
   /* ── Layout ── */
   --nav-height: 70px;
-  --col-min-width: 350px;
+  --col-min-width: 380px;
   --modal-min-width: 260px;
   --btn-fab-size: 56px;
   --btn-add-size: 42px;
@@ -66,40 +70,40 @@
   --shadow-btn: 0 2px 4px rgba(0,0,0,.3);
 
   /* ── Z-indices ── */
-  --z-backdrop: 99;
-  --z-modal: 100;
-  --z-fab: 500;
-  --z-nav: 1000;
-  --z-toast: 3000;
+  --z-backdrop: 1;
+  --z-modal: 2;
+  --z-fab: 3;
+  --z-nav: 4;
+  --z-toast: 5;
 
   /* ── Muscles (tag colours) ── */
   --muscle-primary-bg: #2d7a3a;
   --muscle-primary-fg: #c8f7d0;
   --muscle-secondary-bg: #1a4a4a;
-  --muscle-secondary-fg: #a8edea;
+  --muscle-secondary-fg: #a8edea
+
 }
 
-#main > header {
-  margin-top: 1em;
-  margin-bottom: 1em;
-  text-align: center;
-}
-
-h1 {
-  color: var(--text-primary);
-}
-
-/* ===== General Layout ===== */
+/* TOP LEVEL */
 #main {
   display: flex;
   flex-direction: column;
   min-height: 100dvh;
-  margin: 0 auto;
+  margin: 0;
+  padding: 1em 1em 0 1em;
 }
+
+#main > header {
+  /* margin-top: 1em; */
+  /* margin-bottom: 1em; */
+  text-align: center;
+}
+
+/* h1 { color: var(--text-primary); } */
 
 main {
   flex: 1;
-  padding-bottom: var(--nav-height);
+  /* padding-bottom: var(--nav-height); */
   width: 100%;
   box-sizing: border-box;
 }
@@ -353,7 +357,7 @@ main {
   background: var(--gradient-pink);
   color: var(--text-primary);
   text-decoration: none;
-  border-radius: var(--radius);
+  border-radius: 50%;
   font-size: 1.6em;
   font-weight: bold;
   line-height: 1;
@@ -441,8 +445,10 @@ main {
 .tag--force    { background: var(--color-secondary); }
 .tag--equipment { background: var(--color-accent); }
 .tag--level    { background: var(--color-pink-dark); }
-.tag--muscle-primary { background: var(--muscle-primary-bg); color: var(--muscle-primary-fg); }
-.tag--muscle-secondary { background: var(--muscle-secondary-bg); color: var(--muscle-secondary-fg); }
+.tag--muscle-primary {
+   background: var(--muscle-primary-bg);
+   color: var(--muscle-primary-fg); 
+}
 
 /* ===== Search Results Dropdown ===== */
 .search-results {
