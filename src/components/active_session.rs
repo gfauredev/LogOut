@@ -409,139 +409,135 @@ pub fn SessionView() -> Element {
     let exercise_count = session.read().exercise_logs.len();
 
     rsx! {
+        SessionHeader {
+            session_start_time: session.read().start_time,
+            session_is_active: session.read().is_active(),
+            exercise_count,
+            on_click_timer: move |_| {
+                rest_input_value.set(rest_duration.read().to_string());
+                let current = *show_rest_input.read();
+                show_rest_input.set(!current);
+            },
+            on_finish: finish_session,
+        }
+
+        // Rest duration input (shown when clicking timer)
+        if *show_rest_input.read() {
+            RestDurationInput {
+                show_rest_input,
+                rest_input_value,
+                rest_duration,
+            }
+        }
+
+        // Rest timer (shown when no exercise is active and rest is ongoing)
+        if current_exercise_id.read().is_none() {
+            RestTimerDisplay {
+                rest_start_time,
+                rest_duration,
+                rest_bell_count,
+            }
+        }
+
+        // Main content area
         section {
-            class: "session-container",
+            class: "session-main",
 
-            SessionHeader {
-                session_start_time: session.read().start_time,
-                session_is_active: session.read().is_active(),
-                exercise_count,
-                on_click_timer: move |_| {
-                    rest_input_value.set(rest_duration.read().to_string());
-                    let current = *show_rest_input.read();
-                    show_rest_input.set(!current);
-                },
-                on_finish: finish_session,
-            }
-
-            // Rest duration input (shown when clicking timer)
-            if *show_rest_input.read() {
-                RestDurationInput {
-                    show_rest_input,
-                    rest_input_value,
-                    rest_duration,
+            // Pending exercises (pre-added from a previous session)
+            if current_exercise_id.read().is_none() && !pending_ids().is_empty() {
+                PendingExercisesSection {
+                    pending_ids: pending_ids(),
+                    on_start: move |exercise_id: String| {
+                        prefill_inputs_from_last_log(
+                            &exercise_id,
+                            weight_input,
+                            reps_input,
+                            distance_input,
+                        );
+                        // Remove from pending and save
+                        let mut current_session = session.read().clone();
+                        // Remove only the first occurrence so that repeated
+                        // exercises are consumed one at a time.
+                        let mut removed = false;
+                        current_session.pending_exercise_ids.retain(|x| {
+                            if !removed && x == &exercise_id {
+                                removed = true;
+                                false
+                            } else {
+                                true
+                            }
+                        });
+                        let pending_start = get_current_timestamp();
+                        current_session.rest_start_time = None;
+                        current_session.current_exercise_id = Some(exercise_id.clone());
+                        current_session.current_exercise_start = Some(pending_start);
+                        storage::save_session(current_session);
+                        // Start the exercise
+                        current_exercise_id.set(Some(exercise_id.clone()));
+                        current_exercise_start.set(Some(pending_start));
+                        search_query.set(String::new());
+                        rest_start_time.set(None);
+                        rest_bell_count.set(0);
+                        duration_bell_rung.set(false);
+                    },
                 }
             }
 
-            // Rest timer (shown when no exercise is active and rest is ongoing)
+            // Exercise search and selection
             if current_exercise_id.read().is_none() {
-                RestTimerDisplay {
-                    rest_start_time,
-                    rest_duration,
-                    rest_bell_count,
+                div {
+                    class: "form-group",
+                    div { class: "search-with-add",
+                        input {
+                            r#type: "text",
+                            placeholder: "Search for an exercise...",
+                            value: "{search_query}",
+                            oninput: move |evt| search_query.set(evt.value()),
+                            class: "search-input",
+                        }
+                        Link {
+                            to: Route::AddCustomExercisePage {},
+                            class: "add-exercise-btn",
+                            title: "Add Custom Exercise",
+                            "+"
+                        }
+                    }
+
+                    if !search_results().is_empty() {
+                        div {
+                            class: "search-results search-results--tall",
+                            for (id, name, category) in search_results() {
+                                div {
+                                    key: "{id}",
+                                    onclick: move |_| start_exercise(id.clone()),
+                                    class: "search-result-item search-result-item--flex",
+                                    span { "{name}" }
+                                    span { class: "tag tag--category", "{category}" }
+                                }
+                            }
+                        }
+                    }
+                }
+            } else if let Some(exercise_id) = current_exercise_id.read().as_ref().cloned() {
+                // Current exercise input form
+                ExerciseFormPanel {
+                    exercise_id,
+                    weight_input,
+                    reps_input,
+                    distance_input,
+                    current_exercise_start,
+                    duration_bell_rung,
+                    on_complete: complete_exercise,
+                    on_cancel: cancel_exercise,
                 }
             }
 
-            // Main content area
-            section {
-                class: "session-main",
-
-                // Pending exercises (pre-added from a previous session)
-                if current_exercise_id.read().is_none() && !pending_ids().is_empty() {
-                    PendingExercisesSection {
-                        pending_ids: pending_ids(),
-                        on_start: move |exercise_id: String| {
-                            prefill_inputs_from_last_log(
-                                &exercise_id,
-                                weight_input,
-                                reps_input,
-                                distance_input,
-                            );
-                            // Remove from pending and save
-                            let mut current_session = session.read().clone();
-                            // Remove only the first occurrence so that repeated
-                            // exercises are consumed one at a time.
-                            let mut removed = false;
-                            current_session.pending_exercise_ids.retain(|x| {
-                                if !removed && x == &exercise_id {
-                                    removed = true;
-                                    false
-                                } else {
-                                    true
-                                }
-                            });
-                            let pending_start = get_current_timestamp();
-                            current_session.rest_start_time = None;
-                            current_session.current_exercise_id = Some(exercise_id.clone());
-                            current_session.current_exercise_start = Some(pending_start);
-                            storage::save_session(current_session);
-                            // Start the exercise
-                            current_exercise_id.set(Some(exercise_id.clone()));
-                            current_exercise_start.set(Some(pending_start));
-                            search_query.set(String::new());
-                            rest_start_time.set(None);
-                            rest_bell_count.set(0);
-                            duration_bell_rung.set(false);
-                        },
-                    }
-                }
-
-                // Exercise search and selection
-                if current_exercise_id.read().is_none() {
-                    div {
-                        class: "form-group",
-                        div { class: "search-with-add",
-                            input {
-                                r#type: "text",
-                                placeholder: "Search for an exercise...",
-                                value: "{search_query}",
-                                oninput: move |evt| search_query.set(evt.value()),
-                                class: "search-input",
-                            }
-                            Link {
-                                to: Route::AddCustomExercisePage {},
-                                class: "add-exercise-btn",
-                                title: "Add Custom Exercise",
-                                "+"
-                            }
-                        }
-
-                        if !search_results().is_empty() {
-                            div {
-                                class: "search-results search-results--tall",
-                                for (id, name, category) in search_results() {
-                                    div {
-                                        key: "{id}",
-                                        onclick: move |_| start_exercise(id.clone()),
-                                        class: "search-result-item search-result-item--flex",
-                                        span { "{name}" }
-                                        span { class: "tag tag--category", "{category}" }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                } else if let Some(exercise_id) = current_exercise_id.read().as_ref().cloned() {
-                    // Current exercise input form
-                    ExerciseFormPanel {
-                        exercise_id,
-                        weight_input,
-                        reps_input,
-                        distance_input,
-                        current_exercise_start,
-                        duration_bell_rung,
-                        on_complete: complete_exercise,
-                        on_cancel: cancel_exercise,
-                    }
-                }
-
-                // Completed exercises list (antichronological order)
-                if !session.read().exercise_logs.is_empty() {
-                    CompletedExercisesSection {
-                        session,
-                        no_exercise_active: current_exercise_id.read().is_none(),
-                        on_replay: move |exercise_id: String| start_exercise(exercise_id),
-                    }
+            // Completed exercises list (antichronological order)
+            if !session.read().exercise_logs.is_empty() {
+                CompletedExercisesSection {
+                    session,
+                    no_exercise_active: current_exercise_id.read().is_none(),
+                    on_replay: move |exercise_id: String| start_exercise(exercise_id),
                 }
             }
         }
