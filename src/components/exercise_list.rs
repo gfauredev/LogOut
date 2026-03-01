@@ -160,37 +160,30 @@ pub fn ExerciseListPage() -> Element {
         header {
             h1 { tabindex: 0, "📚 Exercise Database" }
             p { "Browse {total} exercises" }
-        }
-        main { class: "exercises",
-            div { class: "form-group",
-                div { class: "search-with-add",
-                    input {
-                        r#type: "text",
-                        placeholder: "Search exercises, muscles, or categories...",
-                        value: "{search_query}",
-                        oninput: move |evt| {
-                            search_query.set(evt.value());
-                            visible_count.set(PAGE_SIZE);
-                        },
-                        class: "search-input",
-                    }
-                    Link {
-                        to: Route::AddCustomExercisePage {},
-                        class: "add-exercise-btn",
-                        title: "Add Custom Exercise",
-                        "+"
+            div { class: "search-with-add",
+                input {
+                    r#type: "text",
+                    placeholder: "Search exercises, muscles, or categories...",
+                    value: "{search_query}",
+                    oninput: move |evt| {
+                        search_query.set(evt.value());
+                        visible_count.set(PAGE_SIZE);
                     }
                 }
+                Link {
+                    to: Route::AddCustomExercisePage {},
+                    title: "Add Custom Exercise",
+                    "+"
+                }
             }
-            section {
-                class: "exercise-list",
-                for (exercise, is_custom, show_instructions) in visible_items() {
-                    ExerciseCard {
-                        key: "{exercise.id}",
-                        exercise,
-                        is_custom,
-                        show_instructions_initial: show_instructions,
-                    }
+        }
+        main { class: "exercises",
+            for (exercise, is_custom, show_instructions) in visible_items() {
+                ExerciseCard {
+                    key: "{exercise.id}",
+                    exercise,
+                    is_custom,
+                    show_instructions_initial: show_instructions,
                 }
             }
         }
