@@ -2,11 +2,12 @@
 lang: en
 ---
 
+# LogOut
+
 <!--toc:start-->
 
 - [Project Structure](#project-structure)
 - [Tooling & Dependencies](#tooling-dependencies)
-  - [Development & Testing Tools](#development-testing-tools)
 - [Building & Running](#building-running)
   - [Building the PWA](#building-the-pwa)
   - [GitHub Pages deployment](#github-pages-deployment)
@@ -17,11 +18,8 @@ lang: en
   - [Other](#other)
 - [TODO](#todo)
   - [Optimization & Technical](#optimization-technical)
-    - [To consider](#to-consider)
 
 <!--toc:end-->
-
-# LogOut
 
 > Turn off your computer, Log your workOut
 
@@ -70,21 +68,19 @@ LogOut/
 
 ## Tooling & Dependencies
 
-| Library     | Role                                                                            |
-| ----------- | ------------------------------------------------------------------------------- |
-| [Dioxus]    | Main UI framework for building reactive components with a Rust-native DSL       |
-| [Serde]     | Serialization and deserialization framework for all data models and persistence |
-| [IndexedDB] | Local-first browser storage for workouts and custom exercises (via [Rexie])     |
-| [SQLite]    | Native-first storage for workout data on Android/Linux (via [Rusqlite])         |
+| Role                                                                            | Library     |
+| ------------------------------------------------------------------------------- | ----------- |
+| Main UI framework for building reactive components with a Rust-native DSL       | [Dioxus]    |
+| Serialization and deserialization framework for all data models and persistence | [Serde]     |
+| Local-first browser storage for workouts and custom exercises (via [Rexie])     | [IndexedDB] |
+| Native-first storage for workout data on Android/Linux (via [Rusqlite])         | [SQLite]    |
 
-| Library   | Role                                                                           |
-| --------- | ------------------------------------------------------------------------------ |
-| [Reqwest] | Asynchronous HTTP client for loading exercise data and external assets         |
-| [Time]    | Type-safe date and time manipulation (UTC/Local offsets)                       |
-| [Tokio]   | Async runtime for the native application target.                               |
-| [Web-sys] | Low-level bindings to browser APIs (Service Worker, Notifications, Visibility) |
-
-### Development & Testing Tools
+| Role                                                                           | Library   |
+| ------------------------------------------------------------------------------ | --------- |
+| Asynchronous HTTP client for loading exercise data and external assets         | [Reqwest] |
+| Type-safe date and time manipulation (UTC/Local offsets)                       | [Time]    |
+| Async runtime for the native application target.                               | [Tokio]   |
+| Low-level bindings to browser APIs (Service Worker, Notifications, Visibility) | [Web-sys] |
 
 | Function                      | Tool                   |
 | ----------------------------- | ---------------------- |
