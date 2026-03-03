@@ -70,6 +70,23 @@
   --muscle-secondary-fg: #a8edea
 }
 
+@import "generic"; // Generic definitions, arbitrary number of elements
+@import "specific"; // Specific definitions, one or a few precise elements
+
+@media screen and (prefers-color-scheme: light) {
+  @import "light"; // Light theme if preferred
+}
+
+// @media (pointer: fine) { @import "fine-pointer"; } // Controls needing mouse
+// @media (pointer: none) { @import "no-pointer" }; // Keyboard only control
+
+@media screen and (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto; // Reduce moving animations, prevent motion sickness
+  }
+}
+
+
 /* GENERIC */
 h2 {
   margin: 0 0 var(--spacing) 0;
