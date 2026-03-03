@@ -16,6 +16,10 @@ lang: en
   - [Acceptance Criteria](#acceptance-criteria)
 - [Learn About an Exercise](#learn-about-an-exercise)
   - [Acceptance Criteria](#acceptance-criteria)
+- [Add Custom Exercise](#add-custom-exercise)
+  - [Acceptance Criteria](#acceptance-criteria)
+- [Edit a Cloned Exercise](#edit-a-cloned-exercise)
+  - [Acceptance Criteria](#acceptance-criteria)
 - [Navigate to Analytics](#navigate-to-analytics)
   - [Acceptance Criteria](#acceptance-criteria)
 - [Clean State Analytics](#clean-state-analytics)
@@ -30,17 +34,30 @@ lang: en
   - [Acceptance Criteria](#acceptance-criteria)
 - [Cancel Empty Session](#cancel-empty-session)
   - [Acceptance Criteria](#acceptance-criteria)
-- [Search Exercises in Active Session](#search-exercises-in-active-session)
-  - [Acceptance Criteria](#acceptance-criteria)
 - [Full Workout Session](#full-workout-session)
-  - [Acceptance Criteria](#acceptance-criteria)
-- [Remove Exercise from Session](#remove-exercise-from-session)
+  - [Start Session](#start-session)
+    - [Acceptance Criteria](#acceptance-criteria)
+  - [Search Exercise](#search-exercise)
+    - [Acceptance Criteria](#acceptance-criteria)
+  - [Record Exercise](#record-exercise)
+    - [Acceptance Criteria](#acceptance-criteria)
+  - [Replay Exercise](#replay-exercise)
+    - [Acceptance Criteria](#acceptance-criteria)
+  - [Repeat N Times](#repeat-n-times)
+    - [Acceptance Criteria](#acceptance-criteria)
+  - [Remove Exercise](#remove-exercise)
+    - [Acceptance Criteria](#acceptance-criteria)
+  - [Finish Session](#finish-session)
+    - [Acceptance Criteria](#acceptance-criteria)
+- [Repeat Session from History](#repeat-session-from-history)
   - [Acceptance Criteria](#acceptance-criteria)
 - [Delete a Past Session](#delete-a-past-session)
   - [Acceptance Criteria](#acceptance-criteria)
-- [Repeat Session from History](#repeat-session-from-history)
+- [Lookup Exercises Targetting Same Muscles](#lookup-exercises-targetting-same-muscles)
   - [Acceptance Criteria](#acceptance-criteria)
-- [Add Custom Exercise](#add-custom-exercise)
+- [Navigate to Analytics](#navigate-to-analytics)
+  - [Acceptance Criteria](#acceptance-criteria)
+- [Be Astonished by Your Incredible Progress](#be-astonished-by-your-incredible-progress)
   - [Acceptance Criteria](#acceptance-criteria)
 
 <!--toc:end-->
@@ -100,15 +117,43 @@ the Exercise List, **so that** I can quickly find a specific exercise.
 
 ## Learn About an Exercise
 
-**As a** _user_, **I want to** learn about an exercise by opening its details,
-**so that** I can perform it properly and confidently.
+**As a** _user_, **I want to** learn about an exercise details, **so that** I
+can perform it properly and confidently.
 
 ### Acceptance Criteria
 
 - Clicking on an Exercise heading displays the exercise’s instructions
-- Typing a search term filters the exercise list
-- The page remains functional after searching
-- Remove search term(s) shows the full exercise list again
+- Clicking on an Exercise image cycles to the next image
+- A row of tags displays Category, Force, Equipment, and Level of the exercise
+- A row of tags displays Primary Muscle(s) targeted by the exercise
+- A row of tags displays Secondary Muscle(s) targeted by the exercise
+
+> Not every exercise has every detail available, so try other exercise instead
+> of failing the test in case something is missing
+
+## Add Custom Exercise
+
+**As a** _user_, **I want to** add a custom exercise to the exercise database,
+**so that** I can log exercises that are not in the built-in list.
+
+### Acceptance Criteria
+
+- A "+" button is located near the search bar
+  - **Click it**, the Add Exercise form opens
+- Filling in the exercise name and clicking save button creates a new exercise
+- The new exercise is visible in the Exercise List
+
+## Edit a Cloned Exercise
+
+**As a** _user_, **I want to** edit a built-in exercise after cloning it, **so
+that** I can create a custom clone that fits my training better.
+
+### Acceptance Criteria
+
+- A "✏️ Clone & Edit" button is located on each built-in exercise card
+  - **Click it**, the Edit Exercise form opens
+- Changin the exercise name and clicking save button creates a new exercise
+- The modified clone is visible in the Exercise List with the new name
 
 ## Navigate to Analytics
 
@@ -193,23 +238,46 @@ can return to the home screen without saving a useless, empty session.
   - Heading "LogOut" is visible again
   - Main body still shows "No past sessions yet"
 
-## Search Exercises in Active Session
-
-**As a** _user_, **I want to** search for exercises while in an active workout
-session, **so that** I can find and add exercises to my current workout.
-
-### Acceptance Criteria
-
-- An exercise search input is visible in the active session view
-- Typing a search term does not crash the app
-- The active session remains functional after searching
-
 ## Full Workout Session
 
 **As a** _user_, **I want to** complete a full workout session from start to
 finish, **so that** my workout is saved and visible in my session history.
 
-### Acceptance Criteria
+### Start Session
+
+#### Acceptance Criteria
+
+### Search Exercise
+
+#### Acceptance Criteria
+
+### Record Exercise
+
+#### Acceptance Criteria
+
+### Replay Exercise
+
+#### Acceptance Criteria
+
+### Repeat N Times
+
+#### Acceptance Criteria
+
+### Remove Exercise
+
+**As a** _user_, **I want to** remove a completed exercise from my active
+session, **so that** I can correct mistakes or remove unwanted entries.
+
+#### Acceptance Criteria
+
+- Complete an exercise in an active session
+- Delete the completed exercise using the 🗑️ button
+- The session reverts to an empty state showing "Cancel Session"
+- Cancelling the empty session returns to the home screen
+
+### Finish Session
+
+#### Acceptance Criteria
 
 - Start a new session and search for an exercise (e.g. "bench press")
 - Select the exercise from the search results to open the exercise form
@@ -219,30 +287,6 @@ finish, **so that** my workout is saved and visible in my session history.
 - Complete the second set successfully
 - Finish the session using "Finish Session"
 - The home screen shows the completed session with the exercise name
-
-## Remove Exercise from Session
-
-**As a** _user_, **I want to** remove a completed exercise from my active
-session, **so that** I can correct mistakes or remove unwanted entries.
-
-### Acceptance Criteria
-
-- Complete an exercise in an active session
-- Delete the completed exercise using the 🗑️ button
-- The session reverts to an empty state showing "Cancel Session"
-- Cancelling the empty session returns to the home screen
-
-## Delete a Past Session
-
-**As a** _user_, **I want to** delete a completed session from my history, **so
-that** I can remove unwanted or accidental entries.
-
-### Acceptance Criteria
-
-- A completed session is visible on the home screen
-- Tapping the 🗑️ button on a session card opens a confirmation dialog
-- Confirming the deletion removes the session from the home screen
-- The home screen returns to its empty state
 
 ## Repeat Session from History
 
@@ -256,13 +300,34 @@ that** I can quickly repeat the same exercises.
 - The new session shows the exercises from the original session in the
   "Pre-added Exercises" section
 
-## Add Custom Exercise
+## Delete a Past Session
 
-**As a** _user_, **I want to** add a custom exercise to the exercise database,
-**so that** I can log exercises that are not in the built-in list.
+**As a** _user_, **I want to** delete a completed session from my history, **so
+that** I can remove unwanted or accidental entries.
 
 ### Acceptance Criteria
 
-- Tapping the "+" button in the exercise browser opens the "Add Exercise" form
-- Filling in the exercise name and saving creates a new exercise
-- The new exercise is visible when searching in the exercise browser
+- A completed session is visible on the home screen
+- Tapping the 🗑️ button on a session card opens a confirmation dialog
+- Confirming the deletion removes the session from the home screen
+- The home screen returns to its empty state
+
+## Lookup Exercises Targetting Same Muscles
+
+### Acceptance Criteria
+
+## Navigate to Analytics
+
+**As a** _user_, **I want to** navigate to the analytics page, **so that** I can
+view my workout progress over time.
+
+### Acceptance Criteria
+
+- The bottom navigation bar contains a "📊" button
+  - **Click it**, the Analytics page opens
+- Header displays "📊 Analytics"
+- "📊" button is slightly emphasized compared to others in bottom navigation bar
+
+## Be Astonished by Your Incredible Progress
+
+### Acceptance Criteria
