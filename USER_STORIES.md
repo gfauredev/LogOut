@@ -12,6 +12,10 @@ lang: en
   - [Acceptance Criteria](#acceptance-criteria)
 - [Clean State Exercise List](#clean-state-exercise-list)
   - [Acceptance Criteria](#acceptance-criteria)
+- [Search Exercises in Browser](#search-exercises-in-browser)
+  - [Acceptance Criteria](#acceptance-criteria)
+- [Learn About an Exercise](#learn-about-an-exercise)
+  - [Acceptance Criteria](#acceptance-criteria)
 - [Navigate to Analytics](#navigate-to-analytics)
   - [Acceptance Criteria](#acceptance-criteria)
 - [Clean State Analytics](#clean-state-analytics)
@@ -25,8 +29,6 @@ lang: en
 - [Start Workout Session](#start-workout-session)
   - [Acceptance Criteria](#acceptance-criteria)
 - [Cancel Empty Session](#cancel-empty-session)
-  - [Acceptance Criteria](#acceptance-criteria)
-- [Search Exercises in Browser](#search-exercises-in-browser)
   - [Acceptance Criteria](#acceptance-criteria)
 - [Search Exercises in Active Session](#search-exercises-in-active-session)
   - [Acceptance Criteria](#acceptance-criteria)
@@ -83,6 +85,30 @@ by existing custom Exercise(s) even though I didn’t created one yet.
 
 - There’s only default exercises, not custom ones created by a user
 - The first exercise has the button "✏️ Clone & Edit", not just "✏️ Edit"
+
+## Search Exercises in Browser
+
+**As a** _user_, **I want to** search for exercises of the exercise database via
+the Exercise List, **so that** I can quickly find a specific exercise.
+
+### Acceptance Criteria
+
+- Exercise List page header displays a search input
+- Typing a search term filters the exercise list
+- The page remains functional after searching
+- Remove search term(s) shows the full exercise list again
+
+## Learn About an Exercise
+
+**As a** _user_, **I want to** learn about an exercise by opening its details,
+**so that** I can perform it properly and confidently.
+
+### Acceptance Criteria
+
+- Clicking on an Exercise heading displays the exercise’s instructions
+- Typing a search term filters the exercise list
+- The page remains functional after searching
+- Remove search term(s) shows the full exercise list again
 
 ## Navigate to Analytics
 
@@ -166,17 +192,6 @@ can return to the home screen without saving a useless, empty session.
 - Home
   - Heading "LogOut" is visible again
   - Main body still shows "No past sessions yet"
-
-## Search Exercises in Browser
-
-**As a** _user_, **I want to** search for exercises in the exercise database,
-**so that** I can quickly find a specific exercise.
-
-### Acceptance Criteria
-
-- A search input is visible on the exercise browser page
-- Typing a search term filters the exercise list
-- The page remains functional after searching
 
 ## Search Exercises in Active Session
 
