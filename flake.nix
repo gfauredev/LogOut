@@ -91,6 +91,8 @@
             packages = with env.pkgs; [
               # biome
               # bun # JS runtime, bundler, package manager
+              sass
+              scss-lint
               strace
               # taplo # TOML LSP
               # typescript

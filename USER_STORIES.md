@@ -7,9 +7,8 @@ native Android build (`maestro/android/`).
 
 ## 1. View Home Screen
 
-**As a** user,
-**I want to** see the home screen when I launch the app,
-**so that** I know the app has loaded and I can start using it.
+**As a** user, **I want to** see the home screen when I launch the app, **so
+that** I know the app has loaded and I can start using it.
 
 ### Acceptance Criteria
 
@@ -19,9 +18,8 @@ native Android build (`maestro/android/`).
 
 ## 2. Start Workout Session
 
-**As a** user,
-**I want to** start a new workout session,
-**so that** I can begin logging my exercises.
+**As a** user, **I want to** start a new workout session, **so that** I can
+begin logging my exercises.
 
 ### Acceptance Criteria
 
@@ -30,9 +28,8 @@ native Android build (`maestro/android/`).
 
 ## 3. Cancel Empty Session
 
-**As a** user,
-**I want to** cancel an empty workout session,
-**so that** I can return to the home screen without saving anything.
+**As a** user, **I want to** cancel an empty workout session, **so that** I can
+return to the home screen without saving anything.
 
 ### Acceptance Criteria
 
@@ -42,9 +39,8 @@ native Android build (`maestro/android/`).
 
 ## 4. Navigate to Exercise Browser
 
-**As a** user,
-**I want to** navigate to the exercise database,
-**so that** I can browse available exercises.
+**As a** user, **I want to** navigate to the exercise database, **so that** I
+can browse available exercises.
 
 ### Acceptance Criteria
 
@@ -54,9 +50,8 @@ native Android build (`maestro/android/`).
 
 ## 5. Search Exercises in Browser
 
-**As a** user,
-**I want to** search for exercises in the exercise database,
-**so that** I can quickly find a specific exercise.
+**As a** user, **I want to** search for exercises in the exercise database, **so
+that** I can quickly find a specific exercise.
 
 ### Acceptance Criteria
 
@@ -66,9 +61,8 @@ native Android build (`maestro/android/`).
 
 ## 6. Navigate to Analytics
 
-**As a** user,
-**I want to** navigate to the analytics page,
-**so that** I can view my workout progress over time.
+**As a** user, **I want to** navigate to the analytics page, **so that** I can
+view my workout progress over time.
 
 ### Acceptance Criteria
 
@@ -77,9 +71,8 @@ native Android build (`maestro/android/`).
 
 ## 7. Navigate to Credits
 
-**As a** user,
-**I want to** navigate to the credits page,
-**so that** I can see information about the app and configure settings.
+**As a** user, **I want to** navigate to the credits page, **so that** I can see
+information about the app and configure settings.
 
 ### Acceptance Criteria
 
@@ -88,9 +81,8 @@ native Android build (`maestro/android/`).
 
 ## 8. Search Exercises in Active Session
 
-**As a** user,
-**I want to** search for exercises while in an active workout session,
-**so that** I can find and add exercises to my current workout.
+**As a** user, **I want to** search for exercises while in an active workout
+session, **so that** I can find and add exercises to my current workout.
 
 ### Acceptance Criteria
 
@@ -100,9 +92,8 @@ native Android build (`maestro/android/`).
 
 ## 9. Full Workout Session
 
-**As a** user,
-**I want to** complete a full workout session from start to finish,
-**so that** my workout is saved and visible in my session history.
+**As a** user, **I want to** complete a full workout session from start to
+finish, **so that** my workout is saved and visible in my session history.
 
 ### Acceptance Criteria
 
@@ -117,8 +108,7 @@ native Android build (`maestro/android/`).
 
 ## 10. Remove Exercise from Session
 
-**As a** user,
-**I want to** remove a completed exercise from my active session,
+**As a** user, **I want to** remove a completed exercise from my active session,
 **so that** I can correct mistakes or remove unwanted entries.
 
 ### Acceptance Criteria
@@ -130,9 +120,8 @@ native Android build (`maestro/android/`).
 
 ## 11. Delete a Past Session
 
-**As a** user,
-**I want to** delete a completed session from my history,
-**so that** I can remove unwanted or accidental entries.
+**As a** user, **I want to** delete a completed session from my history, **so
+that** I can remove unwanted or accidental entries.
 
 ### Acceptance Criteria
 
@@ -143,20 +132,19 @@ native Android build (`maestro/android/`).
 
 ## 12. Repeat Session from History
 
-**As a** user,
-**I want to** start a new session based on a past workout,
-**so that** I can quickly repeat the same exercises.
+**As a** user, **I want to** start a new session based on a past workout, **so
+that** I can quickly repeat the same exercises.
 
 ### Acceptance Criteria
 
 - A completed session with at least one exercise is visible on the home screen
 - Tapping the 🔄 button on a session card opens a new active session
-- The new session shows the exercises from the original session in the "Pre-added Exercises" section
+- The new session shows the exercises from the original session in the
+  "Pre-added Exercises" section
 
 ## 13. Add Custom Exercise
 
-**As a** user,
-**I want to** add a custom exercise to the exercise database,
+**As a** user, **I want to** add a custom exercise to the exercise database,
 **so that** I can log exercises that are not in the built-in list.
 
 ### Acceptance Criteria
