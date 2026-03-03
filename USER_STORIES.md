@@ -1,101 +1,138 @@
+---
+lang: en
+---
+
 # User Stories
 
+<!--toc:start-->
+
+- [View Home Screen](#view-home-screen)
+  - [1. Acceptance Criteria](#1-acceptance-criteria)
+- [Start Workout Session](#start-workout-session)
+  - [2. Acceptance Criteria](#2-acceptance-criteria)
+- [Cancel Empty Session](#cancel-empty-session)
+  - [3. Acceptance Criteria](#3-acceptance-criteria)
+- [Navigate to Exercise Browser](#navigate-to-exercise-browser)
+  - [4. Acceptance Criteria](#4-acceptance-criteria)
+- [Search Exercises in Browser](#search-exercises-in-browser)
+  - [5. Acceptance Criteria](#5-acceptance-criteria)
+- [Navigate to Analytics](#navigate-to-analytics)
+  - [6. Acceptance Criteria](#6-acceptance-criteria)
+- [Navigate to Credits](#navigate-to-credits)
+  - [7. Acceptance Criteria](#7-acceptance-criteria)
+- [Search Exercises in Active Session](#search-exercises-in-active-session)
+  - [8. Acceptance Criteria](#8-acceptance-criteria)
+- [Full Workout Session](#full-workout-session)
+  - [9. Acceptance Criteria](#9-acceptance-criteria)
+- [Remove Exercise from Session](#remove-exercise-from-session)
+  - [10. Acceptance Criteria](#10-acceptance-criteria)
+- [Delete a Past Session](#delete-a-past-session)
+  - [11. Acceptance Criteria](#11-acceptance-criteria)
+- [Repeat Session from History](#repeat-session-from-history)
+  - [12. Acceptance Criteria](#12-acceptance-criteria)
+- [Add Custom Exercise](#add-custom-exercise)
+  - [13. Acceptance Criteria](#13-acceptance-criteria)
+
+<!--toc:end-->
+
 Comprehensive set of user stories for LogOut, a cross-platform workout logging
-application. Each story is validated by two Maestro end-to-end tests: one
-running against the PWA in a browser (`maestro/web/`) and one running on a
-native Android build (`maestro/android/`).
+application. Each story is validated by Maestro end-to-end tests for each
+supported platforms, currently :
 
-## 1. View Home Screen
+- Web browser PWA : `maestro/web/`
+- Android native app : `maestro/android/`
 
-**As a** user, **I want to** see the home screen when I launch the app, **so
+## View Home Screen
+
+**As a** _user_, **I want to** see the home screen when I launch the app, **so
 that** I know the app has loaded and I can start using it.
 
-### Acceptance Criteria
+### 1. Acceptance Criteria
 
 - The header displays "LogOut"
 - The tagline "Log your workOut" is visible
 - A bottom navigation bar with 4 tabs is present
 
-## 2. Start Workout Session
+## Start Workout Session
 
-**As a** user, **I want to** start a new workout session, **so that** I can
+**As a** _user_, **I want to** start a new workout session, **so that** I can
 begin logging my exercises.
 
-### Acceptance Criteria
+### 2. Acceptance Criteria
 
-- Tapping the "+" button opens the active session view
-- The active session header displays "Active Session"
+- From Home: Tapping the "+" button opens the Active Session _view_
+- The Active Session header displays "Active Session"
 
-## 3. Cancel Empty Session
+## Cancel Empty Session
 
-**As a** user, **I want to** cancel an empty workout session, **so that** I can
-return to the home screen without saving anything.
+**As a** _user_, **I want to** cancel an empty workout session, **so that** I
+can return to the home screen without saving anything.
 
-### Acceptance Criteria
+### 3. Acceptance Criteria
 
-- A "Cancel Session" button is visible in an empty active session
-- Tapping "Cancel Session" returns to the home screen
-- The home screen title "LogOut" is visible again
+- From Active Session: "Cancel Session" button is visible if session is empty
+- Tapping "Cancel Session" returns to the Home _view_
+- The Home _view_ title "LogOut" is visible again
 
-## 4. Navigate to Exercise Browser
+## Navigate to Exercise Browser
 
-**As a** user, **I want to** navigate to the exercise database, **so that** I
+**As a** _user_, **I want to** navigate to the exercise database, **so that** I
 can browse available exercises.
 
-### Acceptance Criteria
+### 4. Acceptance Criteria
 
 - Tapping the "📚" tab in the bottom navigation opens the exercise browser
 - The exercise browser heading "Exercise Database" is visible
 - Navigating back to the home tab shows the home screen again
 
-## 5. Search Exercises in Browser
+## Search Exercises in Browser
 
-**As a** user, **I want to** search for exercises in the exercise database, **so
-that** I can quickly find a specific exercise.
+**As a** _user_, **I want to** search for exercises in the exercise database,
+**so that** I can quickly find a specific exercise.
 
-### Acceptance Criteria
+### 5. Acceptance Criteria
 
 - A search input is visible on the exercise browser page
 - Typing a search term filters the exercise list
 - The page remains functional after searching
 
-## 6. Navigate to Analytics
+## Navigate to Analytics
 
-**As a** user, **I want to** navigate to the analytics page, **so that** I can
+**As a** _user_, **I want to** navigate to the analytics page, **so that** I can
 view my workout progress over time.
 
-### Acceptance Criteria
+### 6. Acceptance Criteria
 
 - Tapping the "📊" tab in the bottom navigation opens the analytics page
 - The analytics heading "Analytics" is visible
 
-## 7. Navigate to Credits
+## Navigate to Credits
 
-**As a** user, **I want to** navigate to the credits page, **so that** I can see
-information about the app and configure settings.
+**As a** _user_, **I want to** navigate to the credits page, **so that** I can
+see information about the app and configure settings.
 
-### Acceptance Criteria
+### 7. Acceptance Criteria
 
 - Tapping the "ℹ️" tab in the bottom navigation opens the credits page
 - The credits heading "Credits" is visible
 
-## 8. Search Exercises in Active Session
+## Search Exercises in Active Session
 
-**As a** user, **I want to** search for exercises while in an active workout
+**As a** _user_, **I want to** search for exercises while in an active workout
 session, **so that** I can find and add exercises to my current workout.
 
-### Acceptance Criteria
+### 8. Acceptance Criteria
 
 - An exercise search input is visible in the active session view
 - Typing a search term does not crash the app
 - The active session remains functional after searching
 
-## 9. Full Workout Session
+## Full Workout Session
 
-**As a** user, **I want to** complete a full workout session from start to
+**As a** _user_, **I want to** complete a full workout session from start to
 finish, **so that** my workout is saved and visible in my session history.
 
-### Acceptance Criteria
+### 9. Acceptance Criteria
 
 - Start a new session and search for an exercise (e.g. "bench press")
 - Select the exercise from the search results to open the exercise form
@@ -106,48 +143,48 @@ finish, **so that** my workout is saved and visible in my session history.
 - Finish the session using "Finish Session"
 - The home screen shows the completed session with the exercise name
 
-## 10. Remove Exercise from Session
+## Remove Exercise from Session
 
-**As a** user, **I want to** remove a completed exercise from my active session,
-**so that** I can correct mistakes or remove unwanted entries.
+**As a** _user_, **I want to** remove a completed exercise from my active
+session, **so that** I can correct mistakes or remove unwanted entries.
 
-### Acceptance Criteria
+### 10. Acceptance Criteria
 
 - Complete an exercise in an active session
 - Delete the completed exercise using the 🗑️ button
 - The session reverts to an empty state showing "Cancel Session"
 - Cancelling the empty session returns to the home screen
 
-## 11. Delete a Past Session
+## Delete a Past Session
 
-**As a** user, **I want to** delete a completed session from my history, **so
+**As a** _user_, **I want to** delete a completed session from my history, **so
 that** I can remove unwanted or accidental entries.
 
-### Acceptance Criteria
+### 11. Acceptance Criteria
 
 - A completed session is visible on the home screen
 - Tapping the 🗑️ button on a session card opens a confirmation dialog
 - Confirming the deletion removes the session from the home screen
 - The home screen returns to its empty state
 
-## 12. Repeat Session from History
+## Repeat Session from History
 
-**As a** user, **I want to** start a new session based on a past workout, **so
+**As a** _user_, **I want to** start a new session based on a past workout, **so
 that** I can quickly repeat the same exercises.
 
-### Acceptance Criteria
+### 12. Acceptance Criteria
 
 - A completed session with at least one exercise is visible on the home screen
 - Tapping the 🔄 button on a session card opens a new active session
 - The new session shows the exercises from the original session in the
   "Pre-added Exercises" section
 
-## 13. Add Custom Exercise
+## Add Custom Exercise
 
-**As a** user, **I want to** add a custom exercise to the exercise database,
+**As a** _user_, **I want to** add a custom exercise to the exercise database,
 **so that** I can log exercises that are not in the built-in list.
 
-### Acceptance Criteria
+### 13. Acceptance Criteria
 
 - Tapping the "+" button in the exercise browser opens the "Add Exercise" form
 - Filling in the exercise name and saving creates a new exercise
