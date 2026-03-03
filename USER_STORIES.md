@@ -7,58 +7,32 @@ lang: en
 <!--toc:start-->
 
 - [Clean State Home](#clean-state-home)
-  - [Acceptance Criteria](#acceptance-criteria)
 - [Navigate to Exercise List](#navigate-to-exercise-list)
-  - [Acceptance Criteria](#acceptance-criteria)
 - [Clean State Exercise List](#clean-state-exercise-list)
-  - [Acceptance Criteria](#acceptance-criteria)
 - [Search Exercises in Browser](#search-exercises-in-browser)
-  - [Acceptance Criteria](#acceptance-criteria)
 - [Learn About an Exercise](#learn-about-an-exercise)
-  - [Acceptance Criteria](#acceptance-criteria)
 - [Add Custom Exercise](#add-custom-exercise)
-  - [Acceptance Criteria](#acceptance-criteria)
 - [Edit a Cloned Exercise](#edit-a-cloned-exercise)
-  - [Acceptance Criteria](#acceptance-criteria)
 - [Navigate to Analytics](#navigate-to-analytics)
-  - [Acceptance Criteria](#acceptance-criteria)
 - [Clean State Analytics](#clean-state-analytics)
-  - [Acceptance Criteria](#acceptance-criteria)
 - [Navigate to Credits](#navigate-to-credits)
-  - [Acceptance Criteria](#acceptance-criteria)
 - [Clean State Credits](#clean-state-credits)
-  - [Acceptance Criteria](#acceptance-criteria)
 - [Navigate Back to Home](#navigate-back-to-home)
-  - [Acceptance Criteria](#acceptance-criteria)
 - [Start Workout Session](#start-workout-session)
-  - [Acceptance Criteria](#acceptance-criteria)
 - [Cancel Empty Session](#cancel-empty-session)
-  - [Acceptance Criteria](#acceptance-criteria)
 - [Full Workout Session](#full-workout-session)
   - [Start Session](#start-session)
-    - [Acceptance Criteria](#acceptance-criteria)
-  - [Search Exercise](#search-exercise)
-    - [Acceptance Criteria](#acceptance-criteria)
-  - [Record Exercise](#record-exercise)
-    - [Acceptance Criteria](#acceptance-criteria)
-  - [Replay Exercise](#replay-exercise)
-    - [Acceptance Criteria](#acceptance-criteria)
-  - [Repeat N Times](#repeat-n-times)
-    - [Acceptance Criteria](#acceptance-criteria)
+    - [Search Exercise](#search-exercise)
+    - [Record Exercise](#record-exercise)
+    - [Replay Exercise](#replay-exercise)
+    - [Repeat For Another Exercise](#repeat-for-another-exercise)
   - [Remove Exercise](#remove-exercise)
-    - [Acceptance Criteria](#acceptance-criteria)
-  - [Finish Session](#finish-session)
-    - [Acceptance Criteria](#acceptance-criteria)
-- [Repeat Session from History](#repeat-session-from-history)
-  - [Acceptance Criteria](#acceptance-criteria)
+    - [Finish Session](#finish-session)
+  - [Repeat Session from History](#repeat-session-from-history)
 - [Delete a Past Session](#delete-a-past-session)
-  - [Acceptance Criteria](#acceptance-criteria)
-- [Lookup Exercises Targetting Same Muscles](#lookup-exercises-targetting-same-muscles)
-  - [Acceptance Criteria](#acceptance-criteria)
-- [Navigate to Analytics](#navigate-to-analytics)
-  - [Acceptance Criteria](#acceptance-criteria)
+- [Lookup a Previously Done Exercise](#lookup-a-previously-done-exercise)
+- [Navigate Again to Analytics](#navigate-again-to-analytics)
 - [Be Astonished by Your Incredible Progress](#be-astonished-by-your-incredible-progress)
-  - [Acceptance Criteria](#acceptance-criteria)
 
 <!--toc:end-->
 
@@ -258,36 +232,44 @@ begin logging my exercises.
 
 ### Search Exercise
 
-**As a** _user_,
+**As a** _user_, **I want to** search for an exercise in my active session, **so
+that** I can log it.
 
 #### Acceptance Criteria
 
-- Select the exercise from the search results to open the exercise form
+- Input an exercise name, category, or muscle in the search bar
+- Select an exercise from the search results to open the exercise form
 
 ### Record Exercise
 
-**As a** _user_,
+**As a** _user_, **I want to** record a completed exercise in my active session,
+**so that** I can track my progress.
 
 #### Acceptance Criteria
 
-- Input weight and repetitions, then complete the exercise
-- The completed exercise appears in the "Completed Exercises" section
+- Input some metrics
+- **Click** on the "✓ Complete Exercise" button
+- Completed exercise appears in the "Completed Exercises" section, with metrics
 
 ### Replay Exercise
 
-**As a** _user_,
+**As a** _user_, **I want to** replay a completed exercise in my active session,
+**so that** I can quickly perform another set.
 
 #### Acceptance Criteria
 
-- Replay the exercise (another set) using the 🔁 button
+- **Click** on the 🔁 button to replay the exercise (do another set)
+- Slightly increment some non-null metric(s)
+- **Click** on the "✓ Complete Exercise" button
+- Second set appears in the "Completed Exercises" section, with higher metrics
 
-### Repeat N Times
+### Repeat For Another Exercise
 
-**As a** _user_,
+**As a** _user_, **I want to** repeat the previous steps for another exercise,
+**so that** I’m able to record a varied session.
 
-#### Acceptance Criteria
-
-- Repeat the 3 previous steps to do 2 sets of another different exercise
+- Repeat the 3 previous steps in order to do sets of another different exercise
+- Same acceptance criteria applies at each step
 
 ### Remove Exercise
 
@@ -296,19 +278,19 @@ session, **so that** I can correct mistakes or remove unwanted entries.
 
 #### Acceptance Criteria
 
-- Complete an exercise in an active session
-- Delete the completed exercise using the 🗑️ button
-- The session reverts to an empty state showing "Cancel Session"
-- Cancelling the empty session returns to the home screen
+- **Click** the 🗑️ button on the latest exercise to remove it
+- There’s only 3 completed exercises left in the Active Session
 
 ### Finish Session
 
-**As a** _user_, **I want to**
+**As a** _user_, **I want to** finish my active session, **so that** I can save
+it in my history and see my progress over time.
 
 #### Acceptance Criteria
 
 - Finish the session using "Finish Session"
-- The home screen shows the completed session with the exercise name
+- The home screen shows the completed session with the current date
+- A congratulation toast appears
 
 ## Repeat Session from History
 
@@ -318,9 +300,8 @@ that** I can quickly repeat the same exercises.
 ### Acceptance Criteria
 
 - A completed session with at least one exercise is visible on the home screen
-- Tapping the 🔄 button on a session card opens a new active session
-- The new session shows the exercises from the original session in the
-  "Pre-added Exercises" section
+- **Click** 🔄 button on a previous Session card, a new Active Session opens
+- The "Pre-added Exercises" section contains the previous session exercises
 
 ## Delete a Past Session
 
@@ -329,16 +310,20 @@ that** I can remove unwanted or accidental entries.
 
 ### Acceptance Criteria
 
-- A completed session is visible on the home screen
-- Tapping the 🗑️ button on a session card opens a confirmation dialog
+- **Click** 🗑️ button on the latest Session card, a confirmation dialog opens
 - Confirming the deletion removes the session from the home screen
-- The home screen returns to its empty state
 
-## Lookup Exercises Targetting Same Muscles
+## Lookup a Previously Done Exercise
 
-**As a** _user_, **I want to**
+**As a** _user_, **I want to** look up exercises I have previously done, **so
+that** I can find similar exercises.
 
 ### Acceptance Criteria
+
+- The Session card contains done exercise(s) tags
+  - **Click one** of the tags, the Exercise List opens
+- Exercise List
+  - The search bar is pre-filled with the name of the selected exercise
 
 ## Navigate Again to Analytics
 
