@@ -1,0 +1,27 @@
+# User Story 6 – Add Custom Exercise (Android)
+# Navigate to the exercise browser, add a custom exercise, then find it by searching.
+appId: com.gfaure.logworkout
+---
+- extendedWaitUntil:
+    visible:
+      text: "LogOut"
+    timeout: 120000
+# Navigate to the exercise browser
+- tapOn: "📚"
+- assertVisible: "Exercise Database"
+# Tap the "+" button to open the Add Exercise form
+- tapOn:
+    text: "+"
+- assertVisible: "Add Exercise"
+- assertVisible: "Exercise Name *"
+# Fill in the exercise name
+- tapOn: "e.g., Farmer's Walk"
+- inputText: "My Test Exercise"
+# Save the exercise
+- tapOn: "💾 Save Exercise"
+# We should be back on the exercise browser
+- assertVisible: "Exercise Database"
+# Search for the new exercise
+- tapOn: "Search exercises, muscles, or categories..."
+- inputText: "My Test Exercise"
+- assertVisible: "My Test Exercise"

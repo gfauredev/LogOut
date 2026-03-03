@@ -18,7 +18,7 @@ pub fn EditCustomExercisePage(id: String) -> Element {
                     p { "Exercise not found." }
                     button {
                         onclick: move |_| navigator().go_back(),
-                        class: "back-btn",
+                        class: "back",
                         "← Back"
                     }
                 }
@@ -71,7 +71,7 @@ pub fn EditCustomExercisePage(id: String) -> Element {
         header {
             button {
                 onclick: move |_| navigator().go_back(),
-                class: "back-btn",
+                class: "back",
                 "← Back"
             }
             h1 { "Edit Exercise" }

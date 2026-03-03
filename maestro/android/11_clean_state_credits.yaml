@@ -1,0 +1,13 @@
+# User Story 11 – Clean State Credits (Android)
+# The Credits page shows the default exercise database URL.
+appId: com.gfaure.logworkout
+---
+- extendedWaitUntil:
+    visible:
+      text: "LogOut"
+    timeout: 120000
+- tapOn: "ℹ️"
+- assertVisible: "Credits"
+- assertVisible: "⚙️ Exercise Database URL"
+# The URL input field should show the default URL as placeholder or value
+- assertVisible: "https://raw.githubusercontent.com/gfauredev/free-exercise-db/main/"

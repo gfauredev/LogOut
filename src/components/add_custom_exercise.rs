@@ -48,7 +48,7 @@ pub fn AddCustomExercisePage() -> Element {
         header {
             button {
                 onclick: move |_| navigator().go_back(),
-                class: "back-btn",
+                class: "back",
                 "← Back"
             }
             h1 { "Add Exercise" }

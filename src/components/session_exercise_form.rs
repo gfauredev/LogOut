@@ -55,13 +55,12 @@ pub(super) fn ExerciseFormPanel(
 
     rsx! {
         article {
-            class: "exercise-form",
+            class: "current",
 
-            header { class: "exercise-form__header",
-                h3 { class: "exercise-form__title", "{exercise_name}" }
+            header {
+                h3 { "{exercise_name}" }
                 if let Some(dur) = last_duration {
                     span {
-                        class: "exercise-form__last-duration",
                         "Last duration: {format_time(dur)}"
                     }
                 }
@@ -76,8 +75,6 @@ pub(super) fn ExerciseFormPanel(
             }
 
             div {
-                class: "exercise-form__fields",
-
                 {
                     let weight = weight_input.read();
                     let weight_invalid = !weight.is_empty() && parse_weight_kg(&weight).is_none();
@@ -91,7 +88,7 @@ pub(super) fn ExerciseFormPanel(
                                 placeholder: "Optional",
                                 value: "{weight_input}",
                                 oninput: move |evt| weight_input.set(evt.value()),
-                                class: if weight_invalid { "form-input form-input--invalid" } else { "form-input" },
+                                class: if weight_invalid { "form-input invalid" } else { "form-input" },
                             }
                         }
                     }
@@ -111,7 +108,7 @@ pub(super) fn ExerciseFormPanel(
                                     placeholder: "Distance",
                                     value: "{distance_input}",
                                     oninput: move |evt| distance_input.set(evt.value()),
-                                    class: if distance_invalid { "form-input form-input--invalid" } else { "form-input" },
+                                    class: if distance_invalid { "form-input invalid" } else { "form-input" },
                                 }
                             }
                         }
@@ -131,7 +128,7 @@ pub(super) fn ExerciseFormPanel(
                                     placeholder: "Reps",
                                     value: "{reps_input}",
                                     oninput: move |evt| reps_input.set(evt.value()),
-                                    class: if reps_invalid { "form-input form-input--invalid" } else { "form-input" },
+                                    class: if reps_invalid { "form-input invalid" } else { "form-input" },
                                 }
                             }
                         }
@@ -152,12 +149,12 @@ pub(super) fn ExerciseFormPanel(
                             button {
                                 onclick: move |_| on_complete.call(()),
                                 disabled: complete_disabled,
-                                class: "btn--complete",
+                                class: "complete",
                                 "✓ Complete Exercise"
                             }
                             button {
                                 onclick: move |_| on_cancel.call(()),
-                                class: "btn--cancel",
+                                class: "cancel",
                                 "Cancel"
                             }
                         }

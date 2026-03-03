@@ -125,7 +125,7 @@ pub(super) fn RestTimerDisplay(
     let exceeded = rd > 0 && elapsed >= rd;
     rsx! {
         div {
-            class: if exceeded { "rest-timer rest-timer--exceeded" } else { "rest-timer" },
+            class: if exceeded { "rest-timer exceeded" } else { "rest-timer" },
             "🛋️ Rest: {format_time(elapsed)}"
         }
     }
@@ -171,7 +171,7 @@ pub(super) fn ExerciseElapsedTimer(
     let timer_reached = last_duration.is_some_and(|d| d > 0 && elapsed >= d);
     rsx! {
         div {
-            class: if timer_reached { "exercise-static-timer exercise-static-timer--reached" } else { "exercise-static-timer" },
+            class: if timer_reached { "exercise-timer reached" } else { "exercise-timer" },
             "⏱ {format_time(elapsed)}"
         }
     }

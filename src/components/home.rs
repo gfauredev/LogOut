@@ -162,14 +162,14 @@ fn SessionCard(session: WorkoutSession) -> Element {
             // Delete confirmation modal with backdrop
             if *show_delete_confirm.read() {
                 div {
-                    class: "modal-backdrop",
+                    class: "backdrop",
                     onclick: move |_| show_delete_confirm.set(false),
                 }
-                div {
-                    class: "delete-modal",
+                dialog {
+                    open: true,
                     onclick: move |evt| evt.stop_propagation(),
                     p { "Delete this session?" }
-                    div { class: "delete-modal__buttons",
+                    div {
                         button {
                             onclick: {
                                 let id = session_id.clone();
@@ -178,12 +178,12 @@ fn SessionCard(session: WorkoutSession) -> Element {
                                     show_delete_confirm.set(false);
                                 }
                             },
-                            class: "btn btn--danger",
+                            class: "btn danger",
                             "Delete"
                         }
                         button {
                             onclick: move |_| show_delete_confirm.set(false),
-                            class: "btn--cancel",
+                            class: "cancel",
                             "Cancel"
                         }
                     }

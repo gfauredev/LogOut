@@ -1,0 +1,17 @@
+# User Story 13 – Start Workout Session (Web PWA)
+# Start a new workout session from the home screen.
+url: http://localhost:8080
+---
+- extendedWaitUntil:
+    visible:
+      text: "LogOut"
+    timeout: 120000
+- tapOn: "+"
+- assertVisible: "Active Session"
+- assertVisible: "Cancel Session"
+# Wait 1 second and verify the timer is running (it shows some elapsed time)
+- waitForAnimationToEnd
+- assertVisible: "0:00"
+# Clean up: cancel the empty session
+- tapOn: "Cancel Session"
+- assertVisible: "LogOut"

@@ -1,0 +1,23 @@
+# User Story 16 – Repeat Session from History (Web PWA)
+# Start a new session based on a past workout using the 🔄 button.
+url: http://localhost:8080
+---
+# Wait for the app to load with the session from Story 15
+- extendedWaitUntil:
+    visible:
+      text: "LogOut"
+    timeout: 120000
+- assertVisible: "Barbell Bench Press - Medium Grip"
+# Tap the 🔄 button to start a repeat session
+- tapOn: "🔄"
+# A new active session should open with exercises pre-added
+- assertVisible: "Active Session"
+- assertVisible: "Pre-added Exercises"
+- assertVisible: "Barbell Bench Press - Medium Grip"
+- assertVisible: "Barbell Squat"
+# Cancel the repeat session to preserve state for next stories
+- tapOn: "Cancel Session"
+- extendedWaitUntil:
+    visible:
+      text: "LogOut"
+    timeout: 10000

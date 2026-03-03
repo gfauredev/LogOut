@@ -67,27 +67,23 @@ pub fn CompletedExerciseLog(
 
     rsx! {
         article {
-            class: "completed-log",
+            class: "log",
 
-            div {
-                class: "completed-log__header",
-                h4 { class: "completed-log__title", "{log.exercise_name}" }
-                div { class: "completed-log__actions",
+            header {
+                h4 { "{log.exercise_name}" }
+                div {
                     if show_replay {
                         button {
-                            class: "btn--replay-log",
                             title: "Do another set",
                             onclick: move |_| on_replay.call(()),
                             "🔁"
                         }
                     }
                     button {
-                        class: "btn--edit-log",
                         onclick: start_edit,
                         "✏️"
                     }
                     button {
-                        class: "btn--delete-log",
                         title: "Delete this exercise",
                         onclick: move |_| {
                             let mut current_session = session.read().clone();
@@ -101,7 +97,7 @@ pub fn CompletedExerciseLog(
 
             if *is_editing.read() {
                 div {
-                    class: "completed-log__edit-form",
+                    class: "edit-form",
                     div {
                         label { class: "form-label", "Weight (kg)" }
                         input {
@@ -145,19 +141,19 @@ pub fn CompletedExerciseLog(
                         class: "btn-row",
                         button {
                             onclick: save_edit,
-                            class: "btn--complete",
+                            class: "complete",
                             "✓ Save"
                         }
                         button {
                             onclick: move |_| is_editing.set(false),
-                            class: "btn--cancel",
+                            class: "cancel",
                             "Cancel"
                         }
                     }
                 }
             } else {
                 div {
-                    class: "completed-log__details",
+                    class: "details",
                     if let Some(w) = log.weight_hg {
                         div { "Weight: {w}" }
                     }
