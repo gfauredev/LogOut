@@ -24,7 +24,6 @@ pub fn provide_app_state() {
 }
 
 // ── helpers to obtain the signals from any component ──
-
 #[allow(dead_code)]
 pub fn use_workouts() -> Signal<Vec<Workout>> {
     consume_context::<Signal<Vec<Workout>>>()
