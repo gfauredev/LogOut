@@ -6,12 +6,12 @@ lang: en
 
 <!--toc:start-->
 
-- [View Home Screen](#view-home-screen)
-  - [1. Acceptance Criteria](#1-acceptance-criteria)
+- [Clean State App](#clean-state-app)
+  - [0. Acceptance Criteria](#0-acceptance-criteria)
 - [Start Workout Session](#start-workout-session)
-  - [2. Acceptance Criteria](#2-acceptance-criteria)
+  - [1. Acceptance Criteria](#1-acceptance-criteria)
 - [Cancel Empty Session](#cancel-empty-session)
-  - [3. Acceptance Criteria](#3-acceptance-criteria)
+  - [2. Acceptance Criteria](#2-acceptance-criteria)
 - [Navigate to Exercise Browser](#navigate-to-exercise-browser)
   - [4. Acceptance Criteria](#4-acceptance-criteria)
 - [Search Exercises in Browser](#search-exercises-in-browser)
@@ -42,37 +42,52 @@ supported platforms, currently :
 - Web browser PWA : `maestro/web/`
 - Android native app : `maestro/android/`
 
-## View Home Screen
+## Clean State App
 
-**As a** _user_, **I want to** see the home screen when I launch the app, **so
-that** I know the app has loaded and I can start using it.
+**As a** _user_ (and a _tester_), **I want to** see the app in a clean, initial
+state when I first launch it, **so that** I’m not disturbed by existing user
+data I don’t created myself.
 
-### 1. Acceptance Criteria
+### 0. Acceptance Criteria
 
-- The header displays "LogOut"
-- The tagline "Log your workOut" is visible
-- A bottom navigation bar with 4 tabs is present
+- Exercise List
+  - There’s only default exercises, not custom ones created by a user
+  - The first exercise has the button "✏️ Clone & Edit", not just "✏️ Edit"
+- Home
+  - Header displays "LogOut", "Log your workOut"
+  - Main body shows "No past sessions yet", "Tap + to start your first workout"
+- Analytics
+  - Select any metric in "Weight", "Repetitions", "Distance", "Duration"
+  - Then, no exercise can be selected, as none has been done yet
+- Credits
+  - Header displays "Credits"
+  - The database URL is the default one
+- On each page, a bottom navigation bar with 4 tabs is present
 
 ## Start Workout Session
 
 **As a** _user_, **I want to** start a new workout session, **so that** I can
 begin logging my exercises.
 
-### 2. Acceptance Criteria
+### 1. Acceptance Criteria
 
-- From Home: Tapping the "+" button opens the Active Session _view_
-- The Active Session header displays "Active Session"
+- Home
+  - Tapping the "+" button opens the Active Session _view_
+- Active Session
+  - Header displays "Active Session"
 
 ## Cancel Empty Session
 
 **As a** _user_, **I want to** cancel an empty workout session, **so that** I
-can return to the home screen without saving anything.
+can return to the home screen without saving a useless, empty session.
 
-### 3. Acceptance Criteria
+### 2. Acceptance Criteria
 
-- From Active Session: "Cancel Session" button is visible if session is empty
-- Tapping "Cancel Session" returns to the Home _view_
-- The Home _view_ title "LogOut" is visible again
+- Active Session
+  - "Cancel Session" button is visible if session is empty
+  - Tapping "Cancel Session" returns to the Home _view_
+- Home
+  - Heading "LogOut" is visible again
 
 ## Navigate to Exercise Browser
 
