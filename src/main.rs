@@ -90,7 +90,7 @@ fn App() -> Element {
     }
 
     rsx! {
-        Stylesheet { href: asset!("/assets/styles.css") }
+        Stylesheet { href: asset!("/assets/style.scss") }
         Router::<Route> {}
         CongratulationsToast {}
         Toast {}
