@@ -67,7 +67,7 @@ pub(crate) fn is_refresh_due() -> bool {
 
 /// Pure helper: returns true when a refresh is due given the current time and the
 /// last-fetch timestamp (both as Unix seconds).  Extracted for unit-testability.
-#[allow(dead_code)] // TODO Consider removing
+#[cfg(not(target_arch = "wasm32"))]
 fn is_refresh_due_for(now_secs: u64, last_fetch_secs: Option<u64>) -> bool {
     match last_fetch_secs {
         None => true,
@@ -171,6 +171,17 @@ pub fn search_exercises<'a>(exercises: &'a [Exercise], query: &str) -> Vec<&'a E
 
 pub fn get_exercise_by_id<'a>(exercises: &'a [Exercise], id: &str) -> Option<&'a Exercise> {
     exercises.iter().find(|e| e.id == id)
+}
+
+/// Resolves an exercise by ID: checks the main DB slice first, then falls back
+/// to the custom-exercises slice.  Centralises the lookup logic used across
+/// multiple components.
+pub fn resolve_exercise<'a>(
+    db: &'a [Exercise],
+    custom: &'a [Exercise],
+    id: &str,
+) -> Option<&'a Exercise> {
+    get_exercise_by_id(db, id).or_else(|| custom.iter().find(|e| e.id == id))
 }
 
 #[cfg(test)]
@@ -325,6 +336,65 @@ mod tests {
     }
 
     #[test]
+    fn resolve_exercise_finds_in_db() {
+        let db = sample_exercises();
+        let custom = vec![];
+        let found = resolve_exercise(&db, &custom, "pull_up");
+        assert!(found.is_some());
+        assert_eq!(found.unwrap().name, "Pull-Up");
+    }
+
+    #[test]
+    fn resolve_exercise_falls_back_to_custom() {
+        let db = sample_exercises();
+        let custom = vec![Exercise {
+            id: "custom_1".into(),
+            name: "Custom Move".into(),
+            force: None,
+            level: None,
+            mechanic: None,
+            equipment: None,
+            primary_muscles: vec![],
+            secondary_muscles: vec![],
+            instructions: vec![],
+            category: crate::models::Category::Strength,
+            images: vec![],
+        }];
+        let found = resolve_exercise(&db, &custom, "custom_1");
+        assert!(found.is_some());
+        assert_eq!(found.unwrap().name, "Custom Move");
+    }
+
+    #[test]
+    fn resolve_exercise_db_takes_priority_over_custom() {
+        let db = sample_exercises();
+        // A custom entry with the same id as a DB exercise — DB wins.
+        let custom = vec![Exercise {
+            id: "pull_up".into(),
+            name: "Custom Pull-Up".into(),
+            force: None,
+            level: None,
+            mechanic: None,
+            equipment: None,
+            primary_muscles: vec![],
+            secondary_muscles: vec![],
+            instructions: vec![],
+            category: crate::models::Category::Strength,
+            images: vec![],
+        }];
+        let found = resolve_exercise(&db, &custom, "pull_up");
+        assert_eq!(found.unwrap().name, "Pull-Up"); // DB entry wins
+    }
+
+    #[test]
+    fn resolve_exercise_not_found() {
+        let db = sample_exercises();
+        let custom = vec![];
+        let found = resolve_exercise(&db, &custom, "nonexistent");
+        assert!(found.is_none());
+    }
+
+    #[test]
     fn get_equipment_types_deduplicates() {
         let exercises = sample_exercises();
         let equipment = get_equipment_types(&exercises);
@@ -390,11 +460,13 @@ mod tests {
         assert!(url.ends_with("dist/exercises.json"));
     }
 
+    #[cfg(not(target_arch = "wasm32"))]
     #[test]
     fn is_refresh_due_true_when_no_timestamp() {
         assert!(is_refresh_due_for(1_000_000, None));
     }
 
+    #[cfg(not(target_arch = "wasm32"))]
     #[test]
     fn is_refresh_due_false_when_recent() {
         let now = 1_000_000u64;
@@ -402,6 +474,7 @@ mod tests {
         assert!(!is_refresh_due_for(now, Some(last_fetch)));
     }
 
+    #[cfg(not(target_arch = "wasm32"))]
     #[test]
     fn is_refresh_due_true_when_stale() {
         let interval = EXERCISE_DB_REFRESH_INTERVAL_SECS;
@@ -410,6 +483,7 @@ mod tests {
         assert!(is_refresh_due_for(now, Some(last_fetch)));
     }
 
+    #[cfg(not(target_arch = "wasm32"))]
     #[test]
     fn is_refresh_due_false_at_exact_interval_boundary() {
         let interval = EXERCISE_DB_REFRESH_INTERVAL_SECS;

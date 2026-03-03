@@ -1,4 +1,4 @@
-use crate::models::{Exercise, ExerciseLog, Workout, WorkoutSession};
+use crate::models::{Exercise, ExerciseLog, WorkoutSession};
 use crate::ToastSignal;
 use dioxus::prelude::*;
 
@@ -15,7 +15,6 @@ use log::{error, info};
 /// Provide shared signals at the top of the component tree.
 /// Call once inside the root `App` component.
 pub fn provide_app_state() {
-    use_context_provider(|| Signal::new(Vec::<Workout>::new()));
     use_context_provider(|| Signal::new(Vec::<WorkoutSession>::new()));
     use_context_provider(|| Signal::new(Vec::<Exercise>::new()));
 
@@ -24,10 +23,6 @@ pub fn provide_app_state() {
 }
 
 // ── helpers to obtain the signals from any component ──
-#[allow(dead_code)]
-pub fn use_workouts() -> Signal<Vec<Workout>> {
-    consume_context::<Signal<Vec<Workout>>>()
-}
 
 pub fn use_sessions() -> Signal<Vec<WorkoutSession>> {
     consume_context::<Signal<Vec<WorkoutSession>>>()
@@ -49,7 +44,6 @@ pub(crate) mod idb {
     const DB_NAME: &str = "log_workout_db";
     const DB_VERSION: u32 = 2;
 
-    pub const STORE_WORKOUTS: &str = "workouts";
     pub const STORE_SESSIONS: &str = "sessions";
     pub const STORE_CUSTOM_EXERCISES: &str = "custom_exercises";
     pub const STORE_EXERCISES: &str = "exercises";
@@ -58,7 +52,6 @@ pub(crate) mod idb {
     async fn open_db() -> Result<Rexie, rexie::Error> {
         Rexie::builder(DB_NAME)
             .version(DB_VERSION)
-            .add_object_store(ObjectStore::new(STORE_WORKOUTS).key_path("id"))
             .add_object_store(ObjectStore::new(STORE_SESSIONS).key_path("id"))
             .add_object_store(ObjectStore::new(STORE_CUSTOM_EXERCISES).key_path("id"))
             .add_object_store(ObjectStore::new(STORE_EXERCISES).key_path("id"))
@@ -127,22 +120,10 @@ async fn load_storage_data() {
     // ── Web platform (wasm32 + IndexedDB) ────────────────────────────────────
     #[cfg(target_arch = "wasm32")]
     {
-        let mut workouts_sig = use_workouts();
         let mut sessions_sig = use_sessions();
         let mut custom_sig = use_custom_exercises();
         let mut toast = consume_context::<ToastSignal>().0;
 
-        match idb::get_all::<Workout>(idb::STORE_WORKOUTS).await {
-            Ok(workouts) if !workouts.is_empty() => {
-                info!("Loaded {} workouts from IndexedDB", workouts.len());
-                workouts_sig.set(workouts);
-            }
-            Err(e) => {
-                error!("Failed to load workouts from IndexedDB: {e}");
-                toast.set(Some(format!("⚠️ Failed to load workouts: {e}")));
-            }
-            _ => {}
-        }
         match idb::get_all::<WorkoutSession>(idb::STORE_SESSIONS).await {
             Ok(sessions) if !sessions.is_empty() => {
                 info!("Loaded {} sessions from IndexedDB", sessions.len());
@@ -170,22 +151,10 @@ async fn load_storage_data() {
     // ── Native platform (Android / desktop) ──────────────────────────────────
     #[cfg(not(target_arch = "wasm32"))]
     {
-        let mut workouts_sig = use_workouts();
         let mut sessions_sig = use_sessions();
         let mut custom_sig = use_custom_exercises();
         let mut toast = consume_context::<ToastSignal>().0;
 
-        match native_storage::get_all::<Workout>(native_storage::STORE_WORKOUTS) {
-            Ok(workouts) if !workouts.is_empty() => {
-                log::info!("Loaded {} workouts from storage", workouts.len());
-                workouts_sig.set(workouts);
-            }
-            Err(e) => {
-                log::error!("Failed to load workouts: {e}");
-                toast.set(Some(format!("⚠️ Failed to load workouts: {e}")));
-            }
-            _ => {}
-        }
         match native_storage::get_all::<WorkoutSession>(native_storage::STORE_SESSIONS) {
             Ok(sessions) if !sessions.is_empty() => {
                 log::info!("Loaded {} sessions from storage", sessions.len());
@@ -214,35 +183,6 @@ async fn load_storage_data() {
 // ──────────────────────────────────────────
 // Public mutation helpers (granular IDB writes)
 // ──────────────────────────────────────────
-
-/// Appends a completed workout to the workout list and persists it to IndexedDB.
-/// Note: the WorkoutLog page currently has no route; this function is kept for
-/// future use when the workout-planning flow is wired up.
-#[allow(dead_code)]
-pub fn add_workout(workout: Workout) {
-    let mut sig = use_workouts();
-    sig.write().push(workout.clone());
-
-    #[cfg(target_arch = "wasm32")]
-    {
-        let mut toast = consume_context::<ToastSignal>().0;
-        spawn_local(async move {
-            if let Err(e) = idb::put_item(idb::STORE_WORKOUTS, &workout).await {
-                error!("Failed to persist workout: {e}");
-                toast.set(Some(format!("⚠️ Failed to save workout: {e}")));
-            }
-        });
-    }
-
-    #[cfg(not(target_arch = "wasm32"))]
-    if let Err(e) = native_storage::put_item(native_storage::STORE_WORKOUTS, &workout.id, &workout)
-    {
-        log::error!("Failed to persist workout: {e}");
-        consume_context::<ToastSignal>()
-            .0
-            .set(Some(format!("⚠️ Failed to save workout: {e}")));
-    }
-}
 
 pub fn save_session(session: WorkoutSession) {
     let mut sig = use_sessions();
@@ -438,13 +378,11 @@ pub(crate) mod native_storage {
     use serde::{de::DeserializeOwned, Serialize};
     use std::path::PathBuf;
 
-    pub const STORE_WORKOUTS: &str = "workouts";
     pub const STORE_SESSIONS: &str = "sessions";
     pub const STORE_CUSTOM_EXERCISES: &str = "custom_exercises";
     pub const STORE_EXERCISES: &str = "exercises";
 
     const KNOWN_STORES: &[&str] = &[
-        STORE_WORKOUTS,
         STORE_SESSIONS,
         STORE_CUSTOM_EXERCISES,
         STORE_EXERCISES,
@@ -472,17 +410,24 @@ pub(crate) mod native_storage {
     }
 
     /// Opens (or creates) the SQLite database and ensures all required tables exist.
+    /// Uses `PRAGMA user_version` to run the schema DDL only once (when the DB is
+    /// first created), rather than on every operation.
     fn open_db() -> Result<Connection, String> {
         std::fs::create_dir_all(data_dir()).map_err(|e| e.to_string())?;
         let conn = Connection::open(db_path()).map_err(|e| e.to_string())?;
-        conn.execute_batch(
-            "CREATE TABLE IF NOT EXISTS workouts (id TEXT PRIMARY KEY, data TEXT NOT NULL);
-             CREATE TABLE IF NOT EXISTS sessions (id TEXT PRIMARY KEY, data TEXT NOT NULL);
-             CREATE TABLE IF NOT EXISTS custom_exercises (id TEXT PRIMARY KEY, data TEXT NOT NULL);
-             CREATE TABLE IF NOT EXISTS exercises (id TEXT PRIMARY KEY, data TEXT NOT NULL);
-             CREATE TABLE IF NOT EXISTS config (key TEXT PRIMARY KEY, value TEXT NOT NULL);",
-        )
-        .map_err(|e| e.to_string())?;
+        let schema_version: u32 = conn
+            .query_row("PRAGMA user_version", [], |r| r.get(0))
+            .map_err(|e| e.to_string())?;
+        if schema_version == 0 {
+            conn.execute_batch(
+                "CREATE TABLE IF NOT EXISTS sessions (id TEXT PRIMARY KEY, data TEXT NOT NULL);
+                 CREATE TABLE IF NOT EXISTS custom_exercises (id TEXT PRIMARY KEY, data TEXT NOT NULL);
+                 CREATE TABLE IF NOT EXISTS exercises (id TEXT PRIMARY KEY, data TEXT NOT NULL);
+                 CREATE TABLE IF NOT EXISTS config (key TEXT PRIMARY KEY, value TEXT NOT NULL);
+                 PRAGMA user_version = 1;",
+            )
+            .map_err(|e| e.to_string())?;
+        }
         Ok(conn)
     }
 
