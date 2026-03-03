@@ -14,10 +14,12 @@ lang: en
 - [Code Quality & Conventions](#code-quality-conventions)
   - [Unit Testing](#unit-testing)
   - [End-to-End Testing](#end-to-end-testing)
+    - [Prerequisites](#prerequisites)
+    - [Running the web tests](#running-the-web-tests)
+    - [Running the Android tests](#running-the-android-tests)
   - [Documentation](#documentation)
   - [Other](#other)
 - [TODO](#todo)
-  - [Optimization & Technical](#optimization-technical)
 
 <!--toc:end-->
 
@@ -177,16 +179,17 @@ cargo llvm-cov --bin log-workout --lcov --output-path lcov.info # LCOV report
 ### End-to-End Testing
 
 End-to-end tests exercise the full application using [Maestro]. All 20 user
-stories from `USER_STORIES.md` are covered with two test flows each: one for
-the PWA (beta web platform) and one for native Android. Tests are numbered
-`01`–`20` matching the user story order so each test can rely on state from
-the previous ones when run as a full suite.
+stories from `USER_STORIES.md` are covered with two test flows each: one for the
+PWA (beta web platform) and one for native Android. Tests are numbered `01`–`20`
+matching the user story order so each test can rely on state from the previous
+ones when run as a full suite.
 
 #### Prerequisites
 
 - **[Maestro]** installed: `curl -Ls "https://get.maestro.dev" | bash`
 - For **web tests**: a production build served on `http://localhost:8080`
-- For **Android tests**: a running emulator or connected device with the app installed
+- For **Android tests**: a running emulator or connected device with the app
+  installed
 
 #### Running the web tests
 
@@ -203,8 +206,8 @@ maestro test --platform web maestro/web/01_clean_state_home.yaml
 ```
 
 > [!NOTE]
-> The first run of tests that touch the exercise browser may take up to 30 seconds
-> while the exercise database is downloaded from the remote URL.
+> The first run of tests that touch the exercise browser may take up to 30
+> seconds while the exercise database is downloaded from the remote URL.
 
 #### Running the Android tests
 
@@ -218,9 +221,9 @@ maestro test maestro/android/01_clean_state_home.yaml
 ```
 
 > [!TIP]
-> Tests are designed to run sequentially and build on each other's state.
-> Run them in numeric order (`01` → `20`) for the full user-story flow.
-> Run `maestro studio` to debug a failing test interactively.
+> Tests are designed to run sequentially and build on each other's state. Run
+> them in numeric order (`01` → `20`) for the full user-story flow. Run
+> `maestro studio` to debug a failing test interactively.
 
 ### Documentation
 
@@ -246,8 +249,7 @@ services, providing a detailed view of the codebase's API.
 
 ## TODO
 
-### Optimization & Technical
-
+- Use local time on PWA too
 - Sign Android app and make it properly installable
 - Ensure DB operations don’t block the UI thread
 - Storing log by log rather than rewriting the whole session
