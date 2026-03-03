@@ -40,32 +40,32 @@ The project follows a modular Rust structure for a Dioxus application:
 
 ```text
 LogOut/
-├─ src/
-│  ├─ main.rs  App entry point, routing (Dioxus Router), global state management
-│  ├─ models/  Data models (Exercise, WorkoutSession, Enums) and unit-safe types (Weight, Distance)
-│  ├─ services/  Business logic and persistence layers
-│  │  ├─ storage.rs          Unified storage interface (IndexedDB on web, SQLite on native)
-│  │  ├─ exercise_db.rs      Exercise library management and search logic
-│  │  ├─ exercise_loader.rs  Logic for loading exercise data from JSON
-│  │  ├─ wake_lock.rs        Keeps the screen on during active workout sessions
-│  │  └─ service_worker.rs   Integration logic for the PWA service worker
-│  ├─ components/  Functional Dioxus UI components
-│  │  ├─ active_session.rs  Complex "Active Session" view with timers and logging
-│  │  ├─ home.rs            Main landing page with session history
-│  │  ├─ analytics.rs       Progress tracking with interactive charts
-│  │  └─ …                  Other modular UI components (BottomNav, ExerciseCard…)
-│  └─ utils.rs  Pure, side-effect-free utility functions (formatting, timestamps, URLs)
-├─ maestro/  Maestro end-to-end tests
-│  ├─ web/      PWA browser tests (beta)
-│  └─ android/  Native Android tests
-├─ public/   PWA static assets required by the browser
-│  ├─ manifest.json  Web app manifest for PWA installation
-│  ├─ sw.js          JavaScript Service Worker for PWA
-│  └─ 404.html       Fallback page for single-page app routing
-├─ assets/       Application-wide static assets (styles.css…)
-├─ Cargo.toml    Rust manifest (dependencies, features, targets)
-├─ Dioxus.toml   Configuration for the Dioxus CLI (build, serve, platform options)
-└─ flake.nix     Nix flake for reproducible development environments
+├ src/
+│ ├ main.rs  App entry point, routing (Dioxus Router), global state management
+│ ├ models/  Data models (Exercise, WorkoutSession, Enums) and unit-safe types (Weight, Distance)
+│ ├ services/             Business logic and persistence layers
+│ │ ├ storage.rs          Unified storage interface (IndexedDB on web, SQLite on native)
+│ │ ├ exercise_db.rs      Exercise library management and search logic
+│ │ ├ exercise_loader.rs  Logic for loading exercise data from JSON
+│ │ ├ wake_lock.rs        Keeps the screen on during active workout sessions
+│ │ └ service_worker.rs   Integration logic for the PWA service worker
+│ ├ components/           Functional Dioxus UI components
+│ │ ├ active_session.rs   Complex "Active Session" view with timers and logging
+│ │ ├ home.rs             Main landing page with session history
+│ │ ├ analytics.rs        Progress tracking with interactive charts
+│ │ └ …                   Other modular UI components (BottomNav, ExerciseCard…)
+│ └ utils.rs   Pure, side-effect-free utility functions (formatting, timestamps, URLs)
+├ maestro/          Maestro end-to-end tests
+│ ├ web/            Web browser PWA (beta)
+│ └ android/        Android native app
+├ public/           PWA static assets required by the browser
+│ ├ manifest.json   Web app manifest for PWA installation
+│ ├ sw.js           JavaScript Service Worker for PWA
+│ └ 404.html        Fallback page for single-page app routing
+├ assets/       Application-wide static assets (SCSS…)
+├ Cargo.toml    Rust manifest (dependencies, features, targets)
+├ Dioxus.toml   Configuration for the Dioxus CLI (build, serve, platform options)
+└ flake.nix     Nix flake for reproducible development environments
 ```
 
 ## Tooling & Dependencies
