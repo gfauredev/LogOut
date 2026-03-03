@@ -33,15 +33,11 @@ pub(super) fn ExerciseFormPanel(
 
     let (exercise_name, category, force) = {
         let all = all_exercises.read();
-        if let Some(ex) = exercise_db::get_exercise_by_id(&all, &exercise_id) {
+        let custom = custom_exercises.read();
+        if let Some(ex) = exercise_db::resolve_exercise(&all, &custom, &exercise_id) {
             (ex.name.clone(), ex.category, ex.force)
         } else {
-            let custom = custom_exercises.read();
-            if let Some(ex) = custom.iter().find(|e| e.id == exercise_id) {
-                (ex.name.clone(), ex.category, ex.force)
-            } else {
-                ("Unknown".to_string(), Category::Strength, None)
-            }
+            ("Unknown".to_string(), Category::Strength, None)
         }
     };
 

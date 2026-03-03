@@ -11,7 +11,6 @@ pub mod exercise_list;
 pub mod home;
 mod session_exercise_form;
 mod session_timers;
-pub mod workout_log;
 
 pub use active_session::SessionView;
 pub use add_custom_exercise::AddCustomExercisePage;

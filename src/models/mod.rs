@@ -414,32 +414,6 @@ impl Exercise {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
-pub struct WorkoutSet {
-    pub reps: u32,
-    /// Weight in hectograms
-    pub weight_hg: Option<Weight>,
-    pub duration: Option<u32>, // in seconds
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
-pub struct WorkoutExercise {
-    pub exercise_id: String,
-    pub exercise_name: String,
-    pub sets: Vec<WorkoutSet>,
-    pub notes: Option<String>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
-pub struct Workout {
-    pub id: String,
-    pub date: String,
-    pub exercises: Vec<WorkoutExercise>,
-    pub notes: Option<String>,
-    #[serde(default)]
-    pub version: u16,
-}
-
 // Models for active session tracking
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct ExerciseLog {
@@ -1451,63 +1425,6 @@ mod tests {
         assert_eq!(ex.mechanic, None);
         assert_eq!(ex.equipment, None);
         assert!(ex.images.is_empty());
-    }
-
-    // ── WorkoutSet / WorkoutExercise / Workout serialization ─────────────────
-
-    #[test]
-    fn workout_set_serde_round_trip() {
-        let set = WorkoutSet {
-            reps: 10,
-            weight_hg: Some(Weight(1000)),
-            duration: Some(60),
-        };
-        let json = serde_json::to_string(&set).unwrap();
-        let back: WorkoutSet = serde_json::from_str(&json).unwrap();
-        assert_eq!(back, set);
-    }
-
-    #[test]
-    fn workout_set_without_optionals() {
-        let set = WorkoutSet {
-            reps: 5,
-            weight_hg: None,
-            duration: None,
-        };
-        let json = serde_json::to_string(&set).unwrap();
-        let back: WorkoutSet = serde_json::from_str(&json).unwrap();
-        assert_eq!(back, set);
-    }
-
-    #[test]
-    fn workout_exercise_serde_round_trip() {
-        let we = WorkoutExercise {
-            exercise_id: "ex1".into(),
-            exercise_name: "Squat".into(),
-            sets: vec![WorkoutSet {
-                reps: 5,
-                weight_hg: Some(Weight(1000)),
-                duration: None,
-            }],
-            notes: Some("Heavy day".into()),
-        };
-        let json = serde_json::to_string(&we).unwrap();
-        let back: WorkoutExercise = serde_json::from_str(&json).unwrap();
-        assert_eq!(back, we);
-    }
-
-    #[test]
-    fn workout_serde_round_trip() {
-        let workout = Workout {
-            id: "w1".into(),
-            date: "2025-01-01".into(),
-            exercises: vec![],
-            notes: None,
-            version: DATA_VERSION,
-        };
-        let json = serde_json::to_string(&workout).unwrap();
-        let back: Workout = serde_json::from_str(&json).unwrap();
-        assert_eq!(back, workout);
     }
 
     // ── parse function edge cases ────────────────────────────────────────────
