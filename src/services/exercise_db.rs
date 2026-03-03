@@ -67,6 +67,7 @@ pub(crate) fn is_refresh_due() -> bool {
 
 /// Pure helper: returns true when a refresh is due given the current time and the
 /// last-fetch timestamp (both as Unix seconds).  Extracted for unit-testability.
+#[allow(dead_code)] // TODO Consider removing
 fn is_refresh_due_for(now_secs: u64, last_fetch_secs: Option<u64>) -> bool {
     match last_fetch_secs {
         None => true,
