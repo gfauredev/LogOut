@@ -1,5 +1,6 @@
 use crate::models::{Category, Equipment, Force, Muscle};
 use dioxus::prelude::*;
+use strum::IntoEnumIterator;
 
 /// Shared form fields used by both AddCustomExercisePage and EditCustomExercisePage.
 #[component]
@@ -135,7 +136,7 @@ pub fn ExerciseFormFields(
                         }
                     },
                     class: "form-select",
-                    for category in Category::ALL {
+                    for category in Category::iter() {
                         option { value: "{category}", "{category}" }
                     }
                 }
@@ -156,7 +157,7 @@ pub fn ExerciseFormFields(
                     },
                     class: "form-select",
                     option { value: "", "None" }
-                    for force_type in Force::ALL {
+                    for force_type in Force::iter() {
                         option { value: "{force_type}", "{force_type}" }
                     }
                 }
@@ -177,7 +178,7 @@ pub fn ExerciseFormFields(
                     },
                     class: "form-select",
                     option { value: "", "None" }
-                    for equipment in Equipment::ALL {
+                    for equipment in Equipment::iter() {
                         option { value: "{equipment}", "{equipment}" }
                     }
                 }
@@ -192,7 +193,7 @@ pub fn ExerciseFormFields(
                         value: "{muscle_input}",
                         oninput: move |evt| muscle_input.set(evt.value()),
                         option { value: "", "Select muscle..." }
-                        for muscle in Muscle::ALL {
+                        for muscle in Muscle::iter() {
                             option { value: "{muscle}", "{muscle}" }
                         }
                     }
@@ -230,7 +231,7 @@ pub fn ExerciseFormFields(
                         value: "{secondary_muscle_input}",
                         oninput: move |evt| secondary_muscle_input.set(evt.value()),
                         option { value: "", "Select muscle..." }
-                        for muscle in Muscle::ALL {
+                        for muscle in Muscle::iter() {
                             option { value: "{muscle}", "{muscle}" }
                         }
                     }

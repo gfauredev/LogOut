@@ -220,16 +220,7 @@ fn ChartView(
         }
     };
 
-    let format_date = |timestamp: f64| -> String {
-        let current_time = time::OffsetDateTime::now_utc().unix_timestamp() as f64;
-
-        let days_ago = ((current_time - timestamp) / 86400.0) as i64;
-        match days_ago {
-            0 => "Today".to_string(),
-            1 => "Yesterday".to_string(),
-            n => format!("{} days ago", n),
-        }
-    };
+    let format_date = |timestamp: f64| -> String { crate::utils::format_session_date(timestamp as u64) };
 
     rsx! {
         svg {

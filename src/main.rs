@@ -104,16 +104,24 @@ fn App() -> Element {
 #[component]
 fn CongratulationsToast() -> Element {
     let mut show = use_context::<CongratulationsSignal>().0;
+    // Each time the toast is shown a new generation is stamped.  The dismiss
+    // timer captures that generation and only hides the toast if no newer
+    // toast has replaced it in the meantime.
+    let mut gen = use_signal(|| 0u32);
 
     // Auto-dismiss: when `show` becomes true, schedule a reset after TOAST_DISMISS_MS.
     use_effect(move || {
         if *show.read() {
+            let next = *gen.peek() + 1;
+            gen.set(next);
             spawn(async move {
                 #[cfg(target_arch = "wasm32")]
                 gloo_timers::future::TimeoutFuture::new(TOAST_DISMISS_MS).await;
                 #[cfg(not(target_arch = "wasm32"))]
                 tokio::time::sleep(std::time::Duration::from_millis(TOAST_DISMISS_MS as u64)).await;
-                show.set(false);
+                if *gen.peek() == next {
+                    show.set(false);
+                }
             });
         }
     });
@@ -135,15 +143,22 @@ fn CongratulationsToast() -> Element {
 #[component]
 fn Toast() -> Element {
     let mut toast = use_context::<ToastSignal>().0;
+    // Generation counter: incremented with each new message so that a stale
+    // dismiss timer from a previous message cannot hide a newer one.
+    let mut gen = use_signal(|| 0u32);
 
     use_effect(move || {
         if toast.read().is_some() {
+            let next = *gen.peek() + 1;
+            gen.set(next);
             spawn(async move {
                 #[cfg(target_arch = "wasm32")]
                 gloo_timers::future::TimeoutFuture::new(TOAST_DISMISS_MS).await;
                 #[cfg(not(target_arch = "wasm32"))]
                 tokio::time::sleep(std::time::Duration::from_millis(TOAST_DISMISS_MS as u64)).await;
-                toast.set(None);
+                if *gen.peek() == next {
+                    toast.set(None);
+                }
             });
         }
     });

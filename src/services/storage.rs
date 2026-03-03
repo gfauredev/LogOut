@@ -3,9 +3,6 @@ use crate::ToastSignal;
 use dioxus::prelude::*;
 
 #[cfg(target_arch = "wasm32")]
-use wasm_bindgen_futures::spawn_local;
-
-#[cfg(target_arch = "wasm32")]
 use log::{error, info};
 
 // ──────────────────────────────────────────
@@ -72,6 +69,26 @@ pub(crate) mod idb {
         Ok(())
     }
 
+    /// Put many serialisable items into a store in a single transaction.
+    /// More efficient than calling [`put_item`] in a loop because only one
+    /// database connection and one transaction are opened.
+    pub async fn put_all<T: serde::Serialize>(
+        store_name: &str,
+        items: &[T],
+    ) -> Result<(), String> {
+        let db = open_db().await.map_err(|e| format!("{e}"))?;
+        let tx = db
+            .transaction(&[store_name], TransactionMode::ReadWrite)
+            .map_err(|e| format!("{e}"))?;
+        let store = tx.store(store_name).map_err(|e| format!("{e}"))?;
+        for item in items {
+            let js_val = serde_wasm_bindgen::to_value(item).map_err(|e| format!("{e}"))?;
+            store.put(&js_val, None).await.map_err(|e| format!("{e}"))?;
+        }
+        tx.done().await.map_err(|e| format!("{e}"))?;
+        Ok(())
+    }
+
     /// Delete an item from a store by its key.
     pub async fn delete_item(store_name: &str, key: &str) -> Result<(), String> {
         let db = open_db().await.map_err(|e| format!("{e}"))?;
@@ -109,6 +126,86 @@ pub(crate) mod idb {
             }
         }
         Ok(items)
+    }
+}
+
+// ──────────────────────────────────────────
+// Async write queue for IndexedDB (wasm32 only)
+//
+// Serialises all write operations (put / delete) so that concurrent callers
+// never open competing read-write transactions on the same object store, which
+// IndexedDB would otherwise serialise at the browser level anyway but could
+// cause transaction aborts under some circumstances.
+// ──────────────────────────────────────────
+
+#[cfg(target_arch = "wasm32")]
+mod idb_queue {
+    use super::idb;
+    use crate::models::{Exercise, WorkoutSession};
+    use dioxus::signals::Signal;
+    use std::cell::RefCell;
+    use std::collections::VecDeque;
+
+    /// A pending write operation, including the toast signal for error reporting.
+    pub enum IdbOp {
+        PutSession(WorkoutSession, Signal<Option<String>>),
+        DeleteSession(String, Signal<Option<String>>),
+        PutExercise(Exercise, Signal<Option<String>>),
+        DeleteExercise(String, Signal<Option<String>>),
+    }
+
+    thread_local! {
+        /// (draining, pending_ops)
+        static QUEUE: RefCell<(bool, VecDeque<IdbOp>)> =
+            RefCell::new((false, VecDeque::new()));
+    }
+
+    /// Enqueue a write operation.  If no drain is currently running, starts one.
+    pub fn enqueue(op: IdbOp) {
+        QUEUE.with(|q| {
+            let mut q = q.borrow_mut();
+            q.1.push_back(op);
+            if !q.0 {
+                q.0 = true;
+                wasm_bindgen_futures::spawn_local(drain());
+            }
+        });
+    }
+
+    async fn drain() {
+        loop {
+            let op = QUEUE.with(|q| q.borrow_mut().1.pop_front());
+            match op {
+                None => {
+                    QUEUE.with(|q| q.borrow_mut().0 = false);
+                    break;
+                }
+                Some(IdbOp::PutSession(s, mut toast)) => {
+                    if let Err(e) = idb::put_item(idb::STORE_SESSIONS, &s).await {
+                        log::error!("IDB queue: failed to put session {}: {e}", s.id);
+                        toast.set(Some(format!("⚠️ Failed to save session: {e}")));
+                    }
+                }
+                Some(IdbOp::DeleteSession(id, mut toast)) => {
+                    if let Err(e) = idb::delete_item(idb::STORE_SESSIONS, &id).await {
+                        log::error!("IDB queue: failed to delete session {id}: {e}");
+                        toast.set(Some(format!("⚠️ Failed to delete session: {e}")));
+                    }
+                }
+                Some(IdbOp::PutExercise(ex, mut toast)) => {
+                    if let Err(e) = idb::put_item(idb::STORE_CUSTOM_EXERCISES, &ex).await {
+                        log::error!("IDB queue: failed to put exercise {}: {e}", ex.id);
+                        toast.set(Some(format!("⚠️ Failed to save exercise: {e}")));
+                    }
+                }
+                Some(IdbOp::DeleteExercise(id, mut toast)) => {
+                    if let Err(e) = idb::delete_item(idb::STORE_CUSTOM_EXERCISES, &id).await {
+                        log::error!("IDB queue: failed to delete exercise {id}: {e}");
+                        toast.set(Some(format!("⚠️ Failed to delete exercise: {e}")));
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -198,15 +295,11 @@ pub fn save_session(session: WorkoutSession) {
     // Use wasm_bindgen_futures::spawn_local instead of Dioxus spawn so that the
     // IndexedDB write is not cancelled when the calling component unmounts
     // (e.g. when finishing a session causes SessionView to be removed).
+    // Writes go through the async queue to prevent concurrent transaction conflicts.
     #[cfg(target_arch = "wasm32")]
     {
-        let mut toast = consume_context::<ToastSignal>().0;
-        wasm_bindgen_futures::spawn_local(async move {
-            if let Err(e) = idb::put_item(idb::STORE_SESSIONS, &session).await {
-                error!("Failed to persist session: {e}");
-                toast.set(Some(format!("⚠️ Failed to save session: {e}")));
-            }
-        });
+        let toast = consume_context::<ToastSignal>().0;
+        idb_queue::enqueue(idb_queue::IdbOp::PutSession(session, toast));
     }
 
     #[cfg(not(target_arch = "wasm32"))]
@@ -226,13 +319,8 @@ pub fn delete_session(id: &str) {
     #[cfg(target_arch = "wasm32")]
     {
         let id = id.to_owned();
-        let mut toast = consume_context::<ToastSignal>().0;
-        spawn_local(async move {
-            if let Err(e) = idb::delete_item(idb::STORE_SESSIONS, &id).await {
-                error!("Failed to delete session: {e}");
-                toast.set(Some(format!("⚠️ Failed to delete session: {e}")));
-            }
-        });
+        let toast = consume_context::<ToastSignal>().0;
+        idb_queue::enqueue(idb_queue::IdbOp::DeleteSession(id, toast));
     }
 
     #[cfg(not(target_arch = "wasm32"))]
@@ -250,13 +338,8 @@ pub fn add_custom_exercise(exercise: Exercise) {
 
     #[cfg(target_arch = "wasm32")]
     {
-        let mut toast = consume_context::<ToastSignal>().0;
-        spawn_local(async move {
-            if let Err(e) = idb::put_item(idb::STORE_CUSTOM_EXERCISES, &exercise).await {
-                error!("Failed to persist custom exercise: {e}");
-                toast.set(Some(format!("⚠️ Failed to save exercise: {e}")));
-            }
-        });
+        let toast = consume_context::<ToastSignal>().0;
+        idb_queue::enqueue(idb_queue::IdbOp::PutExercise(exercise, toast));
     }
 
     #[cfg(not(target_arch = "wasm32"))]
@@ -283,13 +366,8 @@ pub fn update_custom_exercise(exercise: Exercise) {
 
     #[cfg(target_arch = "wasm32")]
     {
-        let mut toast = consume_context::<ToastSignal>().0;
-        spawn_local(async move {
-            if let Err(e) = idb::put_item(idb::STORE_CUSTOM_EXERCISES, &exercise).await {
-                error!("Failed to persist updated custom exercise: {e}");
-                toast.set(Some(format!("⚠️ Failed to update exercise: {e}")));
-            }
-        });
+        let toast = consume_context::<ToastSignal>().0;
+        idb_queue::enqueue(idb_queue::IdbOp::PutExercise(exercise, toast));
     }
 
     #[cfg(not(target_arch = "wasm32"))]
@@ -334,10 +412,8 @@ pub mod idb_exercises {
     }
 
     pub async fn store_all_exercises(exercises: &[Exercise]) {
-        for ex in exercises {
-            if let Err(e) = idb::put_item(idb::STORE_EXERCISES, ex).await {
-                log::error!("Failed to store exercise {}: {e}", ex.id);
-            }
+        if let Err(e) = idb::put_all(idb::STORE_EXERCISES, exercises).await {
+            log::error!("Failed to store exercises in IndexedDB: {e}");
         }
     }
 }
