@@ -139,7 +139,7 @@
               mkdir -p $out
               cp -r target/dx/log-workout/release/web/public/* $out/
             '';
-            doCheck = false; # TODO
+            doCheck = true;
           };
           android = env.pkgs.rustPlatform.buildRustPackage {
             pname = "log-workout-android";
@@ -165,7 +165,7 @@
               find . -type f -name "*.apk" -exec cp {} $out/ \;
               echo "APK successfully copied to $out"
             '';
-            doCheck = false; # TODO
+            doCheck = true;
           };
           default = env.pkgs.symlinkJoin {
             name = "log-workout-all";
