@@ -220,7 +220,8 @@ fn ChartView(
         }
     };
 
-    let format_date = |timestamp: f64| -> String { crate::utils::format_session_date(timestamp as u64) };
+    let format_date =
+        |timestamp: f64| -> String { crate::utils::format_session_date(timestamp as u64) };
 
     rsx! {
         svg {

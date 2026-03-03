@@ -8,8 +8,17 @@ pub const DATA_VERSION: u16 = 0;
 
 // ── Enums for exercise fields with fixed values ─────────────────────────────
 #[derive(
-    Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize,
-    strum::EnumIter, strum::Display, strum::AsRefStr,
+    Debug,
+    Clone,
+    Copy,
+    PartialEq,
+    Eq,
+    Hash,
+    Serialize,
+    Deserialize,
+    strum::EnumIter,
+    strum::Display,
+    strum::AsRefStr,
 )]
 #[strum(serialize_all = "lowercase")]
 pub enum Category {
@@ -31,8 +40,17 @@ pub enum Category {
 }
 
 #[derive(
-    Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize,
-    strum::EnumIter, strum::Display, strum::AsRefStr,
+    Debug,
+    Clone,
+    Copy,
+    PartialEq,
+    Eq,
+    Hash,
+    Serialize,
+    Deserialize,
+    strum::EnumIter,
+    strum::Display,
+    strum::AsRefStr,
 )]
 #[strum(serialize_all = "lowercase")]
 pub enum Force {
@@ -52,8 +70,17 @@ impl Force {
 }
 
 #[derive(
-    Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize,
-    strum::EnumIter, strum::Display, strum::AsRefStr,
+    Debug,
+    Clone,
+    Copy,
+    PartialEq,
+    Eq,
+    Hash,
+    Serialize,
+    Deserialize,
+    strum::EnumIter,
+    strum::Display,
+    strum::AsRefStr,
 )]
 #[strum(serialize_all = "lowercase")]
 pub enum Level {
@@ -66,8 +93,17 @@ pub enum Level {
 }
 
 #[derive(
-    Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize,
-    strum::EnumIter, strum::Display, strum::AsRefStr,
+    Debug,
+    Clone,
+    Copy,
+    PartialEq,
+    Eq,
+    Hash,
+    Serialize,
+    Deserialize,
+    strum::EnumIter,
+    strum::Display,
+    strum::AsRefStr,
 )]
 #[strum(serialize_all = "lowercase")]
 pub enum Mechanic {
@@ -78,8 +114,17 @@ pub enum Mechanic {
 }
 
 #[derive(
-    Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize,
-    strum::EnumIter, strum::Display, strum::AsRefStr,
+    Debug,
+    Clone,
+    Copy,
+    PartialEq,
+    Eq,
+    Hash,
+    Serialize,
+    Deserialize,
+    strum::EnumIter,
+    strum::Display,
+    strum::AsRefStr,
 )]
 #[strum(serialize_all = "lowercase")]
 pub enum Equipment {
@@ -115,8 +160,17 @@ pub enum Equipment {
 }
 
 #[derive(
-    Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize,
-    strum::EnumIter, strum::Display, strum::AsRefStr,
+    Debug,
+    Clone,
+    Copy,
+    PartialEq,
+    Eq,
+    Hash,
+    Serialize,
+    Deserialize,
+    strum::EnumIter,
+    strum::Display,
+    strum::AsRefStr,
 )]
 #[strum(serialize_all = "lowercase")]
 pub enum Muscle {
