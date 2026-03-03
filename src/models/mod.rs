@@ -1,12 +1,21 @@
+//! Data models for the LogOut application.
+//!
+//! This module contains all shared data types used across the application:
+//! enums for exercise properties, unit-safe value types ([`Weight`],
+//! [`Distance`]), and the primary data structures [`Exercise`],
+//! [`ExerciseLog`], and [`WorkoutSession`].
+
 use serde::{Deserialize, Serialize};
 use std::fmt;
 
-// Image sub-path within the exercise database repository
+/// Sub-path for exercise images within the exercise database repository.
 const EXERCISES_IMAGE_SUB_PATH: &str = "exercises/";
-// Version control for data structures to handle migrations
+/// Version tag embedded in every [`WorkoutSession`] for future migrations.
 pub const DATA_VERSION: u16 = 0;
 
 // ── Enums for exercise fields with fixed values ─────────────────────────────
+
+/// Exercise category (e.g. strength, cardio).
 #[derive(
     Debug,
     Clone,
@@ -39,6 +48,7 @@ pub enum Category {
     Strongman,
 }
 
+/// The primary muscular force direction of an exercise.
 #[derive(
     Debug,
     Clone,
@@ -69,6 +79,7 @@ impl Force {
     }
 }
 
+/// The difficulty level of an exercise.
 #[derive(
     Debug,
     Clone,
@@ -92,6 +103,7 @@ pub enum Level {
     Expert,
 }
 
+/// Whether an exercise is compound (multi-joint) or isolation (single-joint).
 #[derive(
     Debug,
     Clone,
@@ -113,6 +125,7 @@ pub enum Mechanic {
     Isolation,
 }
 
+/// The primary equipment required to perform an exercise.
 #[derive(
     Debug,
     Clone,
@@ -159,6 +172,7 @@ pub enum Equipment {
     Other,
 }
 
+/// A muscle or muscle group targeted by an exercise.
 #[derive(
     Debug,
     Clone,
@@ -274,27 +288,39 @@ pub fn parse_distance_km(input: &str) -> Option<Distance> {
 
 // ── Data structures ─────────────────────────────────────────────────────────
 
+/// An exercise definition from the exercise database or created by the user.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct Exercise {
+    /// Unique identifier (slug from the exercise database, or `custom_<timestamp>` for user-created).
     pub id: String,
+    /// Human-readable exercise name.
     pub name: String,
     #[serde(skip_serializing_if = "Option::is_none")]
+    /// Direction of muscular force (push / pull / static).
     pub force: Option<Force>,
     #[serde(default)]
+    /// Difficulty level.
     pub level: Option<Level>,
     #[serde(skip_serializing_if = "Option::is_none")]
+    /// Whether the exercise is compound or isolation.
     pub mechanic: Option<Mechanic>,
     #[serde(skip_serializing_if = "Option::is_none")]
+    /// Equipment required.
     pub equipment: Option<Equipment>,
     #[serde(rename = "primaryMuscles")]
+    /// Primary muscle groups targeted.
     pub primary_muscles: Vec<Muscle>,
     #[serde(rename = "secondaryMuscles")]
     #[serde(default)]
+    /// Secondary / synergist muscle groups.
     pub secondary_muscles: Vec<Muscle>,
     #[serde(default)]
+    /// Step-by-step instructions for the exercise.
     pub instructions: Vec<String>,
+    /// Exercise category (e.g. strength, cardio).
     pub category: Category,
     #[serde(default)]
+    /// Relative or absolute image paths / URLs.
     pub images: Vec<String>,
 }
 
@@ -325,19 +351,27 @@ impl Exercise {
     }
 }
 
-// Models for active session tracking
+/// A single completed (or in-progress) exercise within a [`WorkoutSession`].
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct ExerciseLog {
+    /// Identifier of the exercise performed.
     pub exercise_id: String,
+    /// Display name of the exercise (denormalised for rendering without a DB lookup).
     pub exercise_name: String,
+    /// Exercise category, used to decide which metrics to display.
     pub category: Category,
+    /// Unix timestamp (seconds) when the exercise was started.
     pub start_time: u64,
+    /// Unix timestamp when the exercise was finished.  `None` while in progress.
     pub end_time: Option<u64>,
+    /// Weight used, stored in hectograms (see [`Weight`]).
     pub weight_hg: Option<Weight>,
+    /// Number of repetitions performed.
     pub reps: Option<u32>,
-    /// Distance in meters
+    /// Distance covered, stored in meters (see [`Distance`]).
     pub distance_m: Option<Distance>,
     #[serde(skip_serializing_if = "Option::is_none")]
+    /// Force type of the exercise (push / pull / static).
     pub force: Option<Force>,
 }
 
@@ -353,13 +387,19 @@ impl ExerciseLog {
     }
 }
 
+/// A workout session, from start to finish.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct WorkoutSession {
+    /// Unique identifier (e.g. `session_<timestamp>`).
     pub id: String,
+    /// Unix timestamp (seconds) when the session was started.
     pub start_time: u64,
+    /// Unix timestamp when the session ended.  `None` while the session is active.
     pub end_time: Option<u64>,
+    /// All exercise logs recorded during this session, in chronological order.
     pub exercise_logs: Vec<ExerciseLog>,
     #[serde(default)]
+    /// Schema version tag for future migrations.
     pub version: u16,
     /// Exercise IDs queued from a previous session (pre-added, not yet started).
     #[serde(default)]
