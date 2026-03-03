@@ -7,31 +7,31 @@ lang: en
 <!--toc:start-->
 
 - [Clean State App](#clean-state-app)
-  - [0. Acceptance Criteria](#0-acceptance-criteria)
+  - [Acceptance Criteria](#acceptance-criteria)
 - [Start Workout Session](#start-workout-session)
-  - [1. Acceptance Criteria](#1-acceptance-criteria)
+  - [Acceptance Criteria](#acceptance-criteria)
 - [Cancel Empty Session](#cancel-empty-session)
-  - [2. Acceptance Criteria](#2-acceptance-criteria)
+  - [Acceptance Criteria](#acceptance-criteria)
 - [Navigate to Exercise Browser](#navigate-to-exercise-browser)
-  - [4. Acceptance Criteria](#4-acceptance-criteria)
+  - [Acceptance Criteria](#acceptance-criteria)
 - [Search Exercises in Browser](#search-exercises-in-browser)
-  - [5. Acceptance Criteria](#5-acceptance-criteria)
+  - [Acceptance Criteria](#acceptance-criteria)
 - [Navigate to Analytics](#navigate-to-analytics)
-  - [6. Acceptance Criteria](#6-acceptance-criteria)
+  - [Acceptance Criteria](#acceptance-criteria)
 - [Navigate to Credits](#navigate-to-credits)
-  - [7. Acceptance Criteria](#7-acceptance-criteria)
+  - [Acceptance Criteria](#acceptance-criteria)
 - [Search Exercises in Active Session](#search-exercises-in-active-session)
-  - [8. Acceptance Criteria](#8-acceptance-criteria)
+  - [Acceptance Criteria](#acceptance-criteria)
 - [Full Workout Session](#full-workout-session)
-  - [9. Acceptance Criteria](#9-acceptance-criteria)
+  - [Acceptance Criteria](#acceptance-criteria)
 - [Remove Exercise from Session](#remove-exercise-from-session)
-  - [10. Acceptance Criteria](#10-acceptance-criteria)
+  - [Acceptance Criteria](#acceptance-criteria)
 - [Delete a Past Session](#delete-a-past-session)
-  - [11. Acceptance Criteria](#11-acceptance-criteria)
+  - [Acceptance Criteria](#acceptance-criteria)
 - [Repeat Session from History](#repeat-session-from-history)
-  - [12. Acceptance Criteria](#12-acceptance-criteria)
+  - [Acceptance Criteria](#acceptance-criteria)
 - [Add Custom Exercise](#add-custom-exercise)
-  - [13. Acceptance Criteria](#13-acceptance-criteria)
+  - [Acceptance Criteria](#acceptance-criteria)
 
 <!--toc:end-->
 
@@ -48,7 +48,7 @@ supported platforms, currently :
 state when I first launch it, **so that** I’m not disturbed by existing user
 data I don’t created myself.
 
-### 0. Acceptance Criteria
+### Acceptance Criteria
 
 - Exercise List
   - There’s only default exercises, not custom ones created by a user
@@ -69,32 +69,34 @@ data I don’t created myself.
 **As a** _user_, **I want to** start a new workout session, **so that** I can
 begin logging my exercises.
 
-### 1. Acceptance Criteria
+### Acceptance Criteria
 
 - Home
   - Tapping the "+" button opens the Active Session _view_
 - Active Session
-  - Header displays "Active Session"
+  - Header displays "Active Session", "Cancel Session" button and a timer
+  - After 1 second, the timer has incremented by 1 second
 
 ## Cancel Empty Session
 
 **As a** _user_, **I want to** cancel an empty workout session, **so that** I
 can return to the home screen without saving a useless, empty session.
 
-### 2. Acceptance Criteria
+### Acceptance Criteria
 
 - Active Session
-  - "Cancel Session" button is visible if session is empty
+  - "Cancel Session" button is visible if the Session is empty
   - Tapping "Cancel Session" returns to the Home _view_
 - Home
   - Heading "LogOut" is visible again
+  - Main body still shows "No past sessions yet"
 
 ## Navigate to Exercise Browser
 
 **As a** _user_, **I want to** navigate to the exercise database, **so that** I
 can browse available exercises.
 
-### 4. Acceptance Criteria
+### Acceptance Criteria
 
 - Tapping the "📚" tab in the bottom navigation opens the exercise browser
 - The exercise browser heading "Exercise Database" is visible
@@ -105,7 +107,7 @@ can browse available exercises.
 **As a** _user_, **I want to** search for exercises in the exercise database,
 **so that** I can quickly find a specific exercise.
 
-### 5. Acceptance Criteria
+### Acceptance Criteria
 
 - A search input is visible on the exercise browser page
 - Typing a search term filters the exercise list
@@ -116,7 +118,7 @@ can browse available exercises.
 **As a** _user_, **I want to** navigate to the analytics page, **so that** I can
 view my workout progress over time.
 
-### 6. Acceptance Criteria
+### Acceptance Criteria
 
 - Tapping the "📊" tab in the bottom navigation opens the analytics page
 - The analytics heading "Analytics" is visible
@@ -126,7 +128,7 @@ view my workout progress over time.
 **As a** _user_, **I want to** navigate to the credits page, **so that** I can
 see information about the app and configure settings.
 
-### 7. Acceptance Criteria
+### Acceptance Criteria
 
 - Tapping the "ℹ️" tab in the bottom navigation opens the credits page
 - The credits heading "Credits" is visible
@@ -136,7 +138,7 @@ see information about the app and configure settings.
 **As a** _user_, **I want to** search for exercises while in an active workout
 session, **so that** I can find and add exercises to my current workout.
 
-### 8. Acceptance Criteria
+### Acceptance Criteria
 
 - An exercise search input is visible in the active session view
 - Typing a search term does not crash the app
@@ -147,7 +149,7 @@ session, **so that** I can find and add exercises to my current workout.
 **As a** _user_, **I want to** complete a full workout session from start to
 finish, **so that** my workout is saved and visible in my session history.
 
-### 9. Acceptance Criteria
+### Acceptance Criteria
 
 - Start a new session and search for an exercise (e.g. "bench press")
 - Select the exercise from the search results to open the exercise form
@@ -163,7 +165,7 @@ finish, **so that** my workout is saved and visible in my session history.
 **As a** _user_, **I want to** remove a completed exercise from my active
 session, **so that** I can correct mistakes or remove unwanted entries.
 
-### 10. Acceptance Criteria
+### Acceptance Criteria
 
 - Complete an exercise in an active session
 - Delete the completed exercise using the 🗑️ button
@@ -175,7 +177,7 @@ session, **so that** I can correct mistakes or remove unwanted entries.
 **As a** _user_, **I want to** delete a completed session from my history, **so
 that** I can remove unwanted or accidental entries.
 
-### 11. Acceptance Criteria
+### Acceptance Criteria
 
 - A completed session is visible on the home screen
 - Tapping the 🗑️ button on a session card opens a confirmation dialog
@@ -187,7 +189,7 @@ that** I can remove unwanted or accidental entries.
 **As a** _user_, **I want to** start a new session based on a past workout, **so
 that** I can quickly repeat the same exercises.
 
-### 12. Acceptance Criteria
+### Acceptance Criteria
 
 - A completed session with at least one exercise is visible on the home screen
 - Tapping the 🔄 button on a session card opens a new active session
@@ -199,7 +201,7 @@ that** I can quickly repeat the same exercises.
 **As a** _user_, **I want to** add a custom exercise to the exercise database,
 **so that** I can log exercises that are not in the built-in list.
 
-### 13. Acceptance Criteria
+### Acceptance Criteria
 
 - Tapping the "+" button in the exercise browser opens the "Add Exercise" form
 - Filling in the exercise name and saving creates a new exercise
