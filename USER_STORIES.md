@@ -113,7 +113,7 @@ the Exercise List, **so that** I can quickly find a specific exercise.
 - Exercise List page header displays a search input
 - Typing a search term filters the exercise list
 - The page remains functional after searching
-- Remove search term(s) shows the full exercise list again
+- Removing search term(s) shows the full exercise list again
 
 ## Learn About an Exercise
 
@@ -219,7 +219,8 @@ begin logging my exercises.
 
 ### Acceptance Criteria
 
-- Tapping the "+" button opens the Active Session _view_
+- The Home page contains a "+" button
+  - **Click it**, the Active Session _view_ opens
 - Active Session
   - Header displays "Active Session", "Cancel Session" button and a timer
   - After 1 second, the timer has incremented by 1 second
@@ -240,28 +241,53 @@ can return to the home screen without saving a useless, empty session.
 
 ## Full Workout Session
 
-**As a** _user_, **I want to** complete a full workout session from start to
-finish, **so that** my workout is saved and visible in my session history.
+I want to improve my health and track my progress to continue improving further.
 
 ### Start Session
 
+**As a** _user_, **I want to** start a new workout session, **so that** I can
+begin logging my exercises.
+
 #### Acceptance Criteria
+
+- The Home page contains a "+" button
+  - **Click it**, the Active Session _view_ opens
+- Active Session
+  - Header displays "Active Session", "Cancel Session" button and a timer
+  - After 1 second, the timer has incremented by 1 second
 
 ### Search Exercise
 
+**As a** _user_,
+
 #### Acceptance Criteria
+
+- Select the exercise from the search results to open the exercise form
 
 ### Record Exercise
 
+**As a** _user_,
+
 #### Acceptance Criteria
+
+- Input weight and repetitions, then complete the exercise
+- The completed exercise appears in the "Completed Exercises" section
 
 ### Replay Exercise
 
+**As a** _user_,
+
 #### Acceptance Criteria
+
+- Replay the exercise (another set) using the 🔁 button
 
 ### Repeat N Times
 
+**As a** _user_,
+
 #### Acceptance Criteria
+
+- Repeat the 3 previous steps to do 2 sets of another different exercise
 
 ### Remove Exercise
 
@@ -277,14 +303,10 @@ session, **so that** I can correct mistakes or remove unwanted entries.
 
 ### Finish Session
 
+**As a** _user_, **I want to**
+
 #### Acceptance Criteria
 
-- Start a new session and search for an exercise (e.g. "bench press")
-- Select the exercise from the search results to open the exercise form
-- Input weight and repetitions, then complete the exercise
-- The completed exercise appears in the "Completed Exercises" section
-- Replay the exercise (another set) using the 🔁 button
-- Complete the second set successfully
 - Finish the session using "Finish Session"
 - The home screen shows the completed session with the exercise name
 
@@ -314,12 +336,14 @@ that** I can remove unwanted or accidental entries.
 
 ## Lookup Exercises Targetting Same Muscles
 
+**As a** _user_, **I want to**
+
 ### Acceptance Criteria
 
-## Navigate to Analytics
+## Navigate Again to Analytics
 
 **As a** _user_, **I want to** navigate to the analytics page, **so that** I can
-view my workout progress over time.
+view my workout progress over time, now that I have recorded some exercises.
 
 ### Acceptance Criteria
 
@@ -330,4 +354,13 @@ view my workout progress over time.
 
 ## Be Astonished by Your Incredible Progress
 
+**As a** _user_, **I want to** see my workout progress over time in the
+analytics page, **so that** I can be astonished by my incredible progress and
+stay motivated to continue improving further.
+
 ### Acceptance Criteria
+
+- Select a metric worked in the previous full session
+  - Among "Weight", "Repetitions", "Distance", "Duration"
+- Select two exercises for which this metric has improved between previous sets
+- Be astonished by the raising curves in the analytics charts
