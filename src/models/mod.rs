@@ -7,11 +7,16 @@ const EXERCISES_IMAGE_SUB_PATH: &str = "exercises/";
 pub const DATA_VERSION: u16 = 0;
 
 // ── Enums for exercise fields with fixed values ─────────────────────────────
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(
+    Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize,
+    strum::EnumIter, strum::Display, strum::AsRefStr,
+)]
+#[strum(serialize_all = "lowercase")]
 pub enum Category {
     #[serde(rename = "cardio")]
     Cardio,
     #[serde(rename = "olympic weightlifting")]
+    #[strum(to_string = "olympic weightlifting")]
     OlympicWeightlifting,
     #[serde(rename = "plyometrics")]
     Plyometrics,
@@ -25,39 +30,11 @@ pub enum Category {
     Strongman,
 }
 
-impl Category {
-    pub fn as_str(self) -> &'static str {
-        match self {
-            Self::Cardio => "cardio",
-            Self::OlympicWeightlifting => "olympic weightlifting",
-            Self::Plyometrics => "plyometrics",
-            Self::Powerlifting => "powerlifting",
-            Self::Strength => "strength",
-            Self::Stretching => "stretching",
-            Self::Strongman => "strongman",
-        }
-    }
-}
-
-impl fmt::Display for Category {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.write_str(self.as_str())
-    }
-}
-
-impl Category {
-    pub const ALL: &'static [Category] = &[
-        Self::Strength,
-        Self::Cardio,
-        Self::Stretching,
-        Self::Powerlifting,
-        Self::Strongman,
-        Self::Plyometrics,
-        Self::OlympicWeightlifting,
-    ];
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(
+    Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize,
+    strum::EnumIter, strum::Display, strum::AsRefStr,
+)]
+#[strum(serialize_all = "lowercase")]
 pub enum Force {
     #[serde(rename = "pull")]
     Pull,
@@ -68,31 +45,17 @@ pub enum Force {
 }
 
 impl Force {
-    pub fn as_str(self) -> &'static str {
-        match self {
-            Self::Pull => "pull",
-            Self::Push => "push",
-            Self::Static => "static",
-        }
-    }
-}
-
-impl fmt::Display for Force {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.write_str(self.as_str())
-    }
-}
-
-impl Force {
-    pub const ALL: &'static [Force] = &[Self::Pull, Self::Push, Self::Static];
-
     /// Returns true if reps are applicable for this force type.
     pub fn has_reps(self) -> bool {
         matches!(self, Self::Pull | Self::Push)
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(
+    Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize,
+    strum::EnumIter, strum::Display, strum::AsRefStr,
+)]
+#[strum(serialize_all = "lowercase")]
 pub enum Level {
     #[serde(rename = "beginner")]
     Beginner,
@@ -102,23 +65,11 @@ pub enum Level {
     Expert,
 }
 
-impl Level {
-    pub fn as_str(self) -> &'static str {
-        match self {
-            Self::Beginner => "beginner",
-            Self::Intermediate => "intermediate",
-            Self::Expert => "expert",
-        }
-    }
-}
-
-impl fmt::Display for Level {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.write_str(self.as_str())
-    }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(
+    Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize,
+    strum::EnumIter, strum::Display, strum::AsRefStr,
+)]
+#[strum(serialize_all = "lowercase")]
 pub enum Mechanic {
     #[serde(rename = "compound")]
     Compound,
@@ -126,92 +77,48 @@ pub enum Mechanic {
     Isolation,
 }
 
-impl Mechanic {
-    pub fn as_str(self) -> &'static str {
-        match self {
-            Self::Compound => "compound",
-            Self::Isolation => "isolation",
-        }
-    }
-}
-
-impl fmt::Display for Mechanic {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.write_str(self.as_str())
-    }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(
+    Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize,
+    strum::EnumIter, strum::Display, strum::AsRefStr,
+)]
+#[strum(serialize_all = "lowercase")]
 pub enum Equipment {
     #[serde(rename = "bands")]
     Bands,
     #[serde(rename = "barbell")]
     Barbell,
     #[serde(rename = "body only")]
+    #[strum(to_string = "body only")]
     BodyOnly,
     #[serde(rename = "cable")]
     Cable,
     #[serde(rename = "dumbbell")]
     Dumbbell,
     #[serde(rename = "e-z curl bar")]
+    #[strum(to_string = "e-z curl bar")]
     EzCurlBar,
     #[serde(rename = "exercise ball")]
+    #[strum(to_string = "exercise ball")]
     ExerciseBall,
     #[serde(rename = "foam roll")]
+    #[strum(to_string = "foam roll")]
     FoamRoll,
     #[serde(rename = "kettlebells")]
     Kettlebells,
     #[serde(rename = "machine")]
     Machine,
     #[serde(rename = "medicine ball")]
+    #[strum(to_string = "medicine ball")]
     MedicineBall,
     #[serde(rename = "other")]
     Other,
 }
 
-impl Equipment {
-    pub fn as_str(self) -> &'static str {
-        match self {
-            Self::Bands => "bands",
-            Self::Barbell => "barbell",
-            Self::BodyOnly => "body only",
-            Self::Cable => "cable",
-            Self::Dumbbell => "dumbbell",
-            Self::EzCurlBar => "e-z curl bar",
-            Self::ExerciseBall => "exercise ball",
-            Self::FoamRoll => "foam roll",
-            Self::Kettlebells => "kettlebells",
-            Self::Machine => "machine",
-            Self::MedicineBall => "medicine ball",
-            Self::Other => "other",
-        }
-    }
-}
-
-impl fmt::Display for Equipment {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.write_str(self.as_str())
-    }
-}
-
-impl Equipment {
-    pub const ALL: &'static [Equipment] = &[
-        Self::Bands,
-        Self::Barbell,
-        Self::BodyOnly,
-        Self::Cable,
-        Self::Dumbbell,
-        Self::EzCurlBar,
-        Self::ExerciseBall,
-        Self::FoamRoll,
-        Self::Kettlebells,
-        Self::Machine,
-        Self::MedicineBall,
-        Self::Other,
-    ];
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(
+    Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize,
+    strum::EnumIter, strum::Display, strum::AsRefStr,
+)]
+#[strum(serialize_all = "lowercase")]
 pub enum Muscle {
     #[serde(rename = "abdominals")]
     Abdominals,
@@ -234,8 +141,10 @@ pub enum Muscle {
     #[serde(rename = "lats")]
     Lats,
     #[serde(rename = "lower back")]
+    #[strum(to_string = "lower back")]
     LowerBack,
     #[serde(rename = "middle back")]
+    #[strum(to_string = "middle back")]
     MiddleBack,
     #[serde(rename = "neck")]
     Neck,
@@ -247,58 +156,6 @@ pub enum Muscle {
     Traps,
     #[serde(rename = "triceps")]
     Triceps,
-}
-
-impl Muscle {
-    pub fn as_str(self) -> &'static str {
-        match self {
-            Self::Abdominals => "abdominals",
-            Self::Abductors => "abductors",
-            Self::Adductors => "adductors",
-            Self::Biceps => "biceps",
-            Self::Calves => "calves",
-            Self::Chest => "chest",
-            Self::Forearms => "forearms",
-            Self::Glutes => "glutes",
-            Self::Hamstrings => "hamstrings",
-            Self::Lats => "lats",
-            Self::LowerBack => "lower back",
-            Self::MiddleBack => "middle back",
-            Self::Neck => "neck",
-            Self::Quadriceps => "quadriceps",
-            Self::Shoulders => "shoulders",
-            Self::Traps => "traps",
-            Self::Triceps => "triceps",
-        }
-    }
-}
-
-impl fmt::Display for Muscle {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.write_str(self.as_str())
-    }
-}
-
-impl Muscle {
-    pub const ALL: &'static [Muscle] = &[
-        Self::Abdominals,
-        Self::Abductors,
-        Self::Adductors,
-        Self::Biceps,
-        Self::Calves,
-        Self::Chest,
-        Self::Forearms,
-        Self::Glutes,
-        Self::Hamstrings,
-        Self::Lats,
-        Self::LowerBack,
-        Self::MiddleBack,
-        Self::Neck,
-        Self::Quadriceps,
-        Self::Shoulders,
-        Self::Traps,
-        Self::Triceps,
-    ];
 }
 
 // ── Weight and Distance value types ─────────────────────────────────────────
@@ -515,6 +372,7 @@ pub fn format_time(seconds: u64) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use strum::IntoEnumIterator;
 
     // ── Weight Display ──────────────────────────────────────────────────────────
 
@@ -1214,43 +1072,43 @@ mod tests {
         assert_eq!(Muscle::Triceps.to_string(), "triceps");
     }
 
-    // ── ALL constants ────────────────────────────────────────────────────────
+    // ── iter() covers every variant ──────────────────────────────────────────
 
     #[test]
     fn category_all_contains_every_variant() {
-        assert_eq!(Category::ALL.len(), 7);
-        assert!(Category::ALL.contains(&Category::Cardio));
-        assert!(Category::ALL.contains(&Category::OlympicWeightlifting));
-        assert!(Category::ALL.contains(&Category::Plyometrics));
-        assert!(Category::ALL.contains(&Category::Powerlifting));
-        assert!(Category::ALL.contains(&Category::Strength));
-        assert!(Category::ALL.contains(&Category::Stretching));
-        assert!(Category::ALL.contains(&Category::Strongman));
+        assert_eq!(Category::iter().count(), 7);
+        assert!(Category::iter().any(|c| c == Category::Cardio));
+        assert!(Category::iter().any(|c| c == Category::OlympicWeightlifting));
+        assert!(Category::iter().any(|c| c == Category::Plyometrics));
+        assert!(Category::iter().any(|c| c == Category::Powerlifting));
+        assert!(Category::iter().any(|c| c == Category::Strength));
+        assert!(Category::iter().any(|c| c == Category::Stretching));
+        assert!(Category::iter().any(|c| c == Category::Strongman));
     }
 
     #[test]
     fn force_all_contains_every_variant() {
-        assert_eq!(Force::ALL.len(), 3);
-        assert!(Force::ALL.contains(&Force::Pull));
-        assert!(Force::ALL.contains(&Force::Push));
-        assert!(Force::ALL.contains(&Force::Static));
+        assert_eq!(Force::iter().count(), 3);
+        assert!(Force::iter().any(|f| f == Force::Pull));
+        assert!(Force::iter().any(|f| f == Force::Push));
+        assert!(Force::iter().any(|f| f == Force::Static));
     }
 
     #[test]
     fn equipment_all_contains_every_variant() {
-        assert_eq!(Equipment::ALL.len(), 12);
+        assert_eq!(Equipment::iter().count(), 12);
     }
 
     #[test]
     fn muscle_all_contains_every_variant() {
-        assert_eq!(Muscle::ALL.len(), 17);
+        assert_eq!(Muscle::iter().count(), 17);
     }
 
     // ── Serde round-trip for every enum variant ──────────────────────────────
 
     #[test]
     fn all_categories_serde_round_trip() {
-        for &cat in Category::ALL {
+        for cat in Category::iter() {
             let json = serde_json::to_string(&cat).unwrap();
             let back: Category = serde_json::from_str(&json).unwrap();
             assert_eq!(back, cat);
@@ -1259,7 +1117,7 @@ mod tests {
 
     #[test]
     fn all_forces_serde_round_trip() {
-        for &f in Force::ALL {
+        for f in Force::iter() {
             let json = serde_json::to_string(&f).unwrap();
             let back: Force = serde_json::from_str(&json).unwrap();
             assert_eq!(back, f);
@@ -1268,7 +1126,7 @@ mod tests {
 
     #[test]
     fn all_equipment_serde_round_trip() {
-        for &eq in Equipment::ALL {
+        for eq in Equipment::iter() {
             let json = serde_json::to_string(&eq).unwrap();
             let back: Equipment = serde_json::from_str(&json).unwrap();
             assert_eq!(back, eq);
@@ -1277,7 +1135,7 @@ mod tests {
 
     #[test]
     fn all_muscles_serde_round_trip() {
-        for &m in Muscle::ALL {
+        for m in Muscle::iter() {
             let json = serde_json::to_string(&m).unwrap();
             let back: Muscle = serde_json::from_str(&json).unwrap();
             assert_eq!(back, m);

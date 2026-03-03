@@ -48,15 +48,13 @@ pub fn format_session_date(timestamp: u64) -> String {
 /// Returns the number of elapsed calendar days between the local midnight of
 /// `timestamp`'s day and the local midnight of today.
 /// Uses the `time` crate on all platforms (local offset via `wasm-bindgen` on WASM,
-/// via OS on native), removing the need for direct `js_sys::Date` manipulation.
+/// via OS on native).
 fn days_since(timestamp: u64) -> i64 {
     use time::{OffsetDateTime, UtcOffset};
 
-    // `local-offset` is only available on native targets; WASM uses UTC.
-    #[cfg(not(target_arch = "wasm32"))]
+    // Both native (`local-offset` feature) and WASM (`wasm-bindgen` feature)
+    // support `current_local_offset()`; fall back to UTC only if it fails.
     let offset = UtcOffset::current_local_offset().unwrap_or(UtcOffset::UTC);
-    #[cfg(target_arch = "wasm32")]
-    let offset = UtcOffset::UTC;
 
     let now = OffsetDateTime::now_utc().to_offset(offset);
     let ts_dt = OffsetDateTime::from_unix_timestamp(timestamp as i64)

@@ -147,23 +147,23 @@ pub fn search_exercises<'a>(exercises: &'a [Exercise], query: &str) -> Vec<&'a E
                 || exercise
                     .primary_muscles
                     .iter()
-                    .any(|m| m.as_str().contains(&query_lower))
+                    .any(|m| m.as_ref().contains(&query_lower))
                 || exercise
                     .secondary_muscles
                     .iter()
-                    .any(|m| m.as_str().contains(&query_lower))
-                || exercise.category.as_str().contains(&query_lower)
+                    .any(|m| m.as_ref().contains(&query_lower))
+                || exercise.category.as_ref().contains(&query_lower)
                 || exercise
                     .force
-                    .map(|f| f.as_str().contains(&query_lower))
+                    .map(|f| f.as_ref().contains(&query_lower))
                     .unwrap_or(false)
                 || exercise
                     .equipment
-                    .map(|e| e.as_str().contains(&query_lower))
+                    .map(|e| e.as_ref().contains(&query_lower))
                     .unwrap_or(false)
                 || exercise
                     .level
-                    .map(|l| l.as_str().contains(&query_lower))
+                    .map(|l| l.as_ref().contains(&query_lower))
                     .unwrap_or(false)
         })
         .collect()
@@ -565,7 +565,7 @@ mod tests {
         let exercises = sample_exercises();
         // running has equipment: None, so only barbell and body only appear
         let equipment = get_equipment_types(&exercises);
-        assert!(equipment.iter().all(|e| e.as_str().len() > 0));
+        assert!(equipment.iter().all(|e| e.as_ref().len() > 0));
     }
 
     #[test]
