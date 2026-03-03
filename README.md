@@ -242,36 +242,37 @@ Always ensure that all lints, end-to-end and unit tests pass.
 - Improve indexedDB error handling with thiserror
 - Avoid enums boilerplate with strum `#[derive(EnumIter, Display, AsRefStr)]`
 
+[LogOut]: https://gfauredev.github.io/LogOut
 [800+ exercises]: https://github.com/yuhonas/free-exercise-db
-[Cargo]: https://doc.rust-lang.org/cargo/
+[Cargo]: https://doc.rust-lang.org/cargo
 [cargo test]: https://doc.rust-lang.org/cargo/commands/cargo-test.html
 [cargo-llvm-cov]: https://github.com/taiki-e/cargo-llvm-cov
 [Clippy]: https://github.com/rust-lang/rust-clippy
-[Dioxus]: https://dioxuslabs.com/
-[direnv]: https://direnv.net/
-[`direnv`]: https://direnv.net/
+[Dioxus]: https://dioxuslabs.com
+[direnv]: https://direnv.net
+[`direnv`]: https://direnv.net
 [free-exercise-db]: https://github.com/yuhonas/free-exercise-db
 [Guilhem Fauré]: https://www.guilhemfau.re
-[Git]: https://git-scm.com/
-[Helix]: https://helix-editor.com/
+[Git]: https://git-scm.com
+[Helix]: https://helix-editor.com
 [lcov]: https://github.com/linux-test-project/lcov
-[lldb]: https://lldb.llvm.org/
+[lldb]: https://lldb.llvm.org
 [llvm-cov]: https://llvm.org/docs/CommandGuide/llvm-cov.html
-[Maestro]: https://maestro.dev/
-[Nix]: https://nixos.org/
-[Rust]: https://www.rust-lang.org/
-[rust-analyzer]: https://rust-analyzer.github.io/
-[rust]: https://www.rust-lang.org/
-[rustc]: https://doc.rust-lang.org/rustc/
-[rustdoc]: https://doc.rust-lang.org/rustdoc/
+[Maestro]: https://maestro.dev
+[Nix]: https://nixos.org
+[Rust]: https://www.rust-lang.org
+[rust-analyzer]: https://rust-analyzer.github.io
+[rust]: https://www.rust-lang.org
+[rustc]: https://doc.rust-lang.org/rustc
+[rustdoc]: https://doc.rust-lang.org/rustdoc
 [rustfmt]: https://github.com/rust-lang/rustfmt
-[VS Code]: https://code.visualstudio.com/
-[Serde]: https://serde.rs/
+[VS Code]: https://code.visualstudio.com
+[Serde]: https://serde.rs
 [IndexedDB]: https://developer.mozilla.org/en-US/docs/Web/API/IndexedDB_API
 [Rexie]: https://github.com/wasmerio/rexie
 [SQLite]: https://www.sqlite.org/index.html
 [Rusqlite]: https://github.com/rusqlite/rusqlite
 [Reqwest]: https://github.com/seanmonstar/reqwest
 [Time]: https://github.com/time-rs/time
-[Tokio]: https://tokio.rs/
+[Tokio]: https://tokio.rs
 [Web-sys]: https://rustwasm.github.io/wasm-bindgen/web-sys/index.html

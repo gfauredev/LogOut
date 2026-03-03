@@ -36,18 +36,17 @@ lang: en
 
 <!--toc:end-->
 
-Comprehensive set of user stories for LogOut, a cross-platform workout logging
-application. Each story is validated by Maestro end-to-end tests for each
-supported platforms, currently :
+Comprehensive user stories for [LogOut] that serve as a basis for end-to-end
+tests for all supported platforms.
 
-- Web browser PWA : `maestro/web/`
-- Android native app : `maestro/android/`
+- Web browser PWA test via [Maestro] in `maestro/web/`
+- Android native app via [Maestro] in `maestro/android/`
 
 ## Clean State Home
 
-**As a** _user_ (and a _tester_), **I want to** see the Home in a clean, initial
-state when I first launch the app, **so that** I’m not disturbed by existing
-training Session(s) even though I didn’t record one yet.
+**As a** _user_ and a _tester_, **I want to** see the Home in an initial state
+when I first launch the app, **so that** I’m not disturbed by existing training
+Session(s) that shouldn’t.
 
 ### Acceptance Criteria
 
@@ -62,25 +61,25 @@ browse available exercises.
 ### Acceptance Criteria
 
 - The bottom navigation bar contains a "📚" button
-  - **Click it**, the Exercise List page opens
+  - When **clicked**, it opens the Exercise List page
 - Header displays "📚 Exercise Database"
 - "📚" button is slightly emphasized compared to others in bottom navigation bar
 
 ## Clean State Exercise List
 
-**As a** _user_ (and a _tester_), **I want to** see the _Exercise List_ in a
-clean, initial state when I first launch the app, **so that** I’m not disturbed
-by existing custom Exercise(s) even though I didn’t created one yet.
+**As a** _user_ and a _tester_, **I want to** see the Exercise List in an
+initial state when I first launch the app, **so that** I’m not disturbed by
+existing custom Exercise(s) that shouldn’t.
 
 ### Acceptance Criteria
 
 - There’s only default exercises, not custom ones created by a user
-- The first exercise has the button "✏️ Clone & Edit", not just "✏️ Edit"
+- Exercises have the button "✏️ Clone & Edit", not just "✏️ Edit"
 
 ## Search Exercises in Browser
 
-**As a** _user_, **I want to** search for exercises of the exercise database via
-the Exercise List, **so that** I can quickly find a specific exercise.
+**As a** _user_, **I want to** search for exercises of the database via the
+Exercise List, **so that** I can quickly find a specific one.
 
 ### Acceptance Criteria
 
@@ -107,13 +106,13 @@ can perform it properly and confidently.
 
 ## Add Custom Exercise
 
-**As a** _user_, **I want to** add a custom exercise to the exercise database,
-**so that** I can log exercises that are not in the built-in list.
+**As a** _user_, **I want to** add a custom exercise to the database, **so
+that** I can log exercises that are not in the built-in list.
 
 ### Acceptance Criteria
 
 - A "+" button is located near the search bar
-  - **Click it**, the Add Exercise form opens
+  - When **clicked**, it opens the Add Exercise form
 - Filling in the exercise name and clicking save button creates a new exercise
 - The new exercise is visible in the Exercise List
 
@@ -125,8 +124,8 @@ that** I can create a custom clone that fits my training better.
 ### Acceptance Criteria
 
 - A "✏️ Clone & Edit" button is located on each built-in exercise card
-  - **Click it**, the Edit Exercise form opens
-- Changin the exercise name and clicking save button creates a new exercise
+  - When **clicked**, it opens the Edit Exercise form
+- Changing the exercise name and clicking save button creates a new exercise
 - The modified clone is visible in the Exercise List with the new name
 
 ## Navigate to Analytics
@@ -137,15 +136,15 @@ view my workout progress over time.
 ### Acceptance Criteria
 
 - The bottom navigation bar contains a "📊" button
-  - **Click it**, the Analytics page opens
+  - When **clicked**, it opens the Analytics page
 - Header displays "📊 Analytics"
 - "📊" button is slightly emphasized compared to others in bottom navigation bar
 
 ## Clean State Analytics
 
-**As a** _user_ (and a _tester_), **I want to** see the _Analytics_ page in a
-clean, initial state when I first launch the app, **so that** I’m not disturbed
-by existing training data even though I didn’t record any yet.
+**As a** _user_ and a _tester_, **I want to** see the _Analytics_ page in an
+initial state when I first launch the app, **so that** I’m not disturbed by
+existing training data that shouldn’t.
 
 ### Acceptance Criteria
 
@@ -160,15 +159,15 @@ see information about the app and configure settings.
 ### Acceptance Criteria
 
 - The bottom navigation bar contains a "ℹ️" button
-  - **Click it**, the Credits page opens
+  - When **clicked**, it opens the Credits page
 - Header displays "ℹ️ Credits"
 - "ℹ️" button is slightly emphasized compared to others in bottom navigation bar
 
 ## Clean State Credits
 
-**As a** _user_ (and a _tester_), **I want to** see the _Credits_ page in a
-clean, initial state when I first launch the app, **so that** I’m not disturbed
-by existing customization that shouldn’t be.
+**As a** _user_ and a _tester_, **I want to** see the _Credits_ page in a clean,
+initial state when I first launch the app, **so that** I’m not disturbed by
+existing customization that shouldn’t be.
 
 ### Acceptance Criteria
 
@@ -177,12 +176,12 @@ by existing customization that shouldn’t be.
 ## Navigate Back to Home
 
 **As a** _user_, **I want to** navigate back to the home page, **so that** I can
-return to my workout session history.
+return to my workout session (history).
 
 ### Acceptance Criteria
 
 - The bottom navigation bar contains a "💪" button
-  - **Click it**, the Home page opens
+  - When **clicked**, it opens the Home page
 - Header displays "💪 LogOut"
 - "💪" button is slightly emphasized compared to others in bottom navigation bar
 
@@ -193,8 +192,8 @@ begin logging my exercises.
 
 ### Acceptance Criteria
 
-- The Home page contains a "+" button
-  - **Click it**, the Active Session _view_ opens
+- The Home page contains a "+" button near the bottom center
+  - When **clicked**, it opens the Active Session _view_
 - Active Session
   - Header displays "Active Session", "Cancel Session" button and a timer
   - After 1 second, the timer has incremented by 1 second
@@ -215,8 +214,6 @@ can return to the home screen without saving a useless, empty session.
 
 ## Full Workout Session
 
-I want to improve my health and track my progress to continue improving further.
-
 ### Start Session
 
 **As a** _user_, **I want to** start a new workout session, **so that** I can
@@ -225,7 +222,7 @@ begin logging my exercises.
 #### Acceptance Criteria
 
 - The Home page contains a "+" button
-  - **Click it**, the Active Session _view_ opens
+  - When **clicked**, opens the Active Session _view_
 - Active Session
   - Header displays "Active Session", "Cancel Session" button and a timer
   - After 1 second, the timer has incremented by 1 second
@@ -349,3 +346,6 @@ stay motivated to continue improving further.
   - Among "Weight", "Repetitions", "Distance", "Duration"
 - Select two exercises for which this metric has improved between previous sets
 - Be astonished by the raising curves in the analytics charts
+
+[LogOut]: https://gfauredev.github.io/LogOut
+[Maestro]: https://maestro.dev

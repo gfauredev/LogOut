@@ -28,12 +28,6 @@ ul {
   line-height: 1.8;
 }
 
-.search-with-add {
-  display: flex;
-  align-items: center;
-  gap: var(--spacing);
-}
-
 select,
 input[type=text],
 input[type=url] {
@@ -61,6 +55,13 @@ input[type=text]+a {
   font-size: 1.6em;
   font-weight: bold;
   line-height: 1;
+}
+
+label {
+  display: inline-block;
+  margin: var(--spacing) 0;
+  font-weight: bold;
+  color: var(--text-secondary);
 }
 
 .tags {
@@ -92,9 +93,8 @@ input[type=text]+a {
   color: var(--text-faint);
 }
 
-label {
-  display: inline-block;
-  margin: var(--spacing) 0;
-  font-weight: bold;
-  color: var(--text-secondary);
+.search-with-add {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing);
 }

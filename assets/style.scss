@@ -72,21 +72,12 @@
 
 @import "generic"; // Generic definitions, arbitrary number of elements
 @import "specific"; // Specific definitions, one or a few precise elements
+// @media screen and (prefers-color-scheme: light) { @import "light" }
+// @media (pointer: fine) { @import "fine-pointer" } // Controls needing mouse
+// @media (pointer: none) { @import "no-pointer" } // Keyboard only control
+// @media screen and (prefers-reduced-motion: reduce) { }
 
-@media screen and (prefers-color-scheme: light) {
-  @import "light"; // Light theme if preferred
-}
-
-// @media (pointer: fine) { @import "fine-pointer"; } // Controls needing mouse
-// @media (pointer: none) { @import "no-pointer" }; // Keyboard only control
-
-@media screen and (prefers-reduced-motion: reduce) {
-  html {
-    scroll-behavior: auto; // Reduce moving animations, prevent motion sickness
-  }
-}
-
-/* CRAP */
+/* TODO Replace below by semanting class-light styling in generic or specific */
 .modal-backdrop {
   position: fixed;
   inset: 0;
@@ -456,7 +447,6 @@
   margin-top: 8px;
 }
 
-/* Shared ghost icon button style for log actions */
 .btn--edit-log,
 .btn--delete-log,
 .btn--replay-log {
@@ -480,7 +470,6 @@
   opacity: 1;
 }
 
-/* ===== Pending Exercises (pre-added from a previous session) ===== */
 .pending-exercises {
   margin-bottom: var(--spacing-md);
   padding: 14px;
@@ -532,7 +521,6 @@
   opacity: 0.9;
 }
 
-/* ===== Exercise Static Timer ===== */
 .exercise-static-timer {
   text-align: center;
   padding: var(--spacing-xs) var(--spacing-sm);
@@ -552,7 +540,6 @@
   font-size: 0.9em;
 }
 
-/* ===== Rest Timer ===== */
 .rest-timer {
   text-align: center;
   padding: var(--spacing-xs) var(--spacing-md);
@@ -568,7 +555,6 @@
   color: var(--color-danger);
 }
 
-/* ===== Rest Duration Input ===== */
 .rest-duration-input {
   display: flex;
   align-items: center;
@@ -580,7 +566,6 @@
   font-size: 0.9em;
 }
 
-/* ===== Snackbar ===== */
 .snackbar {
   position: fixed;
   bottom: var(--nav-height);
@@ -609,7 +594,6 @@
   }
 }
 
-/* ===== Instructions List (Custom Exercise form) ===== */
 .instructions-list {
   margin: var(--spacing-xs) 0 0 0;
   padding-left: var(--spacing-md);
@@ -625,7 +609,6 @@
   padding: var(--spacing-xs) 0;
 }
 
-/* ===== Analytics ===== */
 .analytics-panel .chart-svg {
   display: block;
 }
@@ -659,7 +642,6 @@
   padding: 0;
 }
 
-/* ===== Muscle Tags (Add Custom Exercise) ===== */
 .muscle-row {
   display: flex;
   gap: var(--spacing-xs);

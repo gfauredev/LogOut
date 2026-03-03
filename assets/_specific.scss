@@ -59,13 +59,10 @@ main+button {
   }
 }
 
-/* TODO Clean */
-.active,
-.bottom-nav__tab--active {
+.active {
   transform: scale(1.25);
 }
 
-/* DEPTH 1 */
 article {
   padding: var(--spacing);
   border: 1px solid var(--border-color);
@@ -150,7 +147,6 @@ article img {
   cursor: pointer;
 }
 
-/* SPECIFIC */
 .exercise-selector {
   margin-bottom: var(--spacing-xs);
   display: flex;
