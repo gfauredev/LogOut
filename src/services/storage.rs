@@ -540,7 +540,7 @@ pub(crate) mod native_storage {
     /// should hold this guard for their duration to prevent data races.
     /// Recovers from a poisoned mutex so a previous test failure does not
     /// cascade into every subsequent test that needs storage isolation.
-    #[allow(dead_code)]
+    #[cfg(test)]
     pub(crate) fn test_lock() -> std::sync::MutexGuard<'static, ()> {
         static LOCK: std::sync::OnceLock<std::sync::Mutex<()>> = std::sync::OnceLock::new();
         let m = LOCK.get_or_init(|| std::sync::Mutex::new(()));
