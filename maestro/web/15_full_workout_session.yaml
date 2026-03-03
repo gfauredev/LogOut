@@ -1,0 +1,99 @@
+# User Story 15 – Full Workout Session (Web PWA)
+# Complete a full workout with two different exercises, replay sets, remove one
+# completed exercise, and finish the session.
+url: http://localhost:8080
+---
+# Wait for the app to load
+- extendedWaitUntil:
+    visible:
+      text: "LogOut"
+    timeout: 120000
+
+# ── Start Session ────────────────────────────────────────────────────────────
+- tapOn: "+"
+- assertVisible: "Active Session"
+- assertVisible: "Cancel Session"
+
+# ── Search Exercise (bench press) ────────────────────────────────────────────
+- tapOn: "Search for an exercise..."
+- inputText: "bench press"
+# Wait for the exercise database to load (fetched from remote on first run)
+- extendedWaitUntil:
+    visible:
+      text: "Barbell Bench Press - Medium Grip"
+    timeout: 30000
+- tapOn: "Barbell Bench Press - Medium Grip"
+- assertVisible: "Barbell Bench Press - Medium Grip"
+- assertVisible: "Weight (kg)"
+- assertVisible: "Repetitions"
+
+# ── Record Exercise (set 1) ──────────────────────────────────────────────────
+- tapOn:
+    text: "Optional"
+- inputText: "60"
+- tapOn:
+    text: "Reps"
+- inputText: "10"
+- tapOn: "✓ Complete Exercise"
+- assertVisible: "Completed Exercises"
+- assertVisible: "Barbell Bench Press - Medium Grip"
+
+# ── Replay Exercise (set 2, increment reps) ──────────────────────────────────
+- tapOn: "🔁"
+- assertVisible: "Barbell Bench Press - Medium Grip"
+- assertVisible: "✓ Complete Exercise"
+# Increment reps for the second set
+- tapOn:
+    text: "10"
+- clearText
+- inputText: "12"
+- tapOn: "✓ Complete Exercise"
+# Verify second set appears
+- assertVisible: "Completed Exercises"
+
+# ── Repeat For Another Exercise (squat) ──────────────────────────────────────
+- tapOn: "Search for an exercise..."
+- inputText: "barbell squat"
+- extendedWaitUntil:
+    visible:
+      text: "Barbell Squat"
+    timeout: 30000
+- tapOn: "Barbell Squat"
+- assertVisible: "Barbell Squat"
+- assertVisible: "Weight (kg)"
+# Record first squat set
+- tapOn:
+    text: "Optional"
+- inputText: "80"
+- tapOn:
+    text: "Reps"
+- inputText: "8"
+- tapOn: "✓ Complete Exercise"
+- assertVisible: "Barbell Squat"
+# Replay squat (set 2)
+- tapOn: "🔁"
+- assertVisible: "Barbell Squat"
+- tapOn:
+    text: "8"
+- clearText
+- inputText: "10"
+- tapOn: "✓ Complete Exercise"
+
+# ── Remove Exercise (delete the latest – second squat set) ───────────────────
+# There are 4 completed exercises; remove the last one (index 0 in reversed list)
+- tapOn: "🗑️"
+# Now there should be 3 completed exercises
+- assertVisible: "Completed Exercises"
+- assertVisible: "Barbell Bench Press - Medium Grip"
+- assertVisible: "Barbell Squat"
+# Finish Session button should be visible (session is not empty)
+- assertVisible: "Finish Session"
+
+# ── Finish Session ────────────────────────────────────────────────────────────
+- tapOn: "Finish Session"
+# Back on home screen with the completed session
+- extendedWaitUntil:
+    visible:
+      text: "LogOut"
+    timeout: 10000
+- assertVisible: "Barbell Bench Press - Medium Grip"

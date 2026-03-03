@@ -112,8 +112,6 @@ pub fn ExerciseFormFields(
 
     rsx! {
         div {
-            class: "form-stack",
-
             // Name
             div {
                 label { class: "form-label", "Exercise Name *" }
@@ -189,12 +187,10 @@ pub fn ExerciseFormFields(
             div {
                 label { class: "form-label", "Primary Muscles" }
 
-                div {
-                    class: "muscle-row",
+                div { class: "muscle-row",
                     select {
                         value: "{muscle_input}",
                         oninput: move |evt| muscle_input.set(evt.value()),
-                        class: "muscle-select",
                         option { value: "", "Select muscle..." }
                         for muscle in Muscle::ALL {
                             option { value: "{muscle}", "{muscle}" }
@@ -208,19 +204,15 @@ pub fn ExerciseFormFields(
                 }
 
                 if !muscles_list.read().is_empty() {
-                    div {
-                        class: "muscle-tags",
+                    div { class: "muscle-tags",
                         for muscle in muscles_list.read().iter() {
-                            div {
-                                key: "{muscle}",
-                                class: "muscle-tag",
+                            div { key: "{muscle}",
                                 span { "{muscle}" }
                                 button {
                                     onclick: {
                                         let m = *muscle;
                                         move |_| remove_muscle(m)
                                     },
-                                    class: "muscle-tag__remove",
                                     "×"
                                 }
                             }
@@ -233,12 +225,10 @@ pub fn ExerciseFormFields(
             div {
                 label { class: "form-label", "Secondary Muscles" }
 
-                div {
-                    class: "muscle-row",
+                div { class: "muscle-row",
                     select {
                         value: "{secondary_muscle_input}",
                         oninput: move |evt| secondary_muscle_input.set(evt.value()),
-                        class: "muscle-select",
                         option { value: "", "Select muscle..." }
                         for muscle in Muscle::ALL {
                             option { value: "{muscle}", "{muscle}" }
@@ -252,19 +242,15 @@ pub fn ExerciseFormFields(
                 }
 
                 if !secondary_muscles_list.read().is_empty() {
-                    div {
-                        class: "muscle-tags",
+                    div { class: "muscle-tags",
                         for muscle in secondary_muscles_list.read().iter() {
-                            div {
-                                key: "{muscle}",
-                                class: "muscle-tag muscle-tag--secondary",
+                            div { key: "{muscle}", class: "secondary",
                                 span { "{muscle}" }
                                 button {
                                     onclick: {
                                         let m = *muscle;
                                         move |_| remove_secondary_muscle(m)
                                     },
-                                    class: "muscle-tag__remove",
                                     "×"
                                 }
                             }
@@ -277,14 +263,13 @@ pub fn ExerciseFormFields(
             div {
                 label { class: "form-label", "Instructions" }
 
-                div {
-                    class: "muscle-row",
+                div { class: "muscle-row",
                     input {
                         r#type: "text",
                         placeholder: "Add an instruction step...",
                         value: "{instructions_input}",
                         oninput: move |evt| instructions_input.set(evt.value()),
-                        class: "form-input form-input--flex",
+                        class: "form-input",
                     }
                     button {
                         onclick: add_instruction,
@@ -295,15 +280,11 @@ pub fn ExerciseFormFields(
 
                 if !instructions_list.read().is_empty() {
                     ol {
-                        class: "instructions-list",
                         for (idx, instruction) in instructions_list.read().iter().enumerate() {
-                            li {
-                                key: "{idx}",
-                                class: "instruction-item",
+                            li { key: "{idx}",
                                 span { "{instruction}" }
                                 button {
                                     onclick: move |_| remove_instruction(idx),
-                                    class: "muscle-tag__remove",
                                     "×"
                                 }
                             }
@@ -316,14 +297,13 @@ pub fn ExerciseFormFields(
             div {
                 label { class: "form-label", "Images (URLs)" }
 
-                div {
-                    class: "muscle-row",
+                div { class: "muscle-row",
                     input {
                         r#type: "url",
                         placeholder: "https://example.com/image.jpg",
                         value: "{image_url_input}",
                         oninput: move |evt| image_url_input.set(evt.value()),
-                        class: "form-input form-input--flex",
+                        class: "form-input",
                     }
                     button {
                         onclick: add_image,
@@ -333,16 +313,12 @@ pub fn ExerciseFormFields(
                 }
 
                 if !images_list.read().is_empty() {
-                    div {
-                        class: "muscle-tags",
+                    div { class: "muscle-tags",
                         for (idx, url) in images_list.read().iter().enumerate() {
-                            div {
-                                key: "{idx}",
-                                class: "muscle-tag",
+                            div { key: "{idx}",
                                 span { class: "image-url-tag", "{url}" }
                                 button {
                                     onclick: move |_| remove_image(idx),
-                                    class: "muscle-tag__remove",
                                     "×"
                                 }
                             }

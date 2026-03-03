@@ -176,19 +176,51 @@ cargo llvm-cov --bin log-workout --lcov --output-path lcov.info # LCOV report
 
 ### End-to-End Testing
 
-End-to-end tests exercise the full application using [Maestro]. User stories are
-documented in `USER_STORIES.md`, and each story has two test flows: one for the
-PWA (beta web platform) and one for native Android.
+End-to-end tests exercise the full application using [Maestro]. All 20 user
+stories from `USER_STORIES.md` are covered with two test flows each: one for
+the PWA (beta web platform) and one for native Android. Tests are numbered
+`01`–`20` matching the user story order so each test can rely on state from
+the previous ones when run as a full suite.
+
+#### Prerequisites
+
+- **[Maestro]** installed: `curl -Ls "https://get.maestro.dev" | bash`
+- For **web tests**: a production build served on `http://localhost:8080`
+- For **Android tests**: a running emulator or connected device with the app installed
+
+#### Running the web tests
 
 ```sh
-maestro test --platform web maestro/web/ # PWA tests (serve the app on localhost:8080 first)
+# Build and serve the PWA
+dx build --platform web --release
+dx serve --platform web
+
+# In a second terminal, run all web E2E tests in story order
+maestro test --platform web maestro/web/
+
+# Or run a single test file
+maestro test --platform web maestro/web/01_clean_state_home.yaml
 ```
+
+> [!NOTE]
+> The first run of tests that touch the exercise browser may take up to 30 seconds
+> while the exercise database is downloaded from the remote URL.
+
+#### Running the Android tests
 
 ```sh
-maestro test maestro/android/ # Android tests (start an emulator first)
+# Start an Android emulator (or connect a physical device) with the app installed,
+# then run all Android E2E tests in story order
+maestro test maestro/android/
+
+# Or run a single test file
+maestro test maestro/android/01_clean_state_home.yaml
 ```
 
-The `main` branch must always pass `100%` of E2E tests.
+> [!TIP]
+> Tests are designed to run sequentially and build on each other's state.
+> Run them in numeric order (`01` → `20`) for the full user-story flow.
+> Run `maestro studio` to debug a failing test interactively.
 
 ### Documentation
 
@@ -213,13 +245,6 @@ services, providing a detailed view of the codebase's API.
 - Always ensure that all lints, end-to-end and unit tests pass.
 
 ## TODO
-
-- Convert remaining BEM to class-light based on clean HTML semantic structure
-  - Merge CSS rules of similar components in the process
-- Add E2E tests to fully cover `./USER_STORIES.md` for both Web and Android
-  - Some selectors might need to be updated to hierarchical class-light
-- Write clear instructions on running E2E tests locally
-- Ensure all the tests pass
 
 ### Optimization & Technical
 

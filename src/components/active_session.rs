@@ -55,9 +55,8 @@ fn SessionHeader(
         header {
             class: "session-header",
             div {
-                h2 { class: "session-header__title", tabindex: 0, "⏱️ Active Session" }
+                h2 { tabindex: 0, "⏱️ Active Session" }
                 p {
-                    class: "session-header__timer",
                     onclick: move |_| on_click_timer.call(()),
                     title: "Click to set rest duration",
                     SessionDurationDisplay {
@@ -66,7 +65,7 @@ fn SessionHeader(
                     }
                 }
             }
-            div { class: "session-header__actions",
+            div {
                 if exercise_count == 0 {
                     button {
                         onclick: move |_| on_finish.call(()),
@@ -76,7 +75,7 @@ fn SessionHeader(
                 } else {
                     button {
                         onclick: move |_| on_finish.call(()),
-                        class: "btn--finish",
+                        class: "finish",
                         "Finish Session"
                     }
                 }
@@ -94,7 +93,7 @@ fn RestDurationInput(
 ) -> Element {
     rsx! {
         form {
-            class: "rest-duration-input",
+            class: "rest-config",
             aria_label: "Set rest duration",
             onsubmit: move |evt| {
                 evt.prevent_default();
@@ -110,7 +109,6 @@ fn RestDurationInput(
                 inputmode: "numeric",
                 value: "{rest_input_value}",
                 oninput: move |evt| rest_input_value.set(evt.value()),
-                class: "form-input form-input--rest",
             }
             button {
                 r#type: "submit",
@@ -128,7 +126,7 @@ fn PendingExercisesSection(pending_ids: Vec<String>, on_start: EventHandler<Stri
     let all_exercises = exercise_db::use_exercises();
     let custom_exercises = storage::use_custom_exercises();
     rsx! {
-        section { class: "pending-exercises",
+        section { class: "pending",
             h3 { "Pre-added Exercises" }
             for exercise_id in pending_ids {
                 {
@@ -146,11 +144,13 @@ fn PendingExercisesSection(pending_ids: Vec<String>, on_start: EventHandler<Stri
                         }
                     };
                     rsx! {
-                        article { class: "pending-exercise-item",
-                            span { class: "pending-exercise-item__name", "{name}" }
-                            span { class: "tag tag--category", "{category}" }
+                        article {
+                            span { "{name}" }
+                            div { class: "tags",
+                                span { class: "category", "{category}" }
+                            }
                             button {
-                                class: "btn--start",
+                                class: "start",
                                 onclick: {
                                     let id = exercise_id.clone();
                                     move |_| on_start.call(id.clone())
@@ -441,7 +441,6 @@ pub fn SessionView() -> Element {
 
         // Main content area
         section {
-            class: "session-main",
 
             // Pending exercises (pre-added from a previous session)
             if current_exercise_id.read().is_none() && !pending_ids().is_empty() {
@@ -486,33 +485,30 @@ pub fn SessionView() -> Element {
             // Exercise search and selection
             if current_exercise_id.read().is_none() {
                 div {
-                    class: "form-group",
                     div { class: "search-with-add",
                         input {
                             r#type: "text",
                             placeholder: "Search for an exercise...",
                             value: "{search_query}",
                             oninput: move |evt| search_query.set(evt.value()),
-                            class: "search-input",
                         }
                         Link {
                             to: Route::AddCustomExercisePage {},
-                            class: "add-exercise-btn",
                             title: "Add Custom Exercise",
                             "+"
                         }
                     }
 
                     if !search_results().is_empty() {
-                        div {
-                            class: "search-results search-results--tall",
+                        ul { class: "results",
                             for (id, name, category) in search_results() {
-                                div {
+                                li {
                                     key: "{id}",
                                     onclick: move |_| start_exercise(id.clone()),
-                                    class: "search-result-item search-result-item--flex",
                                     span { "{name}" }
-                                    span { class: "tag tag--category", "{category}" }
+                                    div { class: "tags",
+                                        span { class: "category", "{category}" }
+                                    }
                                 }
                             }
                         }

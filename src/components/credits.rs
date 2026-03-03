@@ -68,14 +68,13 @@ pub fn CreditsPage() -> Element {
                     "Save to trigger a re-download on next reload."
                 }
                 form {
-                    class: "db-url-form",
                     onsubmit: save_url,
                     input {
                         r#type: "url",
                         value: "{url_input}",
                         placeholder: "{crate::utils::EXERCISE_DB_BASE_URL}",
                         oninput: move |evt| url_input.set(evt.value()),
-                        class: "form-input db-url-input",
+                        class: "form-input",
                     }
                     button {
                         r#type: "submit",

@@ -1,0 +1,10 @@
+# User Story 2 – Navigate to Exercise List (Android)
+# Navigate to the Exercise List via the bottom navigation bar.
+appId: com.gfaure.logworkout
+---
+- extendedWaitUntil:
+    visible:
+      text: "LogOut"
+    timeout: 120000
+- tapOn: "📚"
+- assertVisible: "Exercise Database"

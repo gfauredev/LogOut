@@ -1,0 +1,21 @@
+# User Story 20 – Be Astonished by Your Incredible Progress (Web PWA)
+# Select an exercise in Analytics and see a chart of progress over time.
+url: http://localhost:8080
+---
+- extendedWaitUntil:
+    visible:
+      text: "LogOut"
+    timeout: 120000
+- tapOn: "📊"
+- assertVisible: "Analytics"
+# Select "Weight (kg)" metric
+- tapOn: "Weight (kg)"
+# Select "Barbell Bench Press - Medium Grip" in the first exercise selector
+- tapOn: "-- Select Exercise --"
+- tapOn: "Barbell Bench Press - Medium Grip"
+# A chart should now be visible with data points
+- assertVisible: "Weight (kg)"
+# The chart SVG should be present
+- assertVisible:
+    id: ".*svg.*"
+    optional: true

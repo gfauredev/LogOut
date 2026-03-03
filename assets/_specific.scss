@@ -25,6 +25,16 @@ main.sessions {
   grid-template-columns: repeat(auto-fill, minmax(var(--col-min-width), 1fr));
 }
 
+// When an active session is displayed, switch from grid to flex-column layout
+// so the scrollable section fills the remaining viewport height.
+main.sessions:has(.session-header) {
+  display: flex;
+  flex-direction: column;
+  height: 100dvh;
+  padding: 0;
+  gap: 0;
+}
+
 main+button {
   display: block;
   width: var(--btn-fab-size);
@@ -164,3 +174,340 @@ article img {
 .exercise-selector select {
   flex: 1;
 }
+
+// ── Delete confirmation modal ──────────────────────────────────────────────
+.backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.7);
+  z-index: var(--z-backdrop);
+}
+
+dialog {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: var(--bg-modal);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius);
+  padding: var(--spacing-md);
+  text-align: center;
+  min-width: var(--modal-min-width);
+  z-index: var(--z-modal);
+
+  p { margin-bottom: var(--spacing-md); font-size: 1.1em; }
+
+  > div {
+    display: flex;
+    gap: var(--spacing-sm);
+    justify-content: center;
+  }
+}
+
+// ── Session view layout ────────────────────────────────────────────────────
+.session-header {
+  position: sticky;
+  top: 0;
+  background: var(--gradient-primary);
+  color: white;
+  padding: 15px var(--spacing-md);
+  box-shadow: var(--shadow-card);
+  z-index: var(--z-modal);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+
+  h2 { margin: 0; font-size: 1.5em; }
+
+  p {
+    margin: 5px 0 0 0;
+    font-size: 1.8em;
+    font-weight: bold;
+    cursor: pointer;
+    &:hover { text-decoration: underline; }
+  }
+
+  > div {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+  }
+
+  // Cancel Session button (danger variant within header)
+  .btn--cancel-session {
+    padding: var(--spacing-sm) var(--spacing-md);
+    background: var(--bg-danger-muted);
+    color: var(--color-danger);
+    border: none;
+    border-radius: var(--radius);
+    font-size: 1.1em;
+    font-weight: bold;
+    cursor: pointer;
+    box-shadow: var(--shadow-btn);
+  }
+}
+
+main.sessions > section {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: var(--spacing-md);
+  padding-bottom: var(--nav-height);
+  margin: 0 auto;
+  width: 100%;
+}
+
+// ── Pending exercises section ──────────────────────────────────────────────
+section.pending {
+  margin-bottom: var(--spacing-md);
+  padding: 14px;
+  border: 1px dashed var(--border-pending);
+  border-radius: var(--radius);
+  background: var(--bg-pending);
+
+  > h3 {
+    margin: 0 0 var(--spacing-sm) 0;
+    font-size: 1em;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+
+  > article {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-xs);
+    padding: var(--spacing-xs) 0;
+    border: none;
+    border-bottom: 1px solid var(--bg-muted);
+    border-radius: 0;
+    box-shadow: none;
+    background: transparent;
+
+    &:last-child {
+      border-bottom: none;
+      padding-bottom: 0;
+    }
+
+    > span {
+      flex: 1;
+      font-weight: 500;
+      color: var(--text-secondary);
+    }
+  }
+}
+
+// ── Active exercise form ───────────────────────────────────────────────────
+article.current {
+  border: 2px solid var(--color-primary);
+  background: var(--bg-session-form);
+  margin-bottom: var(--spacing-md);
+  position: relative;
+
+  > header {
+    justify-content: space-between;
+
+    h3 { margin: 0; padding: 0; color: var(--text-primary); font-size: 1em; }
+    span { color: var(--color-primary-light); font-size: 0.9em; font-weight: normal; padding: 0; }
+  }
+
+  > div {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-sm);
+    margin-top: var(--spacing-sm);
+  }
+}
+
+// ── Completed exercise log ─────────────────────────────────────────────────
+article.log {
+  padding: 15px;
+  margin-bottom: var(--spacing-xs);
+
+  > header {
+    margin-bottom: 8px;
+
+    h4 { margin: 0; padding: 0; color: var(--text-primary); flex: 1; }
+
+    > div {
+      display: flex;
+      gap: var(--spacing-xs);
+      align-items: center;
+      padding: 0;
+    }
+
+    button { font-size: 1em; padding: 2px 6px; opacity: 0.7; }
+  }
+
+  > .edit-form {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-xs);
+    margin-top: 8px;
+  }
+
+  > .details {
+    color: var(--text-muted);
+    font-size: 0.9em;
+  }
+}
+
+// ── Search results dropdown ────────────────────────────────────────────────
+ul.results {
+  list-style: none;
+  padding: 0;
+  margin-top: var(--spacing-xs);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius);
+  background: var(--bg-card);
+  max-height: 300px;
+  overflow-y: auto;
+
+  > li {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: var(--spacing-sm);
+    cursor: pointer;
+    border-bottom: 1px solid var(--bg-muted);
+
+    &:last-child { border-bottom: none; }
+    &:hover { background: var(--bg-elevated); }
+  }
+}
+
+// ── Rest and exercise timers ───────────────────────────────────────────────
+.rest-timer {
+  text-align: center;
+  padding: var(--spacing-xs) var(--spacing-md);
+  font-size: 1.2em;
+  font-weight: bold;
+  background: var(--bg-success-muted);
+  color: var(--color-success);
+  border-bottom: 1px solid var(--border-color);
+
+  &.exceeded {
+    background: var(--bg-danger-light);
+    color: var(--color-danger);
+  }
+}
+
+.exercise-timer {
+  text-align: center;
+  padding: var(--spacing-xs) var(--spacing-sm);
+  font-size: 2em;
+  font-weight: bold;
+  color: var(--text-secondary);
+  letter-spacing: 0.05em;
+  margin-bottom: var(--spacing-sm);
+
+  &.reached { color: var(--color-success); }
+}
+
+// ── Rest duration configuration form ──────────────────────────────────────
+form.rest-config {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  padding: var(--spacing-xs) var(--spacing-md);
+  background: var(--bg-card);
+  border-bottom: 1px solid var(--border-color);
+  color: var(--text-secondary);
+  font-size: 0.9em;
+
+  input[type=number] {
+    width: 80px;
+    text-align: center;
+    padding: var(--spacing);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius);
+    background: var(--bg-card);
+    color: inherit;
+  }
+}
+
+// ── Analytics page ─────────────────────────────────────────────────────────
+main.analytics {
+  padding: 0;
+
+  svg {
+    display: block;
+    width: 100%;
+    height: auto;
+    overflow-x: auto;
+  }
+
+  > p {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 300px;
+    text-align: center;
+    color: var(--text-dim);
+  }
+}
+
+// ── Credits page ──────────────────────────────────────────────────────────
+main.credits article form {
+  display: flex;
+  gap: 8px;
+  align-items: stretch;
+
+  input { flex: 1; min-width: 0; }
+}
+
+// ── Add / Edit custom exercise pages ──────────────────────────────────────
+main.container--form {
+  grid-template-columns: 1fr;
+  max-width: 600px;
+  margin: 0 auto;
+
+  > div {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-md);
+  }
+}
+
+// ── Back button in page headers ────────────────────────────────────────────
+header > button.back {
+  background: none;
+  border: none;
+  color: var(--color-primary);
+  font-size: 1.1em;
+  cursor: pointer;
+  padding: 0;
+}
+
+// ── Snackbar / toast notifications ────────────────────────────────────────
+.snackbar {
+  position: fixed;
+  bottom: var(--nav-height);
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--gradient-success);
+  color: #1a3a1a;
+  padding: 14px 28px;
+  border-radius: var(--radius);
+  font-weight: bold;
+  font-size: 1.1em;
+  z-index: var(--z-toast);
+  box-shadow: var(--shadow-toast);
+  animation: snackbar-in 0.3s ease-out;
+}
+
+@keyframes snackbar-in {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(20px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+}
+
+// ── Invalid input highlighting ─────────────────────────────────────────────
+input.invalid { border-color: var(--color-danger); }

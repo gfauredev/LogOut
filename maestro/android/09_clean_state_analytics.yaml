@@ -1,0 +1,18 @@
+# User Story 9 – Clean State Analytics (Android)
+# In the analytics page, selecting a metric shows no exercises can be selected
+# because no workout sessions have been completed yet.
+appId: com.gfaure.logworkout
+---
+- extendedWaitUntil:
+    visible:
+      text: "LogOut"
+    timeout: 120000
+- tapOn: "📊"
+- assertVisible: "Analytics"
+# Select the "Weight" metric
+- tapOn: "Weight (kg)"
+# The exercise selector should show only the empty option (no exercises done yet)
+- assertVisible: "-- Select Exercise --"
+# Select "Repetitions" metric and verify same
+- tapOn: "Repetitions"
+- assertVisible: "-- Select Exercise --"

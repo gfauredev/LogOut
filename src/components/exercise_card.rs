@@ -78,32 +78,29 @@ pub fn ExerciseCard(
                     },
                 }
             }
-            div {
-                class: "tag-row",
-                span { class: "tag tag--category", "{exercise.category}" }
+            div { class: "tags",
+                span { class: "category", "{exercise.category}" }
                 if let Some(force) = &exercise.force {
-                    span { class: "tag tag--force", "{force}" }
+                    span { class: "force", "{force}" }
                 }
                 if let Some(equipment) = &exercise.equipment {
-                    span { class: "tag tag--equipment", "{equipment}" }
+                    span { class: "equipment", "{equipment}" }
                 }
                 if let Some(level) = &exercise.level {
-                    span { class: "tag tag--level", "{level}" }
+                    span { class: "level", "{level}" }
                 }
             }
             if !exercise.primary_muscles.is_empty() {
-                div {
-                    class: "tag-row",
+                div { class: "tags",
                     for muscle in &exercise.primary_muscles {
-                        span { class: "tag tag--muscle-primary", "{muscle}" }
+                        span { class: "primary", "{muscle}" }
                     }
                 }
             }
             if !exercise.secondary_muscles.is_empty() {
-                div {
-                    class: "tag-row",
+                div { class: "tags",
                     for muscle in &exercise.secondary_muscles {
-                        span { class: "tag tag--muscle-secondary", "{muscle}" }
+                        span { class: "secondary", "{muscle}" }
                     }
                 }
             }

@@ -1,0 +1,18 @@
+# User Story 3 – Clean State Exercise List (Web PWA)
+# Before any custom exercises are added, built-in exercises show "Clone & Edit".
+url: http://localhost:8080
+---
+- extendedWaitUntil:
+    visible:
+      text: "LogOut"
+    timeout: 120000
+- tapOn: "📚"
+- assertVisible: "Exercise Database"
+# Wait for exercises to load from the remote database
+- extendedWaitUntil:
+    visible:
+      text: "✏️ Clone & Edit"
+    timeout: 30000
+- assertVisible: "✏️ Clone & Edit"
+# Built-in exercises should not show "✏️ Edit" only (that's only for custom exercises)
+- assertNotVisible: "✏️ Edit"

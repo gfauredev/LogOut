@@ -1,0 +1,47 @@
+# User Story 17 – Delete a Past Session (Android)
+# Create a small session, then delete it using the 🗑️ button.
+# The session from Story 15 is preserved for Stories 18–20.
+appId: com.gfaure.logworkout
+---
+# Wait for the app to load
+- extendedWaitUntil:
+    visible:
+      text: "LogOut"
+    timeout: 120000
+
+# Create a small session to delete
+- tapOn: "+"
+- assertVisible: "Active Session"
+- tapOn: "Search for an exercise..."
+- inputText: "barbell squat"
+- extendedWaitUntil:
+    visible:
+      text: "Barbell Squat"
+    timeout: 30000
+- tapOn: "Barbell Squat"
+- tapOn:
+    text: "Optional"
+- inputText: "60"
+- tapOn:
+    text: "Reps"
+- inputText: "5"
+- tapOn: "✓ Complete Exercise"
+- tapOn: "Finish Session"
+- extendedWaitUntil:
+    visible:
+      text: "LogOut"
+    timeout: 10000
+- assertVisible: "Barbell Squat"
+
+# Delete the latest session (the one just created) using the 🗑️ button
+- tapOn: "🗑️"
+# Confirm the deletion in the modal dialog
+- assertVisible: "Delete this session?"
+- tapOn: "Delete"
+# The deleted session's card should no longer be the top card,
+# but the bench press session from Story 15 is still present
+- extendedWaitUntil:
+    visible:
+      text: "LogOut"
+    timeout: 5000
+- assertVisible: "Barbell Bench Press - Medium Grip"
