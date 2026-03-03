@@ -42,9 +42,9 @@ The project follows a modular Rust structure for a Dioxus application:
 LogOut/
 ├ src/
 │ ├ main.rs  App entry point, routing (Dioxus Router), global state management
-│ ├ models/  Data models (Exercise, WorkoutSession, Enums) and unit-safe types (Weight, Distance)
-│ ├ services/             Business logic and persistence layers
-│ │ ├ storage.rs          Unified storage interface (IndexedDB on web, SQLite on native)
+│ ├ models/  Data models (Exercise, WorkoutSession, Enums) and unit-safe types
+│ ├ services/      Business logic and persistence layers
+│ │ ├ storage.rs   Unified storage interface (IndexedDB Web, SQLite native)
 │ │ ├ exercise_db.rs      Exercise library management and search logic
 │ │ ├ exercise_loader.rs  Logic for loading exercise data from JSON
 │ │ ├ wake_lock.rs        Keeps the screen on during active workout sessions
@@ -54,7 +54,7 @@ LogOut/
 │ │ ├ home.rs             Main landing page with session history
 │ │ ├ analytics.rs        Progress tracking with interactive charts
 │ │ └ …                   Other modular UI components (BottomNav, ExerciseCard…)
-│ └ utils.rs   Pure, side-effect-free utility functions (formatting, timestamps, URLs)
+│ └ utils.rs   Pure, side-effect-free utility functions (format, timestamps…)
 ├ maestro/          Maestro end-to-end tests
 │ ├ web/            Web browser PWA (beta)
 │ └ android/        Android native app
@@ -64,7 +64,7 @@ LogOut/
 │ └ 404.html        Fallback page for single-page app routing
 ├ assets/       Application-wide static assets (SCSS…)
 ├ Cargo.toml    Rust manifest (dependencies, features, targets)
-├ Dioxus.toml   Configuration for the Dioxus CLI (build, serve, platform options)
+├ Dioxus.toml   Configuration for Dioxus CLI (build, serve, platform options)
 └ flake.nix     Nix flake for reproducible development environments
 ```
 
@@ -133,8 +133,8 @@ The PWA is deployed automatically on every push to `main` by
 
 ## Code Quality & Conventions
 
-Every pull request is validated by `.github/workflows/ci.yml`, ensuring that all
-five jobs pass before a PR can be merged.
+Ensure that all lints, end-to-end and unit tests pass before merging a pull
+request, or `.github/workflows/ci.yml` will reject it.
 
 | Job               | Command                         | Requirement                                                 |
 | ----------------- | ------------------------------- | ----------------------------------------------------------- |
@@ -214,33 +214,27 @@ services, providing a detailed view of the codebase's API.
 - Class-light styling mainly based on HTML semantic hierarchy
 - Same CSS rules for similarly looking components, don’t overcomplicate
 - Never hardcode values (except 0, 1, 100%), use clearly named constants
+- Always ensure that all lints, end-to-end and unit tests pass.
 
 ## TODO
 
-Check README for code conventions and guidelines.
-
-- Add HTML attributes like type="number", inputmode="decimal", step to inputs
-- Remove any data migration code, nobody’s using the app yet
-- Ensure UI updates when asynchronous database load completes
-  - Replace local use_signal in SessionView with reactive use_memo that derives
-    the active session directly from the global sessions state
-- Complete user stories to cover absolutely all the use cases
-  - Add E2E tests derived from stories, make them pass
-
-Always ensure that all lints, end-to-end and unit tests pass.
+- Convert remaining BEM to class-light based on clean HTML semantic structure
+  - Merge CSS rules of similar components in the process
+- Add E2E tests to fully cover `./USER_STORIES.md` for both Web and Android
+  - Some selectors might need to be updated to hierarchical class-light
+- Write clear instructions on running E2E tests locally
+- Ensure all the tests pass
 
 ### Optimization & Technical
 
-- Class-light styling based on clean HTML semantic structure
-  - Merge CSS rules of similar components
-  - 3 columns for Exercises and Sessions, pleasant width
-  - Harmonize widths of pages and components, responsive
-  - Align exercise search and add button properly
 - Sign Android app and make it properly installable
 - Ensure DB operations don’t block the UI thread
 - Storing log by log rather than rewriting the whole session
 - Improve indexedDB error handling with thiserror
 - Avoid enums boilerplate with strum `#[derive(EnumIter, Display, AsRefStr)]`
+- Ensure UI updates when asynchronous database load completes
+  - Replace local use_signal in SessionView with reactive use_memo that derives
+    the active session directly from the global sessions state
 
 [LogOut]: https://gfauredev.github.io/LogOut
 [800+ exercises]: https://github.com/yuhonas/free-exercise-db
