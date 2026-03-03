@@ -181,7 +181,7 @@ pub fn resolve_exercise<'a>(
     custom: &'a [Exercise],
     id: &str,
 ) -> Option<&'a Exercise> {
-    get_exercise_by_id(db, id).or_else(|| custom.iter().find(|e| e.id == id))
+    get_exercise_by_id(db, id).or_else(|| get_exercise_by_id(custom, id))
 }
 
 #[cfg(test)]
