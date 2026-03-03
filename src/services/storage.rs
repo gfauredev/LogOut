@@ -382,11 +382,7 @@ pub(crate) mod native_storage {
     pub const STORE_CUSTOM_EXERCISES: &str = "custom_exercises";
     pub const STORE_EXERCISES: &str = "exercises";
 
-    const KNOWN_STORES: &[&str] = &[
-        STORE_SESSIONS,
-        STORE_CUSTOM_EXERCISES,
-        STORE_EXERCISES,
-    ];
+    const KNOWN_STORES: &[&str] = &[STORE_SESSIONS, STORE_CUSTOM_EXERCISES, STORE_EXERCISES];
 
     /// Validates `store_name` against the known store constants to prevent SQL
     /// injection from unexpected callers.  Returns `Err` when the name is unknown.
