@@ -57,10 +57,11 @@
             ];
           };
           commonNativeBuildInputs = with pkgs; [
-            pkg-config
-            dioxus-cli
-            rustToolchain
             binaryen
+            dioxus-cli
+            maestro
+            pkg-config
+            rustToolchain
           ];
           commonBuildInputs =
             with pkgs;
