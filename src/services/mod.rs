@@ -1,3 +1,4 @@
+pub mod app_state;
 pub mod exercise_db;
 pub mod exercise_loader;
 pub mod service_worker;

@@ -47,16 +47,17 @@ pub fn format_session_date(timestamp: u64) -> String {
 
 /// Returns the number of elapsed calendar days between the local midnight of
 /// `timestamp`'s day and the local midnight of today.
-/// Uses the `time` crate on all platforms (local offset via `wasm-bindgen` on WASM,
-/// via OS on native).
+/// Uses `OffsetDateTime::now_local()` from the `time` crate, which is provided
+/// by the `wasm-bindgen` feature on WASM and the `local-offset` feature on native.
+/// Falls back to UTC if the local offset is indeterminate.
 fn days_since(timestamp: u64) -> i64 {
-    use time::{OffsetDateTime, UtcOffset};
+    use time::OffsetDateTime;
 
-    // Both native (`local-offset` feature) and WASM (`wasm-bindgen` feature)
-    // support `current_local_offset()`; fall back to UTC only if it fails.
-    let offset = UtcOffset::current_local_offset().unwrap_or(UtcOffset::UTC);
+    // `now_local()` uses JS Date on WASM (`wasm-bindgen` feature) and the OS
+    // timezone on native (`local-offset` feature); fall back to UTC on error.
+    let now = OffsetDateTime::now_local().unwrap_or_else(|_| OffsetDateTime::now_utc());
+    let offset = now.offset();
 
-    let now = OffsetDateTime::now_utc().to_offset(offset);
     let ts_dt = OffsetDateTime::from_unix_timestamp(timestamp as i64)
         .unwrap_or(OffsetDateTime::UNIX_EPOCH)
         .to_offset(offset);
@@ -72,9 +73,8 @@ mod tests {
     use super::*;
 
     fn today_midnight_local_secs() -> u64 {
-        use time::{OffsetDateTime, UtcOffset};
-        let offset = UtcOffset::current_local_offset().unwrap_or(UtcOffset::UTC);
-        let now = OffsetDateTime::now_utc().to_offset(offset);
+        use time::OffsetDateTime;
+        let now = OffsetDateTime::now_local().unwrap_or_else(|_| OffsetDateTime::now_utc());
         // Build a datetime at local midnight for today and convert back to unix seconds.
         let midnight = now.replace_time(time::Time::MIDNIGHT);
         midnight.unix_timestamp().max(0) as u64

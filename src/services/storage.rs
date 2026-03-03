@@ -1,37 +1,24 @@
-use crate::models::{Exercise, ExerciseLog, WorkoutSession};
-use crate::ToastSignal;
-use dioxus::prelude::*;
+//! Platform-specific storage backends for the LogOut application.
+//!
+//! This module provides two storage backends that share the same logical interface:
+//!
+//! - **Web** (`wasm32`): IndexedDB via the `rexie` crate, serialised through an
+//!   async write queue so concurrent callers never fight over read-write
+//!   transactions.
+//! - **Native** (Android / desktop): SQLite via `rusqlite` stored in the OS
+//!   app-data directory.
+//!
+//! All Dioxus reactive state (signals, context helpers, mutation functions) lives
+//! in the sibling [`app_state`](super::app_state) module and is re-exported here
+//! for backward compatibility.
 
-#[cfg(target_arch = "wasm32")]
-use log::{error, info};
-
-// ──────────────────────────────────────────
-// Dioxus context-based state (replaces static Mutex)
-// ──────────────────────────────────────────
-
-/// Provide shared signals at the top of the component tree.
-/// Call once inside the root `App` component.
-pub fn provide_app_state() {
-    use_context_provider(|| Signal::new(Vec::<WorkoutSession>::new()));
-    use_context_provider(|| Signal::new(Vec::<Exercise>::new()));
-
-    // Load persisted data into the signals via a resource (lifecycle-managed)
-    use_resource(load_storage_data);
-}
-
-// ── helpers to obtain the signals from any component ──
-
-pub fn use_sessions() -> Signal<Vec<WorkoutSession>> {
-    consume_context::<Signal<Vec<WorkoutSession>>>()
-}
-
-pub fn use_custom_exercises() -> Signal<Vec<Exercise>> {
-    consume_context::<Signal<Vec<Exercise>>>()
-}
-
-// ──────────────────────────────────────────
-// IndexedDB persistence via rexie (wasm32 only)
-// ──────────────────────────────────────────
+// ── Re-exports of Dioxus context / mutation helpers ──────────────────────────
+// These live in `app_state` to keep that module free of storage backend code and
+// to keep this module free of Dioxus hooks so its storage logic is unit-testable.
+pub use super::app_state::{
+    add_custom_exercise, delete_session, get_last_exercise_log, provide_app_state, save_session,
+    update_custom_exercise, use_custom_exercises, use_sessions,
+};
 
 #[cfg(target_arch = "wasm32")]
 pub(crate) mod idb {
@@ -136,7 +123,7 @@ pub(crate) mod idb {
 // ──────────────────────────────────────────
 
 #[cfg(target_arch = "wasm32")]
-mod idb_queue {
+pub(crate) mod idb_queue {
     use super::idb;
     use crate::models::{Exercise, WorkoutSession};
     use dioxus::signals::Signal;
@@ -207,194 +194,6 @@ mod idb_queue {
 }
 
 // ──────────────────────────────────────────
-// Load persisted data into context signals (via use_resource)
-// ──────────────────────────────────────────
-
-async fn load_storage_data() {
-    // ── Web platform (wasm32 + IndexedDB) ────────────────────────────────────
-    #[cfg(target_arch = "wasm32")]
-    {
-        let mut sessions_sig = use_sessions();
-        let mut custom_sig = use_custom_exercises();
-        let mut toast = consume_context::<ToastSignal>().0;
-
-        match idb::get_all::<WorkoutSession>(idb::STORE_SESSIONS).await {
-            Ok(sessions) if !sessions.is_empty() => {
-                info!("Loaded {} sessions from IndexedDB", sessions.len());
-                sessions_sig.set(sessions);
-            }
-            Err(e) => {
-                error!("Failed to load sessions from IndexedDB: {e}");
-                toast.set(Some(format!("⚠️ Failed to load sessions: {e}")));
-            }
-            _ => {}
-        }
-        match idb::get_all::<Exercise>(idb::STORE_CUSTOM_EXERCISES).await {
-            Ok(custom) if !custom.is_empty() => {
-                info!("Loaded {} custom exercises from IndexedDB", custom.len());
-                custom_sig.set(custom);
-            }
-            Err(e) => {
-                error!("Failed to load custom exercises from IndexedDB: {e}");
-                toast.set(Some(format!("⚠️ Failed to load custom exercises: {e}")));
-            }
-            _ => {}
-        }
-    }
-
-    // ── Native platform (Android / desktop) ──────────────────────────────────
-    #[cfg(not(target_arch = "wasm32"))]
-    {
-        let mut sessions_sig = use_sessions();
-        let mut custom_sig = use_custom_exercises();
-        let mut toast = consume_context::<ToastSignal>().0;
-
-        match native_storage::get_all::<WorkoutSession>(native_storage::STORE_SESSIONS) {
-            Ok(sessions) if !sessions.is_empty() => {
-                log::info!("Loaded {} sessions from storage", sessions.len());
-                sessions_sig.set(sessions);
-            }
-            Err(e) => {
-                log::error!("Failed to load sessions: {e}");
-                toast.set(Some(format!("⚠️ Failed to load sessions: {e}")));
-            }
-            _ => {}
-        }
-        match native_storage::get_all::<Exercise>(native_storage::STORE_CUSTOM_EXERCISES) {
-            Ok(custom) if !custom.is_empty() => {
-                log::info!("Loaded {} custom exercises from storage", custom.len());
-                custom_sig.set(custom);
-            }
-            Err(e) => {
-                log::error!("Failed to load custom exercises: {e}");
-                toast.set(Some(format!("⚠️ Failed to load custom exercises: {e}")));
-            }
-            _ => {}
-        }
-    }
-}
-
-// ──────────────────────────────────────────
-// Public mutation helpers (granular IDB writes)
-// ──────────────────────────────────────────
-
-pub fn save_session(session: WorkoutSession) {
-    let mut sig = use_sessions();
-    {
-        let mut sessions = sig.write();
-        if let Some(pos) = sessions.iter().position(|s| s.id == session.id) {
-            sessions[pos] = session.clone();
-        } else {
-            sessions.push(session.clone());
-        }
-    }
-
-    // Use wasm_bindgen_futures::spawn_local instead of Dioxus spawn so that the
-    // IndexedDB write is not cancelled when the calling component unmounts
-    // (e.g. when finishing a session causes SessionView to be removed).
-    // Writes go through the async queue to prevent concurrent transaction conflicts.
-    #[cfg(target_arch = "wasm32")]
-    {
-        let toast = consume_context::<ToastSignal>().0;
-        idb_queue::enqueue(idb_queue::IdbOp::PutSession(session, toast));
-    }
-
-    #[cfg(not(target_arch = "wasm32"))]
-    if let Err(e) = native_storage::put_item(native_storage::STORE_SESSIONS, &session.id, &session)
-    {
-        log::error!("Failed to persist session: {e}");
-        consume_context::<ToastSignal>()
-            .0
-            .set(Some(format!("⚠️ Failed to save session: {e}")));
-    }
-}
-
-pub fn delete_session(id: &str) {
-    let mut sig = use_sessions();
-    sig.write().retain(|s| s.id != id);
-
-    #[cfg(target_arch = "wasm32")]
-    {
-        let id = id.to_owned();
-        let toast = consume_context::<ToastSignal>().0;
-        idb_queue::enqueue(idb_queue::IdbOp::DeleteSession(id, toast));
-    }
-
-    #[cfg(not(target_arch = "wasm32"))]
-    if let Err(e) = native_storage::delete_item(native_storage::STORE_SESSIONS, id) {
-        log::error!("Failed to delete session: {e}");
-        consume_context::<ToastSignal>()
-            .0
-            .set(Some(format!("⚠️ Failed to delete session: {e}")));
-    }
-}
-
-pub fn add_custom_exercise(exercise: Exercise) {
-    let mut sig = use_custom_exercises();
-    sig.write().push(exercise.clone());
-
-    #[cfg(target_arch = "wasm32")]
-    {
-        let toast = consume_context::<ToastSignal>().0;
-        idb_queue::enqueue(idb_queue::IdbOp::PutExercise(exercise, toast));
-    }
-
-    #[cfg(not(target_arch = "wasm32"))]
-    if let Err(e) = native_storage::put_item(
-        native_storage::STORE_CUSTOM_EXERCISES,
-        &exercise.id,
-        &exercise,
-    ) {
-        log::error!("Failed to persist custom exercise: {e}");
-        consume_context::<ToastSignal>()
-            .0
-            .set(Some(format!("⚠️ Failed to save exercise: {e}")));
-    }
-}
-
-pub fn update_custom_exercise(exercise: Exercise) {
-    let mut sig = use_custom_exercises();
-    {
-        let mut exercises = sig.write();
-        if let Some(pos) = exercises.iter().position(|e| e.id == exercise.id) {
-            exercises[pos] = exercise.clone();
-        }
-    }
-
-    #[cfg(target_arch = "wasm32")]
-    {
-        let toast = consume_context::<ToastSignal>().0;
-        idb_queue::enqueue(idb_queue::IdbOp::PutExercise(exercise, toast));
-    }
-
-    #[cfg(not(target_arch = "wasm32"))]
-    if let Err(e) = native_storage::put_item(
-        native_storage::STORE_CUSTOM_EXERCISES,
-        &exercise.id,
-        &exercise,
-    ) {
-        log::error!("Failed to persist updated custom exercise: {e}");
-        consume_context::<ToastSignal>()
-            .0
-            .set(Some(format!("⚠️ Failed to update exercise: {e}")));
-    }
-}
-
-// Helper to get last values for an exercise (for prefilling)
-pub fn get_last_exercise_log(exercise_id: &str) -> Option<ExerciseLog> {
-    let sessions = use_sessions();
-    let sessions = sessions.read();
-    for session in sessions.iter().rev() {
-        for log in session.exercise_logs.iter().rev() {
-            if log.exercise_id == exercise_id && log.is_complete() {
-                return Some(log.clone());
-            }
-        }
-    }
-    None
-}
-
-// ──────────────────────────────────────────
 // Exercise storage helpers (used by exercise_db)
 // ──────────────────────────────────────────
 
@@ -404,10 +203,12 @@ pub mod idb_exercises {
     use super::idb;
     use crate::models::Exercise;
 
+    /// Retrieve all cached exercises from the IndexedDB exercises store.
     pub async fn get_all_exercises() -> Result<Vec<Exercise>, String> {
         idb::get_all::<Exercise>(idb::STORE_EXERCISES).await
     }
 
+    /// Persist `exercises` to the IndexedDB exercises store in a single transaction.
     pub async fn store_all_exercises(exercises: &[Exercise]) {
         if let Err(e) = idb::put_all(idb::STORE_EXERCISES, exercises).await {
             log::error!("Failed to store exercises in IndexedDB: {e}");
@@ -421,10 +222,12 @@ pub mod native_exercises {
     use super::native_storage;
     use crate::models::Exercise;
 
+    /// Retrieve all cached exercises from the SQLite exercises store.
     pub fn get_all_exercises() -> Vec<Exercise> {
         native_storage::get_all::<Exercise>(native_storage::STORE_EXERCISES).unwrap_or_default()
     }
 
+    /// Persist `exercises` to the SQLite exercises store.
     pub fn store_all_exercises(exercises: &[Exercise]) {
         if let Err(e) = native_storage::store_all(native_storage::STORE_EXERCISES, exercises) {
             log::error!("Failed to store exercises: {e}");
@@ -614,5 +417,346 @@ pub(crate) mod native_storage {
         static LOCK: std::sync::OnceLock<std::sync::Mutex<()>> = std::sync::OnceLock::new();
         let m = LOCK.get_or_init(|| std::sync::Mutex::new(()));
         m.lock().unwrap_or_else(|e| e.into_inner())
+    }
+}
+
+// ──────────────────────────────────────────
+// Unit tests for native_storage and native_exercises
+// ──────────────────────────────────────────
+
+#[cfg(test)]
+#[cfg(not(target_arch = "wasm32"))]
+mod tests {
+    use super::native_exercises;
+    use super::native_storage;
+    use crate::models::{Category, Exercise, ExerciseLog, Force, WorkoutSession, DATA_VERSION};
+
+    /// All tests that touch native storage must hold this guard.
+    fn lock() -> std::sync::MutexGuard<'static, ()> {
+        native_storage::test_lock()
+    }
+
+    // ── validate_store ────────────────────────────────────────────────────────
+
+    #[test]
+    fn validate_store_accepts_known_stores() {
+        let _g = lock();
+        assert!(native_storage::get_all::<WorkoutSession>(native_storage::STORE_SESSIONS).is_ok());
+        assert!(
+            native_storage::get_all::<Exercise>(native_storage::STORE_CUSTOM_EXERCISES).is_ok()
+        );
+        assert!(native_storage::get_all::<Exercise>(native_storage::STORE_EXERCISES).is_ok());
+    }
+
+    #[test]
+    fn validate_store_rejects_unknown_store() {
+        let _g = lock();
+        let result = native_storage::get_all::<WorkoutSession>("unknown_store");
+        assert!(result.is_err());
+        assert!(result.unwrap_err().contains("Unknown store"));
+    }
+
+    // ── data_dir ──────────────────────────────────────────────────────────────
+
+    #[test]
+    fn data_dir_returns_a_path() {
+        let _g = lock();
+        let p = native_storage::data_dir();
+        assert!(p.to_str().is_some());
+        assert!(p.ends_with("log-workout"));
+    }
+
+    // ── put_item / get_all / delete_item ─────────────────────────────────────
+
+    #[test]
+    fn put_and_get_session() {
+        let _g = lock();
+        let session = WorkoutSession {
+            id: "test_put_session".into(),
+            start_time: 1_000,
+            end_time: None,
+            exercise_logs: vec![],
+            version: DATA_VERSION,
+            pending_exercise_ids: vec![],
+            rest_start_time: None,
+            current_exercise_id: None,
+            current_exercise_start: None,
+        };
+        native_storage::put_item(native_storage::STORE_SESSIONS, &session.id, &session).unwrap();
+        let loaded: Vec<WorkoutSession> =
+            native_storage::get_all(native_storage::STORE_SESSIONS).unwrap();
+        assert!(
+            loaded.iter().any(|s| s.id == session.id),
+            "saved session must be present in get_all"
+        );
+        // Clean up
+        native_storage::delete_item(native_storage::STORE_SESSIONS, &session.id).unwrap();
+    }
+
+    #[test]
+    fn put_item_overwrites_existing() {
+        let _g = lock();
+        let id = "test_overwrite_session";
+        let s1 = WorkoutSession {
+            id: id.into(),
+            start_time: 1_000,
+            end_time: None,
+            exercise_logs: vec![],
+            version: DATA_VERSION,
+            pending_exercise_ids: vec![],
+            rest_start_time: None,
+            current_exercise_id: None,
+            current_exercise_start: None,
+        };
+        let s2 = WorkoutSession {
+            id: id.into(),
+            start_time: 2_000,
+            end_time: Some(3_000),
+            exercise_logs: vec![],
+            version: DATA_VERSION,
+            pending_exercise_ids: vec![],
+            rest_start_time: None,
+            current_exercise_id: None,
+            current_exercise_start: None,
+        };
+        native_storage::put_item(native_storage::STORE_SESSIONS, id, &s1).unwrap();
+        native_storage::put_item(native_storage::STORE_SESSIONS, id, &s2).unwrap();
+        let loaded: Vec<WorkoutSession> =
+            native_storage::get_all(native_storage::STORE_SESSIONS).unwrap();
+        let found: Vec<_> = loaded.iter().filter(|s| s.id == id).collect();
+        assert_eq!(
+            found.len(),
+            1,
+            "there should be exactly one record after overwrite"
+        );
+        assert_eq!(
+            found[0].start_time, 2_000,
+            "record must contain the latest values"
+        );
+        // Clean up
+        native_storage::delete_item(native_storage::STORE_SESSIONS, id).unwrap();
+    }
+
+    #[test]
+    fn delete_item_removes_session() {
+        let _g = lock();
+        let id = "test_delete_session";
+        let session = WorkoutSession {
+            id: id.into(),
+            start_time: 500,
+            end_time: None,
+            exercise_logs: vec![],
+            version: DATA_VERSION,
+            pending_exercise_ids: vec![],
+            rest_start_time: None,
+            current_exercise_id: None,
+            current_exercise_start: None,
+        };
+        native_storage::put_item(native_storage::STORE_SESSIONS, id, &session).unwrap();
+        native_storage::delete_item(native_storage::STORE_SESSIONS, id).unwrap();
+        let loaded: Vec<WorkoutSession> =
+            native_storage::get_all(native_storage::STORE_SESSIONS).unwrap();
+        assert!(
+            !loaded.iter().any(|s| s.id == id),
+            "deleted session must not appear in get_all"
+        );
+    }
+
+    #[test]
+    fn delete_item_nonexistent_is_noop() {
+        let _g = lock();
+        // Deleting a key that doesn't exist must not return an error.
+        assert!(
+            native_storage::delete_item(native_storage::STORE_SESSIONS, "nonexistent_id").is_ok()
+        );
+    }
+
+    // ── store_all ─────────────────────────────────────────────────────────────
+
+    #[test]
+    fn store_all_replaces_existing_records() {
+        let _g = lock();
+        let ex1 = make_exercise("store_all_ex1", "Exercise One");
+        let ex2 = make_exercise("store_all_ex2", "Exercise Two");
+        let ex3 = make_exercise("store_all_ex3", "Exercise Three");
+
+        native_storage::store_all(native_storage::STORE_EXERCISES, &[ex1, ex2]).unwrap();
+        native_storage::store_all(native_storage::STORE_EXERCISES, &[ex3.clone()]).unwrap();
+
+        let loaded: Vec<Exercise> =
+            native_storage::get_all(native_storage::STORE_EXERCISES).unwrap();
+        // Only ex3 should remain – store_all deletes and replaces.
+        assert_eq!(loaded.len(), 1);
+        assert_eq!(loaded[0].id, ex3.id);
+        // Clean up
+        native_storage::store_all::<Exercise>(native_storage::STORE_EXERCISES, &[]).unwrap();
+    }
+
+    #[test]
+    fn store_all_empty_clears_store() {
+        let _g = lock();
+        let ex = make_exercise("store_all_clear_ex", "Clear Exercise");
+        native_storage::put_item(native_storage::STORE_EXERCISES, &ex.id, &ex).unwrap();
+        native_storage::store_all::<Exercise>(native_storage::STORE_EXERCISES, &[]).unwrap();
+        let loaded: Vec<Exercise> =
+            native_storage::get_all(native_storage::STORE_EXERCISES).unwrap();
+        assert!(loaded.is_empty(), "store must be empty after store_all([])");
+    }
+
+    // ── config key/value ─────────────────────────────────────────────────────
+
+    #[test]
+    fn config_set_get_remove() {
+        let _g = lock();
+        let key = "test_config_key";
+        native_storage::set_config_value(key, "hello").unwrap();
+        assert_eq!(native_storage::get_config_value(key), Some("hello".into()));
+        native_storage::remove_config_value(key).unwrap();
+        assert_eq!(native_storage::get_config_value(key), None);
+    }
+
+    #[test]
+    fn config_set_empty_value_removes_key() {
+        let _g = lock();
+        let key = "test_config_empty";
+        native_storage::set_config_value(key, "value").unwrap();
+        // Setting to "" is equivalent to remove.
+        native_storage::set_config_value(key, "").unwrap();
+        assert_eq!(native_storage::get_config_value(key), None);
+    }
+
+    #[test]
+    fn config_get_absent_key_returns_none() {
+        let _g = lock();
+        assert_eq!(
+            native_storage::get_config_value("definitely_not_present_key_xyz"),
+            None
+        );
+    }
+
+    #[test]
+    fn config_overwrite_existing_value() {
+        let _g = lock();
+        let key = "test_config_overwrite";
+        native_storage::set_config_value(key, "first").unwrap();
+        native_storage::set_config_value(key, "second").unwrap();
+        assert_eq!(native_storage::get_config_value(key), Some("second".into()));
+        // Clean up
+        native_storage::remove_config_value(key).unwrap();
+    }
+
+    // ── native_exercises ─────────────────────────────────────────────────────
+
+    #[test]
+    fn native_exercises_store_and_retrieve() {
+        let _g = lock();
+        let exercises = vec![
+            make_exercise("ne_ex1", "Native Ex 1"),
+            make_exercise("ne_ex2", "Native Ex 2"),
+        ];
+        native_exercises::store_all_exercises(&exercises);
+        let loaded = native_exercises::get_all_exercises();
+        assert_eq!(loaded.len(), 2);
+        assert!(loaded.iter().any(|e| e.id == "ne_ex1"));
+        assert!(loaded.iter().any(|e| e.id == "ne_ex2"));
+        // Clean up
+        native_exercises::store_all_exercises(&[]);
+    }
+
+    #[test]
+    fn native_exercises_get_all_returns_empty_when_store_empty() {
+        let _g = lock();
+        native_exercises::store_all_exercises(&[]);
+        let loaded = native_exercises::get_all_exercises();
+        assert!(loaded.is_empty());
+    }
+
+    // ── find_last_exercise_log (pure helper) ──────────────────────────────────
+
+    #[test]
+    fn find_last_exercise_log_returns_most_recent_completed() {
+        use super::super::app_state::find_last_exercise_log;
+        let log1 = make_exercise_log("run", 1_000, Some(1_060));
+        let log2 = make_exercise_log("run", 2_000, Some(2_060));
+        let sessions = vec![
+            make_session("s1", vec![log1]),
+            make_session("s2", vec![log2.clone()]),
+        ];
+        let found = find_last_exercise_log(&sessions, "run");
+        assert!(found.is_some());
+        // Should find log2 (most recent) because sessions are iterated in reverse.
+        assert_eq!(found.unwrap().start_time, log2.start_time);
+    }
+
+    #[test]
+    fn find_last_exercise_log_skips_incomplete_logs() {
+        use super::super::app_state::find_last_exercise_log;
+        let incomplete = make_exercise_log("squat", 1_000, None);
+        let complete = make_exercise_log("squat", 2_000, Some(2_120));
+        let sessions = vec![make_session("s1", vec![incomplete, complete.clone()])];
+        let found = find_last_exercise_log(&sessions, "squat");
+        assert!(found.is_some());
+        assert_eq!(found.unwrap().start_time, complete.start_time);
+    }
+
+    #[test]
+    fn find_last_exercise_log_returns_none_when_not_found() {
+        use super::super::app_state::find_last_exercise_log;
+        let sessions: Vec<WorkoutSession> = vec![];
+        assert!(find_last_exercise_log(&sessions, "bench_press").is_none());
+    }
+
+    #[test]
+    fn find_last_exercise_log_returns_none_when_no_matching_id() {
+        use super::super::app_state::find_last_exercise_log;
+        let log = make_exercise_log("squat", 1_000, Some(1_060));
+        let sessions = vec![make_session("s1", vec![log])];
+        assert!(find_last_exercise_log(&sessions, "deadlift").is_none());
+    }
+
+    // ── helpers ───────────────────────────────────────────────────────────────
+
+    fn make_exercise(id: &str, name: &str) -> Exercise {
+        Exercise {
+            id: id.into(),
+            name: name.into(),
+            force: None,
+            level: None,
+            mechanic: None,
+            equipment: None,
+            primary_muscles: vec![],
+            secondary_muscles: vec![],
+            instructions: vec![],
+            category: Category::Strength,
+            images: vec![],
+        }
+    }
+
+    fn make_session(id: &str, logs: Vec<ExerciseLog>) -> WorkoutSession {
+        WorkoutSession {
+            id: id.into(),
+            start_time: 1_000,
+            end_time: None,
+            exercise_logs: logs,
+            version: DATA_VERSION,
+            pending_exercise_ids: vec![],
+            rest_start_time: None,
+            current_exercise_id: None,
+            current_exercise_start: None,
+        }
+    }
+
+    fn make_exercise_log(exercise_id: &str, start: u64, end: Option<u64>) -> ExerciseLog {
+        ExerciseLog {
+            exercise_id: exercise_id.into(),
+            exercise_name: exercise_id.into(),
+            category: Category::Strength,
+            start_time: start,
+            end_time: end,
+            weight_hg: None,
+            reps: None,
+            distance_m: None,
+            force: Some(Force::Push),
+        }
     }
 }

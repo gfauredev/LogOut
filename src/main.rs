@@ -1,8 +1,17 @@
+//! **LogOut** – Turn off your computer, Log your workOut.
+//!
+//! A simple, efficient and cross-platform workout logging application with
+//! 800+ built-in exercises.  The app is built with [Dioxus] and targets both
+//! PWA (web) and native Android / desktop platforms.
+//!
+//! [Dioxus]: https://dioxuslabs.com
+
 use dioxus::prelude::*;
 
 mod components;
 mod models;
 mod services;
+/// Pure utility helpers (date formatting, URL resolution, timestamp helpers).
 pub mod utils;
 
 use components::{
