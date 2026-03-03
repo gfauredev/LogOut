@@ -6,19 +6,27 @@ lang: en
 
 <!--toc:start-->
 
-- [Clean State App](#clean-state-app)
+- [Clean State Home](#clean-state-home)
+  - [Acceptance Criteria](#acceptance-criteria)
+- [Navigate to Exercise List](#navigate-to-exercise-list)
+  - [Acceptance Criteria](#acceptance-criteria)
+- [Clean State Exercise List](#clean-state-exercise-list)
+  - [Acceptance Criteria](#acceptance-criteria)
+- [Navigate to Analytics](#navigate-to-analytics)
+  - [Acceptance Criteria](#acceptance-criteria)
+- [Clean State Analytics](#clean-state-analytics)
+  - [Acceptance Criteria](#acceptance-criteria)
+- [Navigate to Credits](#navigate-to-credits)
+  - [Acceptance Criteria](#acceptance-criteria)
+- [Clean State Credits](#clean-state-credits)
+  - [Acceptance Criteria](#acceptance-criteria)
+- [Navigate Back to Home](#navigate-back-to-home)
   - [Acceptance Criteria](#acceptance-criteria)
 - [Start Workout Session](#start-workout-session)
   - [Acceptance Criteria](#acceptance-criteria)
 - [Cancel Empty Session](#cancel-empty-session)
   - [Acceptance Criteria](#acceptance-criteria)
-- [Navigate to Exercise Browser](#navigate-to-exercise-browser)
-  - [Acceptance Criteria](#acceptance-criteria)
 - [Search Exercises in Browser](#search-exercises-in-browser)
-  - [Acceptance Criteria](#acceptance-criteria)
-- [Navigate to Analytics](#navigate-to-analytics)
-  - [Acceptance Criteria](#acceptance-criteria)
-- [Navigate to Credits](#navigate-to-credits)
   - [Acceptance Criteria](#acceptance-criteria)
 - [Search Exercises in Active Session](#search-exercises-in-active-session)
   - [Acceptance Criteria](#acceptance-criteria)
@@ -42,27 +50,96 @@ supported platforms, currently :
 - Web browser PWA : `maestro/web/`
 - Android native app : `maestro/android/`
 
-## Clean State App
+## Clean State Home
 
-**As a** _user_ (and a _tester_), **I want to** see the app in a clean, initial
-state when I first launch it, **so that** I’m not disturbed by existing user
-data I don’t created myself.
+**As a** _user_ (and a _tester_), **I want to** see the Home in a clean, initial
+state when I first launch the app, **so that** I’m not disturbed by existing
+training Session(s) even though I didn’t record one yet.
 
 ### Acceptance Criteria
 
-- Exercise List
-  - There’s only default exercises, not custom ones created by a user
-  - The first exercise has the button "✏️ Clone & Edit", not just "✏️ Edit"
-- Home
-  - Header displays "LogOut", "Log your workOut"
-  - Main body shows "No past sessions yet", "Tap + to start your first workout"
-- Analytics
-  - Select any metric in "Weight", "Repetitions", "Distance", "Duration"
-  - Then, no exercise can be selected, as none has been done yet
-- Credits
-  - Header displays "Credits"
-  - The database URL is the default one
-- On each page, a bottom navigation bar with 4 tabs is present
+- Header contains "LogOut", "Log your workOut"
+- Main body contains "No past sessions yet", "Tap + to start your first workout"
+
+## Navigate to Exercise List
+
+**As a** _user_, **I want to** navigate to the Exercise List, **so that** I can
+browse available exercises.
+
+### Acceptance Criteria
+
+- The bottom navigation bar contains a "📚" button
+  - **Click it**, the Exercise List page opens
+- Header displays "📚 Exercise Database"
+- "📚" button is slightly emphasized compared to others in bottom navigation bar
+
+## Clean State Exercise List
+
+**As a** _user_ (and a _tester_), **I want to** see the _Exercise List_ in a
+clean, initial state when I first launch the app, **so that** I’m not disturbed
+by existing custom Exercise(s) even though I didn’t created one yet.
+
+### Acceptance Criteria
+
+- There’s only default exercises, not custom ones created by a user
+- The first exercise has the button "✏️ Clone & Edit", not just "✏️ Edit"
+
+## Navigate to Analytics
+
+**As a** _user_, **I want to** navigate to the analytics page, **so that** I can
+view my workout progress over time.
+
+### Acceptance Criteria
+
+- The bottom navigation bar contains a "📊" button
+  - **Click it**, the Analytics page opens
+- Header displays "📊 Analytics"
+- "📊" button is slightly emphasized compared to others in bottom navigation bar
+
+## Clean State Analytics
+
+**As a** _user_ (and a _tester_), **I want to** see the _Analytics_ page in a
+clean, initial state when I first launch the app, **so that** I’m not disturbed
+by existing training data even though I didn’t record any yet.
+
+### Acceptance Criteria
+
+- Select any metric in "Weight", "Repetitions", "Distance", "Duration"
+- Then, no exercise can be selected, as none has been done yet
+
+## Navigate to Credits
+
+**As a** _user_, **I want to** navigate to the credits page, **so that** I can
+see information about the app and configure settings.
+
+### Acceptance Criteria
+
+- The bottom navigation bar contains a "ℹ️" button
+  - **Click it**, the Credits page opens
+- Header displays "ℹ️ Credits"
+- "ℹ️" button is slightly emphasized compared to others in bottom navigation bar
+
+## Clean State Credits
+
+**As a** _user_ (and a _tester_), **I want to** see the _Credits_ page in a
+clean, initial state when I first launch the app, **so that** I’m not disturbed
+by existing customization that shouldn’t be.
+
+### Acceptance Criteria
+
+- The database URL is the default one
+
+## Navigate Back to Home
+
+**As a** _user_, **I want to** navigate back to the home page, **so that** I can
+return to my workout session history.
+
+### Acceptance Criteria
+
+- The bottom navigation bar contains a "💪" button
+  - **Click it**, the Home page opens
+- Header displays "💪 LogOut"
+- "💪" button is slightly emphasized compared to others in bottom navigation bar
 
 ## Start Workout Session
 
@@ -71,8 +148,7 @@ begin logging my exercises.
 
 ### Acceptance Criteria
 
-- Home
-  - Tapping the "+" button opens the Active Session _view_
+- Tapping the "+" button opens the Active Session _view_
 - Active Session
   - Header displays "Active Session", "Cancel Session" button and a timer
   - After 1 second, the timer has incremented by 1 second
@@ -91,17 +167,6 @@ can return to the home screen without saving a useless, empty session.
   - Heading "LogOut" is visible again
   - Main body still shows "No past sessions yet"
 
-## Navigate to Exercise Browser
-
-**As a** _user_, **I want to** navigate to the exercise database, **so that** I
-can browse available exercises.
-
-### Acceptance Criteria
-
-- Tapping the "📚" tab in the bottom navigation opens the exercise browser
-- The exercise browser heading "Exercise Database" is visible
-- Navigating back to the home tab shows the home screen again
-
 ## Search Exercises in Browser
 
 **As a** _user_, **I want to** search for exercises in the exercise database,
@@ -112,26 +177,6 @@ can browse available exercises.
 - A search input is visible on the exercise browser page
 - Typing a search term filters the exercise list
 - The page remains functional after searching
-
-## Navigate to Analytics
-
-**As a** _user_, **I want to** navigate to the analytics page, **so that** I can
-view my workout progress over time.
-
-### Acceptance Criteria
-
-- Tapping the "📊" tab in the bottom navigation opens the analytics page
-- The analytics heading "Analytics" is visible
-
-## Navigate to Credits
-
-**As a** _user_, **I want to** navigate to the credits page, **so that** I can
-see information about the app and configure settings.
-
-### Acceptance Criteria
-
-- Tapping the "ℹ️" tab in the bottom navigation opens the credits page
-- The credits heading "Credits" is visible
 
 ## Search Exercises in Active Session
 
