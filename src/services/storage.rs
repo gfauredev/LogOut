@@ -72,10 +72,7 @@ pub(crate) mod idb {
     /// Put many serialisable items into a store in a single transaction.
     /// More efficient than calling [`put_item`] in a loop because only one
     /// database connection and one transaction are opened.
-    pub async fn put_all<T: serde::Serialize>(
-        store_name: &str,
-        items: &[T],
-    ) -> Result<(), String> {
+    pub async fn put_all<T: serde::Serialize>(store_name: &str, items: &[T]) -> Result<(), String> {
         let db = open_db().await.map_err(|e| format!("{e}"))?;
         let tx = db
             .transaction(&[store_name], TransactionMode::ReadWrite)
