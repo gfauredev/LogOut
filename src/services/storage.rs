@@ -113,20 +113,17 @@ pub(crate) mod idb {
     }
 }
 
-// ──────────────────────────────────────────
 // Async write queue for IndexedDB (wasm32 only)
 //
 // Serialises all write operations (put / delete) so that concurrent callers
 // never open competing read-write transactions on the same object store, which
 // IndexedDB would otherwise serialise at the browser level anyway but could
-// cause transaction aborts under some circumstances.
-// ──────────────────────────────────────────
-
+// cause transaction aborts under some circumstances
 #[cfg(target_arch = "wasm32")]
 pub(crate) mod idb_queue {
     use super::idb;
     use crate::models::{Exercise, WorkoutSession};
-    use dioxus::prelude::Writable;
+    use dioxus::prelude::WritableExt;
     use dioxus::signals::Signal;
     use std::cell::RefCell;
     use std::collections::VecDeque;
