@@ -184,14 +184,7 @@ PWA (beta web platform) and one for native Android. Tests are numbered `01`–`2
 matching the user story order so each test can rely on state from the previous
 ones when run as a full suite.
 
-#### Prerequisites
-
-- **[Maestro]** installed: `curl -Ls "https://get.maestro.dev" | bash`
-- For **web tests**: a production build served on `http://localhost:8080`
-- For **Android tests**: a running emulator or connected device with the app
-  installed
-
-#### Running the web tests
+#### Web PWA
 
 ```sh
 # Build and serve the PWA
@@ -209,7 +202,7 @@ maestro test --platform web maestro/web/01_clean_state_home.yaml
 > The first run of tests that touch the exercise browser may take up to 30
 > seconds while the exercise database is downloaded from the remote URL.
 
-#### Running the Android tests
+#### Android Application
 
 ```sh
 # Start an Android emulator (or connect a physical device) with the app installed,
