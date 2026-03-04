@@ -25,10 +25,12 @@ pub fn AddExercise() -> Element {
         }
 
         let timestamp = get_current_timestamp();
+        let name_lower = name.to_lowercase();
 
         let exercise = Exercise {
             id: format!("custom_{}", timestamp),
             name,
+            name_lower,
             category: *category_input.read(),
             force: *force_input.read(),
             level: None,

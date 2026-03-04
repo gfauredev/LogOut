@@ -8,3 +8,6 @@ url: http://localhost:8080
     timeout: 120000
 - tapOn: "ℹ️"
 - assertVisible: "Credits"
+# The credits page should show the app description and DB URL configuration
+- assertVisible: "Turn off your computer"
+- assertVisible: "⚙️ Exercise Database URL"

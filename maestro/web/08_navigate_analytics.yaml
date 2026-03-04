@@ -8,3 +8,6 @@ url: http://localhost:8080
     timeout: 120000
 - tapOn: "📊"
 - assertVisible: "Analytics"
+# The metric selector should be present on the analytics page
+- assertVisible: "Metric"
+- assertVisible: "Weight (kg)"

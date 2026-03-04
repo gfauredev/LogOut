@@ -14,4 +14,6 @@ url: http://localhost:8080
 - assertVisible: "0:00"
 # Clean up: cancel the empty session
 - tapOn: "Cancel Session"
-- assertVisible: "LogOut"
+# Home page should show the empty state (no sessions), not just the static header
+- assertVisible: "No past sessions yet"
+- assertVisible: "Tap + to start your first workout"

@@ -32,6 +32,7 @@ pub fn ExerciseCard(
                             let clone = Exercise {
                                 id: format!("custom_{}", timestamp),
                                 name: exercise.name.clone(),
+                                name_lower: exercise.name_lower.clone(),
                                 category: exercise.category,
                                 force: exercise.force,
                                 level: exercise.level,

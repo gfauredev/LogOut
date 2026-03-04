@@ -143,7 +143,16 @@ pub fn search_exercises<'a>(exercises: &'a [Exercise], query: &str) -> Vec<&'a E
     exercises
         .iter()
         .filter(|exercise| {
-            exercise.name.to_lowercase().contains(&query_lower)
+            // Use the pre-computed lowercase name when available to avoid per-call allocations.
+            // Fall back to computing on the fly for exercises created without calling with_lowercase().
+            let computed_name_lower;
+            let name_lc: &str = if !exercise.name_lower.is_empty() {
+                &exercise.name_lower
+            } else {
+                computed_name_lower = exercise.name.to_lowercase();
+                &computed_name_lower
+            };
+            name_lc.contains(&query_lower)
                 || exercise
                     .primary_muscles
                     .iter()
@@ -213,6 +222,7 @@ mod tests {
             Exercise {
                 id: "bench_press".into(),
                 name: "Bench Press".into(),
+                name_lower: String::new(),
                 force: Some(Force::Push),
                 level: Some(Level::Intermediate),
                 mechanic: None,
@@ -222,10 +232,12 @@ mod tests {
                 instructions: vec![],
                 category: Category::Strength,
                 images: vec![],
-            },
+            }
+            .with_lowercase(),
             Exercise {
                 id: "pull_up".into(),
                 name: "Pull-Up".into(),
+                name_lower: String::new(),
                 force: Some(Force::Pull),
                 level: Some(Level::Beginner),
                 mechanic: None,
@@ -235,10 +247,12 @@ mod tests {
                 instructions: vec![],
                 category: Category::Strength,
                 images: vec![],
-            },
+            }
+            .with_lowercase(),
             Exercise {
                 id: "running".into(),
                 name: "Running".into(),
+                name_lower: String::new(),
                 force: None,
                 level: Some(Level::Beginner),
                 mechanic: None,
@@ -248,7 +262,8 @@ mod tests {
                 instructions: vec![],
                 category: Category::Cardio,
                 images: vec![],
-            },
+            }
+            .with_lowercase(),
         ]
     }
 
@@ -350,6 +365,7 @@ mod tests {
         let custom = vec![Exercise {
             id: "custom_1".into(),
             name: "Custom Move".into(),
+            name_lower: String::new(),
             force: None,
             level: None,
             mechanic: None,
@@ -372,6 +388,7 @@ mod tests {
         let custom = vec![Exercise {
             id: "pull_up".into(),
             name: "Custom Pull-Up".into(),
+            name_lower: String::new(),
             force: None,
             level: None,
             mechanic: None,
@@ -502,6 +519,7 @@ mod tests {
         let exercises = vec![Exercise {
             id: "custom_squat".into(),
             name: "Custom Squat".into(),
+            name_lower: String::new(),
             force: Some(Force::Push),
             level: Some(Level::Beginner),
             mechanic: None,
@@ -522,6 +540,7 @@ mod tests {
         let exercises = vec![Exercise {
             id: "custom_squat".into(),
             name: "Custom Squat".into(),
+            name_lower: String::new(),
             force: Some(Force::Push),
             level: Some(Level::Beginner),
             mechanic: None,
@@ -542,6 +561,7 @@ mod tests {
         let exercises = vec![Exercise {
             id: "custom_run".into(),
             name: "My Run".into(),
+            name_lower: String::new(),
             force: None,
             level: None,
             mechanic: None,
