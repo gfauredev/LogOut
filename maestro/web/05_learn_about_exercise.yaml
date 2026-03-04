@@ -8,15 +8,15 @@ url: http://localhost:8080
     timeout: 120000
 - tapOn: "📚"
 - assertVisible: "Exercise Database"
-# Wait for exercises to load
+# Wait for exercises to load from the local @exercises.test.json database
 - extendedWaitUntil:
     visible:
-      text: "Barbell Bench Press - Medium Grip"
-    timeout: 30000
+      text: "Pushups"
+    timeout: 10000
 # Click the exercise heading to reveal instructions
-- tapOn: "Barbell Bench Press - Medium Grip"
+- tapOn: "Pushups"
 # Instructions should appear (exercise has instructions in the DB)
-- assertVisible: "Lie on a flat bench"
+- assertVisible: "Lie on the floor"
 # Click the exercise image to cycle to the next image
 - tapOn:
     id: ".*img.*"

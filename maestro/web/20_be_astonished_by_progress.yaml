@@ -10,9 +10,9 @@ url: http://localhost:8080
 - assertVisible: "Analytics"
 # Select "Weight (kg)" metric
 - tapOn: "Weight (kg)"
-# Select "Barbell Bench Press - Medium Grip" in the first exercise selector
+# Select "Wide-Grip Barbell Bench Press" in the first exercise selector
 - tapOn: "-- Select Exercise --"
-- tapOn: "Barbell Bench Press - Medium Grip"
+- tapOn: "Wide-Grip Barbell Bench Press"
 # A chart should now be visible with data points
 - assertVisible: "Weight (kg)"
 # The chart SVG should be present
