@@ -249,21 +249,7 @@ services, providing a detailed view of the codebase's API.
 
 ## TODO
 
-- Ensure Toasts have individuals dismiss timers
-- Implement an async queue for IndexedDB writes
-- Ensure every version of the app use local time
-- Ensure we don’t rewrite every sessions or exercises when writing one
-- Add form validation feedback, ie. red when value cannot be parsed
-- Avoid enums boilerplate with strum `#[derive(EnumIter, Display, AsRefStr)]`
-
-### Later
-
-- Sign Android app and make it properly installable
-- Ensure DB operations don’t block the UI thread
-- Improve indexedDB error handling with thiserror
-- Ensure UI updates when asynchronous database load completes
-  - Replace local use_signal in SessionView with reactive use_memo that derives
-    the active session directly from the global sessions state
+- Sign Android app, ensure it properly installs, publish app on Play Store
 
 [LogOut]: https://gfauredev.github.io/LogOut
 [800+ exercises]: https://github.com/yuhonas/free-exercise-db
