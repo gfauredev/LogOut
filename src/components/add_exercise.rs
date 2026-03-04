@@ -4,7 +4,7 @@ use crate::services::storage;
 use dioxus::prelude::*;
 
 #[component]
-pub fn AddCustomExercisePage() -> Element {
+pub fn AddExercise() -> Element {
     let name_input = use_signal(String::new);
     let category_input = use_signal(|| Category::Strength);
     let force_input: Signal<Option<Force>> = use_signal(|| None);

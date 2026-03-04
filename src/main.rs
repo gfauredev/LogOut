@@ -1,4 +1,4 @@
-//! **LogOut** – Turn off your computer, Log your workOut.
+//! **LogOut** – Turn off your computer, Log your workOut
 //!
 //! A simple, efficient and cross-platform workout logging application with
 //! 800+ built-in exercises.  The app is built with [Dioxus] and targets both
@@ -14,10 +14,7 @@ mod services;
 /// Pure utility helpers (date formatting, URL resolution, timestamp helpers).
 pub mod utils;
 
-use components::{
-    AddCustomExercisePage, AnalyticsPage, CreditsPage, EditCustomExercisePage, ExerciseListPage,
-    HomePage,
-};
+use components::{AddExercise, Analytics, Credits, EditExercise, Exercises, Home};
 
 /// Global context signal for the congratulations toast shown after completing a session.
 #[derive(Clone, Copy)]
@@ -42,20 +39,19 @@ pub struct ExerciseSearchSignal(pub Signal<Option<String>>);
 
 #[derive(Clone, Routable, Debug, PartialEq)]
 #[rustfmt::skip]
-#[allow(clippy::enum_variant_names)]
 enum Route {
     #[route("/")]
-    HomePage {},
+    Home {},
     #[route("/exercises")]
-    ExerciseListPage {},
+    Exercises {},
     #[route("/analytics")]
-    AnalyticsPage {},
+    Analytics {},
     #[route("/credits")]
-    CreditsPage {},
+    Credits {},
     #[route("/add-exercise")]
-    AddCustomExercisePage {},
+    AddExercise {},
     #[route("/edit-exercise/:id")]
-    EditCustomExercisePage { id: String },
+    EditExercise { id: String },
 }
 
 fn main() {

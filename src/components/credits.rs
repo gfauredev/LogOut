@@ -2,7 +2,7 @@ use crate::components::{ActiveTab, BottomNav};
 use dioxus::prelude::*;
 
 #[component]
-pub fn CreditsPage() -> Element {
+pub fn Credits() -> Element {
     // Current exercise DB URL (defaults to the compile-time constant)
     let mut url_input = use_signal(crate::utils::get_exercise_db_url);
 

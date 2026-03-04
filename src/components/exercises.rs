@@ -7,7 +7,7 @@ use dioxus::prelude::*;
 const PAGE_SIZE: usize = 20;
 
 #[component]
-pub fn ExerciseListPage() -> Element {
+pub fn Exercises() -> Element {
     let all_exercises = exercise_db::use_exercises();
     let custom_exercises = storage::use_custom_exercises();
     let sessions = storage::use_sessions();
@@ -171,7 +171,7 @@ pub fn ExerciseListPage() -> Element {
                     }
                 }
                 Link {
-                    to: Route::AddCustomExercisePage {},
+                    to: Route::AddExercise {},
                     title: "Add Custom Exercise",
                     "+"
                 }

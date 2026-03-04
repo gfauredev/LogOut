@@ -18,7 +18,7 @@ pub fn ExerciseCard(
         article { key: "{exercise.id}",
             if is_custom {
                 Link {
-                    to: Route::EditCustomExercisePage { id: exercise.id.clone() },
+                    to: Route::EditExercise { id: exercise.id.clone() },
                     class: "edit",
                     "✏️ Edit"
                 }
@@ -45,7 +45,7 @@ pub fn ExerciseCard(
                             let clone_id = clone.id.clone();
                             storage::add_custom_exercise(clone);
                             navigator()
-                                .push(Route::EditCustomExercisePage { id: clone_id });
+                                .push(Route::EditExercise { id: clone_id });
                         }
                     },
                     "✏️ Clone & Edit"

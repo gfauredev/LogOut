@@ -485,7 +485,7 @@ pub fn SessionView() -> Element {
                             oninput: move |evt| search_query.set(evt.value()),
                         }
                         Link {
-                            to: Route::AddCustomExercisePage {},
+                            to: Route::AddExercise {},
                             title: "Add Custom Exercise",
                             "+"
                         }

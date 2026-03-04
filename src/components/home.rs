@@ -6,7 +6,7 @@ use crate::{ExerciseSearchSignal, Route};
 use dioxus::prelude::*;
 
 #[component]
-pub fn HomePage() -> Element {
+pub fn Home() -> Element {
     let sessions = storage::use_sessions();
 
     let has_active = use_memo(move || sessions.read().iter().any(|s| s.is_active()));
@@ -143,7 +143,7 @@ fn SessionCard(session: WorkoutSession) -> Element {
                                 let name = name.clone();
                                 move |_| {
                                     search_signal.set(Some(name.clone()));
-                                    navigator.push(Route::ExerciseListPage {});
+                                    navigator.push(Route::Exercises {});
                                 }
                             },
                             "{name}"

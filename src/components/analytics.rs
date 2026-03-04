@@ -36,7 +36,7 @@ const COLORS: [&str; 8] = [
 ];
 
 #[component]
-pub fn AnalyticsPage() -> Element {
+pub fn Analytics() -> Element {
     let mut selected_metric = use_signal(|| Metric::Weight);
     let mut selected_exercises: Signal<Vec<Option<String>>> = use_signal(|| vec![None; 8]);
 

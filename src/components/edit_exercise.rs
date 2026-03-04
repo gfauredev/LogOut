@@ -4,7 +4,7 @@ use crate::services::storage;
 use dioxus::prelude::*;
 
 #[component]
-pub fn EditCustomExercisePage(id: String) -> Element {
+pub fn EditExercise(id: String) -> Element {
     let custom_exercises = storage::use_custom_exercises();
 
     // Load the exercise to edit
