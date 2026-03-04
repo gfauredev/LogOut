@@ -77,14 +77,35 @@ pub(super) fn ExerciseFormPanel(
                     rsx! {
                         div {
                             label { class: "form-label", "Weight (kg)" }
-                            input {
-                                r#type: "number",
-                                inputmode: "decimal",
-                                step: "0.1",
-                                placeholder: "Optional",
-                                value: "{weight_input}",
-                                oninput: move |evt| weight_input.set(evt.value()),
-                                class: if weight_invalid { "form-input invalid" } else { "form-input" },
+                            div { class: "input-stepper",
+                                button {
+                                    class: "btn--step",
+                                    r#type: "button",
+                                    onclick: move |_| {
+                                        let cur: f64 = weight_input.read().parse().unwrap_or(0.0);
+                                        let next = (cur - 0.5).max(0.0);
+                                        weight_input.set(format!("{:.1}", next));
+                                    },
+                                    "−"
+                                }
+                                input {
+                                    r#type: "number",
+                                    inputmode: "decimal",
+                                    step: "0.1",
+                                    placeholder: "Opt.",
+                                    value: "{weight_input}",
+                                    oninput: move |evt| weight_input.set(evt.value()),
+                                    class: if weight_invalid { "form-input form-input--compact invalid" } else { "form-input form-input--compact" },
+                                }
+                                button {
+                                    class: "btn--step",
+                                    r#type: "button",
+                                    onclick: move |_| {
+                                        let cur: f64 = weight_input.read().parse().unwrap_or(0.0);
+                                        weight_input.set(format!("{:.1}", cur + 0.5));
+                                    },
+                                    "+"
+                                }
                             }
                         }
                     }
@@ -118,13 +139,35 @@ pub(super) fn ExerciseFormPanel(
                         rsx! {
                             div {
                                 label { class: "form-label", "Repetitions" }
-                                input {
-                                    r#type: "number",
-                                    inputmode: "numeric",
-                                    placeholder: "Reps",
-                                    value: "{reps_input}",
-                                    oninput: move |evt| reps_input.set(evt.value()),
-                                    class: if reps_invalid { "form-input invalid" } else { "form-input" },
+                                div { class: "input-stepper",
+                                    button {
+                                        class: "btn--step",
+                                        r#type: "button",
+                                        onclick: move |_| {
+                                            let cur: u32 = reps_input.read().parse().unwrap_or(0);
+                                            if cur > 1 {
+                                                reps_input.set((cur - 1).to_string());
+                                            }
+                                        },
+                                        "−"
+                                    }
+                                    input {
+                                        r#type: "number",
+                                        inputmode: "numeric",
+                                        placeholder: "Reps",
+                                        value: "{reps_input}",
+                                        oninput: move |evt| reps_input.set(evt.value()),
+                                        class: if reps_invalid { "form-input form-input--compact invalid" } else { "form-input form-input--compact" },
+                                    }
+                                    button {
+                                        class: "btn--step",
+                                        r#type: "button",
+                                        onclick: move |_| {
+                                            let cur: u32 = reps_input.read().parse().unwrap_or(0);
+                                            reps_input.set((cur + 1).to_string());
+                                        },
+                                        "+"
+                                    }
                                 }
                             }
                         }

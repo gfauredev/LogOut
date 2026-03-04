@@ -163,15 +163,75 @@ fn PendingExercisesSection(pending_ids: Vec<String>, on_start: EventHandler<Stri
 
 /// Antichronological list of completed exercise logs with replay and edit actions.
 /// Fires `on_replay` with the exercise ID when the user taps 🔁.
+///
+/// When no exercise is active and the last completed exercise was also done
+/// earlier in the session, a quick-action button is shown at the top suggesting
+/// the exercise that followed that earlier set.
 #[component]
 fn CompletedExercisesSection(
     session: Memo<WorkoutSession>,
     no_exercise_active: bool,
     on_replay: EventHandler<String>,
 ) -> Element {
+    let all_exercises = exercise_db::use_exercises();
+    let custom_exercises = storage::use_custom_exercises();
+
+    // Determine whether we can suggest a "next" exercise.
+    // Rule: find the last log entry, then search the history backwards for a
+    // previous occurrence of the same exercise; if found and a log entry exists
+    // immediately after it, that entry's exercise is the suggestion.
+    let suggested_next = use_memo(move || {
+        let logs = &session.read().exercise_logs;
+        let last = logs.last()?;
+        let last_id = &last.exercise_id;
+
+        // Index of the last log entry
+        let last_idx = logs.len() - 1;
+
+        // Search backwards (excluding the final entry) for a prior occurrence
+        let prior_idx = logs[..last_idx]
+            .iter()
+            .rposition(|l| l.exercise_id == *last_id)?;
+
+        // The exercise that followed the prior occurrence
+        let next_log = logs.get(prior_idx + 1)?;
+        // If the next entry is the same as the last, there is nothing new to suggest
+        if next_log.exercise_id == *last_id {
+            return None;
+        }
+        Some((next_log.exercise_id.clone(), next_log.exercise_name.clone()))
+    });
+
+    // Resolve a human-readable name for the suggestion (prefer DB/custom name
+    // over the stored snapshot in case the exercise was renamed).
+    let suggestion_label = use_memo(move || {
+        suggested_next().map(|(id, fallback_name)| {
+            let all = all_exercises.read();
+            let custom = custom_exercises.read();
+            let name = exercise_db::resolve_exercise(&all, &custom, &id)
+                .map(|ex| ex.name.clone())
+                .unwrap_or(fallback_name);
+            (id, name)
+        })
+    });
+
     rsx! {
         section {
             h3 { "Completed Exercises" }
+            // Quick-repeat suggestion: shown when no exercise is active and a
+            // prior sequence implies what the next exercise should be.
+            if no_exercise_active {
+                if let Some((next_id, next_name)) = suggestion_label() {
+                    button {
+                        class: "btn btn--suggest-next",
+                        onclick: {
+                            let id = next_id.clone();
+                            move |_| on_replay.call(id.clone())
+                        },
+                        "▶ Do {next_name} next"
+                    }
+                }
+            }
             {
                 rsx! {
                     for (idx, log) in session.read().exercise_logs.iter().enumerate().rev() {
