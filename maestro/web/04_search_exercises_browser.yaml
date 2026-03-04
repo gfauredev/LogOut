@@ -13,7 +13,7 @@ url: http://localhost:8080
 - inputText: "push"
 - assertVisible: "Exercise Database"
 # Clear the search and verify the full list is restored
-- clearText
+- eraseText
 - assertVisible: "Exercise Database"
 - extendedWaitUntil:
     visible:

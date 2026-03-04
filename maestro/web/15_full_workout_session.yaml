@@ -45,7 +45,7 @@ url: http://localhost:8080
 # Increment reps for the second set
 - tapOn:
     text: "10"
-- clearText
+- eraseText
 - inputText: "12"
 - tapOn: "✓ Complete Exercise"
 # Verify second set appears
@@ -75,7 +75,7 @@ url: http://localhost:8080
 - assertVisible: "Barbell Squat"
 - tapOn:
     text: "8"
-- clearText
+- eraseText
 - inputText: "10"
 - tapOn: "✓ Complete Exercise"
 

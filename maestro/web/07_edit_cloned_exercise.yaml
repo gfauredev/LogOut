@@ -22,7 +22,7 @@ url: http://localhost:8080
 # Clear the current name and enter a new one
 - tapOn:
     text: "Barbell Bench Press - Medium Grip"
-- clearText
+- eraseText
 - inputText: "My Cloned Bench Press"
 # Save the changes
 - tapOn: "💾 Save Changes"
