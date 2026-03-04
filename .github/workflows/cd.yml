@@ -23,7 +23,31 @@ jobs:
       startsWith(github.event.head_commit.message, 'fix:') ||
       startsWith(github.event.head_commit.message, 'fix(') ||
       startsWith(github.event.head_commit.message, 'perf:') ||
-      startsWith(github.event.head_commit.message, 'perf(')
+      startsWith(github.event.head_commit.message, 'perf(') ||
+      (
+        !startsWith(github.event.head_commit.message, 'feat:') &&
+        !startsWith(github.event.head_commit.message, 'feat(') &&
+        !startsWith(github.event.head_commit.message, 'fix:') &&
+        !startsWith(github.event.head_commit.message, 'fix(') &&
+        !startsWith(github.event.head_commit.message, 'perf:') &&
+        !startsWith(github.event.head_commit.message, 'perf(') &&
+        !startsWith(github.event.head_commit.message, 'style:') &&
+        !startsWith(github.event.head_commit.message, 'style(') &&
+        !startsWith(github.event.head_commit.message, 'refactor:') &&
+        !startsWith(github.event.head_commit.message, 'refactor(') &&
+        !startsWith(github.event.head_commit.message, 'docs:') &&
+        !startsWith(github.event.head_commit.message, 'docs(') &&
+        !startsWith(github.event.head_commit.message, 'test:') &&
+        !startsWith(github.event.head_commit.message, 'test(') &&
+        !startsWith(github.event.head_commit.message, 'chore:') &&
+        !startsWith(github.event.head_commit.message, 'chore(') &&
+        !startsWith(github.event.head_commit.message, 'ci:') &&
+        !startsWith(github.event.head_commit.message, 'ci(') &&
+        !startsWith(github.event.head_commit.message, 'build:') &&
+        !startsWith(github.event.head_commit.message, 'build(') &&
+        !startsWith(github.event.head_commit.message, 'revert:') &&
+        !startsWith(github.event.head_commit.message, 'revert(')
+      )
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
@@ -70,7 +94,31 @@ jobs:
       startsWith(github.event.head_commit.message, 'fix:') ||
       startsWith(github.event.head_commit.message, 'fix(') ||
       startsWith(github.event.head_commit.message, 'perf:') ||
-      startsWith(github.event.head_commit.message, 'perf(')
+      startsWith(github.event.head_commit.message, 'perf(') ||
+      (
+        !startsWith(github.event.head_commit.message, 'feat:') &&
+        !startsWith(github.event.head_commit.message, 'feat(') &&
+        !startsWith(github.event.head_commit.message, 'fix:') &&
+        !startsWith(github.event.head_commit.message, 'fix(') &&
+        !startsWith(github.event.head_commit.message, 'perf:') &&
+        !startsWith(github.event.head_commit.message, 'perf(') &&
+        !startsWith(github.event.head_commit.message, 'style:') &&
+        !startsWith(github.event.head_commit.message, 'style(') &&
+        !startsWith(github.event.head_commit.message, 'refactor:') &&
+        !startsWith(github.event.head_commit.message, 'refactor(') &&
+        !startsWith(github.event.head_commit.message, 'docs:') &&
+        !startsWith(github.event.head_commit.message, 'docs(') &&
+        !startsWith(github.event.head_commit.message, 'test:') &&
+        !startsWith(github.event.head_commit.message, 'test(') &&
+        !startsWith(github.event.head_commit.message, 'chore:') &&
+        !startsWith(github.event.head_commit.message, 'chore(') &&
+        !startsWith(github.event.head_commit.message, 'ci:') &&
+        !startsWith(github.event.head_commit.message, 'ci(') &&
+        !startsWith(github.event.head_commit.message, 'build:') &&
+        !startsWith(github.event.head_commit.message, 'build(') &&
+        !startsWith(github.event.head_commit.message, 'revert:') &&
+        !startsWith(github.event.head_commit.message, 'revert(')
+      )
 
     steps:
       - uses: actions/checkout@v4
