@@ -126,6 +126,7 @@ pub(crate) mod idb {
 pub(crate) mod idb_queue {
     use super::idb;
     use crate::models::{Exercise, WorkoutSession};
+    use dioxus::prelude::Writable;
     use dioxus::signals::Signal;
     use std::cell::RefCell;
     use std::collections::VecDeque;
