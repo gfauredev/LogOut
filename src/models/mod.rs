@@ -991,10 +991,16 @@ mod tests {
         assert_eq!(exercise.name_lower, "bench press");
         // name_lower must NOT appear in the serialised JSON
         let json = serde_json::to_string(&exercise).unwrap();
-        assert!(!json.contains("name_lower"), "name_lower should be skipped from JSON");
+        assert!(
+            !json.contains("name_lower"),
+            "name_lower should be skipped from JSON"
+        );
         // Deserializing the JSON produces an exercise with empty name_lower (requires with_lowercase() call to repopulate)
         let deserialized: Exercise = serde_json::from_str(&json).unwrap();
-        assert_eq!(deserialized.name_lower, "", "name_lower should default to empty after deserialization");
+        assert_eq!(
+            deserialized.name_lower, "",
+            "name_lower should default to empty after deserialization"
+        );
     }
 
     #[test]
