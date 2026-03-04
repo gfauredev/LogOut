@@ -284,8 +284,7 @@ pub(crate) mod native_queue {
                     }
                 }
                 Some(NativeOp::DeleteSession(id, mut toast)) => {
-                    if let Err(e) =
-                        native_storage::delete_item(native_storage::STORE_SESSIONS, &id)
+                    if let Err(e) = native_storage::delete_item(native_storage::STORE_SESSIONS, &id)
                     {
                         log::error!("Native queue: failed to delete session {id}: {e}");
                         toast.set(Some(format!("⚠️ Failed to delete session: {e}")));
