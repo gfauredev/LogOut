@@ -133,7 +133,7 @@ pub(crate) mod idb_queue {
         PutSession(WorkoutSession, Signal<Option<String>>),
         DeleteSession(String, Signal<Option<String>>),
         PutExercise(Exercise, Signal<Option<String>>),
-        DeleteExercise(String, Signal<Option<String>>),
+        // DeleteExercise(String, Signal<Option<String>>), // Not supported for now
     }
 
     thread_local! {
@@ -178,12 +178,6 @@ pub(crate) mod idb_queue {
                     if let Err(e) = idb::put_item(idb::STORE_CUSTOM_EXERCISES, &ex).await {
                         log::error!("IDB queue: failed to put exercise {}: {e}", ex.id);
                         toast.set(Some(format!("⚠️ Failed to save exercise: {e}")));
-                    }
-                }
-                Some(IdbOp::DeleteExercise(id, mut toast)) => {
-                    if let Err(e) = idb::delete_item(idb::STORE_CUSTOM_EXERCISES, &id).await {
-                        log::error!("IDB queue: failed to delete exercise {id}: {e}");
-                        toast.set(Some(format!("⚠️ Failed to delete exercise: {e}")));
                     }
                 }
             }
