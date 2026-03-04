@@ -227,83 +227,11 @@ pub mod native_exercises {
     }
 }
 
-// Async write queue for SQLite (native only)
-//
-// Mirrors the wasm32 `idb_queue` pattern: serialises all write operations
-// so that concurrent Dioxus tasks never fight over the same DB file.
-// Uses Dioxus `spawn` (backed by the single-threaded tokio runtime on native)
-// so that in-flight writes are not cancelled when a component unmounts.
+// Re-export the async write queue for SQLite so that callers using the path
+// `storage::native_queue` continue to work after the module was moved to its
+// own file at `services::native_queue`.
 #[cfg(not(target_arch = "wasm32"))]
-pub(crate) mod native_queue {
-    use super::native_storage;
-    use crate::models::{Exercise, WorkoutSession};
-    use dioxus::prelude::WritableExt;
-    use dioxus::signals::Signal;
-    use std::cell::RefCell;
-    use std::collections::VecDeque;
-
-    /// A pending write operation, including the toast signal for error reporting.
-    pub enum NativeOp {
-        PutSession(WorkoutSession, Signal<Option<String>>),
-        DeleteSession(String, Signal<Option<String>>),
-        PutExercise(Exercise, Signal<Option<String>>),
-    }
-
-    thread_local! {
-        /// (draining, pending_ops)
-        static QUEUE: RefCell<(bool, VecDeque<NativeOp>)> =
-            const { RefCell::new((false, VecDeque::new())) };
-    }
-
-    /// Enqueue a write operation. If no drain is currently running, starts one.
-    pub fn enqueue(op: NativeOp) {
-        QUEUE.with(|q| {
-            let mut q = q.borrow_mut();
-            q.1.push_back(op);
-            if !q.0 {
-                q.0 = true;
-                dioxus::prelude::spawn(drain());
-            }
-        });
-    }
-
-    async fn drain() {
-        loop {
-            let op = QUEUE.with(|q| q.borrow_mut().1.pop_front());
-            match op {
-                None => {
-                    QUEUE.with(|q| q.borrow_mut().0 = false);
-                    break;
-                }
-                Some(NativeOp::PutSession(s, mut toast)) => {
-                    if let Err(e) =
-                        native_storage::put_item(native_storage::STORE_SESSIONS, &s.id, &s)
-                    {
-                        log::error!("Native queue: failed to put session {}: {e}", s.id);
-                        toast.set(Some(format!("⚠️ Failed to save session: {e}")));
-                    }
-                }
-                Some(NativeOp::DeleteSession(id, mut toast)) => {
-                    if let Err(e) = native_storage::delete_item(native_storage::STORE_SESSIONS, &id)
-                    {
-                        log::error!("Native queue: failed to delete session {id}: {e}");
-                        toast.set(Some(format!("⚠️ Failed to delete session: {e}")));
-                    }
-                }
-                Some(NativeOp::PutExercise(ex, mut toast)) => {
-                    if let Err(e) = native_storage::put_item(
-                        native_storage::STORE_CUSTOM_EXERCISES,
-                        &ex.id,
-                        &ex,
-                    ) {
-                        log::error!("Native queue: failed to put exercise {}: {e}", ex.id);
-                        toast.set(Some(format!("⚠️ Failed to save exercise: {e}")));
-                    }
-                }
-            }
-        }
-    }
-}
+pub(crate) use super::native_queue;
 
 // ──────────────────────────────────────────
 // Native SQLite-based storage (non-wasm platforms: Android / desktop)
@@ -505,8 +433,6 @@ mod tests {
     fn lock() -> std::sync::MutexGuard<'static, ()> {
         native_storage::test_lock()
     }
-
-    // ── validate_store ────────────────────────────────────────────────────────
 
     #[test]
     fn validate_store_accepts_known_stores() {
@@ -782,6 +708,87 @@ mod tests {
         let log = make_exercise_log("squat", 1_000, Some(1_060));
         let sessions = vec![make_session("s1", vec![log])];
         assert!(find_last_exercise_log(&sessions, "deadlift").is_none());
+    }
+
+    // ── schema migration ─────────────────────────────────────────────────────
+
+    /// Verify that `open_db` creates all required tables when the database is
+    /// brand-new (user_version == 0), covering the schema-migration code path.
+    #[test]
+    fn schema_migration_runs_on_fresh_database() {
+        let _g = lock();
+        let db_path = native_storage::data_dir().join("log-workout.db");
+        // Reset to a blank-slate: drop all tables and reset user_version.
+        if db_path.exists() {
+            let conn = rusqlite::Connection::open(&db_path).unwrap();
+            conn.execute_batch(
+                "DROP TABLE IF EXISTS sessions;
+                 DROP TABLE IF EXISTS custom_exercises;
+                 DROP TABLE IF EXISTS exercises;
+                 DROP TABLE IF EXISTS config;
+                 PRAGMA user_version = 0;",
+            )
+            .unwrap();
+        }
+        // Any public function that calls open_db should trigger schema creation.
+        let result = native_storage::get_all::<WorkoutSession>(native_storage::STORE_SESSIONS);
+        assert!(result.is_ok(), "schema migration must succeed on fresh DB");
+        // Confirm the tables are usable after migration.
+        let session = WorkoutSession {
+            id: "schema_migration_test".into(),
+            start_time: 1_000,
+            end_time: None,
+            exercise_logs: vec![],
+            version: DATA_VERSION,
+            pending_exercise_ids: vec![],
+            rest_start_time: None,
+            current_exercise_id: None,
+            current_exercise_start: None,
+        };
+        native_storage::put_item(native_storage::STORE_SESSIONS, &session.id, &session).unwrap();
+        let loaded: Vec<WorkoutSession> =
+            native_storage::get_all(native_storage::STORE_SESSIONS).unwrap();
+        assert!(loaded.iter().any(|s| s.id == session.id));
+        native_storage::delete_item(native_storage::STORE_SESSIONS, &session.id).unwrap();
+    }
+
+    // ── get_all skips corrupt rows ────────────────────────────────────────────
+
+    /// Insert a row with invalid JSON directly into SQLite and verify that
+    /// `get_all` silently skips it rather than returning an error.
+    #[test]
+    fn get_all_skips_corrupt_rows() {
+        let _g = lock();
+        let db_path = native_storage::data_dir().join("log-workout.db");
+        // Ensure the DB exists (open_db creates it if absent).
+        native_storage::get_all::<WorkoutSession>(native_storage::STORE_SESSIONS).unwrap();
+        // Insert a corrupt (non-JSON) row directly via rusqlite.
+        {
+            let conn = rusqlite::Connection::open(&db_path).unwrap();
+            conn.execute(
+                "INSERT OR REPLACE INTO sessions (id, data) VALUES (?1, ?2)",
+                rusqlite::params!["corrupt_row_id", "not {{ valid json"],
+            )
+            .unwrap();
+        }
+        // get_all must return Ok and silently skip the corrupt row.
+        let result: Result<Vec<WorkoutSession>, _> =
+            native_storage::get_all(native_storage::STORE_SESSIONS);
+        assert!(result.is_ok(), "get_all must not error on corrupt rows");
+        let loaded = result.unwrap();
+        assert!(
+            !loaded.iter().any(|s| s.id == "corrupt_row_id"),
+            "corrupt row must be skipped"
+        );
+        // Clean up.
+        {
+            let conn = rusqlite::Connection::open(&db_path).unwrap();
+            conn.execute(
+                "DELETE FROM sessions WHERE id = ?1",
+                rusqlite::params!["corrupt_row_id"],
+            )
+            .unwrap();
+        }
     }
 
     // ── helpers ───────────────────────────────────────────────────────────────
