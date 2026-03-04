@@ -14,16 +14,16 @@ url: http://localhost:8080
 - assertVisible: "Active Session"
 - assertVisible: "Cancel Session"
 
-# ── Search Exercise (bench press) ────────────────────────────────────────────
+# ── Search Exercise (bench press from @exercises.test.json) ──────────────────
 - tapOn: "Search for an exercise..."
 - inputText: "bench press"
-# Wait for the exercise database to load (fetched from remote on first run)
+# Exercises are loaded from the local @exercises.test.json database
 - extendedWaitUntil:
     visible:
-      text: "Barbell Bench Press - Medium Grip"
-    timeout: 30000
-- tapOn: "Barbell Bench Press - Medium Grip"
-- assertVisible: "Barbell Bench Press - Medium Grip"
+      text: "Wide-Grip Barbell Bench Press"
+    timeout: 10000
+- tapOn: "Wide-Grip Barbell Bench Press"
+- assertVisible: "Wide-Grip Barbell Bench Press"
 - assertVisible: "Weight (kg)"
 - assertVisible: "Repetitions"
 
@@ -36,11 +36,11 @@ url: http://localhost:8080
 - inputText: "10"
 - tapOn: "✓ Complete Exercise"
 - assertVisible: "Completed Exercises"
-- assertVisible: "Barbell Bench Press - Medium Grip"
+- assertVisible: "Wide-Grip Barbell Bench Press"
 
 # ── Replay Exercise (set 2, increment reps) ──────────────────────────────────
 - tapOn: "🔁"
-- assertVisible: "Barbell Bench Press - Medium Grip"
+- assertVisible: "Wide-Grip Barbell Bench Press"
 - assertVisible: "✓ Complete Exercise"
 # Increment reps for the second set
 - tapOn:
@@ -51,15 +51,15 @@ url: http://localhost:8080
 # Verify second set appears
 - assertVisible: "Completed Exercises"
 
-# ── Repeat For Another Exercise (squat) ──────────────────────────────────────
+# ── Repeat For Another Exercise (squat from @exercises.test.json) ────────────
 - tapOn: "Search for an exercise..."
-- inputText: "barbell squat"
+- inputText: "full squat"
 - extendedWaitUntil:
     visible:
-      text: "Barbell Squat"
-    timeout: 30000
-- tapOn: "Barbell Squat"
-- assertVisible: "Barbell Squat"
+      text: "Barbell Full Squat"
+    timeout: 10000
+- tapOn: "Barbell Full Squat"
+- assertVisible: "Barbell Full Squat"
 - assertVisible: "Weight (kg)"
 # Record first squat set
 - tapOn:
@@ -69,10 +69,10 @@ url: http://localhost:8080
     text: "Reps"
 - inputText: "8"
 - tapOn: "✓ Complete Exercise"
-- assertVisible: "Barbell Squat"
+- assertVisible: "Barbell Full Squat"
 # Replay squat (set 2)
 - tapOn: "🔁"
-- assertVisible: "Barbell Squat"
+- assertVisible: "Barbell Full Squat"
 - tapOn:
     text: "8"
 - eraseText
@@ -84,8 +84,8 @@ url: http://localhost:8080
 - tapOn: "🗑️"
 # Now there should be 3 completed exercises
 - assertVisible: "Completed Exercises"
-- assertVisible: "Barbell Bench Press - Medium Grip"
-- assertVisible: "Barbell Squat"
+- assertVisible: "Wide-Grip Barbell Bench Press"
+- assertVisible: "Barbell Full Squat"
 # Finish Session button should be visible (session is not empty)
 - assertVisible: "Finish Session"
 
@@ -96,4 +96,4 @@ url: http://localhost:8080
     visible:
       text: "LogOut"
     timeout: 10000
-- assertVisible: "Barbell Bench Press - Medium Grip"
+- assertVisible: "Wide-Grip Barbell Bench Press"

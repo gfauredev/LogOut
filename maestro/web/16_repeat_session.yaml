@@ -7,14 +7,14 @@ url: http://localhost:8080
     visible:
       text: "LogOut"
     timeout: 120000
-- assertVisible: "Barbell Bench Press - Medium Grip"
+- assertVisible: "Wide-Grip Barbell Bench Press"
 # Tap the 🔄 button to start a repeat session
 - tapOn: "🔄"
 # A new active session should open with exercises pre-added
 - assertVisible: "Active Session"
 - assertVisible: "Pre-added Exercises"
-- assertVisible: "Barbell Bench Press - Medium Grip"
-- assertVisible: "Barbell Squat"
+- assertVisible: "Wide-Grip Barbell Bench Press"
+- assertVisible: "Barbell Full Squat"
 # Cancel the repeat session to preserve state for next stories
 - tapOn: "Cancel Session"
 - extendedWaitUntil:

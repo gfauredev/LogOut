@@ -8,11 +8,11 @@ appId: com.gfaure.logworkout
     timeout: 120000
 - tapOn: "📚"
 - assertVisible: "Exercise Database"
-# Wait for exercises to load from the remote database
+# Wait for exercises to load from the local @exercises.test.json database
 - extendedWaitUntil:
     visible:
       text: "✏️ Clone & Edit"
-    timeout: 30000
+    timeout: 10000
 - assertVisible: "✏️ Clone & Edit"
 # Built-in exercises should not show "✏️ Edit" only (that's only for custom exercises)
 - assertNotVisible: "✏️ Edit"

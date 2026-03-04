@@ -13,12 +13,12 @@ appId: com.gfaure.logworkout
 - tapOn: "+"
 - assertVisible: "Active Session"
 - tapOn: "Search for an exercise..."
-- inputText: "barbell squat"
+- inputText: "full squat"
 - extendedWaitUntil:
     visible:
-      text: "Barbell Squat"
-    timeout: 30000
-- tapOn: "Barbell Squat"
+      text: "Barbell Full Squat"
+    timeout: 10000
+- tapOn: "Barbell Full Squat"
 - tapOn:
     text: "Optional"
 - inputText: "60"
@@ -31,7 +31,7 @@ appId: com.gfaure.logworkout
     visible:
       text: "LogOut"
     timeout: 10000
-- assertVisible: "Barbell Squat"
+- assertVisible: "Barbell Full Squat"
 
 # Delete the latest session (the one just created) using the 🗑️ button
 - tapOn: "🗑️"
@@ -44,4 +44,4 @@ appId: com.gfaure.logworkout
     visible:
       text: "LogOut"
     timeout: 5000
-- assertVisible: "Barbell Bench Press - Medium Grip"
+- assertVisible: "Wide-Grip Barbell Bench Press"

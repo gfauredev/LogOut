@@ -1581,4 +1581,83 @@ mod tests {
         assert_eq!(back.exercise_logs.len(), 1);
         assert_eq!(back.exercise_logs[0].exercise_name, "Squat");
     }
+
+    // ── http:// image URL passthrough ─────────────────────────────────────────
+
+    #[test]
+    fn exercise_get_image_url_http_passthrough() {
+        let ex = Exercise {
+            id: "ex1".into(),
+            name: "Custom".into(),
+            name_lower: String::new(),
+            force: None,
+            level: None,
+            mechanic: None,
+            equipment: None,
+            primary_muscles: vec![],
+            secondary_muscles: vec![],
+            instructions: vec![],
+            category: Category::Strength,
+            images: vec!["http://example.com/image.jpg".into()],
+        };
+        assert_eq!(
+            ex.get_image_url(0),
+            Some("http://example.com/image.jpg".into())
+        );
+    }
+
+    // ── Level and Mechanic iter completeness ──────────────────────────────────
+
+    #[test]
+    fn level_all_contains_every_variant() {
+        assert_eq!(Level::iter().count(), 3);
+        assert!(Level::iter().any(|l| l == Level::Beginner));
+        assert!(Level::iter().any(|l| l == Level::Intermediate));
+        assert!(Level::iter().any(|l| l == Level::Expert));
+    }
+
+    #[test]
+    fn mechanic_all_contains_every_variant() {
+        assert_eq!(Mechanic::iter().count(), 2);
+        assert!(Mechanic::iter().any(|m| m == Mechanic::Compound));
+        assert!(Mechanic::iter().any(|m| m == Mechanic::Isolation));
+    }
+
+    // ── parse_distance_km overflow guard ─────────────────────────────────────
+
+    #[test]
+    fn parse_distance_km_overflow_u32_rejected() {
+        // A value larger than u32::MAX meters must be rejected.
+        let too_large = format!("{}", (u32::MAX as f64 / 1000.0) + 1.0);
+        assert_eq!(parse_distance_km(&too_large), None);
+    }
+
+    // ── WorkoutSession rest_start_time field ──────────────────────────────────
+
+    #[test]
+    fn workout_session_rest_start_time_round_trip() {
+        let session = WorkoutSession {
+            id: "s1".into(),
+            start_time: 1000,
+            end_time: None,
+            exercise_logs: vec![],
+            version: DATA_VERSION,
+            pending_exercise_ids: vec![],
+            rest_start_time: Some(1500),
+            current_exercise_id: Some("bench_press".into()),
+            current_exercise_start: Some(1200),
+        };
+        let json = serde_json::to_string(&session).unwrap();
+        let back: WorkoutSession = serde_json::from_str(&json).unwrap();
+        assert_eq!(back.rest_start_time, Some(1500));
+        assert_eq!(back.current_exercise_id, Some("bench_press".into()));
+        assert_eq!(back.current_exercise_start, Some(1200));
+    }
+
+    #[test]
+    fn workout_session_rest_start_time_defaults_none() {
+        let json = r#"{"id":"s1","start_time":1000,"end_time":null,"exercise_logs":[],"version":0,"pending_exercise_ids":[]}"#;
+        let session: WorkoutSession = serde_json::from_str(json).unwrap();
+        assert!(session.rest_start_time.is_none());
+    }
 }

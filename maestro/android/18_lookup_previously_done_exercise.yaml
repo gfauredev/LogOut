@@ -7,9 +7,9 @@ appId: com.gfaure.logworkout
     visible:
       text: "LogOut"
     timeout: 120000
-- assertVisible: "Barbell Bench Press - Medium Grip"
-# Click the "Barbell Bench Press - Medium Grip" exercise tag on the session card
-- tapOn: "Barbell Bench Press - Medium Grip"
+- assertVisible: "Wide-Grip Barbell Bench Press"
+# Click the "Wide-Grip Barbell Bench Press" exercise tag on the session card
+- tapOn: "Wide-Grip Barbell Bench Press"
 # The Exercise List should open with the exercise name pre-filled in the search
 - assertVisible: "Exercise Database"
-- assertVisible: "Barbell Bench Press - Medium Grip"
+- assertVisible: "Wide-Grip Barbell Bench Press"

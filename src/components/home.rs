@@ -5,9 +5,14 @@ use crate::utils::format_session_date;
 use crate::{ExerciseSearchSignal, Route};
 use dioxus::prelude::*;
 
+/// Number of sessions loaded per scroll increment.
+const PAGE_SIZE: usize = 20;
+
 #[component]
 pub fn Home() -> Element {
     let sessions = storage::use_sessions();
+    #[cfg_attr(not(target_arch = "wasm32"), allow(unused_mut))]
+    let mut visible_count = use_signal(|| PAGE_SIZE);
 
     let has_active = use_memo(move || sessions.read().iter().any(|s| s.is_active()));
 
@@ -28,6 +33,45 @@ pub fn Home() -> Element {
         completed
     });
 
+    // Set up scroll-based auto-pagination via a web-sys scroll event listener.
+    // Using `use_hook` ensures the listener is registered once per component mount.
+    // `window.onscroll` assignment (rather than addEventListener) avoids accumulating
+    // duplicate listeners across component remounts, consistent with exercises.rs.
+    #[cfg(target_arch = "wasm32")]
+    use_hook(move || {
+        use wasm_bindgen::prelude::*;
+        use wasm_bindgen::JsCast;
+
+        let closure = Closure::<dyn FnMut()>::new(move || {
+            let Some(window) = web_sys::window() else {
+                return;
+            };
+            let Some(doc) = window.document() else { return };
+            let Some(el) = doc.document_element() else {
+                return;
+            };
+
+            let scroll_top = window.scroll_y().unwrap_or(0.0);
+            let client_height = el.client_height() as f64;
+            let scroll_height = el.scroll_height() as f64;
+
+            if scroll_top + client_height >= scroll_height - 300.0 {
+                let cur = *visible_count.peek();
+                let total = completed_sessions.peek().len();
+                if cur < total {
+                    visible_count.set(cur + PAGE_SIZE);
+                }
+            }
+        });
+
+        if let Some(window) = web_sys::window() {
+            let js_fn: &js_sys::Function = closure.as_ref().unchecked_ref();
+            let _ = js_sys::Reflect::set(&window, &"onscroll".into(), js_fn);
+        }
+        // Leak the closure so it lives for the page lifetime.
+        closure.forget();
+    });
+
     rsx! {
         if !*has_active.read() {
             header {
@@ -43,7 +87,7 @@ pub fn Home() -> Element {
                     p { "No past sessions yet." br {}
                     "Tap + to start your first workout!" }
                 } else {
-                    for session in completed_sessions() {
+                    for session in completed_sessions().into_iter().take(*visible_count.read()) {
                         SessionCard { key: "{session.id}", session: session.clone() }
                     }
                 }

@@ -221,6 +221,10 @@ jobs:
         id: maestro
         continue-on-error: true
         run: |
+          # Seed the exercise database with the local test fixture so tests
+          # use @exercises.test.json instead of downloading from the remote.
+          mkdir -p target/dx/log-workout/release/web/public/dist
+          cp exercises.test.json target/dx/log-workout/release/web/public/dist/exercises.json
           # Start a static file server in the background
           python3 -m http.server 8080 -d target/dx/log-workout/release/web/public &
           SERVER_PID=$!
@@ -254,9 +258,12 @@ jobs:
 
   e2e-android:
     name: Android E2E Tests (Maestro)
-    runs-on: ubuntu-latest
+    # macOS provides native hardware virtualization, making Android emulation
+    # significantly faster and more reliable than software emulation on Linux.
+    runs-on: macos-latest
     # Hard cap so the job never hangs if the emulator or Maestro stalls.
-    timeout-minutes: 30
+    # macOS runners need slightly more time for emulator boot than Linux KVM.
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
 
@@ -301,6 +308,7 @@ jobs:
 
       # Enable KVM for hardware-accelerated Android emulation on ubuntu-latest.
       - name: Enable KVM
+        if: runner.os == 'Linux'
         run: |
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
           sudo udevadm control --reload-rules
@@ -332,11 +340,42 @@ jobs:
 
             adb install "${{ steps.apk.outputs.path }}"
 
+            # Serve the local @exercises.test.json so the app fetches it from
+            # 10.0.2.2:8181 (host machine) instead of the remote GitHub URL.
+            mkdir -p /tmp/exercise_server/dist
+            cp exercises.test.json /tmp/exercise_server/dist/exercises.json
+            python3 -m http.server 8181 --directory /tmp/exercise_server &
+            EXERCISE_SERVER_PID=$!
+
             # Pre-launch the app and give the WebView time to initialise.
             adb shell monkey -p com.gfaure.logworkout -c android.intent.category.LAUNCHER 1
             sleep 10
 
+            # Configure the exercise database URL to use the local server.
+            # 10.0.2.2 is the special alias for the host machine from the emulator.
+            if adb root; then
+              DB=$(adb shell "find /data/data/com.gfaure.logworkout /data/user/0/com.gfaure.logworkout -name 'log-workout.db' 2>/dev/null" | tr -d '\r' | head -1)
+              if [ -n "$DB" ]; then
+                adb shell "sqlite3 '$DB' \"INSERT OR REPLACE INTO config VALUES ('exercise_db_url', 'http://10.0.2.2:8181/')\""
+                echo "Exercise DB URL set to http://10.0.2.2:8181/"
+              else
+                echo "Warning: database not found, exercises will load from remote"
+              fi
+            else
+              echo "Warning: adb root failed, exercises will load from remote"
+            fi
+
+            # Restart the app so it picks up the new exercise DB URL.
+            adb shell am force-stop com.gfaure.logworkout
+            sleep 2
+            adb shell monkey -p com.gfaure.logworkout -c android.intent.category.LAUNCHER 1
+            sleep 10
+
             MAESTRO_CLI_NO_ANALYTICS=1 maestro test maestro/android/
+            TEST_EXIT=$?
+
+            kill $EXERCISE_SERVER_PID 2>/dev/null || true
+            exit $TEST_EXIT
 
       - name: Upload diagnostics
         if: always()
