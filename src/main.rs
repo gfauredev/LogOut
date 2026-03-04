@@ -168,8 +168,8 @@ fn Toast() -> Element {
         }
     });
 
-    let msg = toast.read().clone();
-    if let Some(msg) = msg {
+    let guard = toast.read();
+    if let Some(msg) = guard.as_deref() {
         rsx! {
             div {
                 class: "snackbar",

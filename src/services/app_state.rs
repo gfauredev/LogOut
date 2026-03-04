@@ -140,15 +140,10 @@ pub fn save_session(session: WorkoutSession) {
     }
 
     #[cfg(not(target_arch = "wasm32"))]
-    if let Err(e) = super::storage::native_storage::put_item(
-        super::storage::native_storage::STORE_SESSIONS,
-        &session.id,
-        &session,
-    ) {
-        log::error!("Failed to persist session: {e}");
-        consume_context::<ToastSignal>()
-            .0
-            .set(Some(format!("⚠️ Failed to save session: {e}")));
+    {
+        use super::storage::native_queue;
+        let toast = consume_context::<ToastSignal>().0;
+        native_queue::enqueue(native_queue::NativeOp::PutSession(session, toast));
     }
 }
 
@@ -166,14 +161,11 @@ pub fn delete_session(id: &str) {
     }
 
     #[cfg(not(target_arch = "wasm32"))]
-    if let Err(e) = super::storage::native_storage::delete_item(
-        super::storage::native_storage::STORE_SESSIONS,
-        id,
-    ) {
-        log::error!("Failed to delete session: {e}");
-        consume_context::<ToastSignal>()
-            .0
-            .set(Some(format!("⚠️ Failed to delete session: {e}")));
+    {
+        use super::storage::native_queue;
+        let id = id.to_owned();
+        let toast = consume_context::<ToastSignal>().0;
+        native_queue::enqueue(native_queue::NativeOp::DeleteSession(id, toast));
     }
 }
 
@@ -190,15 +182,10 @@ pub fn add_custom_exercise(exercise: Exercise) {
     }
 
     #[cfg(not(target_arch = "wasm32"))]
-    if let Err(e) = super::storage::native_storage::put_item(
-        super::storage::native_storage::STORE_CUSTOM_EXERCISES,
-        &exercise.id,
-        &exercise,
-    ) {
-        log::error!("Failed to persist custom exercise: {e}");
-        consume_context::<ToastSignal>()
-            .0
-            .set(Some(format!("⚠️ Failed to save exercise: {e}")));
+    {
+        use super::storage::native_queue;
+        let toast = consume_context::<ToastSignal>().0;
+        native_queue::enqueue(native_queue::NativeOp::PutExercise(exercise, toast));
     }
 }
 
@@ -220,15 +207,10 @@ pub fn update_custom_exercise(exercise: Exercise) {
     }
 
     #[cfg(not(target_arch = "wasm32"))]
-    if let Err(e) = super::storage::native_storage::put_item(
-        super::storage::native_storage::STORE_CUSTOM_EXERCISES,
-        &exercise.id,
-        &exercise,
-    ) {
-        log::error!("Failed to persist updated custom exercise: {e}");
-        consume_context::<ToastSignal>()
-            .0
-            .set(Some(format!("⚠️ Failed to update exercise: {e}")));
+    {
+        use super::storage::native_queue;
+        let toast = consume_context::<ToastSignal>().0;
+        native_queue::enqueue(native_queue::NativeOp::PutExercise(exercise, toast));
     }
 }
 

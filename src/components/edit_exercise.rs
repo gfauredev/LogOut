@@ -48,10 +48,12 @@ pub fn EditExercise(id: String) -> Element {
         if name.is_empty() {
             return;
         }
+        let name_lower = name.to_lowercase();
 
         let updated = Exercise {
             id: exercise_id.clone(),
             name,
+            name_lower,
             category: *category_input.read(),
             force: *force_input.read(),
             level: exercise_level,

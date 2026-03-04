@@ -295,6 +295,9 @@ pub struct Exercise {
     pub id: String,
     /// Human-readable exercise name.
     pub name: String,
+    /// Pre-computed lowercase name for efficient search filtering; not serialised.
+    #[serde(skip)]
+    pub name_lower: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     /// Direction of muscular force (push / pull / static).
     pub force: Option<Force>,
@@ -325,6 +328,14 @@ pub struct Exercise {
 }
 
 impl Exercise {
+    /// Populate `name_lower` from `name`.
+    /// Call this after deserialisation or after creating a new exercise to enable
+    /// allocation-free search matching.
+    pub fn with_lowercase(mut self) -> Self {
+        self.name_lower = self.name.to_lowercase();
+        self
+    }
+
     /// Get the URL for a specific image by index.
     /// Images that are already full URLs (start with http:// or https://) are
     /// returned as-is.  Relative paths from the exercise-db are prefixed with
@@ -844,6 +855,7 @@ mod tests {
         let ex = Exercise {
             id: "ex1".into(),
             name: "Squat".into(),
+            name_lower: String::new(),
             force: None,
             level: Some(Level::Beginner),
             mechanic: None,
@@ -865,6 +877,7 @@ mod tests {
         let ex = Exercise {
             id: "ex1".into(),
             name: "Squat".into(),
+            name_lower: String::new(),
             force: None,
             level: Some(Level::Beginner),
             mechanic: None,
@@ -936,6 +949,7 @@ mod tests {
         let exercise = Exercise {
             id: "custom_123".into(),
             name: "Test Exercise".into(),
+            name_lower: String::new(),
             category: Category::Strength,
             force: Some(Force::Push),
             level: None,
@@ -952,6 +966,35 @@ mod tests {
         assert_eq!(deserialized.secondary_muscles.len(), 2);
         assert_eq!(deserialized.instructions.len(), 2);
         assert_eq!(deserialized.images.len(), 1);
+        // name_lower must NOT appear in the serialised JSON
+        assert!(!json.contains("name_lower"), "name_lower should be skipped");
+    }
+
+    #[test]
+    fn exercise_with_lowercase_sets_name_lower_and_is_excluded_from_json() {
+        let exercise = Exercise {
+            id: "ex1".into(),
+            name: "Bench Press".into(),
+            name_lower: String::new(),
+            force: None,
+            level: None,
+            mechanic: None,
+            equipment: None,
+            primary_muscles: vec![],
+            secondary_muscles: vec![],
+            instructions: vec![],
+            category: Category::Strength,
+            images: vec![],
+        }
+        .with_lowercase();
+        // with_lowercase() must populate name_lower
+        assert_eq!(exercise.name_lower, "bench press");
+        // name_lower must NOT appear in the serialised JSON
+        let json = serde_json::to_string(&exercise).unwrap();
+        assert!(!json.contains("name_lower"), "name_lower should be skipped from JSON");
+        // Deserializing the JSON produces an exercise with empty name_lower (requires with_lowercase() call to repopulate)
+        let deserialized: Exercise = serde_json::from_str(&json).unwrap();
+        assert_eq!(deserialized.name_lower, "", "name_lower should default to empty after deserialization");
     }
 
     #[test]
@@ -1263,6 +1306,7 @@ mod tests {
         let ex = Exercise {
             id: "ex1".into(),
             name: "Squat".into(),
+            name_lower: String::new(),
             force: None,
             level: Some(Level::Beginner),
             mechanic: None,
@@ -1295,6 +1339,7 @@ mod tests {
         let ex = Exercise {
             id: "ex1".into(),
             name: "Custom".into(),
+            name_lower: String::new(),
             force: None,
             level: None,
             mechanic: None,
@@ -1471,6 +1516,7 @@ mod tests {
         let ex = Exercise {
             id: "custom_1".into(),
             name: "My Exercise".into(),
+            name_lower: String::new(),
             category: Category::Strength,
             force: None,
             level: None,
