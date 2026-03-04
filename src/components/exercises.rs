@@ -5,6 +5,11 @@ use dioxus::prelude::*;
 
 /// Number of exercises loaded per scroll increment.
 const PAGE_SIZE: usize = 20;
+/// Pixels from the bottom of the page at which an auto-pagination is triggered.
+const SCROLL_THRESHOLD_PX: f64 = 300.0;
+/// Polling interval (ms) for the non-wasm scroll detection loop.
+#[cfg(not(target_arch = "wasm32"))]
+const SCROLL_POLL_INTERVAL_MS: u32 = 400;
 
 #[component]
 pub fn Exercises() -> Element {
@@ -120,7 +125,7 @@ pub fn Exercises() -> Element {
             let client_height = el.client_height() as f64;
             let scroll_height = el.scroll_height() as f64;
 
-            if scroll_top + client_height >= scroll_height - 300.0 {
+            if scroll_top + client_height >= scroll_height - SCROLL_THRESHOLD_PX {
                 let cur = *visible_count.peek();
                 let total = exercises.peek().len();
                 if cur < total {
@@ -135,6 +140,40 @@ pub fn Exercises() -> Element {
         }
         // Leak the closure so it lives for the page lifetime.
         closure.forget();
+    });
+
+    // Infinite scroll for native platforms (Android/desktop) via eval.
+    // Injects a polling interval in the WebView that sends a message whenever
+    // the user is near the bottom; Rust receives it and increments visible_count.
+    #[cfg(not(target_arch = "wasm32"))]
+    use_hook(move || {
+        let js = format!(
+            r#"
+            (function() {{
+                setInterval(function() {{
+                    var el = document.documentElement;
+                    var scrollTop = window.scrollY || el.scrollTop || 0;
+                    var clientHeight = el.clientHeight || window.innerHeight || 0;
+                    var scrollHeight = el.scrollHeight || 0;
+                    if (scrollHeight > 0 && scrollTop + clientHeight >= scrollHeight - {threshold}) {{
+                        dioxus.send(true);
+                    }}
+                }}, {interval});
+            }})()
+            "#,
+            threshold = SCROLL_THRESHOLD_PX as u32,
+            interval = SCROLL_POLL_INTERVAL_MS,
+        );
+        spawn(async move {
+            let mut eval = dioxus::prelude::document::eval(&js);
+            while eval.recv::<bool>().await.is_ok() {
+                let cur = *visible_count.peek();
+                let total = exercises.peek().len();
+                if cur < total {
+                    visible_count.set(cur + PAGE_SIZE);
+                }
+            }
+        });
     });
 
     // Visible items, annotated with whether instructions should be shown.

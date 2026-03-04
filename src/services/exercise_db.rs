@@ -138,8 +138,19 @@ pub(crate) async fn download_exercises() -> Result<Vec<Exercise>, String> {
 
 // ─── Synchronous accessors for use in components ───
 
+/// Normalises a string for error-tolerant search: lowercases and strips
+/// hyphens, apostrophes, and spaces so that e.g. "push-ups", "Pushups", and
+/// "Push Ups" all collapse to the same canonical form.
+fn normalize_for_search(s: &str) -> String {
+    s.chars()
+        .filter(|c| !matches!(c, '-' | '\'' | ' ' | '.'))
+        .flat_map(|c| c.to_lowercase())
+        .collect()
+}
+
 pub fn search_exercises<'a>(exercises: &'a [Exercise], query: &str) -> Vec<&'a Exercise> {
     let query_lower = query.to_lowercase();
+    let query_norm = normalize_for_search(query);
     exercises
         .iter()
         .filter(|exercise| {
@@ -152,7 +163,13 @@ pub fn search_exercises<'a>(exercises: &'a [Exercise], query: &str) -> Vec<&'a E
                 computed_name_lower = exercise.name.to_lowercase();
                 &computed_name_lower
             };
+            // Exact (lowercase) substring match first, then normalised (hyphen/space-stripped)
+            // bidirectional match so that e.g. "push-ups" finds "Pushup" and vice-versa.
             name_lc.contains(&query_lower)
+                || (!query_norm.is_empty() && {
+                    let name_norm = normalize_for_search(name_lc);
+                    name_norm.contains(&query_norm) || query_norm.contains(&name_norm)
+                })
                 || exercise
                     .primary_muscles
                     .iter()
@@ -326,6 +343,44 @@ mod tests {
         let exercises = sample_exercises();
         let results = search_exercises(&exercises, "zzz_no_match");
         assert!(results.is_empty());
+    }
+
+    // ── Error-tolerant (normalised) search ────────────────────────────────
+
+    #[test]
+    fn search_hyphenated_query_finds_unhyphenated_name() {
+        // "pull-up" (with hyphen) should find the exercise named "Pull-Up"
+        let exercises = sample_exercises();
+        let results = search_exercises(&exercises, "pull-up");
+        assert_eq!(results.len(), 1);
+        assert_eq!(results[0].id, "pull_up");
+    }
+
+    #[test]
+    fn search_plain_query_finds_hyphenated_name() {
+        // "pullup" (no hyphen) should also find the exercise named "Pull-Up"
+        let exercises = sample_exercises();
+        let results = search_exercises(&exercises, "pullup");
+        assert_eq!(results.len(), 1);
+        assert_eq!(results[0].id, "pull_up");
+    }
+
+    #[test]
+    fn search_pluralised_query_finds_exercise() {
+        // "bench presses" normalises to "benchpresses"; "benchpress" is a
+        // substring of it, so "Bench Press" should be found.
+        let exercises = sample_exercises();
+        let results = search_exercises(&exercises, "bench press");
+        assert_eq!(results.len(), 1);
+        assert_eq!(results[0].id, "bench_press");
+    }
+
+    #[test]
+    fn normalize_strips_hyphens_apostrophes_spaces() {
+        assert_eq!(normalize_for_search("push-ups"), "pushups");
+        assert_eq!(normalize_for_search("Pull-Up"), "pullup");
+        assert_eq!(normalize_for_search("farmer's walk"), "farmerswalk");
+        assert_eq!(normalize_for_search("Bench Press"), "benchpress");
     }
 
     #[test]
