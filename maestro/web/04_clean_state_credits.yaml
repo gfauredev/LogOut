@@ -6,4 +6,4 @@ url: http://localhost:8080
 - assertVisible: "ℹ️ Credits"
 - assertVisible: ⚙️ Exercise Database URL
 # The URL input field should show the default URL as placeholder or value
-- assertVisible: https://raw.githubusercontent.com/gfauredev/free-exercise-db/main/dist/
+- assertVisible: https://raw.githubusercontent.com/gfauredev/free-exercise-db/main/
