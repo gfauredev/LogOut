@@ -4,11 +4,11 @@ appId: com.gfaure.logworkout
 ---
 - assertVisible: LogOut
 - tapOn: "+"
-- assertVisible: "Active Session"
-- assertVisible: "Cancel Session"
+- assertVisible: Active Session
+- assertVisible: Cancel Session
 # Wait 1 second and verify the timer is running (it shows some elapsed time)
 - waitForAnimationToEnd
-- assertVisible: "0:00"
+- assertVisible: 0:00
 # Clean up: cancel the empty session
 - tapOn: "Cancel Session"
-- assertVisible: "LogOut"
+- assertVisible: LogOut

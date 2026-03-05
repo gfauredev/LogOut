@@ -4,13 +4,13 @@ url: http://localhost:8080
 ---
 - assertVisible: LogOut
 - tapOn: "+"
-- assertVisible: "Active Session"
-- assertVisible: "Cancel Session"
+- assertVisible: Active Session
+- assertVisible: Cancel Session
 # Wait 1 second and verify the timer is running (it shows some elapsed time)
 - waitForAnimationToEnd
-- assertVisible: "0:00"
+- assertVisible: 0:00
 # Clean up: cancel the empty session
 - tapOn: "Cancel Session"
 # Home page should show the empty state (no sessions), not just the static header
-- assertVisible: "No past sessions yet"
-- assertVisible: "Tap + to start your first workout"
+- assertVisible: No past sessions yet
+- assertVisible: Tap + to start your first workout

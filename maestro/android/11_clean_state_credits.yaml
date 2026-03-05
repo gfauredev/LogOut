@@ -4,7 +4,7 @@ appId: com.gfaure.logworkout
 ---
 - assertVisible: LogOut
 - tapOn: "ℹ️"
-- assertVisible: "Credits"
-- assertVisible: "⚙️ Exercise Database URL"
+- assertVisible: Credits
+- assertVisible: ⚙️ Exercise Database URL
 # The URL input field should show the default URL as placeholder or value
-- assertVisible: "https://raw.githubusercontent.com/gfauredev/free-exercise-db/main/dist/"
+- assertVisible: https://raw.githubusercontent.com/gfauredev/free-exercise-db/main/dist/

@@ -4,10 +4,10 @@ url: http://localhost:8080
 ---
 - assertVisible: LogOut
 - tapOn: "+"
-- assertVisible: "Active Session"
+- assertVisible: Active Session
 # An empty session shows "Cancel Session" (not "Finish Session")
-- assertVisible: "Cancel Session"
+- assertVisible: Cancel Session
 - tapOn: "Cancel Session"
 # Back on home, heading and empty state are visible
-- assertVisible: "LogOut"
-- assertVisible: "No past sessions yet"
+- assertVisible: LogOut
+- assertVisible: No past sessions yet

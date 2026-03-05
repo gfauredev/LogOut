@@ -5,10 +5,10 @@ url: http://localhost:8080
 - assertVisible: LogOut
 # Navigate to the exercise list first (to simulate navigating from another page)
 - tapOn: "📚"
-- assertVisible: "Exercise Database"
+- assertVisible: Exercise Database
 # Now navigate to analytics
 - tapOn: "📊"
-- assertVisible: "Analytics"
+- assertVisible: Analytics
 # Exercises from completed sessions should be available to select
-- assertVisible: "Metric"
-- assertVisible: "Exercises"
+- assertVisible: Metric
+- assertVisible: Exercises

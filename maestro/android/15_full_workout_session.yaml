@@ -8,8 +8,8 @@ appId: com.gfaure.logworkout
 
 # ── Start Session ────────────────────────────────────────────────────────────
 - tapOn: "+"
-- assertVisible: "Active Session"
-- assertVisible: "Cancel Session"
+- assertVisible: Active Session
+- assertVisible: Cancel Session
 
 # ── Search Exercise (bench press from exercises.test.json) ──────────────────
 - tapOn: "Search for an exercise..."
@@ -17,9 +17,9 @@ appId: com.gfaure.logworkout
 # Exercises are loaded from the local exercises.test.json database
 - assertVisible: Wide-Grip Barbell Bench Press
 - tapOn: "Wide-Grip Barbell Bench Press"
-- assertVisible: "Wide-Grip Barbell Bench Press"
-- assertVisible: "Weight (kg)"
-- assertVisible: "Repetitions"
+- assertVisible: Wide-Grip Barbell Bench Press
+- assertVisible: Weight (kg)
+- assertVisible: Repetitions
 
 # ── Record Exercise (set 1) ──────────────────────────────────────────────────
 - tapOn:
@@ -29,13 +29,13 @@ appId: com.gfaure.logworkout
     text: "Reps"
 - inputText: "10"
 - tapOn: "✓ Complete Exercise"
-- assertVisible: "Completed Exercises"
-- assertVisible: "Wide-Grip Barbell Bench Press"
+- assertVisible: Completed Exercises
+- assertVisible: Wide-Grip Barbell Bench Press
 
 # ── Replay Exercise (set 2, increment reps) ──────────────────────────────────
 - tapOn: "🔁"
-- assertVisible: "Wide-Grip Barbell Bench Press"
-- assertVisible: "✓ Complete Exercise"
+- assertVisible: Wide-Grip Barbell Bench Press
+- assertVisible: ✓ Complete Exercise
 # Increment reps for the second set
 - tapOn:
     text: "10"
@@ -43,15 +43,15 @@ appId: com.gfaure.logworkout
 - inputText: "12"
 - tapOn: "✓ Complete Exercise"
 # Verify second set appears
-- assertVisible: "Completed Exercises"
+- assertVisible: Completed Exercises
 
 # ── Repeat For Another Exercise (squat from exercises.test.json) ────────────
 - tapOn: "Search for an exercise..."
 - inputText: "full squat"
 - assertVisible: Barbell Full Squat
 - tapOn: "Barbell Full Squat"
-- assertVisible: "Barbell Full Squat"
-- assertVisible: "Weight (kg)"
+- assertVisible: Barbell Full Squat
+- assertVisible: Weight (kg)
 # Record first squat set
 - tapOn:
     text: "Optional"
@@ -60,10 +60,10 @@ appId: com.gfaure.logworkout
     text: "Reps"
 - inputText: "8"
 - tapOn: "✓ Complete Exercise"
-- assertVisible: "Barbell Full Squat"
+- assertVisible: Barbell Full Squat
 # Replay squat (set 2)
 - tapOn: "🔁"
-- assertVisible: "Barbell Full Squat"
+- assertVisible: Barbell Full Squat
 - tapOn:
     text: "8"
 - eraseText
@@ -74,14 +74,14 @@ appId: com.gfaure.logworkout
 # There are 4 completed exercises; remove the last one (index 0 in reversed list)
 - tapOn: "🗑️"
 # Now there should be 3 completed exercises
-- assertVisible: "Completed Exercises"
-- assertVisible: "Wide-Grip Barbell Bench Press"
-- assertVisible: "Barbell Full Squat"
+- assertVisible: Completed Exercises
+- assertVisible: Wide-Grip Barbell Bench Press
+- assertVisible: Barbell Full Squat
 # Finish Session button should be visible (session is not empty)
-- assertVisible: "Finish Session"
+- assertVisible: Finish Session
 
 # ── Finish Session ────────────────────────────────────────────────────────────
 - tapOn: "Finish Session"
 # Back on home screen with the completed session
 - assertVisible: LogOut
-- assertVisible: "Wide-Grip Barbell Bench Press"
+- assertVisible: Wide-Grip Barbell Bench Press

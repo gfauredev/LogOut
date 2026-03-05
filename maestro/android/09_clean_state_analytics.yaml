@@ -5,11 +5,11 @@ appId: com.gfaure.logworkout
 ---
 - assertVisible: LogOut
 - tapOn: "📊"
-- assertVisible: "Analytics"
+- assertVisible: Analytics
 # Select the "Weight" metric
 - tapOn: "Weight (kg)"
 # The exercise selector should show only the empty option (no exercises done yet)
-- assertVisible: "-- Select Exercise --"
+- assertVisible: -- Select Exercise --
 # Select "Repetitions" metric and verify same
 - tapOn: "Repetitions"
-- assertVisible: "-- Select Exercise --"
+- assertVisible: -- Select Exercise --

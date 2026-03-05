@@ -8,7 +8,7 @@ url: http://localhost:8080
 
 # Create a small session to delete
 - tapOn: "+"
-- assertVisible: "Active Session"
+- assertVisible: Active Session
 - tapOn: "Search for an exercise..."
 - inputText: "full squat"
 - assertVisible: Barbell Full Squat
@@ -22,14 +22,14 @@ url: http://localhost:8080
 - tapOn: "✓ Complete Exercise"
 - tapOn: "Finish Session"
 - assertVisible: LogOut
-- assertVisible: "Barbell Full Squat"
+- assertVisible: Barbell Full Squat
 
 # Delete the latest session (the one just created) using the 🗑️ button
 - tapOn: "🗑️"
 # Confirm the deletion in the modal dialog
-- assertVisible: "Delete this session?"
+- assertVisible: Delete this session?
 - tapOn: "Delete"
 # The deleted session's card should no longer be the top card,
 # but the bench press session from Story 15 is still present
 - assertVisible: LogOut
-- assertVisible: "Wide-Grip Barbell Bench Press"
+- assertVisible: Wide-Grip Barbell Bench Press

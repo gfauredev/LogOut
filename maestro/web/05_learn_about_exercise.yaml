@@ -4,16 +4,16 @@ url: http://localhost:8080
 ---
 - assertVisible: LogOut
 - tapOn: "📚"
-- assertVisible: "Exercise Database"
+- assertVisible: Exercise Database
 # Wait for exercises to load from the local exercises.test.json database
 - assertVisible: Pushups
 # Click the exercise heading to reveal instructions
 - tapOn: "Pushups"
 # Instructions should appear (exercise has instructions in the DB)
-- assertVisible: "Lie on the floor"
+- assertVisible: Lie on the floor
 # Click the exercise image to cycle to the next image
 - tapOn:
     id: ".*img.*"
     optional: true
 # Tags should be visible: category (Push), force (Push), equipment, level
-- assertVisible: "Push"
+- assertVisible: Push

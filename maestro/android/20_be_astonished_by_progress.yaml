@@ -4,14 +4,14 @@ appId: com.gfaure.logworkout
 ---
 - assertVisible: LogOut
 - tapOn: "📊"
-- assertVisible: "Analytics"
+- assertVisible: Analytics
 # Select "Weight (kg)" metric
 - tapOn: "Weight (kg)"
 # Select "Wide-Grip Barbell Bench Press" in the first exercise selector
 - tapOn: "-- Select Exercise --"
 - tapOn: "Wide-Grip Barbell Bench Press"
 # A chart should now be visible with data points
-- assertVisible: "Weight (kg)"
+- assertVisible: Weight (kg)
 # The chart SVG should be present
 - assertVisible:
     id: ".*svg.*"

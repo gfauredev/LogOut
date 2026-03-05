@@ -4,4 +4,4 @@ appId: com.gfaure.logworkout
 ---
 - assertVisible: LogOut
 - tapOn: "📊"
-- assertVisible: "Analytics"
+- assertVisible: Analytics

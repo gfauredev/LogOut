@@ -4,9 +4,9 @@ url: http://localhost:8080
 ---
 - assertVisible: LogOut
 - tapOn: "📚"
-- assertVisible: "Exercise Database"
+- assertVisible: Exercise Database
 # Wait for exercises to load from the local exercises.test.json database
 - assertVisible: ✏️ Clone & Edit
-- assertVisible: "✏️ Clone & Edit"
+- assertVisible: ✏️ Clone & Edit
 # Built-in exercises should not show "✏️ Edit" only (that's only for custom exercises)
 - assertNotVisible: "✏️ Edit"

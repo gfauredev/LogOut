@@ -4,9 +4,9 @@ url: http://localhost:8080
 ---
 # Wait for the app with session cards from Story 15
 - assertVisible: LogOut
-- assertVisible: "Wide-Grip Barbell Bench Press"
+- assertVisible: Wide-Grip Barbell Bench Press
 # Click the "Wide-Grip Barbell Bench Press" exercise tag on the session card
 - tapOn: "Wide-Grip Barbell Bench Press"
 # The Exercise List should open with the exercise name pre-filled in the search
-- assertVisible: "Exercise Database"
-- assertVisible: "Wide-Grip Barbell Bench Press"
+- assertVisible: Exercise Database
+- assertVisible: Wide-Grip Barbell Bench Press

@@ -4,12 +4,12 @@ appId: com.gfaure.logworkout
 ---
 - assertVisible: LogOut
 - tapOn: "📚"
-- assertVisible: "Exercise Database"
+- assertVisible: Exercise Database
 # Type a search term and verify results appear
 - tapOn: "Search exercises, muscles, or categories..."
 - inputText: "push"
-- assertVisible: "Exercise Database"
+- assertVisible: Exercise Database
 # Clear the search and verify the full list is restored
 - eraseText
-- assertVisible: "Exercise Database"
+- assertVisible: Exercise Database
 - assertVisible: ✏️ Clone & Edit

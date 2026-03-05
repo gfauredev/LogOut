@@ -3,10 +3,10 @@
 appId: com.gfaure.logworkout
 ---
 - assertVisible: LogOut
-- assertVisible: "Log your workOut"
-- assertVisible: "No past sessions yet"
-- assertVisible: "Tap + to start your first workout"
-- assertVisible: "📚"
-- assertVisible: "💪"
-- assertVisible: "📊"
-- assertVisible: "ℹ️"
+- assertVisible: Log your workOut
+- assertVisible: No past sessions yet
+- assertVisible: Tap + to start your first workout
+- assertVisible: 📚
+- assertVisible: 💪
+- assertVisible: 📊
+- assertVisible: ℹ️

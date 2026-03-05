@@ -4,7 +4,7 @@ url: http://localhost:8080
 ---
 - assertVisible: LogOut
 - tapOn: "📊"
-- assertVisible: "Analytics"
+- assertVisible: Analytics
 # The metric selector should be present on the analytics page
-- assertVisible: "Metric"
-- assertVisible: "Weight (kg)"
+- assertVisible: Metric
+- assertVisible: Weight (kg)

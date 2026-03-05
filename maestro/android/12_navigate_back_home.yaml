@@ -5,7 +5,7 @@ appId: com.gfaure.logworkout
 - assertVisible: LogOut
 # Navigate to the exercise browser
 - tapOn: "📚"
-- assertVisible: "Exercise Database"
+- assertVisible: Exercise Database
 # Navigate back to home with the 💪 button
 - tapOn: "💪"
-- assertVisible: "LogOut"
+- assertVisible: LogOut

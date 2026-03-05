@@ -4,7 +4,7 @@ url: http://localhost:8080
 ---
 - assertVisible: LogOut
 - tapOn: "ℹ️"
-- assertVisible: "Credits"
+- assertVisible: Credits
 # The credits page should show the app description and DB URL configuration
-- assertVisible: "Turn off your computer"
-- assertVisible: "⚙️ Exercise Database URL"
+- assertVisible: Turn off your computer
+- assertVisible: ⚙️ Exercise Database URL

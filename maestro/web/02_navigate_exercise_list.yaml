@@ -4,4 +4,4 @@ url: http://localhost:8080
 ---
 - assertVisible: LogOut
 - tapOn: "📚"
-- assertVisible: "Exercise Database"
+- assertVisible: Exercise Database

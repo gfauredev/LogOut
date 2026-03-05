@@ -5,10 +5,10 @@ url: http://localhost:8080
 ---
 - launchApp
 - assertVisible: LogOut
-- assertVisible: "Log your workOut"
-- assertVisible: "No past sessions yet"
-- assertVisible: "Tap + to start your first workout"
-- assertVisible: "📚"
-- assertVisible: "💪"
-- assertVisible: "📊"
-- assertVisible: "ℹ️"
+- assertVisible: Log your workOut
+- assertVisible: No past sessions yet
+- assertVisible: Tap + to start your first workout
+- assertVisible: 📚
+- assertVisible: 💪
+- assertVisible: 📊
+- assertVisible: ℹ️
