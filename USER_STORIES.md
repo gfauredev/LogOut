@@ -20,8 +20,6 @@ lang: en
 - [Navigate to Analytics](#navigate-to-analytics)
 - [Clean State Analytics](#clean-state-analytics)
 - [Navigate Back to Home](#navigate-back-to-home)
-- [Start Workout Session](#start-workout-session)
-- [Cancel Empty Session](#cancel-empty-session)
 - [Full Workout Session](#full-workout-session)
   - [Start Session](#start-session)
   - [Search Exercise](#search-exercise)
@@ -30,10 +28,10 @@ lang: en
   - [Repeat For Another Exercise](#repeat-for-another-exercise)
   - [Remove Exercise](#remove-exercise)
   - [Finish Session](#finish-session)
+- [Cancel Empty Session](#cancel-empty-session)
 - [Repeat Session from History](#repeat-session-from-history)
-- [Delete a Past Session](#delete-a-past-session)
+- [Delete Past Sessions](#delete-past-sessions)
 - [Lookup a Previously Done Exercise](#lookup-a-previously-done-exercise)
-- [Navigate Again to Analytics](#navigate-again-to-analytics)
 - [Be Astonished by Your Incredible Progress](#be-astonished-by-your-incredible-progress)
 
 <!--toc:end-->
@@ -44,11 +42,18 @@ tests for all supported platforms.
 - Web browser PWA test via [Maestro] in `maestro/web/`
 - Android native app via [Maestro] in `maestro/android/`
 
+User stories should be able to be executed independently, but their
+preconditions might require setting some state or sequence.
+
 ## Clean State Home
 
 **As a** _user_ and a _tester_, **I want to** see the Home in an initial state
 when I first launch the app, **so that** I’m not disturbed by existing training
 Session(s) that shouldn’t.
+
+### Preconditions
+
+- BEFORE creating any Session(s), or AFTER deleting all of them
 
 ### Acceptance Criteria
 
@@ -63,6 +68,10 @@ Session(s) that shouldn’t.
 
 **As a** _user_, **I want to** allow notifications when prompted, **so that** I
 can receive exercise and rest duration reminders.
+
+### Preconditions
+
+- Should run early as the toast might cover UI elements
 
 ### Acceptance Criteria
 
@@ -89,6 +98,10 @@ see information about the app and configure settings.
 initial state when I first launch the app, **so that** I’m not disturbed by
 existing customization that shouldn’t be.
 
+### Preconditions
+
+- BEFORE changing the exercise database URL
+
 ### Acceptance Criteria
 
 - The database URL is the default one
@@ -108,6 +121,10 @@ existing customization that shouldn’t be.
 **As a** _user_, **I want to** navigate to the Exercise List, **so that** I can
 browse available exercises.
 
+### Preconditions
+
+- AFTER changing the exercise database URL to the light, test one
+
 ### Acceptance Criteria
 
 - The bottom navigation bar contains a "📚" button
@@ -120,6 +137,11 @@ browse available exercises.
 **As a** _user_ and a _tester_, **I want to** see the Exercise List in an
 initial state when I first launch the app, **so that** I’m not disturbed by
 existing custom Exercise(s) that shouldn’t.
+
+### Preconditions
+
+- BEFORE adding any custom Exercise (they cannot be deleted)
+- AFTER changing the exercise database URL to the light, test one
 
 ### Acceptance Criteria
 
@@ -135,6 +157,7 @@ Exercise List, **so that** I can quickly find a specific one.
 
 - Exercise List page header displays a search input
 - Typing a search term filters the exercise list
+- Exercises matching the search filter are visible, others are hidden
 - The page remains functional after searching
 - Removing search term(s) shows the full exercise list again
 
@@ -196,6 +219,10 @@ view my workout progress over time.
 initial state when I first launch the app, **so that** I’m not disturbed by
 existing training data that shouldn’t.
 
+### Preconditions
+
+- BEFORE creating any Session(s), or AFTER deleting all of them
+
 ### Acceptance Criteria
 
 - Select any metric in "Weight", "Repetitions", "Distance", "Duration"
@@ -212,33 +239,6 @@ return to my workout session (history).
   - When **clicked**, it opens the Home page
 - Header displays "💪 LogOut"
 - "💪" button is slightly emphasized compared to others in bottom navigation bar
-
-## Start Workout Session
-
-**As a** _user_, **I want to** start a new workout session, **so that** I can
-begin logging my exercises.
-
-### Acceptance Criteria
-
-- The Home page contains a "+" button near the bottom center
-  - When **clicked**, it opens the Active Session _view_
-- Active Session
-  - Header displays "Active Session", "Cancel Session" button and a timer
-  - After 1 second, the timer has incremented by 1 second
-
-## Cancel Empty Session
-
-**As a** _user_, **I want to** cancel an empty workout session, **so that** I
-can return to the home screen without saving a useless, empty session.
-
-### Acceptance Criteria
-
-- Active Session
-  - "Cancel Session" button is visible if the Session is empty
-  - Tapping "Cancel Session" returns to the Home _view_
-- Home
-  - Heading "💪 LogOut" is visible again
-  - Main body still shows "No past sessions yet"
 
 ## Full Workout Session
 
@@ -317,10 +317,33 @@ it in my history and see my progress over time.
 - The home screen shows the completed session with the current date
 - A congratulation toast appears
 
+## Cancel Empty Session
+
+**As a** _user_, **I want to** cancel an empty workout session, **so that** I
+can return to the home screen without saving a useless, empty session.
+
+### Preconditions
+
+- AFTER starting a workout Session
+- BEFORE recording any exercise in the Active Session
+
+### Acceptance Criteria
+
+- Active Session
+  - "Cancel Session" button is visible if the Session is empty
+  - Tapping "Cancel Session" returns to the Home _view_
+- Home
+  - Heading "💪 LogOut" is visible again
+  - Main body still shows "No past sessions yet"
+
 ## Repeat Session from History
 
 **As a** _user_, **I want to** start a new session based on a past workout, **so
 that** I can quickly repeat the same exercises.
+
+### Preconditions
+
+- AFTER completing at least one workout Session with at least one exercise
 
 ### Acceptance Criteria
 
@@ -328,20 +351,29 @@ that** I can quickly repeat the same exercises.
 - **Click** 🔄 button on a previous Session card, a new Active Session opens
 - The "Pre-added Exercises" section contains the previous session exercises
 
-## Delete a Past Session
+## Delete Past Sessions
 
 **As a** _user_, **I want to** delete a completed session from my history, **so
 that** I can remove unwanted or accidental entries.
+
+### Preconditions
+
+- AFTER completing at least one workout Session with at least one exercise
 
 ### Acceptance Criteria
 
 - **Click** 🗑️ button on the latest Session card, a confirmation dialog opens
 - Confirming the deletion removes the session from the home screen
+- Repeat until no past session is left, main body shows "No past sessions yet"
 
 ## Lookup a Previously Done Exercise
 
 **As a** _user_, **I want to** look up exercises I have previously done, **so
 that** I can find similar exercises.
+
+### Preconditions
+
+- AFTER completing at least one workout Session with at least one exercise
 
 ### Acceptance Criteria
 
@@ -350,23 +382,15 @@ that** I can find similar exercises.
 - Exercise List
   - The search bar is pre-filled with the name of the selected exercise
 
-## Navigate Again to Analytics
-
-**As a** _user_, **I want to** navigate to the analytics page, **so that** I can
-view my workout progress over time, now that I have recorded some exercises.
-
-### Acceptance Criteria
-
-- The bottom navigation bar contains a "📊" button
-  - **Click it**, the Analytics page opens
-- Header displays "📊 Analytics"
-- "📊" button is slightly emphasized compared to others in bottom navigation bar
-
 ## Be Astonished by Your Incredible Progress
 
 **As a** _user_, **I want to** see my workout progress over time in the
 analytics page, **so that** I can be astonished by my incredible progress and
 stay motivated to continue improving further.
+
+### Preconditions
+
+- AFTER completing at least two sets of the same exercise (one or more sessions)
 
 ### Acceptance Criteria
 
