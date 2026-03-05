@@ -58,6 +58,7 @@
           };
           commonNativeBuildInputs = with pkgs; [
             binaryen
+            chromedriver
             dioxus-cli
             maestro
             pkg-config
