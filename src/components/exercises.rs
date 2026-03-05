@@ -199,7 +199,7 @@ pub fn Exercises() -> Element {
         header {
             h1 { tabindex: 0, "📚 Exercises" }
             p { "Browse {total} exercises" }
-            div { id: "search",
+            div { class: "field-and-add",
                 input {
                     r#type: "text",
                     placeholder: "Search exercises, muscles, or categories...",

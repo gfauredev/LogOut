@@ -533,11 +533,9 @@ pub fn SessionView() -> Element {
                     },
                 }
             }
-
-            // Exercise search and selection
             if current_exercise_id.read().is_none() {
                 div {
-                    div { id: "search",
+                    div { class: "field-and-add",
                         input {
                             r#type: "text",
                             placeholder: "Search for an exercise...",

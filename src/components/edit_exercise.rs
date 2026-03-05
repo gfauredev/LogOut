@@ -14,8 +14,8 @@ pub fn EditExercise(id: String) -> Element {
         Some(e) => e,
         None => {
             return rsx! {
-                main { class: "container--form",
-                    p { "Exercise not found." }
+                main { class: "edit",
+                    p { "Exercise not found" }
                     button {
                         onclick: move |_| navigator().go_back(),
                         class: "back",
@@ -78,7 +78,7 @@ pub fn EditExercise(id: String) -> Element {
             }
             h1 { "Edit Exercise" }
         }
-        main { class: "container--form",
+        main { class: "edit",
             ExerciseFormFields {
                 name_input,
                 category_input,

@@ -55,7 +55,7 @@ pub fn AddExercise() -> Element {
             }
             h1 { "Add Exercise" }
         }
-        main { class: "container--form",
+        main { class: "edit",
             ExerciseFormFields {
                 name_input,
                 category_input,

@@ -1,21 +1,28 @@
 :root {
-  /* ── Colour palette ── */
+  ////////// Colors //////////
+  // Text
+  --text-primary: #fff;
+  --text-secondary: #ccc;
+  --text-muted: #999;
+  --text-dim: #777;
+  --text-faint: #aaa;
+  --text-soft: #e0e0e0;
+  // Backgrounds
   --color-primary: #667eea;
-  --color-secondary: #764ba2;
-  --color-accent: #4facfe;
-  --color-accent-light: #00f2fe;
+  --color-primary-light: #668efa;
   --color-danger: #e74c3c;
   --color-success: #43e97b;
+  --color-secondary: #764ba2;
+  --color-accent: #4facfe;
+  --color-pink-dark: #f5576c;
+  --color-accent-light: #00f2fe;
   --color-success-light: #38f9d7;
   --color-pink: #f093fb;
-  --color-pink-dark: #f5576c;
-  --color-primary-light: #668efa;
-  /* ── Gradients ── */
-  --gradient-primary: linear-gradient(135deg, var(--color-primary) 0%, var(--color-secondary) 100%);
-  --gradient-accent: linear-gradient(135deg, var(--color-accent) 0%, var(--color-accent-light) 100%);
-  --gradient-success: linear-gradient(135deg, var(--color-success) 0%, var(--color-success-light) 100%);
-  --gradient-pink: linear-gradient(135deg, var(--color-pink) 0%, var(--color-pink-dark) 100%);
-  /* ── Surfaces ── */
+  --muscle-primary-bg: #2d7a3a;
+  --muscle-primary-fg: #c8f7d0;
+  --muscle-secondary-bg: #1a4a4a;
+  --muscle-secondary-fg: #a8edea;
+  // Surfaces
   --bg-body: #000;
   --bg-card: #111;
   --bg-elevated: #1a1a2e;
@@ -26,48 +33,55 @@
   --bg-success-muted: #0a1a0a;
   --bg-danger-muted: #2a1a1a;
   --bg-danger-light: #1a0a0a;
-  /* ── Borders ── */
+  // Borders
   --border-color: #333;
   --border-pending: #4a4a6a;
-  /* ── Text ── */
-  --text-primary: #fff;
-  --text-secondary: #ccc;
-  --text-muted: #999;
-  --text-dim: #777;
-  --text-faint: #aaa;
-  --text-soft: #e0e0e0;
-  /* ── Spacing ── */
+  // Gradients
+  --gradient-primary: linear-gradient(135deg, var(--color-primary) 0%, var(--color-secondary) 100%);
+  --gradient-accent: linear-gradient(135deg, var(--color-accent) 0%, var(--color-accent-light) 100%);
+  --gradient-success: linear-gradient(135deg, var(--color-success) 0%, var(--color-success-light) 100%);
+  --gradient-pink: linear-gradient(135deg, var(--color-pink) 0%, var(--color-pink-dark) 100%);
+  // TODO Switch to semantic colors
+  /*
+  --color-action: #667eea; // #668efa;
+  --color-delete: #e74c3c;
+  --color-invalid: #e74c3c;
+  --color-save: #43e97b;
+  --color-goal-reached: #43e97b;
+  --color-category: #667eea; // #668efa;
+  --color-force: #764ba2;
+  --color-equipment: #4facfe;
+  --color-level: #f5576c;
+  --color-muscle-primary: #2d7a3a;
+  --color-muscle-secondary: #1a4a4a;
+  */
+  ///////// Geometry //////////
   --radius: 12px;
   --spacing: 8px;
   --padding-left-list: 14px;
   --spacing-xs: 8px;
   --spacing-sm: 8px;
   --spacing-md: 8px;
-  /* ── Layout ── */
+  // Layout
   --nav-height: 70px;
   --col-min-width: 360px;
   --main-max-width: 1400px;
   --btn-fab-size: 56px;
   --btn-add-size: 42px;
   --font-size-base: 1rem;
-  /* ── Shadows ── */
+  // Z-indices
+  --z-backdrop: 1;
+  --z-modal: 2;
+  --z-fab: 3;
+  --z-nav: 4;
+  --z-toast: 5;
+  ////////// Shadows ////////// 
   --shadow-card: 0 2px 6px rgba(0, 0, 0, .3);
   --shadow-card-sm: 0 2px 4px rgba(0, 0, 0, .2);
   --shadow-nav: 0 -2px 10px rgba(0, 0, 0, .3);
   --shadow-primary: 0 4px 12px rgba(102, 126, 234, .5);
   --shadow-toast: 0 4px 16px rgba(67, 233, 123, .4);
   --shadow-btn: 0 2px 4px rgba(0, 0, 0, .3);
-  /* ── Z-indices ── */
-  --z-backdrop: 1;
-  --z-modal: 2;
-  --z-fab: 3;
-  --z-nav: 4;
-  --z-toast: 5;
-  /* ── Muscles (tag colours) ── */
-  --muscle-primary-bg: #2d7a3a;
-  --muscle-primary-fg: #c8f7d0;
-  --muscle-secondary-bg: #1a4a4a;
-  --muscle-secondary-fg: #a8edea
 }
 
 @import "generic"; // Generic definitions, arbitrary number of elements

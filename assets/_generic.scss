@@ -22,11 +22,50 @@ a:hover {
   text-decoration: underline;
 }
 
-ul {
-  margin: 8px 0 0 0;
+button {
+  border: none;
+  padding: var(--spacing);
+  background: var(--color-primary);
+  color: var(--text-primary);
+  border-radius: var(--radius);
+  cursor: pointer;
+  text-decoration: none;
+}
+
+ul,
+ol {
+  margin: var(--spacing) 0 0 0;
   padding-left: var(--padding-left-list);
   color: var(--text-muted);
   line-height: 1.8;
+}
+
+.field-and-add {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing);
+
+  &>button,
+  &>a {
+    background: var(--gradient-pink);
+    color: var(--text-primary);
+    display: block;
+  }
+}
+
+.field-and-add a,
+.field-and-add button,
+button.icon {
+  /* display: flex; */
+  /* align-items: center; */
+  /* justify-content: center; */
+  /* flex-shrink: 0; */
+  width: var(--btn-add-size);
+  height: var(--btn-add-size);
+  border-radius: 50%;
+  font-weight: bold;
+  line-height: 1;
+  /* font-size: 1.6em; */
 }
 
 select,
@@ -40,22 +79,6 @@ input[type=url] {
   box-sizing: border-box;
   background: var(--bg-card);
   color: inherit;
-}
-
-input[type=text]+a {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: var(--btn-add-size);
-  height: var(--btn-add-size);
-  flex-shrink: 0;
-  background: var(--gradient-pink);
-  color: var(--text-primary);
-  text-decoration: none;
-  border-radius: 50%;
-  font-size: 1.6em;
-  font-weight: bold;
-  line-height: 1;
 }
 
 label {
@@ -124,7 +147,6 @@ label {
   color: var(--text-faint);
 }
 
-// ── Reusable muscle-tag editor (add/remove form) ───────────────────────────
 .muscle-tags {
   display: flex;
   flex-wrap: wrap;
@@ -156,8 +178,7 @@ label {
   }
 }
 
-// ── Reusable row layout for form inputs + action button ────────────────────
-.muscle-row {
+/* .muscle-row {
   display: flex;
   gap: var(--spacing-xs);
   align-items: center;
@@ -171,17 +192,13 @@ label {
     flex: 1;
     width: auto;
   }
-}
+} */
 
 // ── Button variants ────────────────────────────────────────────────────────
 button.danger {
-  padding: 10px var(--spacing-md);
   background: var(--color-danger);
   color: var(--text-primary);
-  border: none;
-  border-radius: var(--radius);
   font-weight: bold;
-  cursor: pointer;
 }
 
 button.cancel {

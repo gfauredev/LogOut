@@ -13,12 +13,6 @@
   margin-bottom: var(--spacing);
 }
 
-#search {
-  display: flex;
-  align-items: center;
-  gap: var(--spacing);
-}
-
 main {
   flex: 1;
   width: 100%;
@@ -29,13 +23,12 @@ main {
 
 main.exercises,
 main.sessions,
-main.credits {
+main.credits,
+main.edit {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(var(--col-min-width), 1fr));
 }
 
-// When an active session is displayed, switch from grid to flex-column layout
-// so the scrollable section fills the remaining viewport height.
 main.sessions:has(.session-header) {
   display: flex;
   flex-direction: column;
@@ -547,7 +540,6 @@ main.analytics {
   }
 }
 
-// ── Credits page ──────────────────────────────────────────────────────────
 main.credits article form {
   display: flex;
   gap: 8px;
@@ -559,17 +551,10 @@ main.credits article form {
   }
 }
 
-// ── Add / Edit custom exercise pages ──────────────────────────────────────
-main.container--form {
-  grid-template-columns: 1fr;
-  max-width: 600px;
-  margin: 0 auto;
-
-  >div {
-    display: flex;
-    flex-direction: column;
-    gap: var(--spacing-md);
-  }
+main.edit>div {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
 }
 
 // ── Back button in page headers ────────────────────────────────────────────

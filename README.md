@@ -228,6 +228,18 @@ services, providing a detailed view of the codebase's API.
 
 ## TODO
 
+- Harmonize buttons across app
+  - One color for Add / Create ➕
+  - One color for Edit ✏️ and Save 💾
+  - One color for Confirm ✅ and Complete ✔️
+  - One color for Delete 🗑️ and Cancel ❌
+  - Replace Back / Return buttons with Cancel ❌ buttons
+  - One circle geometry for single icons buttons
+  - One rounded rectangle geometry for icons with text
+  - Make most buttons into single icons ones
+- Ensure the HTML structure is minimally nested and maximally semantic
+- Remove most of the classes and merge CSS rules
+- Fix favicon not found on GitHub Pages deployment
 - Sign Android app, ensure it properly installs, publish app on Play Store
 - Consider mocking exercise database with empty `[]` JSON in E2E tests so they
   can be faster and not rely on external network requests

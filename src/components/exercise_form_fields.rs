@@ -113,228 +113,187 @@ pub fn ExerciseFormFields(
 
     rsx! {
         div {
-            // Name
-            div {
-                label { class: "form-label", "Exercise Name *" }
+            label { "Exercise Name *" }
+            input {
+                r#type: "text",
+                placeholder: "e.g., Farmer's Walk",
+                value: "{name_input}",
+                oninput: move |evt| name_input.set(evt.value()),
+            }
+        }
+        div {
+            label { "Category *" }
+            select {
+                value: "{category_input.read()}",
+                oninput: move |evt| {
+                    if let Ok(cat) = serde_json::from_value::<Category>(serde_json::Value::String(evt.value())) {
+                        category_input.set(cat);
+                    }
+                },
+                for category in Category::iter() {
+                    option { value: "{category}", "{category}" }
+                }
+            }
+        }
+        div {
+            label { "Force Type" }
+            select {
+                value: if let Some(f) = *force_input.read() { f.to_string() } else { String::new() },
+                oninput: move |evt| {
+                    let val = evt.value();
+                    if val.is_empty() {
+                        force_input.set(None);
+                    } else if let Ok(f) = serde_json::from_value::<Force>(serde_json::Value::String(val)) {
+                        force_input.set(Some(f));
+                    }
+                },
+                option { value: "", "None" }
+                for force_type in Force::iter() {
+                    option { value: "{force_type}", "{force_type}" }
+                }
+            }
+        }
+        div {
+            label { "Equipment" }
+            select {
+                value: if let Some(e) = *equipment_input.read() { e.to_string() } else { String::new() },
+                oninput: move |evt| {
+                    let val = evt.value();
+                    if val.is_empty() {
+                        equipment_input.set(None);
+                    } else if let Ok(e) = serde_json::from_value::<Equipment>(serde_json::Value::String(val)) {
+                        equipment_input.set(Some(e));
+                    }
+                },
+                option { value: "", "None" }
+                for equipment in Equipment::iter() {
+                    option { value: "{equipment}", "{equipment}" }
+                }
+            }
+        }
+        div {
+            label { "Primary Muscles" }
+            div { class: "field-and-add",
+                select {
+                    value: "{muscle_input}",
+                    oninput: move |evt| muscle_input.set(evt.value()),
+                    option { value: "", "Select muscle..." }
+                    for muscle in Muscle::iter() {
+                        option { value: "{muscle}", "{muscle}" }
+                    }
+                }
+                button {
+                    onclick: add_muscle,
+                    "+"
+                }
+            }
+            if !muscles_list.read().is_empty() {
+                div {
+                    for muscle in muscles_list.read().iter() {
+                        div { key: "{muscle}",
+                            button { class: "danger",
+                                onclick: {
+                                    let m = *muscle;
+                                    move |_| remove_muscle(m)
+                                },
+                                "{muscle}"
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        div {
+            label { "Secondary Muscles" }
+            div { class: "field-and-add",
+                select {
+                    value: "{secondary_muscle_input}",
+                    oninput: move |evt| secondary_muscle_input.set(evt.value()),
+                    option { value: "", "Select muscle..." }
+                    for muscle in Muscle::iter() {
+                        option { value: "{muscle}", "{muscle}" }
+                    }
+                }
+                button {
+                    onclick: add_secondary_muscle,
+                    "+"
+                }
+            }
+            if !secondary_muscles_list.read().is_empty() {
+                div {
+                    for muscle in secondary_muscles_list.read().iter() {
+                        div { key: "{muscle}", class: "secondary",
+                            button { class: "danger",
+                                onclick: {
+                                    let m = *muscle;
+                                    move |_| remove_secondary_muscle(m)
+                                },
+                                "{muscle}"
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        div {
+            label { "Instructions" }
+            div { class: "field-and-add",
                 input {
                     r#type: "text",
-                    placeholder: "e.g., Farmer's Walk",
-                    value: "{name_input}",
-                    oninput: move |evt| name_input.set(evt.value()),
-                    class: "form-input",
+                    placeholder: "Add an instruction step...",
+                    value: "{instructions_input}",
+                    oninput: move |evt| instructions_input.set(evt.value()),
+                }
+                button {
+                    onclick: add_instruction,
+                    "+"
                 }
             }
-
-            // Category
-            div {
-                label { class: "form-label", "Category *" }
-                select {
-                    value: "{category_input.read()}",
-                    oninput: move |evt| {
-                        if let Ok(cat) = serde_json::from_value::<Category>(serde_json::Value::String(evt.value())) {
-                            category_input.set(cat);
-                        }
-                    },
-                    class: "form-select",
-                    for category in Category::iter() {
-                        option { value: "{category}", "{category}" }
-                    }
-                }
-            }
-
-            // Force type
-            div {
-                label { class: "form-label", "Force Type" }
-                select {
-                    value: if let Some(f) = *force_input.read() { f.to_string() } else { String::new() },
-                    oninput: move |evt| {
-                        let val = evt.value();
-                        if val.is_empty() {
-                            force_input.set(None);
-                        } else if let Ok(f) = serde_json::from_value::<Force>(serde_json::Value::String(val)) {
-                            force_input.set(Some(f));
-                        }
-                    },
-                    class: "form-select",
-                    option { value: "", "None" }
-                    for force_type in Force::iter() {
-                        option { value: "{force_type}", "{force_type}" }
-                    }
-                }
-            }
-
-            // Equipment
-            div {
-                label { class: "form-label", "Equipment" }
-                select {
-                    value: if let Some(e) = *equipment_input.read() { e.to_string() } else { String::new() },
-                    oninput: move |evt| {
-                        let val = evt.value();
-                        if val.is_empty() {
-                            equipment_input.set(None);
-                        } else if let Ok(e) = serde_json::from_value::<Equipment>(serde_json::Value::String(val)) {
-                            equipment_input.set(Some(e));
-                        }
-                    },
-                    class: "form-select",
-                    option { value: "", "None" }
-                    for equipment in Equipment::iter() {
-                        option { value: "{equipment}", "{equipment}" }
-                    }
-                }
-            }
-
-            // Primary muscles
-            div {
-                label { class: "form-label", "Primary Muscles" }
-
-                div { class: "muscle-row",
-                    select {
-                        value: "{muscle_input}",
-                        oninput: move |evt| muscle_input.set(evt.value()),
-                        option { value: "", "Select muscle..." }
-                        for muscle in Muscle::iter() {
-                            option { value: "{muscle}", "{muscle}" }
-                        }
-                    }
-                    button {
-                        onclick: add_muscle,
-                        class: "btn btn--accent-lg",
-                        "Add"
-                    }
-                }
-
-                if !muscles_list.read().is_empty() {
-                    div { class: "muscle-tags",
-                        for muscle in muscles_list.read().iter() {
-                            div { key: "{muscle}",
-                                span { "{muscle}" }
-                                button {
-                                    onclick: {
-                                        let m = *muscle;
-                                        move |_| remove_muscle(m)
-                                    },
-                                    "×"
-                                }
+            if !instructions_list.read().is_empty() {
+                ol {
+                    for (idx, instruction) in instructions_list.read().iter().enumerate() {
+                        li { key: "{idx}",
+                            span { "{instruction}" }
+                            button { class: "danger icon",
+                                onclick: move |_| remove_instruction(idx),
+                                "🗑️"
                             }
                         }
                     }
                 }
             }
-
-            // Secondary muscles
-            div {
-                label { class: "form-label", "Secondary Muscles" }
-
-                div { class: "muscle-row",
-                    select {
-                        value: "{secondary_muscle_input}",
-                        oninput: move |evt| secondary_muscle_input.set(evt.value()),
-                        option { value: "", "Select muscle..." }
-                        for muscle in Muscle::iter() {
-                            option { value: "{muscle}", "{muscle}" }
-                        }
-                    }
-                    button {
-                        onclick: add_secondary_muscle,
-                        class: "btn btn--accent-lg",
-                        "Add"
-                    }
+        }
+        div {
+            label { "Images (URLs)" }
+            div { class: "field-and-add",
+                input {
+                    r#type: "url",
+                    placeholder: "https://example.com/image.jpg",
+                    value: "{image_url_input}",
+                    oninput: move |evt| image_url_input.set(evt.value()),
                 }
-
-                if !secondary_muscles_list.read().is_empty() {
-                    div { class: "muscle-tags",
-                        for muscle in secondary_muscles_list.read().iter() {
-                            div { key: "{muscle}", class: "secondary",
-                                span { "{muscle}" }
-                                button {
-                                    onclick: {
-                                        let m = *muscle;
-                                        move |_| remove_secondary_muscle(m)
-                                    },
-                                    "×"
-                                }
+                button {
+                    onclick: add_image,
+                    "+"
+                }
+            }
+            if !images_list.read().is_empty() {
+                div {
+                    for (idx, url) in images_list.read().iter().enumerate() {
+                        div { key: "{idx}",
+                            button { class: "danger",
+                                onclick: move |_| remove_image(idx),
+                                "{url}"
                             }
                         }
                     }
                 }
             }
-
-            // Instructions
-            div {
-                label { class: "form-label", "Instructions" }
-
-                div { class: "muscle-row",
-                    input {
-                        r#type: "text",
-                        placeholder: "Add an instruction step...",
-                        value: "{instructions_input}",
-                        oninput: move |evt| instructions_input.set(evt.value()),
-                        class: "form-input",
-                    }
-                    button {
-                        onclick: add_instruction,
-                        class: "btn btn--accent-lg",
-                        "Add"
-                    }
-                }
-
-                if !instructions_list.read().is_empty() {
-                    ol {
-                        for (idx, instruction) in instructions_list.read().iter().enumerate() {
-                            li { key: "{idx}",
-                                span { "{instruction}" }
-                                button {
-                                    onclick: move |_| remove_instruction(idx),
-                                    "×"
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-
-            // Images
-            div {
-                label { class: "form-label", "Images (URLs)" }
-
-                div { class: "muscle-row",
-                    input {
-                        r#type: "url",
-                        placeholder: "https://example.com/image.jpg",
-                        value: "{image_url_input}",
-                        oninput: move |evt| image_url_input.set(evt.value()),
-                        class: "form-input",
-                    }
-                    button {
-                        onclick: add_image,
-                        class: "btn btn--accent-lg",
-                        "Add"
-                    }
-                }
-
-                if !images_list.read().is_empty() {
-                    div { class: "muscle-tags",
-                        for (idx, url) in images_list.read().iter().enumerate() {
-                            div { key: "{idx}",
-                                span { class: "image-url-tag", "{url}" }
-                                button {
-                                    onclick: move |_| remove_image(idx),
-                                    "×"
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-
-            // Save button
-            button {
-                onclick: move |_| on_save.call(()),
-                disabled: name_input.read().trim().is_empty(),
-                class: "btn btn--primary",
-                "💾 {save_label}"
-            }
+        }
+        button {
+            onclick: move |_| on_save.call(()),
+            disabled: name_input.read().trim().is_empty(),
+            "💾 {save_label}"
         }
     }
 }
