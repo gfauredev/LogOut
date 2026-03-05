@@ -2,7 +2,8 @@
 # Before any custom exercises are added, built-in exercises show "Clone & Edit".
 url: http://localhost:8080
 ---
-- tapOn: "📚"
+- tapOn:
+    css: "nav > .exercises"
 - assertVisible: "📚 Exercises"
 # Wait for exercises to load from the local exercises.test.json database
 - assertVisible: ✏️ Clone & Edit

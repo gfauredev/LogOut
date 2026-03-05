@@ -3,7 +3,8 @@
 url: http://localhost:8080
 ---
 # Navigate to the exercise browser
-- tapOn: "📚"
+- tapOn:
+    css: "nav > .exercises"
 - assertVisible: "📚 Exercises"
 # Wait for exercises to load from the local exercises.test.json database
 - assertVisible: ✏️ Clone & Edit

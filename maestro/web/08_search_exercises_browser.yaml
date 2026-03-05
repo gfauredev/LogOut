@@ -2,7 +2,8 @@
 # Search for exercises in the Exercise List and verify filtering works.
 url: http://localhost:8080
 ---
-- tapOn: "📚"
+- tapOn:
+    css: "nav > .exercises"
 - assertVisible: "📚 Exercises"
 # Type a search term and verify results appear
 - tapOn: "Search exercises, muscles, or categories..."

@@ -2,7 +2,7 @@
 # Select an exercise in Analytics and see a chart of progress over time.
 url: http://localhost:8080
 ---
-- tapOn: "📊"
+- tapOn: "nav > .analytics"
 - assertVisible: "📊 Analytics"
 # Select "Repetitions" metric (as we improved from 10 to 12 reps in Story 17)
 - tapOn: "Repetitions"

@@ -1,9 +1,10 @@
 # User Story 10 – Add Custom Exercise (Web PWA)
-# Navigate to the exercise browser, add a custom exercise, then find it by searching.
+# Navigate to the exercise browser, add a custom exercise, then search it
 url: http://localhost:8080
 ---
 # Navigate to the exercise browser
-- tapOn: "📚"
+- tapOn:
+    css: "nav > .exercises"
 - assertVisible: "📚 Exercises"
 # Tap the "+" button to open the Add Exercise form
 - tapOn:

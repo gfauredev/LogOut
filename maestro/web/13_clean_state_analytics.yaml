@@ -3,7 +3,8 @@
 # because no workout sessions have been completed yet.
 url: http://localhost:8080
 ---
-- tapOn: "📊"
+- tapOn:
+    css: "nav > .analytics"
 - assertVisible: "📊 Analytics"
 # Select the "Weight" metric
 - tapOn: "Weight (kg)"

@@ -2,7 +2,8 @@
 # Navigate to the Credits page via the bottom navigation bar.
 url: http://localhost:8080
 ---
-- tapOn: "ℹ️"
+- tapOn:
+    css: "nav > .credits"
 - assertVisible: "ℹ️ Credits"
 # The credits page should show the app description and DB URL configuration
 - assertVisible: Turn off your computer

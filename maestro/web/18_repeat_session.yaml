@@ -5,11 +5,14 @@ url: http://localhost:8080
 # Wait for the app to load with the session from Story 15
 - assertVisible: Wide-Grip Barbell Bench Press
 # Tap the 🔄 button to start a repeat session
-- tapOn: "🔄"
+- tapOn:
+    css: "button[title=Start a new session based on this one]"
 # A new active session should open with exercises pre-added
-- assertVisible: Active Session
+- assertVisible:
+    css: ".session-header h2"
 - assertVisible: Pre-added Exercises
 - assertVisible: Wide-Grip Barbell Bench Press
 - assertVisible: Barbell Full Squat
 # Cancel the repeat session to preserve state for next stories
-- tapOn: "Cancel Session"
+- tapOn:
+    css: ".btn--cancel-session"

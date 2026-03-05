@@ -2,7 +2,8 @@
 # Clicking an exercise heading reveals its details: instructions, image, and tags.
 url: http://localhost:8080
 ---
-- tapOn: "📚"
+- tapOn:
+    css: "nav > .exercises"
 - assertVisible: "📚 Exercises"
 # Wait for exercises to load
 - assertVisible: Pushups

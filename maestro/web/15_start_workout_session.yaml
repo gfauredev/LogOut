@@ -1,14 +1,16 @@
 # User Story 15 – Start Workout Session (Web PWA)
-# Start a new workout session from the home screen.
+# Start a new workout session from the home screen
 url: http://localhost:8080
 ---
-- tapOn: "+"
-- assertVisible: Active Session
-- assertVisible: Cancel Session
-# Wait for the timer to start and increment by 1 second
-- assertVisible: "00:01"
-# Clean up: cancel the empty session
-- tapOn: "Cancel Session"
+- tapOn:
+    css: ".new-session-button"
+- assertVisible:
+    css: ".session-header h2"
+- assertVisible:
+    css: ".btn--cancel-session"
+- assertVisible: "00:01" # Wait for the timer to start and increment by 1 second
+- tapOn: # Clean up: cancel the empty session
+    css: ".btn--cancel-session"
 # Home page should show the empty state (no sessions), and the header
 - assertVisible: "💪 LogOut"
 - assertVisible: No past sessions yet
