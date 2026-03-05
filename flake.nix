@@ -116,6 +116,7 @@
             OPENSSL_DIR = "${env.pkgs.openssl.dev}";
             OPENSSL_LIB_DIR = "${env.pkgs.openssl.out}/lib";
             shellHook = ''
+              export SE_CACHE_PATH="$PWD/.selenium"
               echo "💪 LogOut Dev Environment Ready"
               echo "- Rust $(rustc --version)"
               echo "- Dioxus CLI $(dx --version)"
