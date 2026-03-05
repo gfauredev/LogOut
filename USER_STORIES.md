@@ -100,8 +100,6 @@ existing customization that shouldn’t be.
 
 ### Acceptance Criteria
 
-<!-- TODO Consider mocking default database instead -->
-
 - Input the test exercise database address (`https://localhost:8080`)
 - Click the save button, database URL is saved without errors
 

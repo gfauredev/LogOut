@@ -243,6 +243,9 @@ services, providing a detailed view of the codebase's API.
 ## TODO
 
 - Sign Android app, ensure it properly installs, publish app on Play Store
+- Consider mocking exercise database with empty `[]` JSON in E2E tests so they
+  can be faster and not rely on external network requests
+  - User story 5 changes it to local test DB `public/exercises.json` anyway
 
 [LogOut]: https://gfauredev.github.io/LogOut
 [800+ exercises]: https://github.com/yuhonas/free-exercise-db
