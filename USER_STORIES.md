@@ -7,6 +7,9 @@ lang: en
 <!--toc:start-->
 
 - [Clean State Home](#clean-state-home)
+- [Navigate to Credits](#navigate-to-credits)
+- [Clean State Credits](#clean-state-credits)
+- [Change Exercises Database](#change-exercises-database)
 - [Navigate to Exercise List](#navigate-to-exercise-list)
 - [Clean State Exercise List](#clean-state-exercise-list)
 - [Search Exercises in Browser](#search-exercises-in-browser)
@@ -15,8 +18,6 @@ lang: en
 - [Edit a Cloned Exercise](#edit-a-cloned-exercise)
 - [Navigate to Analytics](#navigate-to-analytics)
 - [Clean State Analytics](#clean-state-analytics)
-- [Navigate to Credits](#navigate-to-credits)
-- [Clean State Credits](#clean-state-credits)
 - [Navigate Back to Home](#navigate-back-to-home)
 - [Start Workout Session](#start-workout-session)
 - [Cancel Empty Session](#cancel-empty-session)
@@ -52,6 +53,38 @@ Session(s) that shouldn’t.
 
 - Header contains "LogOut", "Log your workOut"
 - Main body contains "No past sessions yet", "Tap + to start your first workout"
+
+## Navigate to Credits
+
+**As a** _user_, **I want to** navigate to the credits page, **so that** I can
+see information about the app and configure settings.
+
+### Acceptance Criteria
+
+- The bottom navigation bar contains a "ℹ️" button
+  - When **clicked**, it opens the Credits page
+- Header displays "ℹ️ Credits"
+- "ℹ️" button is slightly emphasized compared to others in bottom navigation bar
+
+## Clean State Credits
+
+**As a** _user_ and a _tester_, **I want to** see the _Credits_ page in a clean,
+initial state when I first launch the app, **so that** I’m not disturbed by
+existing customization that shouldn’t be.
+
+### Acceptance Criteria
+
+- The database URL is the default one
+
+## Change Exercises Database
+
+**As a** _user_ and a _tester_, **I want to** change the exercises database URL,
+**so that** I can use a custom database instead of the default one.
+
+### Acceptance Criteria
+
+- Input the test exercise database address (`https://localhost:8080`)
+- Click the save button, database URL is saved without errors
 
 ## Navigate to Exercise List
 
@@ -150,28 +183,6 @@ existing training data that shouldn’t.
 
 - Select any metric in "Weight", "Repetitions", "Distance", "Duration"
 - Then, no exercise can be selected, as none has been done yet
-
-## Navigate to Credits
-
-**As a** _user_, **I want to** navigate to the credits page, **so that** I can
-see information about the app and configure settings.
-
-### Acceptance Criteria
-
-- The bottom navigation bar contains a "ℹ️" button
-  - When **clicked**, it opens the Credits page
-- Header displays "ℹ️ Credits"
-- "ℹ️" button is slightly emphasized compared to others in bottom navigation bar
-
-## Clean State Credits
-
-**As a** _user_ and a _tester_, **I want to** see the _Credits_ page in a clean,
-initial state when I first launch the app, **so that** I’m not disturbed by
-existing customization that shouldn’t be.
-
-### Acceptance Criteria
-
-- The database URL is the default one
 
 ## Navigate Back to Home
 

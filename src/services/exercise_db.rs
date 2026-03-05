@@ -22,7 +22,7 @@ const LAST_FETCH_KEY: &str = "exercise_db_last_fetch";
 /// Returns the URL for the exercises JSON file.
 /// Available on all platforms; `get_exercise_db_url()` handles per-platform config.
 fn exercises_json_url() -> String {
-    format!("{}dist/exercises.json", crate::utils::get_exercise_db_url())
+    format!("{}exercises.json", crate::utils::get_exercise_db_url())
 }
 
 /// Provide the exercises signal in the Dioxus context.
@@ -529,7 +529,7 @@ mod tests {
             url.contains("gfauredev"),
             "Expected gfauredev fork URL, got: {url}"
         );
-        assert!(url.ends_with("dist/exercises.json"));
+        assert!(url.ends_with("exercises.json"));
     }
 
     #[cfg(not(target_arch = "wasm32"))]

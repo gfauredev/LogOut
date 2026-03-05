@@ -1,7 +1,7 @@
 /// Base URL for the exercise database fork (single source of truth).
 /// All exercise data (JSON catalog, images) is served from this origin.
 pub(crate) const EXERCISE_DB_BASE_URL: &str =
-    "https://raw.githubusercontent.com/gfauredev/free-exercise-db/main/";
+    "https://raw.githubusercontent.com/gfauredev/free-exercise-db/main/dist/";
 
 /// localStorage / config-file key used to store a user-configured exercise database URL.
 pub(crate) const EXERCISE_DB_URL_STORAGE_KEY: &str = "exercise_db_url";
