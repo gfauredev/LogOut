@@ -62,6 +62,7 @@
             maestro
             pkg-config
             rustToolchain
+            ungoogled-chromium
           ];
           commonBuildInputs =
             with pkgs;
@@ -95,7 +96,7 @@
               sass
               scss-lint
               strace
-              # taplo # TOML LSP
+              taplo # TOML LSP
               # typescript
               # typescript-language-server # TS LSP
               vscode-langservers-extracted # HTML/CSS/JS(ON)
