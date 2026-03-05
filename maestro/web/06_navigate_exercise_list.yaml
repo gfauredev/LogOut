@@ -3,4 +3,4 @@
 url: http://localhost:8080
 ---
 - tapOn: "📚"
-- assertVisible: Exercise Database
+- assertVisible: "📚 Exercises"

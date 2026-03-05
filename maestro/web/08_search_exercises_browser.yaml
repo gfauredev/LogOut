@@ -3,12 +3,13 @@
 url: http://localhost:8080
 ---
 - tapOn: "📚"
-- assertVisible: Exercise Database
+- assertVisible: "📚 Exercises"
 # Type a search term and verify results appear
 - tapOn: "Search exercises, muscles, or categories..."
-- inputText: "push"
-- assertVisible: Exercise Database
+- inputText: "pullups"
+- assertVisible: "Pullups"
 # Clear the search and verify the full list is restored
 - eraseText
-- assertVisible: Exercise Database
+- assertVisible: "📚 Exercises"
 - assertVisible: ✏️ Clone & Edit
+- assertVisible: "Trail Running/Walking"

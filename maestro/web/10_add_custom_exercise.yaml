@@ -4,7 +4,7 @@ url: http://localhost:8080
 ---
 # Navigate to the exercise browser
 - tapOn: "📚"
-- assertVisible: Exercise Database
+- assertVisible: "📚 Exercises"
 # Tap the "+" button to open the Add Exercise form
 - tapOn:
     text: "+"
@@ -16,7 +16,7 @@ url: http://localhost:8080
 # Save the exercise
 - tapOn: "💾 Save Exercise"
 # We should be back on the exercise browser
-- assertVisible: Exercise Database
+- assertVisible: "📚 Exercises"
 # Search for the new exercise
 - tapOn: "Search exercises, muscles, or categories..."
 - inputText: "My Test Exercise"

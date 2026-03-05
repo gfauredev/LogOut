@@ -3,14 +3,14 @@
 url: http://localhost:8080
 ---
 - tapOn: "📊"
-- assertVisible: Analytics
-# Select "Weight (kg)" metric
-- tapOn: "Weight (kg)"
+- assertVisible: "📊 Analytics"
+# Select "Repetitions" metric (as we improved from 10 to 12 reps in Story 17)
+- tapOn: "Repetitions"
 # Select "Wide-Grip Barbell Bench Press" in the first exercise selector
 - tapOn: "-- Select Exercise --"
 - tapOn: "Wide-Grip Barbell Bench Press"
-# A chart should now be visible with data points
-- assertVisible: Weight (kg)
+# A chart should now be visible with the metric label and data points
+- assertVisible: "Repetitions"
 # The chart SVG should be present
 - assertVisible:
     id: ".*svg.*"

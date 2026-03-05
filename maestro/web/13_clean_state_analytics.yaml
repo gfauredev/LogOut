@@ -4,7 +4,7 @@
 url: http://localhost:8080
 ---
 - tapOn: "📊"
-- assertVisible: Analytics
+- assertVisible: "📊 Analytics"
 # Select the "Weight" metric
 - tapOn: "Weight (kg)"
 # The exercise selector should show only the empty option (no exercises done yet)

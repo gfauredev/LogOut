@@ -3,7 +3,7 @@
 url: http://localhost:8080
 ---
 - tapOn: "📚"
-- assertVisible: Exercise Database
+- assertVisible: "📚 Exercises"
 # Wait for exercises to load
 - assertVisible: Pushups
 # Click the exercise heading to reveal instructions

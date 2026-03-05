@@ -3,7 +3,7 @@
 url: http://localhost:8080
 ---
 - tapOn: "📚"
-- assertVisible: Exercise Database
+- assertVisible: "📚 Exercises"
 # Wait for exercises to load from the local exercises.test.json database
 - assertVisible: ✏️ Clone & Edit
 - assertVisible: ✏️ Clone & Edit

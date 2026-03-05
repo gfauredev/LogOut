@@ -4,9 +4,10 @@ url: http://localhost:8080
 ---
 # Navigate to the exercise browser
 - tapOn: "📚"
-- assertVisible: Exercise Database
+- assertVisible: "📚 Exercises"
 # Navigate back to home with the 💪 button
 - tapOn: "💪"
+- assertVisible: "💪 LogOut"
 # The home page heading and empty-state content should be visible (not just the nav header)
 - assertVisible: No past sessions yet
 - assertVisible: Tap + to start your first workout

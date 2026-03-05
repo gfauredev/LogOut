@@ -3,11 +3,11 @@
 url: http://localhost:8080
 ---
 - tapOn: "ℹ️"
-- assertVisible: Credits
+- assertVisible: "ℹ️ Credits"
 - assertVisible: ⚙️ Exercise Database URL
 - tapOn:
     id: "db_url_input"
-- inputText: "http://localhost:8080"
+- inputText: "https://localhost:8080"
 - tapOn: "💾"
 # The URL should now be set and saved.
-- assertVisible: "http://localhost:8080"
+- assertVisible: "https://localhost:8080"

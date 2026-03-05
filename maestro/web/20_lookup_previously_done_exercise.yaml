@@ -7,5 +7,5 @@ url: http://localhost:8080
 # Click the "Wide-Grip Barbell Bench Press" exercise tag on the session card
 - tapOn: "Wide-Grip Barbell Bench Press"
 # The Exercise List should open with the exercise name pre-filled in the search
-- assertVisible: Exercise Database
+- assertVisible: "📚 Exercises"
 - assertVisible: Wide-Grip Barbell Bench Press

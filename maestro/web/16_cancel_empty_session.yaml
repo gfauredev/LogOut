@@ -8,4 +8,5 @@ url: http://localhost:8080
 - assertVisible: Cancel Session
 - tapOn: "Cancel Session"
 # Back on home, heading and empty state are visible
-- assertVisible: No past sessions yet
+- assertVisible: "💪 LogOut"
+- assertVisible: "No past sessions yet"

@@ -81,5 +81,9 @@ url: http://localhost:8080
 
 # ── Finish Session ────────────────────────────────────────────────────────────
 - tapOn: "Finish Session"
-# Back on home screen with the completed session
+# A congratulation toast appears
+- assertVisible: "🎉 Great workout! Session complete!"
+# Back on home screen with the completed session and header
+- assertVisible: "💪 LogOut"
+- assertVisible: "Today"
 - assertVisible: Wide-Grip Barbell Bench Press
