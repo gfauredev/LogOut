@@ -9,7 +9,7 @@ appId: com.gfaure.logworkout
 # Navigate to the exercise browser
 - tapOn: "📚"
 - assertVisible: "Exercise Database"
-# Wait for exercises to load from the local @exercises.test.json database
+# Wait for exercises to load from the local exercises.test.json database
 - extendedWaitUntil:
     visible:
       text: "✏️ Clone & Edit"

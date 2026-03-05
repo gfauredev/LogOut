@@ -14,10 +14,10 @@ url: http://localhost:8080
 - assertVisible: "Active Session"
 - assertVisible: "Cancel Session"
 
-# ── Search Exercise (bench press from @exercises.test.json) ──────────────────
+# ── Search Exercise (bench press from exercises.test.json) ──────────────────
 - tapOn: "Search for an exercise..."
 - inputText: "bench press"
-# Exercises are loaded from the local @exercises.test.json database
+# Exercises are loaded from the local exercises.test.json database
 - extendedWaitUntil:
     visible:
       text: "Wide-Grip Barbell Bench Press"
@@ -51,7 +51,7 @@ url: http://localhost:8080
 # Verify second set appears
 - assertVisible: "Completed Exercises"
 
-# ── Repeat For Another Exercise (squat from @exercises.test.json) ────────────
+# ── Repeat For Another Exercise (squat from exercises.test.json) ────────────
 - tapOn: "Search for an exercise..."
 - inputText: "full squat"
 - extendedWaitUntil:
