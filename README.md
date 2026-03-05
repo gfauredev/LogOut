@@ -14,9 +14,6 @@ lang: en
 - [Code Quality & Conventions](#code-quality-conventions)
   - [Unit Testing](#unit-testing)
   - [End-to-End Testing](#end-to-end-testing)
-    - [Prerequisites](#prerequisites)
-    - [Running the web tests](#running-the-web-tests)
-    - [Running the Android tests](#running-the-android-tests)
   - [Documentation](#documentation)
   - [Other](#other)
 - [TODO](#todo)
@@ -178,40 +175,29 @@ cargo llvm-cov --bin log-workout --lcov --output-path lcov.info # LCOV report
 
 ### End-to-End Testing
 
-End-to-end tests exercise the full application using [Maestro]. All 20 user
-stories from `USER_STORIES.md` are covered with two test flows each: one for the
-PWA (beta web platform) and one for native Android. Tests are numbered `01`–`20`
-matching the user story order so each test can rely on state from the previous
-ones when run as a full suite.
-
-#### Web PWA
+End-to-end tests exercise the full application using [Maestro]. All
+[user stories](./USER_STORIES.md) are covered with two test flows each: one for
+the PWA and one for native Android. Tests are numbered `01`–`20` matching the
+user story order, so each test can rely on state from the previous ones when run
+as a full suite.
 
 ```sh
 # Build and serve the PWA
-dx build --platform web --release
-dx serve --platform web
-
-# In a second terminal, run all web E2E tests in story order
-maestro test --platform web maestro/web/
-
+dx serve --open false --interactive false --web --release
+ # In a second terminal, run all web E2E tests in story order
+maestro test maestro/web/
 # Or run a single test file
-maestro test --platform web maestro/web/01_clean_state_home.yaml
+maestro test maestro/web/01_clean_state_home.yaml
+# Or run the tests headless
+maestro test --headless maestro/web/
 ```
 
 > [!NOTE]
 > The first run of tests that touch the exercise browser may take up to 30
 > seconds while the exercise database is downloaded from the remote URL.
 
-#### Android Application
-
-```sh
-# Start an Android emulator (or connect a physical device) with the app installed,
-# then run all Android E2E tests in story order
-maestro test maestro/android/
-
-# Or run a single test file
-maestro test maestro/android/01_clean_state_home.yaml
-```
+Replace `web` by `android` in the above commands to run the Android E2E tests.
+An emulator must be running, or a physical device must be connected via `ADB`.
 
 > [!TIP]
 > Tests are designed to run sequentially and build on each other's state. Run
