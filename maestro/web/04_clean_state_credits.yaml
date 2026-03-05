@@ -1,4 +1,4 @@
-# User Story 11 – Clean State Credits (Web PWA)
+# User Story 4 – Clean State Credits (Web PWA)
 # The Credits page shows the default exercise database URL.
 url: http://localhost:8080
 ---

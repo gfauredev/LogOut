@@ -1,4 +1,4 @@
-# User Story 12 – Navigate Back to Home (Web PWA)
+# User Story 14 – Navigate Back to Home (Web PWA)
 # After navigating away, the "💪" button returns to the Home page.
 url: http://localhost:8080
 ---

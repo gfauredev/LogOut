@@ -1,4 +1,4 @@
-# User Story 14 – Cancel Empty Session (Android)
+# User Story 16 – Cancel Empty Session (Android)
 # Cancel an empty workout session and return to the home screen.
 appId: com.gfaure.logworkout
 ---

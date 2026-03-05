@@ -1,4 +1,4 @@
-# User Story 9 – Clean State Analytics (Web PWA)
+# User Story 13 – Clean State Analytics (Web PWA)
 # In the analytics page, selecting a metric shows no exercises can be selected
 # because no workout sessions have been completed yet.
 url: http://localhost:8080

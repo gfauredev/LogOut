@@ -1,4 +1,4 @@
-# User Story 18 – Lookup a Previously Done Exercise (Web PWA)
+# User Story 20 – Lookup a Previously Done Exercise (Web PWA)
 # Click an exercise tag on a session card to pre-fill the Exercise List search.
 url: http://localhost:8080
 ---

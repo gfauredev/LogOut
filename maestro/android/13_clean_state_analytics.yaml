@@ -1,4 +1,4 @@
-# User Story 9 – Clean State Analytics (Android)
+# User Story 13 – Clean State Analytics (Android)
 # In the analytics page, selecting a metric shows no exercises can be selected
 # because no workout sessions have been completed yet.
 appId: com.gfaure.logworkout
