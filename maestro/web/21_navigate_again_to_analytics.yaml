@@ -3,10 +3,12 @@
 url: http://localhost:8080
 ---
 # Navigate to the exercise list first (to simulate navigating from another page)
-- tapOn: "nav > .exercises"
+- tapOn:
+    css: "nav > .exercises"
 - assertVisible: "📚 Exercises"
 # Now navigate to analytics
-- tapOn: "nav > .analytics"
+- tapOn:
+    css: "nav > .analytics"
 - assertVisible: "📊 Analytics"
 # Exercises from completed sessions should be available to select
 - assertVisible: Metric

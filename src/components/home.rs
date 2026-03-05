@@ -96,7 +96,6 @@ pub fn Home() -> Element {
         if !*has_active.read() {
             button {
                 onclick: start_new_session,
-                class: "new-session-button",
                 title: "Start New Workout",
                 "+"
             }

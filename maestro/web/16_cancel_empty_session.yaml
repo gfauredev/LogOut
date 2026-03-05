@@ -3,14 +3,14 @@
 url: http://localhost:8080
 ---
 - tapOn:
-    css: ".new-session-button"
+    css: "main + button"
 - assertVisible:
-    css: ".session-header h2"
+    css: "main.sessions > header h2"
 # An empty session shows "Cancel Session" (not "Finish Session")
 - assertVisible:
-    css: ".btn--cancel-session"
+    css: "button[title='Cancel Session']"
 - tapOn:
-    css: ".btn--cancel-session"
+    css: "button[title='Cancel Session']"
 # Back on home, heading and empty state are visible
 - assertVisible: "💪 LogOut"
 - assertVisible: "No past sessions yet"

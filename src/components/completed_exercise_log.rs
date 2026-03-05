@@ -99,10 +99,9 @@ pub fn CompletedExerciseLog(
             }
 
             if *is_editing.read() {
-                div {
-                    class: "edit-form",
+                form {
                     div {
-                        label { class: "form-label", "Weight (kg)" }
+                        label { "Weight (kg)" }
                         input {
                             r#type: "number",
                             inputmode: "decimal",
@@ -110,12 +109,11 @@ pub fn CompletedExerciseLog(
                             placeholder: "Optional",
                             value: "{edit_weight_input}",
                             oninput: move |evt| edit_weight_input.set(evt.value()),
-                            class: "form-input",
                         }
                     }
                     if is_cardio {
                         div {
-                            label { class: "form-label", "Distance (km)" }
+                            label { "Distance (km)" }
                             input {
                                 r#type: "number",
                                 inputmode: "decimal",
@@ -123,25 +121,22 @@ pub fn CompletedExerciseLog(
                                 placeholder: "Distance",
                                 value: "{edit_distance_input}",
                                 oninput: move |evt| edit_distance_input.set(evt.value()),
-                                class: "form-input",
                             }
                         }
                     }
                     if show_reps {
                         div {
-                            label { class: "form-label", "Repetitions" }
+                            label { "Repetitions" }
                             input {
                                 r#type: "number",
                                 inputmode: "numeric",
                                 placeholder: "Reps",
                                 value: "{edit_reps_input}",
                                 oninput: move |evt| edit_reps_input.set(evt.value()),
-                                class: "form-input",
                             }
                         }
                     }
-                    div {
-                        class: "btn-row",
+                    footer {
                         button {
                             onclick: save_edit,
                             class: "edit",

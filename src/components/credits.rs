@@ -74,7 +74,6 @@ pub fn Credits() -> Element {
                         value: "{url_input}",
                         placeholder: "{crate::utils::EXERCISE_DB_BASE_URL}",
                         oninput: move |evt| url_input.set(evt.value()),
-                        class: "form-input",
                     }
                     button {
                         r#type: "submit",
