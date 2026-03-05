@@ -41,20 +41,11 @@
   --gradient-accent: linear-gradient(135deg, var(--color-accent) 0%, var(--color-accent-light) 100%);
   --gradient-success: linear-gradient(135deg, var(--color-success) 0%, var(--color-success-light) 100%);
   --gradient-pink: linear-gradient(135deg, var(--color-pink) 0%, var(--color-pink-dark) 100%);
-  // TODO Switch to semantic colors
-  /*
-  --color-action: #667eea; // #668efa;
-  --color-delete: #e74c3c;
-  --color-invalid: #e74c3c;
-  --color-save: #43e97b;
-  --color-goal-reached: #43e97b;
-  --color-category: #667eea; // #668efa;
-  --color-force: #764ba2;
-  --color-equipment: #4facfe;
-  --color-level: #f5576c;
-  --color-muscle-primary: #2d7a3a;
-  --color-muscle-secondary: #1a4a4a;
-  */
+  // Semantic action colors
+  --color-add: var(--gradient-pink); // Add / Create ➕
+  --color-edit: var(--gradient-primary); // Edit ✏️ / Save 💾
+  --color-confirm: var(--gradient-success); // Confirm ✅ / Complete ✔️
+  --color-cancel: var(--color-danger); // Delete 🗑️ / Cancel ❌
   ///////// Geometry //////////
   --radius: 12px;
   --spacing: 8px;

@@ -30,6 +30,21 @@ button {
   border-radius: var(--radius);
   cursor: pointer;
   text-decoration: none;
+  font-weight: bold;
+}
+
+// ── Icon-only circular buttons ────────────────────────────────────────────
+// Used for single-emoji buttons (🗑️, ✏️, ❌, ➕, 🔁, 🔄, etc.)
+button.icon {
+  width: var(--btn-add-size);
+  height: var(--btn-add-size);
+  border-radius: 50%;
+  padding: 0;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
 }
 
 ul,
@@ -54,18 +69,12 @@ ol {
 }
 
 .field-and-add a,
-.field-and-add button,
-button.icon {
-  /* display: flex; */
-  /* align-items: center; */
-  /* justify-content: center; */
-  /* flex-shrink: 0; */
+.field-and-add button {
   width: var(--btn-add-size);
   height: var(--btn-add-size);
   border-radius: 50%;
   font-weight: bold;
   line-height: 1;
-  /* font-size: 1.6em; */
 }
 
 select,
@@ -194,62 +203,26 @@ label {
   }
 } */
 
-// ── Button variants ────────────────────────────────────────────────────────
-button.danger {
-  background: var(--color-danger);
-  color: var(--text-primary);
-  font-weight: bold;
+// ── Button color variants ──────────────────────────────────────────────────
+// Add / Create ➕ — pink gradient
+button.add {
+  background: var(--gradient-pink);
 }
 
-button.cancel {
-  padding: 15px 25px;
-  background: var(--border-color);
-  color: var(--text-secondary);
-  border: none;
-  border-radius: var(--radius);
-  font-size: 1.1em;
-  font-weight: bold;
-  cursor: pointer;
+// Edit ✏️ / Save 💾 — primary gradient (blue-purple)
+button.edit {
+  background: var(--gradient-primary);
 }
 
-button.complete {
-  flex: 1;
-  padding: 15px;
-  background: var(--gradient-accent);
-  color: var(--text-primary);
-  border: none;
-  border-radius: var(--radius);
-  font-size: 1.1em;
-  font-weight: bold;
-  cursor: pointer;
-}
-
-button.finish {
-  padding: var(--spacing-sm) var(--spacing-md);
-  background: var(--bg-elevated);
-  color: var(--color-primary);
-  border: none;
-  border-radius: var(--radius);
-  font-size: 1.1em;
-  font-weight: bold;
-  cursor: pointer;
-  box-shadow: var(--shadow-btn);
-}
-
-button.start {
-  padding: 7px 14px;
+// Confirm ✅ / Complete ✔️ — success gradient (green)
+button.confirm {
   background: var(--gradient-success);
   color: #1a3a1a;
-  border: none;
-  border-radius: var(--radius);
-  font-weight: bold;
-  font-size: 0.9em;
-  cursor: pointer;
-  white-space: nowrap;
+}
 
-  &:hover {
-    opacity: 0.9;
-  }
+// Delete 🗑️ / Cancel ❌ — danger (red)
+button.danger {
+  background: var(--color-danger);
 }
 
 .active {
@@ -296,7 +269,13 @@ article>header button {
   border: none;
   cursor: pointer;
   font-size: 1.1em;
-  border-radius: var(--radius);
+  border-radius: 50%;
+  width: var(--btn-add-size);
+  height: var(--btn-add-size);
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   opacity: 0.6;
   transition: opacity 0.2s;
 }
@@ -307,12 +286,12 @@ article>header button:hover {
 
 article .edit {
   font-size: 0.85em;
-  color: var(--color-primary);
+  color: var(--text-primary);
   text-decoration: none;
   padding: 2px 8px;
   border-radius: var(--radius);
-  border: 1px solid var(--color-primary);
-  background: none;
+  border: none;
+  background: var(--gradient-primary);
   cursor: pointer;
   float: right;
   margin-bottom: 4px;

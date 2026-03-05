@@ -42,7 +42,7 @@ main+button {
   width: var(--btn-fab-size);
   height: var(--btn-fab-size);
   border-radius: 50%;
-  background: var(--gradient-primary);
+  background: var(--gradient-pink);
   color: var(--text-primary);
   font-size: 2em;
   border: none;
@@ -73,90 +73,6 @@ main+button {
 
 .active {
   transform: scale(1.25);
-}
-
-article {
-  padding: var(--spacing);
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius);
-  background: var(--bg-card);
-  box-shadow: var(--shadow-card-sm);
-}
-
-article>header {
-  display: flex;
-  align-items: center;
-  gap: var(--spacing-xs);
-  margin-bottom: var(--spacing-xs);
-}
-
-article>header>* {
-  padding: var(--spacing);
-}
-
-article>header time {
-  font-size: 0.85em;
-  color: var(--text-muted);
-  font-weight: 500;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  flex: 1;
-}
-
-article>header span {
-  font-size: 0.9em;
-  font-weight: 600;
-  color: var(--text-secondary);
-  white-space: nowrap;
-}
-
-article>header button {
-  background: none;
-  border: none;
-  cursor: pointer;
-  font-size: 1.1em;
-  border-radius: var(--radius);
-  opacity: 0.6;
-  transition: opacity 0.2s;
-}
-
-article>header button:hover {
-  opacity: 1;
-}
-
-article .edit {
-  font-size: 0.85em;
-  color: var(--color-primary);
-  text-decoration: none;
-  padding: 2px 8px;
-  border-radius: var(--radius);
-  border: 1px solid var(--color-primary);
-  background: none;
-  cursor: pointer;
-  float: right;
-  margin-bottom: 4px;
-}
-
-article button:hover {
-  background: var(--bg-elevated);
-}
-
-article ol {
-  margin: var(--spacing) 0;
-  padding-left: var(--padding-left-list);
-  color: var(--text-faint);
-  font-size: 0.9em;
-  line-height: 1.5;
-}
-
-article img {
-  display: block;
-  width: auto;
-  max-width: 100%;
-  max-height: 20vh;
-  border-radius: var(--radius);
-  margin: 0 auto 10px auto;
-  cursor: pointer;
 }
 
 .exercise-selector {
@@ -245,17 +161,13 @@ dialog {
     align-items: center;
   }
 
-  // Cancel Session button (danger variant within header)
-  .btn--cancel-session {
-    padding: var(--spacing-sm) var(--spacing-md);
-    background: var(--bg-danger-muted);
-    color: var(--color-danger);
-    border: none;
-    border-radius: var(--radius);
-    font-size: 1.1em;
-    font-weight: bold;
-    cursor: pointer;
-    box-shadow: var(--shadow-btn);
+  button.danger {
+    background: var(--color-danger);
+  }
+
+  button.confirm {
+    background: var(--gradient-success);
+    color: #1a3a1a;
   }
 }
 
@@ -305,6 +217,12 @@ section.pending {
       flex: 1;
       font-weight: 500;
       color: var(--text-secondary);
+    }
+
+    button.confirm {
+      padding: 7px 14px;
+      font-size: 0.9em;
+      white-space: nowrap;
     }
   }
 }
@@ -383,9 +301,9 @@ article.current {
   width: 100%;
   margin-bottom: var(--spacing-sm);
   padding: var(--spacing-sm) var(--spacing-md);
-  background: var(--bg-success-muted);
-  color: var(--color-success);
-  border: 1px solid var(--color-success);
+  background: var(--gradient-success);
+  color: #1a3a1a;
+  border: none;
   border-radius: var(--radius);
   font-weight: bold;
   cursor: pointer;
@@ -557,14 +475,16 @@ main.edit>div {
   gap: var(--spacing-md);
 }
 
-// ── Back button in page headers ────────────────────────────────────────────
-header>button.back {
-  background: none;
+// ── Cancel button in page headers ──────────────────────────────────────────
+header>button.danger {
+  background: var(--color-danger);
   border: none;
-  color: var(--color-primary);
   font-size: 1.1em;
   cursor: pointer;
   padding: 0;
+  width: var(--btn-add-size);
+  height: var(--btn-add-size);
+  border-radius: 50%;
 }
 
 // ── Snackbar / toast notifications ────────────────────────────────────────

@@ -50,8 +50,9 @@ pub fn AddExercise() -> Element {
         header {
             button {
                 onclick: move |_| navigator().go_back(),
-                class: "back",
-                "← Back"
+                class: "icon danger",
+                title: "Cancel",
+                "❌"
             }
             h1 { "Add Exercise" }
         }

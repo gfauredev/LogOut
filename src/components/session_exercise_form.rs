@@ -188,13 +188,13 @@ pub(super) fn ExerciseFormPanel(
                             button {
                                 onclick: move |_| on_complete.call(()),
                                 disabled: complete_disabled,
-                                class: "complete",
-                                "✓ Complete Exercise"
+                                class: "confirm",
+                                "✔️ Complete"
                             }
                             button {
                                 onclick: move |_| on_cancel.call(()),
-                                class: "cancel",
-                                "Cancel"
+                                class: "icon danger",
+                                "❌"
                             }
                         }
                     }

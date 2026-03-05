@@ -69,14 +69,15 @@ fn SessionHeader(
                 if exercise_count == 0 {
                     button {
                         onclick: move |_| on_finish.call(()),
-                        class: "btn--cancel-session",
-                        "Cancel Session"
+                        class: "icon danger",
+                        title: "Cancel Session",
+                        "❌"
                     }
                 } else {
                     button {
                         onclick: move |_| on_finish.call(()),
-                        class: "finish",
-                        "Finish Session"
+                        class: "confirm",
+                        "✔️ Finish"
                     }
                 }
             }
@@ -112,8 +113,8 @@ fn RestDurationInput(
             }
             button {
                 r#type: "submit",
-                class: "btn btn--accent",
-                "Set"
+                class: "confirm",
+                "✅ Set"
             }
         }
     }
@@ -146,7 +147,7 @@ fn PendingExercisesSection(pending_ids: Vec<String>, on_start: EventHandler<Stri
                                 span { class: "category", "{category}" }
                             }
                             button {
-                                class: "start",
+                                class: "confirm",
                                 onclick: {
                                     let id = exercise_id.clone();
                                     move |_| on_start.call(id.clone())
@@ -534,31 +535,27 @@ pub fn SessionView() -> Element {
                 }
             }
             if current_exercise_id.read().is_none() {
-                div {
-                    div { class: "field-and-add",
-                        input {
-                            r#type: "text",
-                            placeholder: "Search for an exercise...",
-                            value: "{search_query}",
-                            oninput: move |evt| search_query.set(evt.value()),
-                        }
-                        Link {
-                            to: Route::AddExercise {},
-                            title: "Add Custom Exercise",
-                            "+"
-                        }
+                div { class: "field-and-add",
+                    input {
+                        r#type: "text",
+                        placeholder: "Search for an exercise...",
+                        value: "{search_query}",
+                        oninput: move |evt| search_query.set(evt.value()),
                     }
-                    if !search_results().is_empty() {
-                        ul { class: "results",
-                            for (id, name, category) in search_results() {
-                                li {
-                                    key: "{id}",
-                                    onclick: move |_| start_exercise(id.clone()),
-                                    span { "{name}" }
-                                    div { class: "tags",
-                                        span { class: "category", "{category}" }
-                                    }
-                                }
+                    Link {
+                        to: Route::AddExercise {},
+                        title: "Add Custom Exercise",
+                        "+"
+                    }
+                }
+                if !search_results().is_empty() {
+                    ul { class: "results",
+                        for (id, name, category) in search_results() {
+                            li {
+                                key: "{id}",
+                                onclick: move |_| start_exercise(id.clone()),
+                                span { "{name}" }
+                                span { class: "category", "{category}" }
                             }
                         }
                     }

@@ -81,10 +81,13 @@ pub fn CompletedExerciseLog(
                     }
                     button {
                         onclick: start_edit,
+                        title: "Edit this exercise",
+                        class: "icon edit",
                         "✏️"
                     }
                     button {
                         title: "Delete this exercise",
+                        class: "icon danger",
                         onclick: move |_| {
                             let mut current_session = session.read().clone();
                             current_session.exercise_logs.remove(idx);
@@ -141,13 +144,13 @@ pub fn CompletedExerciseLog(
                         class: "btn-row",
                         button {
                             onclick: save_edit,
-                            class: "complete",
-                            "✓ Save"
+                            class: "edit",
+                            "💾 Save"
                         }
                         button {
                             onclick: move |_| is_editing.set(false),
-                            class: "cancel",
-                            "Cancel"
+                            class: "icon danger",
+                            "❌"
                         }
                     }
                 }

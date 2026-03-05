@@ -254,7 +254,7 @@ pub fn ExerciseFormFields(
                     for (idx, instruction) in instructions_list.read().iter().enumerate() {
                         li { key: "{idx}",
                             span { "{instruction}" }
-                            button { class: "danger icon",
+                            button { class: "icon danger",
                                 onclick: move |_| remove_instruction(idx),
                                 "🗑️"
                             }
@@ -293,6 +293,7 @@ pub fn ExerciseFormFields(
         button {
             onclick: move |_| on_save.call(()),
             disabled: name_input.read().trim().is_empty(),
+            class: "edit",
             "💾 {save_label}"
         }
     }
