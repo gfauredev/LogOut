@@ -113,7 +113,7 @@ existing customization that shouldn’t be.
 
 ### Acceptance Criteria
 
-- Input the test exercise database address (`https://localhost:8080`)
+- Input the test exercise database address (`http://localhost:8080`)
 - Click the save button, database URL is saved without errors
 
 ## Navigate to Exercise List
