@@ -2,10 +2,7 @@
 # Start a new workout session from the home screen.
 appId: com.gfaure.logworkout
 ---
-- extendedWaitUntil:
-    visible:
-      text: "LogOut"
-    timeout: 120000
+- assertVisible: LogOut
 - tapOn: "+"
 - assertVisible: "Active Session"
 - assertVisible: "Cancel Session"

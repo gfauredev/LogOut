@@ -4,10 +4,7 @@
 url: http://localhost:8080
 ---
 # Wait for the app to load
-- extendedWaitUntil:
-    visible:
-      text: "LogOut"
-    timeout: 120000
+- assertVisible: LogOut
 
 # ── Start Session ────────────────────────────────────────────────────────────
 - tapOn: "+"
@@ -18,10 +15,7 @@ url: http://localhost:8080
 - tapOn: "Search for an exercise..."
 - inputText: "bench press"
 # Exercises are loaded from the local exercises.test.json database
-- extendedWaitUntil:
-    visible:
-      text: "Wide-Grip Barbell Bench Press"
-    timeout: 10000
+- assertVisible: Wide-Grip Barbell Bench Press
 - tapOn: "Wide-Grip Barbell Bench Press"
 - assertVisible: "Wide-Grip Barbell Bench Press"
 - assertVisible: "Weight (kg)"
@@ -54,10 +48,7 @@ url: http://localhost:8080
 # ── Repeat For Another Exercise (squat from exercises.test.json) ────────────
 - tapOn: "Search for an exercise..."
 - inputText: "full squat"
-- extendedWaitUntil:
-    visible:
-      text: "Barbell Full Squat"
-    timeout: 10000
+- assertVisible: Barbell Full Squat
 - tapOn: "Barbell Full Squat"
 - assertVisible: "Barbell Full Squat"
 - assertVisible: "Weight (kg)"
@@ -92,8 +83,5 @@ url: http://localhost:8080
 # ── Finish Session ────────────────────────────────────────────────────────────
 - tapOn: "Finish Session"
 # Back on home screen with the completed session
-- extendedWaitUntil:
-    visible:
-      text: "LogOut"
-    timeout: 10000
+- assertVisible: LogOut
 - assertVisible: "Wide-Grip Barbell Bench Press"

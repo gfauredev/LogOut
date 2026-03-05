@@ -2,10 +2,7 @@
 # Select an exercise in Analytics and see a chart of progress over time.
 appId: com.gfaure.logworkout
 ---
-- extendedWaitUntil:
-    visible:
-      text: "LogOut"
-    timeout: 120000
+- assertVisible: LogOut
 - tapOn: "📊"
 - assertVisible: "Analytics"
 # Select "Weight (kg)" metric

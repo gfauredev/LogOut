@@ -2,10 +2,7 @@
 # Search for exercises in the Exercise List and verify filtering works.
 url: http://localhost:8080
 ---
-- extendedWaitUntil:
-    visible:
-      text: "LogOut"
-    timeout: 120000
+- assertVisible: LogOut
 - tapOn: "📚"
 - assertVisible: "Exercise Database"
 # Type a search term and verify results appear
@@ -15,7 +12,4 @@ url: http://localhost:8080
 # Clear the search and verify the full list is restored
 - eraseText
 - assertVisible: "Exercise Database"
-- extendedWaitUntil:
-    visible:
-      text: "✏️ Clone & Edit"
-    timeout: 10000
+- assertVisible: ✏️ Clone & Edit

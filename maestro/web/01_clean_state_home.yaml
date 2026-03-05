@@ -4,10 +4,7 @@
 url: http://localhost:8080
 ---
 - launchApp
-- extendedWaitUntil:
-    visible:
-      text: "LogOut"
-    timeout: 120000
+- assertVisible: LogOut
 - assertVisible: "Log your workOut"
 - assertVisible: "No past sessions yet"
 - assertVisible: "Tap + to start your first workout"

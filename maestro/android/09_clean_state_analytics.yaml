@@ -3,10 +3,7 @@
 # because no workout sessions have been completed yet.
 appId: com.gfaure.logworkout
 ---
-- extendedWaitUntil:
-    visible:
-      text: "LogOut"
-    timeout: 120000
+- assertVisible: LogOut
 - tapOn: "📊"
 - assertVisible: "Analytics"
 # Select the "Weight" metric

@@ -2,25 +2,16 @@
 # Clone a built-in exercise and edit its name.
 appId: com.gfaure.logworkout
 ---
-- extendedWaitUntil:
-    visible:
-      text: "LogOut"
-    timeout: 120000
+- assertVisible: LogOut
 # Navigate to the exercise browser
 - tapOn: "📚"
 - assertVisible: "Exercise Database"
 # Wait for exercises to load from the local exercises.test.json database
-- extendedWaitUntil:
-    visible:
-      text: "✏️ Clone & Edit"
-    timeout: 10000
+- assertVisible: ✏️ Clone & Edit
 # Search for Pushups to get a predictable target exercise
 - tapOn: "Search exercises, muscles, or categories..."
 - inputText: "Pushups"
-- extendedWaitUntil:
-    visible:
-      text: "Pushups"
-    timeout: 5000
+- assertVisible: Pushups
 # Click "Clone & Edit" on Pushups
 - tapOn: "✏️ Clone & Edit"
 # The Edit Exercise form should open

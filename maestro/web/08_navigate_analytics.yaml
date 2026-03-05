@@ -2,10 +2,7 @@
 # Navigate to the Analytics page via the bottom navigation bar.
 url: http://localhost:8080
 ---
-- extendedWaitUntil:
-    visible:
-      text: "LogOut"
-    timeout: 120000
+- assertVisible: LogOut
 - tapOn: "📊"
 - assertVisible: "Analytics"
 # The metric selector should be present on the analytics page

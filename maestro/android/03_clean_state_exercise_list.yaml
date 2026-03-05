@@ -2,17 +2,11 @@
 # Before any custom exercises are added, built-in exercises show "Clone & Edit".
 appId: com.gfaure.logworkout
 ---
-- extendedWaitUntil:
-    visible:
-      text: "LogOut"
-    timeout: 120000
+- assertVisible: LogOut
 - tapOn: "📚"
 - assertVisible: "Exercise Database"
 # Wait for exercises to load from the local exercises.test.json database
-- extendedWaitUntil:
-    visible:
-      text: "✏️ Clone & Edit"
-    timeout: 10000
+- assertVisible: ✏️ Clone & Edit
 - assertVisible: "✏️ Clone & Edit"
 # Built-in exercises should not show "✏️ Edit" only (that's only for custom exercises)
 - assertNotVisible: "✏️ Edit"

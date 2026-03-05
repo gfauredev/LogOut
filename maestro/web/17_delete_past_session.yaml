@@ -4,20 +4,14 @@
 url: http://localhost:8080
 ---
 # Wait for the app to load
-- extendedWaitUntil:
-    visible:
-      text: "LogOut"
-    timeout: 120000
+- assertVisible: LogOut
 
 # Create a small session to delete
 - tapOn: "+"
 - assertVisible: "Active Session"
 - tapOn: "Search for an exercise..."
 - inputText: "full squat"
-- extendedWaitUntil:
-    visible:
-      text: "Barbell Full Squat"
-    timeout: 10000
+- assertVisible: Barbell Full Squat
 - tapOn: "Barbell Full Squat"
 - tapOn:
     text: "Optional"
@@ -27,10 +21,7 @@ url: http://localhost:8080
 - inputText: "5"
 - tapOn: "✓ Complete Exercise"
 - tapOn: "Finish Session"
-- extendedWaitUntil:
-    visible:
-      text: "LogOut"
-    timeout: 10000
+- assertVisible: LogOut
 - assertVisible: "Barbell Full Squat"
 
 # Delete the latest session (the one just created) using the 🗑️ button
@@ -40,8 +31,5 @@ url: http://localhost:8080
 - tapOn: "Delete"
 # The deleted session's card should no longer be the top card,
 # but the bench press session from Story 15 is still present
-- extendedWaitUntil:
-    visible:
-      text: "LogOut"
-    timeout: 5000
+- assertVisible: LogOut
 - assertVisible: "Wide-Grip Barbell Bench Press"

@@ -3,10 +3,7 @@
 url: http://localhost:8080
 ---
 # Wait for the app to load with the session from Story 15
-- extendedWaitUntil:
-    visible:
-      text: "LogOut"
-    timeout: 120000
+- assertVisible: LogOut
 - assertVisible: "Wide-Grip Barbell Bench Press"
 # Tap the 🔄 button to start a repeat session
 - tapOn: "🔄"
@@ -17,7 +14,4 @@ url: http://localhost:8080
 - assertVisible: "Barbell Full Squat"
 # Cancel the repeat session to preserve state for next stories
 - tapOn: "Cancel Session"
-- extendedWaitUntil:
-    visible:
-      text: "LogOut"
-    timeout: 10000
+- assertVisible: LogOut

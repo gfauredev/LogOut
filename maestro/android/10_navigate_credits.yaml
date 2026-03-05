@@ -2,9 +2,6 @@
 # Navigate to the Credits page via the bottom navigation bar.
 appId: com.gfaure.logworkout
 ---
-- extendedWaitUntil:
-    visible:
-      text: "LogOut"
-    timeout: 120000
+- assertVisible: LogOut
 - tapOn: "ℹ️"
 - assertVisible: "Credits"

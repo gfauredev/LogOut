@@ -2,10 +2,7 @@
 # Cancel an empty workout session and return to the home screen.
 appId: com.gfaure.logworkout
 ---
-- extendedWaitUntil:
-    visible:
-      text: "LogOut"
-    timeout: 120000
+- assertVisible: LogOut
 - tapOn: "+"
 - assertVisible: "Active Session"
 # An empty session shows "Cancel Session" (not "Finish Session")

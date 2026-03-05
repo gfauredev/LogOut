@@ -2,10 +2,7 @@
 # Navigate to the exercise browser, add a custom exercise, then find it by searching.
 url: http://localhost:8080
 ---
-- extendedWaitUntil:
-    visible:
-      text: "LogOut"
-    timeout: 120000
+- assertVisible: LogOut
 # Navigate to the exercise browser
 - tapOn: "📚"
 - assertVisible: "Exercise Database"

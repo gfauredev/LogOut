@@ -2,10 +2,7 @@
 # After completing sessions, the Analytics page is accessible from any screen.
 appId: com.gfaure.logworkout
 ---
-- extendedWaitUntil:
-    visible:
-      text: "LogOut"
-    timeout: 120000
+- assertVisible: LogOut
 # Navigate to the exercise list first (to simulate navigating from another page)
 - tapOn: "📚"
 - assertVisible: "Exercise Database"

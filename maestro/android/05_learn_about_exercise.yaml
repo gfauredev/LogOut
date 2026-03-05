@@ -2,17 +2,11 @@
 # Clicking an exercise heading reveals its details: instructions, image, and tags.
 appId: com.gfaure.logworkout
 ---
-- extendedWaitUntil:
-    visible:
-      text: "LogOut"
-    timeout: 120000
+- assertVisible: LogOut
 - tapOn: "📚"
 - assertVisible: "Exercise Database"
 # Wait for exercises to load from the local exercises.test.json database
-- extendedWaitUntil:
-    visible:
-      text: "Pushups"
-    timeout: 10000
+- assertVisible: Pushups
 # Click the exercise heading to reveal instructions
 - tapOn: "Pushups"
 # Instructions should appear (exercise has instructions in the DB)
