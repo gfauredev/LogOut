@@ -200,10 +200,8 @@ fn NotificationPermissionToast() -> Element {
     {
         use web_sys::NotificationPermission;
         let msg = match web_sys::Notification::permission() {
-            NotificationPermission::Denied => {
-                "⚠️ Notifications blocked — re-enable in browser settings for timer alerts"
-            }
-            _ => "⚠️ Tap here to enable notifications for timer alerts",
+            NotificationPermission::Denied => "⚠️ Notifications blocked",
+            _ => "⚠️ Tap here to enable notifications",
         };
         rsx! {
             div {

@@ -52,8 +52,12 @@ Session(s) that shouldn’t.
 
 ### Acceptance Criteria
 
-- Header contains "LogOut", "Log your workout" (case-insensitive)
-- Main body contains "No past sessions yet", "Tap + to start your first workout"
+- Header contains strings
+  - "💪 LogOut"
+  - "Turn off your computer, Log your workOut"
+- Main body contains strings
+  - "No past sessions yet."
+  - "Tap + to start your first workout!"
 
 ## Allow Notifications
 
@@ -62,9 +66,10 @@ can receive exercise and rest duration reminders.
 
 ### Acceptance Criteria
 
-- A toast is present containing "Tap here to enable notifications"
+- A toast is present containing "⚠️ Tap here to enable notifications"
 - When clicked, the notifications’ permission dialog opens
-- When notifications are allowed, the toast disappears
+- When notifications are denied, a toast with "⚠️ Notifications blocked" appears
+- When notifications are allowed in browser settings, the toast disappears
 
 ## Navigate to Credits
 
@@ -234,8 +239,8 @@ can return to the home screen without saving a useless, empty session.
   - "Cancel Session" button is visible if the Session is empty
   - Tapping "Cancel Session" returns to the Home _view_
 - Home
-  - Heading "LogOut" is visible again
-  - Main body still shows "No past sessions yet"
+  - Heading "💪 LogOut" is visible again
+  - Main body still shows "No past sessions yet."
 
 ## Full Workout Session
 
