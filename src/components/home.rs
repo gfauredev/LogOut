@@ -176,6 +176,7 @@ fn SessionCard(session: WorkoutSession) -> Element {
                 button {
                     onclick: move |_| show_delete_confirm.set(true),
                     title: "Delete session",
+                    class: "icon danger",
                     "🗑️"
                 }
             }
@@ -222,13 +223,13 @@ fn SessionCard(session: WorkoutSession) -> Element {
                                     show_delete_confirm.set(false);
                                 }
                             },
-                            class: "btn danger",
-                            "Delete"
+                            class: "danger",
+                            "🗑️ Delete"
                         }
                         button {
                             onclick: move |_| show_delete_confirm.set(false),
-                            class: "cancel",
-                            "Cancel"
+                            class: "icon danger",
+                            "❌"
                         }
                     }
                 }

@@ -78,7 +78,7 @@ pub fn Credits() -> Element {
                     }
                     button {
                         r#type: "submit",
-                        class: "btn btn--accent",
+                        class: "icon edit",
                         aria_label: "Save",
                         "💾"
                     }
