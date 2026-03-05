@@ -70,6 +70,7 @@ pub fn Credits() -> Element {
                 form {
                     onsubmit: save_url,
                     input {
+                        id: "db_url_input",
                         r#type: "url",
                         value: "{url_input}",
                         placeholder: "{crate::utils::EXERCISE_DB_BASE_URL}",
