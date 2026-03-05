@@ -5,8 +5,8 @@ url: http://localhost:8080
 - launchApp
 - assertVisible: "💪 LogOut"
 - assertVisible: "Turn off your computer, Log your workOut"
-- assertVisible: "No past sessions yet."
-- assertVisible: "Tap + to start your first workout!"
+- assertVisible: "No past sessions yet"
+- assertVisible: "Tap + to start your first workout"
 - assertVisible: "📚"
 - assertVisible: "💪"
 - assertVisible: "📊"

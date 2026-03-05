@@ -84,8 +84,8 @@ pub fn Home() -> Element {
                 SessionView {}
             } else {
                 if completed_sessions().is_empty() {
-                    p { "No past sessions yet." br {}
-                    "Tap + to start your first workout!" }
+                    p { "No past sessions yet" }
+                    p { "Tap + to start your first workout" }
                 } else {
                     for session in completed_sessions().into_iter().take(*visible_count.read()) {
                         SessionCard { key: "{session.id}", session: session.clone() }

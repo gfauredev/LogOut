@@ -56,8 +56,8 @@ Session(s) that shouldn’t.
   - "💪 LogOut"
   - "Turn off your computer, Log your workOut"
 - Main body contains strings
-  - "No past sessions yet."
-  - "Tap + to start your first workout!"
+  - "No past sessions yet"
+  - "Tap + to start your first workout"
 
 ## Allow Notifications
 
@@ -238,7 +238,7 @@ can return to the home screen without saving a useless, empty session.
   - Tapping "Cancel Session" returns to the Home _view_
 - Home
   - Heading "💪 LogOut" is visible again
-  - Main body still shows "No past sessions yet."
+  - Main body still shows "No past sessions yet"
 
 ## Full Workout Session
 
