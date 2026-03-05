@@ -62,6 +62,7 @@
             maestro
             pkg-config
             rustToolchain
+            selenium-manager
             ungoogled-chromium
           ];
           commonBuildInputs =
