@@ -76,10 +76,9 @@ pub(super) fn ExerciseFormPanel(
                     let weight_invalid = !weight.is_empty() && parse_weight_kg(&weight).is_none();
                     rsx! {
                         div {
-                            label { class: "form-label", "Weight (kg)" }
-                            div { class: "input-stepper",
+                            label { "Weight (kg)" }
+                            div { class: "stepper",
                                 button {
-                                    class: "btn--step",
                                     r#type: "button",
                                     onclick: move |_| {
                                         let cur: f64 = weight_input.read().parse().unwrap_or(0.0);
@@ -95,10 +94,9 @@ pub(super) fn ExerciseFormPanel(
                                     placeholder: "Opt.",
                                     value: "{weight_input}",
                                     oninput: move |evt| weight_input.set(evt.value()),
-                                    class: if weight_invalid { "form-input form-input--compact invalid" } else { "form-input form-input--compact" },
+                                    class: if weight_invalid { "invalid" } else { "" },
                                 }
                                 button {
-                                    class: "btn--step",
                                     r#type: "button",
                                     onclick: move |_| {
                                         let cur: f64 = weight_input.read().parse().unwrap_or(0.0);
@@ -117,7 +115,7 @@ pub(super) fn ExerciseFormPanel(
                         let distance_invalid = !dist.is_empty() && parse_distance_km(&dist).is_none();
                         rsx! {
                             div {
-                                label { class: "form-label", "Distance (km)" }
+                                label { "Distance (km)" }
                                 input {
                                     r#type: "number",
                                     inputmode: "decimal",
@@ -125,7 +123,7 @@ pub(super) fn ExerciseFormPanel(
                                     placeholder: "Distance",
                                     value: "{distance_input}",
                                     oninput: move |evt| distance_input.set(evt.value()),
-                                    class: if distance_invalid { "form-input invalid" } else { "form-input" },
+                                    class: if distance_invalid { "invalid" } else { "" },
                                 }
                             }
                         }
@@ -138,10 +136,9 @@ pub(super) fn ExerciseFormPanel(
                         let reps_invalid = !reps.is_empty() && reps.parse::<u32>().map(|r| r == 0).unwrap_or(true);
                         rsx! {
                             div {
-                                label { class: "form-label", "Repetitions" }
-                                div { class: "input-stepper",
+                                label { "Repetitions" }
+                                div { class: "stepper",
                                     button {
-                                        class: "btn--step",
                                         r#type: "button",
                                         onclick: move |_| {
                                             let cur: u32 = reps_input.read().parse().unwrap_or(0);
@@ -157,10 +154,9 @@ pub(super) fn ExerciseFormPanel(
                                         placeholder: "Reps",
                                         value: "{reps_input}",
                                         oninput: move |evt| reps_input.set(evt.value()),
-                                        class: if reps_invalid { "form-input form-input--compact invalid" } else { "form-input form-input--compact" },
+                                        class: if reps_invalid { "invalid" } else { "" },
                                     }
                                     button {
-                                        class: "btn--step",
                                         r#type: "button",
                                         onclick: move |_| {
                                             let cur: u32 = reps_input.read().parse().unwrap_or(0);
@@ -183,12 +179,12 @@ pub(super) fn ExerciseFormPanel(
                     let distance_valid = !is_cardio || parse_distance_km(&dist).is_some();
                     let complete_disabled = !weight_valid || !reps_valid || !distance_valid;
                     rsx! {
-                        div {
-                            class: "btn-row",
+                        footer {
                             button {
                                 onclick: move |_| on_complete.call(()),
                                 disabled: complete_disabled,
                                 class: "confirm",
+                                title: "Complete Exercise",
                                 "✔️ Complete"
                             }
                             button {

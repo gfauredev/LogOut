@@ -134,7 +134,6 @@ pub fn Analytics() -> Element {
                                 key: "{i}",
                                 class: "exercise-selector",
                                 div {
-                                    class: "color-dot",
                                     style: "background: {COLORS[i]};",
                                 }
                                 select {
@@ -144,7 +143,6 @@ pub fn Analytics() -> Element {
                                         let value = evt.value();
                                         selections[i] = if value.is_empty() { None } else { Some(value) };
                                     },
-                                    class: "form-select form-select--chart",
                                     option { value: "", "-- Select Exercise --" }
                                     for (id, name) in available_exercises.read().iter() {
                                         option { value: "{id}", "{name}" }
@@ -230,7 +228,6 @@ fn ChartView(
             width: "100%",
             height: "auto",
             view_box: "0 0 {width} {height}",
-            class: "chart-svg",
 
             // Y-axis
             line { x1: "{pad}", y1: "{pad}", x2: "{pad}", y2: "{pad + chart_height}", stroke: "#ccc", stroke_width: "2" }

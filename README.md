@@ -238,9 +238,9 @@ services, providing a detailed view of the codebase's API.
   - ~~One rounded rectangle geometry for icons with text~~
   - ~~Make most buttons into single icons ones~~
 - ~~Ensure the HTML structure is minimally nested and maximally semantic~~
-- Remove most of the classes by relying on hierarchy and merge CSS rules
+- ~~Remove most of the classes by relying on hierarchy and merge CSS rules~~
 - ~~Fix favicon not found on GitHub Pages deployment~~
-- Fix E2E tests with semantic hierarchical selectors
+- ~~Fix E2E tests with semantic hierarchical selectors~~
 - Sign Android app, ensure it properly installs, publish app on Play Store
 - Consider mocking exercise database with empty `[]` JSON in E2E tests so they
   can be faster and not rely on external network requests

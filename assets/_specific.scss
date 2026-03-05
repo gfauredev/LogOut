@@ -29,7 +29,7 @@ main.edit {
   grid-template-columns: repeat(auto-fill, minmax(var(--col-min-width), 1fr));
 }
 
-main.sessions:has(.session-header) {
+main.sessions:has(> header) {
   display: flex;
   flex-direction: column;
   height: 100dvh;
@@ -82,7 +82,7 @@ main+button {
   gap: var(--spacing-xs);
 }
 
-.color-dot {
+.exercise-selector > div {
   width: 20px;
   height: 20px;
   border-radius: var(--radius);
@@ -127,7 +127,7 @@ dialog {
 }
 
 // ── Session view layout ────────────────────────────────────────────────────
-.session-header {
+main.sessions > header {
   position: sticky;
   top: 0;
   background: var(--gradient-primary);
@@ -261,20 +261,20 @@ article.current {
 }
 
 // ── Compact number input (≈3 digits wide) with stepper buttons ────────────
-.form-input--compact {
+.stepper > input {
   width: 5ch;
   min-width: 5ch;
   max-width: 5ch;
   text-align: center;
 }
 
-.input-stepper {
+.stepper {
   display: flex;
   align-items: center;
   gap: var(--spacing-xs);
 }
 
-.btn--step {
+.stepper > button {
   flex-shrink: 0;
   width: 2.2em;
   height: 2.2em;
@@ -296,7 +296,7 @@ article.current {
 }
 
 // ── Suggest-next exercise button ──────────────────────────────────────────
-.btn--suggest-next {
+button.suggest {
   display: block;
   width: 100%;
   margin-bottom: var(--spacing-sm);
@@ -343,7 +343,7 @@ article.log {
     }
   }
 
-  >.edit-form {
+  >form {
     display: flex;
     flex-direction: column;
     gap: var(--spacing-xs);
@@ -416,7 +416,7 @@ ul.results {
 }
 
 // ── Rest duration configuration form ──────────────────────────────────────
-form.rest-config {
+main.sessions > form {
   display: flex;
   align-items: center;
   gap: var(--spacing-xs);

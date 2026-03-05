@@ -9,10 +9,10 @@ url: http://localhost:8080
     css: "button[title=Start a new session based on this one]"
 # A new active session should open with exercises pre-added
 - assertVisible:
-    css: ".session-header h2"
+    css: "main.sessions > header h2"
 - assertVisible: Pre-added Exercises
 - assertVisible: Wide-Grip Barbell Bench Press
 - assertVisible: Barbell Full Squat
 # Cancel the repeat session to preserve state for next stories
 - tapOn:
-    css: ".btn--cancel-session"
+    css: "button[title='Cancel Session']"

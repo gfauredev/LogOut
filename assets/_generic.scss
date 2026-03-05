@@ -79,7 +79,8 @@ ol {
 
 select,
 input[type=text],
-input[type=url] {
+input[type=url],
+input[type=number] {
   width: 100%;
   padding: var(--spacing);
   border: 1px solid var(--border-color);
@@ -334,7 +335,7 @@ article img {
   gap: var(--spacing-xs);
   max-width: var(--col-min-width);
 
-  .color-dot {
+  > div {
     width: 20px;
     height: 20px;
     border-radius: var(--radius);
@@ -346,7 +347,7 @@ article img {
   }
 }
 
-.btn-row {
+article footer {
   display: flex;
   gap: var(--spacing-xs);
 }

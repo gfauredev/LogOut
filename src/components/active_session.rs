@@ -53,7 +53,6 @@ fn SessionHeader(
 ) -> Element {
     rsx! {
         header {
-            class: "session-header",
             div {
                 h2 { tabindex: 0, "⏱️ Active Session" }
                 p {
@@ -77,6 +76,7 @@ fn SessionHeader(
                     button {
                         onclick: move |_| on_finish.call(()),
                         class: "confirm",
+                        title: "Finish Session",
                         "✔️ Finish"
                     }
                 }
@@ -94,7 +94,6 @@ fn RestDurationInput(
 ) -> Element {
     rsx! {
         form {
-            class: "rest-config",
             aria_label: "Set rest duration",
             onsubmit: move |evt| {
                 evt.prevent_default();
@@ -224,7 +223,7 @@ fn CompletedExercisesSection(
             if no_exercise_active {
                 if let Some((next_id, next_name)) = suggestion_label() {
                     button {
-                        class: "btn btn--suggest-next",
+                        class: "suggest",
                         onclick: {
                             let id = next_id.clone();
                             move |_| on_replay.call(id.clone())

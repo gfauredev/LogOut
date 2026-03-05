@@ -7,11 +7,11 @@ url: http://localhost:8080
 
 # ── Start Session ────────────────────────────────────────────────────────────
 - tapOn:
-    css: ".new-session-button"
+    css: "main + button"
 - assertVisible:
-    css: ".session-header h2"
+    css: "main.sessions > header h2"
 - assertVisible:
-    css: ".btn--cancel-session"
+    css: "button[title='Cancel Session']"
 
 # ── Search Exercise (bench press from exercises.test.json) ──────────────────
 - tapOn: "Search for an exercise..."
@@ -31,7 +31,7 @@ url: http://localhost:8080
     text: "Reps"
 - inputText: "10"
 - tapOn:
-    css: ".complete"
+    css: "button[title='Complete Exercise']"
 - assertVisible: Completed Exercises
 - assertVisible: Wide-Grip Barbell Bench Press
 
@@ -40,14 +40,14 @@ url: http://localhost:8080
     css: "button[title=Do another set]"
 - assertVisible: Wide-Grip Barbell Bench Press
 - assertVisible:
-    css: ".complete"
+    css: "button[title='Complete Exercise']"
 # Increment reps for the second set
 - tapOn:
     text: "10"
 - eraseText
 - inputText: "12"
 - tapOn:
-    css: ".complete"
+    css: "button[title='Complete Exercise']"
 # Verify second set appears
 - assertVisible: Completed Exercises
 
@@ -66,7 +66,7 @@ url: http://localhost:8080
     text: "Reps"
 - inputText: "8"
 - tapOn:
-    css: ".complete"
+    css: "button[title='Complete Exercise']"
 - assertVisible: Barbell Full Squat
 # Replay squat (set 2)
 - tapOn:
@@ -77,23 +77,23 @@ url: http://localhost:8080
 - eraseText
 - inputText: "10"
 - tapOn:
-    css: ".complete"
+    css: "button[title='Complete Exercise']"
 
 # ── Remove Exercise (delete the latest – second squat set) ───────────────────
 # There are 4 completed exercises; remove the last one (index 0 in reversed list)
 - tapOn:
-    css: ".btn--delete-exercise"
+    css: "button[title='Delete this exercise']"
 # Now there should be 3 completed exercises
 - assertVisible: Completed Exercises
 - assertVisible: Wide-Grip Barbell Bench Press
 - assertVisible: Barbell Full Squat
 # Finish Session button should be visible (session is not empty)
 - assertVisible:
-    css: ".finish"
+    css: "button[title='Finish Session']"
 
 # ── Finish Session ────────────────────────────────────────────────────────────
 - tapOn:
-    css: ".finish"
+    css: "button[title='Finish Session']"
 # A congratulation toast appears
 - assertVisible: "🎉 Great workout! Session complete!"
 # Back on home screen with the completed session and header

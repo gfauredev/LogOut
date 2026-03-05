@@ -7,9 +7,9 @@ url: http://localhost:8080
 
 # Create a small session to delete
 - tapOn:
-    css: ".new-session-button"
+    css: "main + button"
 - assertVisible:
-    css: ".session-header h2"
+    css: "main.sessions > header h2"
 - tapOn: "Search for an exercise..."
 - inputText: "full squat"
 - assertVisible: Barbell Full Squat
@@ -21,9 +21,9 @@ url: http://localhost:8080
     text: "Reps"
 - inputText: "5"
 - tapOn:
-    css: ".complete"
+    css: "button[title='Complete Exercise']"
 - tapOn:
-    css: ".finish"
+    css: "button[title='Finish Session']"
 - assertVisible: Barbell Full Squat
 
 # Delete the latest session (the one just created) using the 🗑️ button
