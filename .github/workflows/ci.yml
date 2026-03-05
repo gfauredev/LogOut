@@ -242,10 +242,6 @@ jobs:
         id: maestro
         continue-on-error: true
         run: |
-          # Seed the exercise database with the local test fixture so tests
-          # use @exercises.test.json instead of downloading from the remote.
-          mkdir -p target/dx/log-workout/release/web/public/dist
-          cp exercises.test.json target/dx/log-workout/release/web/public/dist/exercises.json
           # Start a static file server in the background
           python3 -m http.server 8080 -d target/dx/log-workout/release/web/public &
           SERVER_PID=$!
@@ -360,20 +356,10 @@ jobs:
             # Disable WebView multi-process mode so Maestro can inspect the
             # Dioxus WebView via CDP more reliably in the single-process path.
             adb shell settings put global webview_multiprocess 0
-
             adb install "${{ steps.apk.outputs.path }}"
-
-            # Serve the local @exercises.test.json so the app fetches it from
-            # 10.0.2.2:8181 (host machine) instead of the remote GitHub URL.
-            mkdir -p /tmp/exercise_server/dist
-            cp exercises.test.json /tmp/exercise_server/dist/exercises.json
-            python3 -m http.server 8181 --directory /tmp/exercise_server &
-            EXERCISE_SERVER_PID=$!
-
             # Pre-launch the app and give the WebView time to initialise.
             adb shell monkey -p com.gfaure.logworkout -c android.intent.category.LAUNCHER 1
             sleep 10
-
             # Configure the exercise database URL to use the local server.
             # 10.0.2.2 is the special alias for the host machine from the emulator.
             if adb root; then
@@ -387,17 +373,13 @@ jobs:
             else
               echo "Warning: adb root failed, exercises will load from remote"
             fi
-
             # Restart the app so it picks up the new exercise DB URL.
             adb shell am force-stop com.gfaure.logworkout
             sleep 2
             adb shell monkey -p com.gfaure.logworkout -c android.intent.category.LAUNCHER 1
             sleep 10
-
             MAESTRO_CLI_NO_ANALYTICS=1 maestro test maestro/android/
             TEST_EXIT=$?
-
-            kill $EXERCISE_SERVER_PID 2>/dev/null || true
             exit $TEST_EXIT
 
       - name: Upload diagnostics
