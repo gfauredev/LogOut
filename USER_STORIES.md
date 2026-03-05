@@ -7,6 +7,7 @@ lang: en
 <!--toc:start-->
 
 - [Clean State Home](#clean-state-home)
+- [Allow Notifications](#allow-notifications)
 - [Navigate to Credits](#navigate-to-credits)
 - [Clean State Credits](#clean-state-credits)
 - [Change Exercises Database](#change-exercises-database)
@@ -51,8 +52,19 @@ Session(s) that shouldn’t.
 
 ### Acceptance Criteria
 
-- Header contains "LogOut", "Log your workOut"
+- Header contains "LogOut", "Log your workout" (case-insensitive)
 - Main body contains "No past sessions yet", "Tap + to start your first workout"
+
+## Allow Notifications
+
+**As a** _user_, **I want to** allow notifications when prompted, **so that** I
+can receive exercise and rest duration reminders.
+
+### Acceptance Criteria
+
+- A toast is present containing "Tap here to enable notifications"
+- When clicked, the notifications’ permission dialog opens
+- When notifications are allowed, the toast disappears
 
 ## Navigate to Credits
 
