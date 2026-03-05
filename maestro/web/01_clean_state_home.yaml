@@ -3,6 +3,7 @@
 # tests use the local exercises.test.json instead of the remote database.
 url: http://localhost:8080
 ---
+- launchApp
 - extendedWaitUntil:
     visible:
       text: "LogOut"
