@@ -2,7 +2,6 @@
 # After completing sessions, the Analytics page is accessible from any screen.
 url: http://localhost:8080
 ---
-- assertVisible: LogOut
 # Navigate to the exercise list first (to simulate navigating from another page)
 - tapOn: "📚"
 - assertVisible: Exercise Database

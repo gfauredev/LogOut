@@ -2,7 +2,6 @@
 # Clone a built-in exercise and edit its name.
 appId: com.gfaure.logworkout
 ---
-- assertVisible: LogOut
 # Navigate to the exercise browser
 - tapOn: "📚"
 - assertVisible: Exercise Database

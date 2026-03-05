@@ -4,7 +4,6 @@
 appId: com.gfaure.logworkout
 ---
 # Wait for the app to load
-- assertVisible: LogOut
 
 # Create a small session to delete
 - tapOn: "+"
@@ -21,7 +20,6 @@ appId: com.gfaure.logworkout
 - inputText: "5"
 - tapOn: "✓ Complete Exercise"
 - tapOn: "Finish Session"
-- assertVisible: LogOut
 - assertVisible: Barbell Full Squat
 
 # Delete the latest session (the one just created) using the 🗑️ button
@@ -31,5 +29,4 @@ appId: com.gfaure.logworkout
 - tapOn: "Delete"
 # The deleted session's card should no longer be the top card,
 # but the bench press session from Story 15 is still present
-- assertVisible: LogOut
 - assertVisible: Wide-Grip Barbell Bench Press

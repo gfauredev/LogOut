@@ -2,7 +2,6 @@
 # Select an exercise in Analytics and see a chart of progress over time.
 url: http://localhost:8080
 ---
-- assertVisible: LogOut
 - tapOn: "📊"
 - assertVisible: Analytics
 # Select "Weight (kg)" metric

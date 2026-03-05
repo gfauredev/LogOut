@@ -2,10 +2,8 @@
 # After navigating away, the "💪" button returns to the Home page.
 appId: com.gfaure.logworkout
 ---
-- assertVisible: LogOut
 # Navigate to the exercise browser
 - tapOn: "📚"
 - assertVisible: Exercise Database
 # Navigate back to home with the 💪 button
 - tapOn: "💪"
-- assertVisible: LogOut

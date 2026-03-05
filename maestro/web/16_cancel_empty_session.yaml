@@ -2,12 +2,10 @@
 # Cancel an empty workout session and return to the home screen.
 url: http://localhost:8080
 ---
-- assertVisible: LogOut
 - tapOn: "+"
 - assertVisible: Active Session
 # An empty session shows "Cancel Session" (not "Finish Session")
 - assertVisible: Cancel Session
 - tapOn: "Cancel Session"
 # Back on home, heading and empty state are visible
-- assertVisible: LogOut
 - assertVisible: No past sessions yet

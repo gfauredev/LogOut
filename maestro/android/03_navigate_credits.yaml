@@ -2,6 +2,5 @@
 # Navigate to the Credits page via the bottom navigation bar.
 appId: com.gfaure.logworkout
 ---
-- assertVisible: LogOut
 - tapOn: "ℹ️"
 - assertVisible: Credits

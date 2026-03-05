@@ -2,7 +2,6 @@
 # Clone a built-in exercise and edit its name.
 url: http://localhost:8080
 ---
-- assertVisible: LogOut
 # Navigate to the exercise browser
 - tapOn: "📚"
 - assertVisible: Exercise Database

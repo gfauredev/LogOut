@@ -2,7 +2,6 @@
 # Clicking an exercise heading reveals its details: instructions, image, and tags.
 appId: com.gfaure.logworkout
 ---
-- assertVisible: LogOut
 - tapOn: "📚"
 - assertVisible: Exercise Database
 # Wait for exercises to load

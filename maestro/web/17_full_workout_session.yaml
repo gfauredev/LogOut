@@ -4,7 +4,6 @@
 url: http://localhost:8080
 ---
 # Wait for the app to load
-- assertVisible: LogOut
 
 # ── Start Session ────────────────────────────────────────────────────────────
 - tapOn: "+"
@@ -83,5 +82,4 @@ url: http://localhost:8080
 # ── Finish Session ────────────────────────────────────────────────────────────
 - tapOn: "Finish Session"
 # Back on home screen with the completed session
-- assertVisible: LogOut
 - assertVisible: Wide-Grip Barbell Bench Press

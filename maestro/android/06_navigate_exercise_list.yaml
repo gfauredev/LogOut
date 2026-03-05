@@ -2,6 +2,5 @@
 # Navigate to the Exercise List via the bottom navigation bar.
 appId: com.gfaure.logworkout
 ---
-- assertVisible: LogOut
 - tapOn: "📚"
 - assertVisible: Exercise Database

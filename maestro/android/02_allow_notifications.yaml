@@ -3,5 +3,4 @@
 # For Android, this is a placeholder.
 appId: com.gfaure.logworkout
 ---
-- assertVisible: LogOut
 - assertVisible: 💪

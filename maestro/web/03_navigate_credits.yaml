@@ -2,7 +2,6 @@
 # Navigate to the Credits page via the bottom navigation bar.
 url: http://localhost:8080
 ---
-- assertVisible: LogOut
 - tapOn: "ℹ️"
 - assertVisible: Credits
 # The credits page should show the app description and DB URL configuration

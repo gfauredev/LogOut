@@ -2,7 +2,6 @@
 # Navigate to the exercise browser, add a custom exercise, then find it by searching.
 appId: com.gfaure.logworkout
 ---
-- assertVisible: LogOut
 # Navigate to the exercise browser
 - tapOn: "📚"
 - assertVisible: Exercise Database

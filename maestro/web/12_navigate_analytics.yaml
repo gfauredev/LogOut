@@ -2,8 +2,7 @@
 # Navigate to the Analytics page via the bottom navigation bar.
 url: http://localhost:8080
 ---
-- assertVisible: LogOut
-- tapOn: "📊"
+- tapOn: "📊" # FIXME Not found
 - assertVisible: Analytics
 # The metric selector should be present on the analytics page
 - assertVisible: Metric

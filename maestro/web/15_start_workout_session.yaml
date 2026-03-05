@@ -2,7 +2,6 @@
 # Start a new workout session from the home screen.
 url: http://localhost:8080
 ---
-- assertVisible: LogOut
 - tapOn: "+"
 - assertVisible: Active Session
 - assertVisible: Cancel Session

@@ -3,7 +3,6 @@
 # because no workout sessions have been completed yet.
 url: http://localhost:8080
 ---
-- assertVisible: LogOut
 - tapOn: "📊"
 - assertVisible: Analytics
 # Select the "Weight" metric

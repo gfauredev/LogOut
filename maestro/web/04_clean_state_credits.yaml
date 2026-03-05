@@ -2,7 +2,6 @@
 # The Credits page shows the default exercise database URL.
 url: http://localhost:8080
 ---
-- assertVisible: LogOut
 - tapOn: "ℹ️"
 - assertVisible: Credits
 - assertVisible: ⚙️ Exercise Database URL

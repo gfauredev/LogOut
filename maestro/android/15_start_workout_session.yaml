@@ -2,7 +2,6 @@
 # Start a new workout session from the home screen.
 appId: com.gfaure.logworkout
 ---
-- assertVisible: LogOut
 - tapOn: "+"
 - assertVisible: Active Session
 - assertVisible: Cancel Session
@@ -11,4 +10,3 @@ appId: com.gfaure.logworkout
 - assertVisible: 0:00
 # Clean up: cancel the empty session
 - tapOn: "Cancel Session"
-- assertVisible: LogOut

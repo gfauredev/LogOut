@@ -112,7 +112,7 @@ browse available exercises.
 
 - The bottom navigation bar contains a "📚" button
   - When **clicked**, it opens the Exercise List page
-- Header displays "📚 Exercise Database"
+- Header displays "📚 Exercises"
 - "📚" button is slightly emphasized compared to others in bottom navigation bar
 
 ## Clean State Exercise List

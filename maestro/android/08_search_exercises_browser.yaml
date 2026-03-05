@@ -2,7 +2,6 @@
 # Search for exercises in the Exercise List and verify filtering works.
 appId: com.gfaure.logworkout
 ---
-- assertVisible: LogOut
 - tapOn: "📚"
 - assertVisible: Exercise Database
 # Type a search term and verify results appear

@@ -197,7 +197,7 @@ pub fn Exercises() -> Element {
 
     rsx! {
         header {
-            h1 { tabindex: 0, "📚 Exercise Database" }
+            h1 { tabindex: 0, "📚 Exercises" }
             p { "Browse {total} exercises" }
             div { class: "search-with-add",
                 input {

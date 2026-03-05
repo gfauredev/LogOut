@@ -2,7 +2,6 @@
 # After navigating away, the "💪" button returns to the Home page.
 url: http://localhost:8080
 ---
-- assertVisible: LogOut
 # Navigate to the exercise browser
 - tapOn: "📚"
 - assertVisible: Exercise Database

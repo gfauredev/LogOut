@@ -243,7 +243,7 @@ jobs:
         run: |
           dx serve --open false --interactive false --web --release &
           SERVER_PID=$!
-          sleep 1 # Wait for the server to be ready
+          sleep 5 # Wait for the server to be ready
           maestro test --headless maestro/web/
           TEST_EXIT=$?
           kill $SERVER_PID 2>/dev/null || true

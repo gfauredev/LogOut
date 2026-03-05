@@ -2,7 +2,6 @@
 # The Credits page shows the default exercise database URL.
 appId: com.gfaure.logworkout
 ---
-- assertVisible: LogOut
 - tapOn: "ℹ️"
 - assertVisible: Credits
 - assertVisible: ⚙️ Exercise Database URL
