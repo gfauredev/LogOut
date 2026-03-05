@@ -14,23 +14,23 @@ pub fn BottomNav(active_tab: ActiveTab) -> Element {
     rsx! {
         nav {
             Link {
+                class: if active_tab == ActiveTab::Exercises { "active exercises" } else { "exercises" },
                 to: Route::Exercises {},
-                class: if active_tab == ActiveTab::Exercises { "active" } else { "" },
                 "📚"
             }
             Link {
+                class: if active_tab == ActiveTab::Sessions { "active home" } else { "home" },
                 to: Route::Home {},
-                class: if active_tab == ActiveTab::Sessions { "active" } else { "" },
                 "💪"
             }
             Link {
+                class: if active_tab == ActiveTab::Analytics { "active analytics" } else { "analytics" },
                 to: Route::Analytics {},
-                class: if active_tab == ActiveTab::Analytics { "active" } else { "" },
                 "📊"
             }
             Link {
+                class: if active_tab == ActiveTab::Credits { "active credits" } else { "credits" },
                 to: Route::Credits {},
-                class: if active_tab == ActiveTab::Credits { "active" } else { "" },
                 "ℹ️"
             }
         }
