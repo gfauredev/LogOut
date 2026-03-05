@@ -1,3 +1,4 @@
+// Rules targetting an arbitrary number of elements per page or globally
 h2 {
   margin: 0 0 var(--spacing) 0;
   color: var(--text-primary);
@@ -67,22 +68,45 @@ label {
 .tags {
   display: flex;
   flex-wrap: wrap;
-  gap: 6px;
+  gap: var(--spacing);
+  margin-bottom: var(--spacing);
 
   span {
-    padding: 3px 10px;
+    padding: calc(var(--spacing) / 2) var(--spacing);
     background: var(--bg-elevated);
     color: var(--color-primary);
     border-radius: var(--radius);
-    font-size: 0.85em;
   }
 
-  span.category { background: var(--color-primary); color: var(--text-primary); }
-  span.force { background: var(--color-secondary); color: var(--text-primary); }
-  span.equipment { background: var(--color-accent); color: var(--text-primary); }
-  span.level { background: var(--color-pink-dark); color: var(--text-primary); }
-  span.primary { background: var(--muscle-primary-bg); color: var(--muscle-primary-fg); }
-  span.secondary { background: var(--muscle-secondary-bg); color: var(--muscle-secondary-fg); }
+  span.category {
+    background: var(--color-primary);
+    color: var(--text-primary);
+  }
+
+  span.force {
+    background: var(--color-secondary);
+    color: var(--text-primary);
+  }
+
+  span.equipment {
+    background: var(--color-accent);
+    color: var(--text-primary);
+  }
+
+  span.level {
+    background: var(--color-pink-dark);
+    color: var(--text-primary);
+  }
+
+  span.primary {
+    background: var(--muscle-primary-bg);
+    color: var(--muscle-primary-fg);
+  }
+
+  span.secondary {
+    background: var(--muscle-secondary-bg);
+    color: var(--muscle-secondary-fg);
+  }
 }
 
 .tags .more {
@@ -100,19 +124,13 @@ label {
   color: var(--text-faint);
 }
 
-.search-with-add {
-  display: flex;
-  align-items: center;
-  gap: var(--spacing);
-}
-
 // ── Reusable muscle-tag editor (add/remove form) ───────────────────────────
 .muscle-tags {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
 
-  > div {
+  >div {
     padding: 6px var(--spacing-sm);
     background: var(--color-primary);
     color: white;
@@ -126,7 +144,7 @@ label {
       color: var(--muscle-secondary-fg);
     }
 
-    > button {
+    >button {
       background: none;
       border: none;
       color: white;
@@ -144,10 +162,15 @@ label {
   gap: var(--spacing-xs);
   align-items: center;
 
-  select { flex: 1; }
+  select {
+    flex: 1;
+  }
 
   input[type=text],
-  input[type=url] { flex: 1; width: auto; }
+  input[type=url] {
+    flex: 1;
+    width: auto;
+  }
 }
 
 // ── Button variants ────────────────────────────────────────────────────────
@@ -207,10 +230,125 @@ button.start {
   cursor: pointer;
   white-space: nowrap;
 
-  &:hover { opacity: 0.9; }
+  &:hover {
+    opacity: 0.9;
+  }
 }
 
-// ── Btn-row: a flex row of action buttons ──────────────────────────────────
+.active {
+  transform: scale(1.25);
+}
+
+article {
+  padding: var(--spacing);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius);
+  background: var(--bg-card);
+  box-shadow: var(--shadow-card-sm);
+}
+
+article>header {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  margin-bottom: var(--spacing-xs);
+}
+
+article>header>* {
+  padding: var(--spacing);
+}
+
+article>header time {
+  font-size: 0.85em;
+  color: var(--text-muted);
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  flex: 1;
+}
+
+article>header span {
+  font-size: 0.9em;
+  font-weight: 600;
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+
+article>header button {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 1.1em;
+  border-radius: var(--radius);
+  opacity: 0.6;
+  transition: opacity 0.2s;
+}
+
+article>header button:hover {
+  opacity: 1;
+}
+
+article .edit {
+  font-size: 0.85em;
+  color: var(--color-primary);
+  text-decoration: none;
+  padding: 2px 8px;
+  border-radius: var(--radius);
+  border: 1px solid var(--color-primary);
+  background: none;
+  cursor: pointer;
+  float: right;
+  margin-bottom: 4px;
+}
+
+article button:hover {
+  background: var(--bg-elevated);
+}
+
+article ol {
+  margin: var(--spacing) 0;
+  padding-left: var(--padding-left-list);
+  color: var(--text-faint);
+  font-size: 0.9em;
+  line-height: 1.5;
+}
+
+article img {
+  display: block;
+  width: auto;
+  max-width: 100%;
+  border-radius: var(--radius);
+  margin: 0 auto 10px auto;
+  cursor: pointer;
+}
+
+.metric-selector {
+  margin: 0 auto var(--spacing) auto;
+  display: flex;
+  align-items: center;
+  gap: var(--spacing);
+  max-width: var(--col-min-width);
+}
+
+.exercise-selector {
+  margin: 0 auto var(--spacing) auto;
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  max-width: var(--col-min-width);
+
+  .color-dot {
+    width: 20px;
+    height: 20px;
+    border-radius: var(--radius);
+    flex-shrink: 0;
+  }
+
+  select {
+    flex: 1;
+  }
+}
+
 .btn-row {
   display: flex;
   gap: var(--spacing-xs);

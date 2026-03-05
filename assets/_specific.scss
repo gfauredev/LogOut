@@ -1,8 +1,10 @@
+// Rules targetting one or a few precise elements per page
 #main {
   display: flex;
   flex-direction: column;
   min-height: 100dvh;
-  margin: 0;
+  margin: 0 auto;
+  max-width: var(--main-max-width);
   padding: var(--spacing) var(--spacing) 0 var(--spacing);
 }
 
@@ -11,17 +13,24 @@
   margin-bottom: var(--spacing);
 }
 
+#search {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing);
+}
+
 main {
   flex: 1;
   width: 100%;
   box-sizing: border-box;
-  display: grid;
   gap: var(--spacing);
   grid-auto-rows: max-content;
 }
 
 main.exercises,
-main.sessions {
+main.sessions,
+main.credits {
+  display: grid;
   grid-template-columns: repeat(auto-fill, minmax(var(--col-min-width), 1fr));
 }
 
@@ -196,9 +205,12 @@ dialog {
   min-width: var(--modal-min-width);
   z-index: var(--z-modal);
 
-  p { margin-bottom: var(--spacing-md); font-size: 1.1em; }
+  p {
+    margin-bottom: var(--spacing-md);
+    font-size: 1.1em;
+  }
 
-  > div {
+  >div {
     display: flex;
     gap: var(--spacing-sm);
     justify-content: center;
@@ -218,17 +230,23 @@ dialog {
   justify-content: space-between;
   align-items: center;
 
-  h2 { margin: 0; font-size: 1.5em; }
+  h2 {
+    margin: 0;
+    font-size: 1.5em;
+  }
 
   p {
     margin: 5px 0 0 0;
     font-size: 1.8em;
     font-weight: bold;
     cursor: pointer;
-    &:hover { text-decoration: underline; }
+
+    &:hover {
+      text-decoration: underline;
+    }
   }
 
-  > div {
+  >div {
     display: flex;
     gap: 8px;
     align-items: center;
@@ -248,7 +266,7 @@ dialog {
   }
 }
 
-main.sessions > section {
+main.sessions>section {
   flex: 1;
   overflow-y: auto;
   overflow-x: hidden;
@@ -266,7 +284,7 @@ section.pending {
   border-radius: var(--radius);
   background: var(--bg-pending);
 
-  > h3 {
+  >h3 {
     margin: 0 0 var(--spacing-sm) 0;
     font-size: 1em;
     color: var(--text-muted);
@@ -274,7 +292,7 @@ section.pending {
     letter-spacing: 0.06em;
   }
 
-  > article {
+  >article {
     display: flex;
     align-items: center;
     gap: var(--spacing-xs);
@@ -290,7 +308,7 @@ section.pending {
       padding-bottom: 0;
     }
 
-    > span {
+    >span {
       flex: 1;
       font-weight: 500;
       color: var(--text-secondary);
@@ -305,14 +323,25 @@ article.current {
   margin-bottom: var(--spacing-md);
   position: relative;
 
-  > header {
+  >header {
     justify-content: space-between;
 
-    h3 { margin: 0; padding: 0; color: var(--text-primary); font-size: 1em; }
-    span { color: var(--color-primary-light); font-size: 0.9em; font-weight: normal; padding: 0; }
+    h3 {
+      margin: 0;
+      padding: 0;
+      color: var(--text-primary);
+      font-size: 1em;
+    }
+
+    span {
+      color: var(--color-primary-light);
+      font-size: 0.9em;
+      font-weight: normal;
+      padding: 0;
+    }
   }
 
-  > div {
+  >div {
     display: flex;
     flex-direction: column;
     gap: var(--spacing-sm);
@@ -350,7 +379,9 @@ article.current {
   align-items: center;
   justify-content: center;
 
-  &:active { background: var(--bg-muted); }
+  &:active {
+    background: var(--bg-muted);
+  }
 }
 
 // ── Suggest-next exercise button ──────────────────────────────────────────
@@ -367,7 +398,9 @@ article.current {
   cursor: pointer;
   text-align: left;
 
-  &:hover { filter: brightness(1.1); }
+  &:hover {
+    filter: brightness(1.1);
+  }
 }
 
 // ── Completed exercise log ─────────────────────────────────────────────────
@@ -375,29 +408,38 @@ article.log {
   padding: 15px;
   margin-bottom: var(--spacing-xs);
 
-  > header {
+  >header {
     margin-bottom: 8px;
 
-    h4 { margin: 0; padding: 0; color: var(--text-primary); flex: 1; }
+    h4 {
+      margin: 0;
+      padding: 0;
+      color: var(--text-primary);
+      flex: 1;
+    }
 
-    > div {
+    >div {
       display: flex;
       gap: var(--spacing-xs);
       align-items: center;
       padding: 0;
     }
 
-    button { font-size: 1em; padding: 2px 6px; opacity: 0.7; }
+    button {
+      font-size: 1em;
+      padding: 2px 6px;
+      opacity: 0.7;
+    }
   }
 
-  > .edit-form {
+  >.edit-form {
     display: flex;
     flex-direction: column;
     gap: var(--spacing-xs);
     margin-top: 8px;
   }
 
-  > .details {
+  >.details {
     color: var(--text-muted);
     font-size: 0.9em;
   }
@@ -414,7 +456,7 @@ ul.results {
   max-height: 300px;
   overflow-y: auto;
 
-  > li {
+  >li {
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -422,8 +464,13 @@ ul.results {
     cursor: pointer;
     border-bottom: 1px solid var(--bg-muted);
 
-    &:last-child { border-bottom: none; }
-    &:hover { background: var(--bg-elevated); }
+    &:last-child {
+      border-bottom: none;
+    }
+
+    &:hover {
+      background: var(--bg-elevated);
+    }
   }
 }
 
@@ -452,7 +499,9 @@ ul.results {
   letter-spacing: 0.05em;
   margin-bottom: var(--spacing-sm);
 
-  &.reached { color: var(--color-success); }
+  &.reached {
+    color: var(--color-success);
+  }
 }
 
 // ── Rest duration configuration form ──────────────────────────────────────
@@ -488,7 +537,7 @@ main.analytics {
     overflow-x: auto;
   }
 
-  > p {
+  >p {
     display: flex;
     align-items: center;
     justify-content: center;
@@ -504,7 +553,10 @@ main.credits article form {
   gap: 8px;
   align-items: stretch;
 
-  input { flex: 1; min-width: 0; }
+  input {
+    flex: 1;
+    min-width: 0;
+  }
 }
 
 // ── Add / Edit custom exercise pages ──────────────────────────────────────
@@ -513,7 +565,7 @@ main.container--form {
   max-width: 600px;
   margin: 0 auto;
 
-  > div {
+  >div {
     display: flex;
     flex-direction: column;
     gap: var(--spacing-md);
@@ -521,7 +573,7 @@ main.container--form {
 }
 
 // ── Back button in page headers ────────────────────────────────────────────
-header > button.back {
+header>button.back {
   background: none;
   border: none;
   color: var(--color-primary);
@@ -560,4 +612,6 @@ header > button.back {
 }
 
 // ── Invalid input highlighting ─────────────────────────────────────────────
-input.invalid { border-color: var(--color-danger); }
+input.invalid {
+  border-color: var(--color-danger);
+}

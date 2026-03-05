@@ -537,7 +537,7 @@ pub fn SessionView() -> Element {
             // Exercise search and selection
             if current_exercise_id.read().is_none() {
                 div {
-                    div { class: "search-with-add",
+                    div { id: "search",
                         input {
                             r#type: "text",
                             placeholder: "Search for an exercise...",
@@ -550,7 +550,6 @@ pub fn SessionView() -> Element {
                             "+"
                         }
                     }
-
                     if !search_results().is_empty() {
                         ul { class: "results",
                             for (id, name, category) in search_results() {

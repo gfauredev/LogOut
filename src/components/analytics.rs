@@ -104,22 +104,24 @@ pub fn Analytics() -> Element {
         header {
             h1 { "📊 Analytics" }
             p { "Track your progress over time" }
-            label { "Metric" }
-            select {
-                value: "{selected_metric:?}",
-                onchange: move |evt| {
-                    selected_metric.set(match evt.value().as_str() {
-                        "Weight" => Metric::Weight,
-                        "Reps" => Metric::Reps,
-                        "Distance" => Metric::Distance,
-                        "Duration" => Metric::Duration,
-                        _ => Metric::Weight,
-                    });
-                },
-                option { value: "Weight", "Weight (kg)" }
-                option { value: "Reps", "Repetitions" }
-                option { value: "Distance", "Distance (km)" }
-                option { value: "Duration", "Duration (minutes)" }
+            div { class: "metric-selector",
+                label { "Metric" }
+                select {
+                    value: "{selected_metric:?}",
+                    onchange: move |evt| {
+                        selected_metric.set(match evt.value().as_str() {
+                            "Weight" => Metric::Weight,
+                            "Reps" => Metric::Reps,
+                            "Distance" => Metric::Distance,
+                            "Duration" => Metric::Duration,
+                            _ => Metric::Weight,
+                        });
+                    },
+                    option { value: "Weight", "Weight (kg)" }
+                    option { value: "Reps", "Repetitions" }
+                    option { value: "Distance", "Distance (km)" }
+                    option { value: "Duration", "Duration (minutes)" }
+                }
             }
             label { "Exercises (⩽ 8)" }
             for i in 0..8 {
