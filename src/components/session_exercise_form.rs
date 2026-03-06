@@ -51,17 +51,12 @@ pub(super) fn ExerciseFormPanel(
 
     rsx! {
         article {
-            class: "current",
-
             header {
                 h3 { "{exercise_name}" }
                 if let Some(dur) = last_duration {
-                    span {
-                        "Last duration: {format_time(dur)}"
-                    }
+                    div { label { "⏳" } time {"{format_time(dur)}"} }
                 }
             }
-
             if show_static_timer {
                 ExerciseElapsedTimer {
                     exercise_start: *current_exercise_start.read(),
@@ -69,129 +64,117 @@ pub(super) fn ExerciseFormPanel(
                     duration_bell_rung,
                 }
             }
-
-            div {
+            {
+                let weight = weight_input.read();
+                let weight_invalid = !weight.is_empty() && parse_weight_kg(&weight).is_none();
+                rsx! {
+                    div { class: "inputs",
+                        label { "Weight (kg)" }
+                        button { class: "no",
+                            r#type: "button",
+                            onclick: move |_| {
+                                let cur: f64 = weight_input.read().parse().unwrap_or(0.0);
+                                let next = (cur - 0.5).max(0.0);
+                                weight_input.set(format!("{:.1}", next));
+                            },
+                            "−"
+                        }
+                        input {
+                            r#type: "number",
+                            inputmode: "decimal",
+                            step: "0.1",
+                            placeholder: "Opt.",
+                            value: "{weight_input}",
+                            oninput: move |evt| weight_input.set(evt.value()),
+                            class: if weight_invalid { "invalid" } else { "" },
+                        }
+                        button { class: "yes",
+                            r#type: "button",
+                            onclick: move |_| {
+                                let cur: f64 = weight_input.read().parse().unwrap_or(0.0);
+                                weight_input.set(format!("{:.1}", cur + 0.5));
+                            },
+                            "+"
+                        }
+                    }
+                }
+            }
+            if is_cardio {
                 {
-                    let weight = weight_input.read();
-                    let weight_invalid = !weight.is_empty() && parse_weight_kg(&weight).is_none();
-                    rsx! {
-                        div {
-                            label { "Weight (kg)" }
-                            div { class: "stepper",
-                                button {
-                                    r#type: "button",
-                                    onclick: move |_| {
-                                        let cur: f64 = weight_input.read().parse().unwrap_or(0.0);
-                                        let next = (cur - 0.5).max(0.0);
-                                        weight_input.set(format!("{:.1}", next));
-                                    },
-                                    "−"
-                                }
-                                input {
-                                    r#type: "number",
-                                    inputmode: "decimal",
-                                    step: "0.1",
-                                    placeholder: "Opt.",
-                                    value: "{weight_input}",
-                                    oninput: move |evt| weight_input.set(evt.value()),
-                                    class: if weight_invalid { "invalid" } else { "" },
-                                }
-                                button {
-                                    r#type: "button",
-                                    onclick: move |_| {
-                                        let cur: f64 = weight_input.read().parse().unwrap_or(0.0);
-                                        weight_input.set(format!("{:.1}", cur + 0.5));
-                                    },
-                                    "+"
-                                }
-                            }
-                        }
-                    }
-                }
-
-                if is_cardio {
-                    {
-                        let dist = distance_input.read();
-                        let distance_invalid = !dist.is_empty() && parse_distance_km(&dist).is_none();
-                        rsx! {
-                            div {
-                                label { "Distance (km)" }
-                                input {
-                                    r#type: "number",
-                                    inputmode: "decimal",
-                                    step: "0.1",
-                                    placeholder: "Distance",
-                                    value: "{distance_input}",
-                                    oninput: move |evt| distance_input.set(evt.value()),
-                                    class: if distance_invalid { "invalid" } else { "" },
-                                }
-                            }
-                        }
-                    }
-                }
-
-                if show_reps {
-                    {
-                        let reps = reps_input.read();
-                        let reps_invalid = !reps.is_empty() && reps.parse::<u32>().map(|r| r == 0).unwrap_or(true);
-                        rsx! {
-                            div {
-                                label { "Repetitions" }
-                                div { class: "stepper",
-                                    button {
-                                        r#type: "button",
-                                        onclick: move |_| {
-                                            let cur: u32 = reps_input.read().parse().unwrap_or(0);
-                                            if cur > 1 {
-                                                reps_input.set((cur - 1).to_string());
-                                            }
-                                        },
-                                        "−"
-                                    }
-                                    input {
-                                        r#type: "number",
-                                        inputmode: "numeric",
-                                        placeholder: "Reps",
-                                        value: "{reps_input}",
-                                        oninput: move |evt| reps_input.set(evt.value()),
-                                        class: if reps_invalid { "invalid" } else { "" },
-                                    }
-                                    button {
-                                        r#type: "button",
-                                        onclick: move |_| {
-                                            let cur: u32 = reps_input.read().parse().unwrap_or(0);
-                                            reps_input.set((cur + 1).to_string());
-                                        },
-                                        "+"
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-
-                {
-                    let weight = weight_input.read();
-                    let reps = reps_input.read();
                     let dist = distance_input.read();
-                    let weight_valid = weight.is_empty() || parse_weight_kg(&weight).is_some();
-                    let reps_valid = !show_reps || reps.parse::<u32>().map(|r| r > 0).unwrap_or(false);
-                    let distance_valid = !is_cardio || parse_distance_km(&dist).is_some();
-                    let complete_disabled = !weight_valid || !reps_valid || !distance_valid;
+                    let distance_invalid = !dist.is_empty() && parse_distance_km(&dist).is_none();
                     rsx! {
-                        footer {
-                            button {
-                                onclick: move |_| on_complete.call(()),
-                                disabled: complete_disabled,
-                                class: "confirm",
-                                title: "Complete Exercise",
-                                "✔️ Complete"
+                        div { class: "inputs",
+                            label { "Distance (km)" }
+                            // TODO decrent and increment buttons too
+                            input {
+                                r#type: "number",
+                                inputmode: "decimal",
+                                step: "0.1",
+                                placeholder: "km",
+                                value: "{distance_input}",
+                                oninput: move |evt| distance_input.set(evt.value()),
+                                class: if distance_invalid { "invalid" } else { "" },
                             }
-                            button {
-                                onclick: move |_| on_cancel.call(()),
-                                class: "icon danger",
-                                "❌"
+                        }
+                    }
+                }
+            }
+            if show_reps {
+                {
+                    let reps = reps_input.read();
+                    let reps_invalid = !reps.is_empty() && reps.parse::<u32>().map(|r| r == 0).unwrap_or(true);
+                    rsx! {
+                        div { class: "inputs",
+                            label { "Repetitions" }
+                            button { class: "no",
+                                r#type: "button",
+                                onclick: move |_| {
+                                    let cur: u32 = reps_input.read().parse().unwrap_or(0);
+                                    if cur > 1 {
+                                        reps_input.set((cur - 1).to_string());
+                                    }
+                                },
+                                "−"
                             }
+                            input {
+                                r#type: "number",
+                                inputmode: "numeric",
+                                placeholder: "Reps",
+                                value: "{reps_input}",
+                                oninput: move |evt| reps_input.set(evt.value()),
+                                class: if reps_invalid { "invalid" } else { "" },
+                            }
+                            button { class: "yes",
+                                r#type: "button",
+                                onclick: move |_| {
+                                    let cur: u32 = reps_input.read().parse().unwrap_or(0);
+                                    reps_input.set((cur + 1).to_string());
+                                },
+                                "+"
+                            }
+                        }
+                    }
+                }
+            }
+            {
+                let weight = weight_input.read();
+                let reps = reps_input.read();
+                let dist = distance_input.read();
+                let weight_valid = weight.is_empty() || parse_weight_kg(&weight).is_some();
+                let reps_valid = !show_reps || reps.parse::<u32>().map(|r| r > 0).unwrap_or(false);
+                let distance_valid = !is_cardio || parse_distance_km(&dist).is_some();
+                let complete_disabled = !weight_valid || !reps_valid || !distance_valid;
+                rsx! {
+                    footer {
+                        button { class: "yes",
+                            onclick: move |_| on_complete.call(()),
+                            disabled: complete_disabled,
+                            title: "Complete Exercise", "✔️"
+                        }
+                        button { class: "no",
+                            onclick: move |_| on_cancel.call(()),
+                            "❌"
                         }
                     }
                 }

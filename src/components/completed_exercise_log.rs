@@ -67,37 +67,24 @@ pub fn CompletedExerciseLog(
 
     rsx! {
         article {
-            class: "log",
-
             header {
                 h4 { "{log.exercise_name}" }
-                div {
-                    if show_replay {
-                        button {
-                            title: "Do another set",
-                            onclick: move |_| on_replay.call(()),
-                            "🔁"
-                        }
-                    }
-                    button {
-                        onclick: start_edit,
-                        title: "Edit this exercise",
-                        class: "icon edit",
-                        "✏️"
-                    }
-                    button {
-                        title: "Delete this exercise",
-                        class: "icon danger",
-                        onclick: move |_| {
-                            let mut current_session = session.read().clone();
-                            current_session.exercise_logs.remove(idx);
-                            storage::save_session(current_session.clone());
-                        },
-                        "🗑️"
+                if show_replay {
+                    button { class: "edit", title: "Do another set",
+                        onclick: move |_| on_replay.call(()), "🔁"
                     }
                 }
+                button { class: "edit", onclick: start_edit,
+                    title: "Edit this exercise", "✏️"
+                }
+                button { class: "no", title: "Delete this exercise",
+                    onclick: move |_| {
+                        let mut current_session = session.read().clone();
+                        current_session.exercise_logs.remove(idx);
+                        storage::save_session(current_session.clone());
+                    }, "🗑️"
+                }
             }
-
             if *is_editing.read() {
                 form {
                     div {
@@ -137,32 +124,19 @@ pub fn CompletedExerciseLog(
                         }
                     }
                     footer {
-                        button {
-                            onclick: save_edit,
-                            class: "edit",
-                            "💾 Save"
-                        }
-                        button {
-                            onclick: move |_| is_editing.set(false),
-                            class: "icon danger",
-                            "❌"
+                        button { class: "edit", onclick: save_edit, "💾 Save" }
+                        button { class: "no",
+                            onclick: move |_| is_editing.set(false), "❌"
                         }
                     }
                 }
             } else {
-                div {
-                    class: "details",
-                    if let Some(w) = log.weight_hg {
-                        div { "Weight: {w}" }
-                    }
-                    if let Some(reps) = log.reps {
-                        div { "Reps: {reps}" }
-                    }
-                    if let Some(d) = log.distance_m {
-                        div { "Distance: {d}" }
-                    }
+                ul {
+                    if let Some(w) = log.weight_hg { li { "{w}" } }
+                    if let Some(reps) = log.reps { li { "{reps} reps" } }
+                    if let Some(d) = log.distance_m { li { "{d}" } }
                     if let Some(duration) = log.duration_seconds() {
-                        div { "Duration: {format_time(duration)}" }
+                        li { "{format_time(duration)}" }
                     }
                 }
             }

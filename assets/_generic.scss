@@ -43,7 +43,6 @@ a.add {
   }
 }
 
-
 // Icon-only circular buttons ➕, 🔄, ✏️, 💾, ✅, ☑️, 🗑️, ❌, ▶️, ⏸️
 button:not(.label),
 a.edit:not(.label),
@@ -73,10 +72,24 @@ ol {
   line-height: 1.8;
 }
 
+input::-webkit-outer-spin-button,
+input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+input[type="number"] {
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+
 .inputs {
   display: flex;
   align-items: center;
   gap: var(--spacing);
+  white-space: nowrap;
+  width: fit-content;
+  margin: 0 auto var(--spacing);
 
   &>button,
   &>a {
@@ -95,17 +108,47 @@ ol {
   line-height: 1;
 }
 
+/* main.sessions>form {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing);
+  padding: var(--spacing) var(--spacing);
+  background: var(--bg-card);
+  border-bottom: 1px solid var(--border-color);
+  color: var(--text-secondary);
+  font-size: 0.9em;
+
+  input[type=number] {
+    width: 80px;
+    text-align: center;
+    padding: var(--spacing);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius);
+    background: var(--bg-card);
+    color: inherit;
+  }
+} */
+
 select,
 input[type=text],
 input[type=url],
 input[type=number] {
-  width: 100%;
   padding: var(--spacing);
   border: 1px solid var(--separation);
   border-radius: var(--radius);
   color: inherit;
   background: var(--article);
   // box-sizing: border-box;
+}
+
+input[type=number] {
+  width: 7ch;
+}
+
+
+input[type=url],
+input[type=text] {
+  width: var(--col-min-width);
 }
 
 label {
@@ -172,26 +215,38 @@ article {
   background: var(--article);
 }
 
+main.session article {
+  margin: 0 auto;
+}
+
+time {
+  display: inline-block;
+  // margin: var(--spacing);
+  color: var(--secondary);
+}
+
 article>header {
   display: flex;
   align-items: center;
+  flex-wrap: nowrap;
   gap: var(--spacing);
-  margin-bottom: var(--spacing);
+  // margin-bottom: var(--spacing);
   justify-content: space-between;
+  flex: 1;
 }
 
 article>header>* {
   padding: var(--spacing);
 }
 
-article>header time {
+/* article>header time {
   font-size: 0.85em;
   color: var(--text-muted);
   font-weight: 500;
   text-transform: uppercase;
   letter-spacing: 0.04em;
   flex: 1;
-}
+} */
 
 article>header span {
   font-size: 0.9em;
@@ -200,11 +255,12 @@ article>header span {
   white-space: nowrap;
 }
 
-article>ul {
+article>ul,
+article>header>ul {
   display: flex;
   flex-wrap: wrap;
   gap: var(--spacing);
-  margin-bottom: var(--spacing);
+  margin: 0;
   list-style: none;
   padding: 0;
 
@@ -281,7 +337,14 @@ article img {
   }
 }
 
-article footer {
+article footer,
+header.session {
   display: flex;
   gap: var(--spacing);
+  justify-content: center;
+  align-items: center;
+
+  h2 {
+    margin: 0;
+  }
 }
