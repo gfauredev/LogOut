@@ -401,7 +401,6 @@ main.edit>div {
   gap: var(--spacing);
 }
 
-// ── Cancel button in page headers ──────────────────────────────────────────
 header>button.no {
   background: var(--color-no);
   border: none;
@@ -413,20 +412,18 @@ header>button.no {
   border-radius: 50%;
 }
 
-// ── Snackbar / toast notifications ────────────────────────────────────────
 .snackbar {
   position: fixed;
-  bottom: var(--nav-height);
-  left: 50%;
-  transform: translateX(-50%);
-  background: var(--gradient-success);
-  color: #1a3a1a;
-  padding: 14px 28px;
+  bottom: 20%;
+  left: 5%;
+  background: color-mix(in srgb, var(--yes) 70%, transparent);
+  padding: var(--spacing);
   border-radius: var(--radius);
   font-weight: bold;
-  font-size: 1.1em;
   z-index: var(--z-toast);
-  box-shadow: var(--shadow-toast);
+  min-height: 3em;
+  text-align: center;
+  width: 90%;
   animation: snackbar-in 0.3s ease-out;
 }
 
