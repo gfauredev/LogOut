@@ -32,7 +32,7 @@ url: http://localhost:8080
 # Confirm the deletion in the modal dialog
 - assertVisible: Delete this session?
 - tapOn:
-    css: "button.danger"
+    css: "button.no"
 # The deleted session's card should no longer be the top card,
 # but the bench press session from Story 15 is still present
 - assertVisible: Wide-Grip Barbell Bench Press
