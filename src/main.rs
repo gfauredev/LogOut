@@ -133,8 +133,7 @@ fn CongratulationsToast() -> Element {
 
     if *show.read() {
         rsx! {
-            div {
-                class: "snackbar",
+            div { class: "snackbar",
                 onclick: move |_| show.set(false),
                 "🎉 Great workout! Session complete!"
             }
@@ -171,8 +170,7 @@ fn Toast() -> Element {
     let guard = toast.read();
     if let Some(msg) = guard.as_deref() {
         rsx! {
-            div {
-                class: "snackbar",
+            div { class: "snackbar",
                 onclick: move |_| toast.set(None),
                 "{msg}"
             }
@@ -191,11 +189,9 @@ fn Toast() -> Element {
 fn NotificationPermissionToast() -> Element {
     #[allow(unused_mut)]
     let mut show = use_context::<NotificationPermissionToastSignal>().0;
-
     if !*show.read() {
         return rsx! {};
     }
-
     #[cfg(all(target_arch = "wasm32", feature = "web-platform"))]
     {
         use web_sys::NotificationPermission;
@@ -204,8 +200,7 @@ fn NotificationPermissionToast() -> Element {
             _ => "⚠️ Tap here to enable notifications",
         };
         rsx! {
-            div {
-                class: "snackbar",
+            div { class: "snackbar",
                 onclick: move |_| {
                     show.set(false);
                     if let Ok(promise) = web_sys::Notification::request_permission() {
