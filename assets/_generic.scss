@@ -8,7 +8,7 @@ h2 {
 }
 
 p {
-  margin: var(--spacing-xs) 0;
+  margin: var(--spacing) 0;
   color: var(--text-muted);
   line-height: 1.5;
 }
@@ -163,7 +163,7 @@ label {
   gap: 8px;
 
   >div {
-    padding: 6px var(--spacing-sm);
+    padding: 6px var(--spacing);
     background: var(--color-primary);
     color: white;
     border-radius: var(--radius);
@@ -190,7 +190,7 @@ label {
 
 /* .muscle-row {
   display: flex;
-  gap: var(--spacing-xs);
+  gap: var(--spacing);
   align-items: center;
 
   select {
@@ -241,8 +241,8 @@ article {
 article>header {
   display: flex;
   align-items: center;
-  gap: var(--spacing-xs);
-  margin-bottom: var(--spacing-xs);
+  gap: var(--spacing);
+  margin-bottom: var(--spacing);
 }
 
 article>header>* {
@@ -332,7 +332,7 @@ article img {
   margin: 0 auto var(--spacing) auto;
   display: flex;
   align-items: center;
-  gap: var(--spacing-xs);
+  gap: var(--spacing);
   max-width: var(--col-min-width);
 
   > div {
@@ -349,5 +349,5 @@ article img {
 
 article footer {
   display: flex;
-  gap: var(--spacing-xs);
+  gap: var(--spacing);
 }
