@@ -9,7 +9,7 @@ url: http://localhost:8080
 - tapOn:
     css: "main + button"
 - assertVisible:
-    css: "main.sessions > header h2"
+    css: "header.session h2"
 - assertVisible:
     css: "button[title='Cancel Session']"
 
