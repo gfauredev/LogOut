@@ -96,14 +96,14 @@ pub fn ExerciseCard(
             if !exercise.primary_muscles.is_empty() {
                 ul {
                     for muscle in &exercise.primary_muscles {
-                        li { class: "primary", "{muscle}" }
+                        li { class: "primary-muscle", "{muscle}" }
                     }
                 }
             }
             if !exercise.secondary_muscles.is_empty() {
                 ul {
                     for muscle in &exercise.secondary_muscles {
-                        li { class: "secondary", "{muscle}" }
+                        li { class: "secondary-muscle", "{muscle}" }
                     }
                 }
             }
