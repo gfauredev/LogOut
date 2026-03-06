@@ -202,13 +202,12 @@ fn CompletedExercisesSection(
             // prior sequence implies what the next exercise should be.
             if no_exercise_active {
                 if let Some((next_id, next_name)) = suggestion_label() {
-                    button {
-                        class: "suggest",
+                    button { class: "label",
                         onclick: {
                             let id = next_id.clone();
                             move |_| on_replay.call(id.clone())
                         },
-                        "▶ Do {next_name} next"
+                        "⏩ {next_name}"
                     }
                 }
             }

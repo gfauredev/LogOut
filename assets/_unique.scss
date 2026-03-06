@@ -35,6 +35,11 @@ main.session>section.exercises {
       margin-left: auto;
     }
   }
+
+  &>button {
+    margin: var(--spacing) auto;
+    display: block;
+  }
 }
 
 
