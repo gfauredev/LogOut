@@ -42,7 +42,7 @@ main+button {
   width: var(--btn-fab-size);
   height: var(--btn-fab-size);
   border-radius: 50%;
-  background: var(--gradient-pink);
+  background: var(--color-add);
   color: var(--text-primary);
   font-size: 2em;
   border: none;
@@ -82,7 +82,7 @@ main+button {
   gap: var(--spacing-xs);
 }
 
-.exercise-selector > div {
+.exercise-selector>div {
   width: 20px;
   height: 20px;
   border-radius: var(--radius);
@@ -127,7 +127,7 @@ dialog {
 }
 
 // ── Session view layout ────────────────────────────────────────────────────
-main.sessions > header {
+main.sessions>header {
   position: sticky;
   top: 0;
   background: var(--gradient-primary);
@@ -162,7 +162,7 @@ main.sessions > header {
   }
 
   button.danger {
-    background: var(--color-danger);
+    background: var(--color-no);
   }
 
   button.confirm {
@@ -261,7 +261,7 @@ article.current {
 }
 
 // ── Compact number input (≈3 digits wide) with stepper buttons ────────────
-.stepper > input {
+.stepper>input {
   width: 5ch;
   min-width: 5ch;
   max-width: 5ch;
@@ -274,7 +274,7 @@ article.current {
   gap: var(--spacing-xs);
 }
 
-.stepper > button {
+.stepper>button {
   flex-shrink: 0;
   width: 2.2em;
   height: 2.2em;
@@ -397,7 +397,7 @@ ul.results {
 
   &.exceeded {
     background: var(--bg-danger-light);
-    color: var(--color-danger);
+    color: var(--color-no);
   }
 }
 
@@ -416,7 +416,7 @@ ul.results {
 }
 
 // ── Rest duration configuration form ──────────────────────────────────────
-main.sessions > form {
+main.sessions>form {
   display: flex;
   align-items: center;
   gap: var(--spacing-xs);
@@ -477,7 +477,7 @@ main.edit>div {
 
 // ── Cancel button in page headers ──────────────────────────────────────────
 header>button.danger {
-  background: var(--color-danger);
+  background: var(--color-no);
   border: none;
   font-size: 1.1em;
   cursor: pointer;
@@ -518,5 +518,5 @@ header>button.danger {
 
 // ── Invalid input highlighting ─────────────────────────────────────────────
 input.invalid {
-  border-color: var(--color-danger);
+  border-color: var(--color-no);
 }

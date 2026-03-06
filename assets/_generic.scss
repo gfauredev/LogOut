@@ -132,13 +132,13 @@ label {
   }
 
   span.primary {
-    background: var(--muscle-primary-bg);
-    color: var(--muscle-primary-fg);
+    background: var(--muscle-secondary);
+    color: var(----text-primary);
   }
 
   span.secondary {
-    background: var(--muscle-secondary-bg);
-    color: var(--muscle-secondary-fg);
+    background: var(--muscle-secondary);
+    color: var(--text-secondary);
   }
 }
 
@@ -172,8 +172,8 @@ label {
     gap: 8px;
 
     &.secondary {
-      background: var(--muscle-secondary-bg);
-      color: var(--muscle-secondary-fg);
+      background: var(--muscle-secondary);
+      color: var(--text-secondary);
     }
 
     >button {
@@ -223,7 +223,7 @@ button.confirm {
 
 // Delete 🗑️ / Cancel ❌ — danger (red)
 button.danger {
-  background: var(--color-danger);
+  background: var(--color-no);
 }
 
 .active {

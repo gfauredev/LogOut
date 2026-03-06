@@ -1,30 +1,19 @@
 :root {
   ////////// Colors //////////
-  // Text
-  --text-primary: #fff;
-  --text-secondary: #ccc;
-  --text-muted: #999;
-  --text-dim: #777;
-  --text-faint: #aaa;
-  --text-soft: #e0e0e0;
-  // Backgrounds
-  --color-primary: #667eea;
-  --color-primary-light: #668efa;
-  --color-danger: #e74c3c;
-  --color-success: #43e97b;
-  --color-secondary: #764ba2;
-  --color-accent: #4facfe;
-  --color-pink-dark: #f5576c;
-  --color-accent-light: #00f2fe;
-  --color-success-light: #38f9d7;
-  --color-pink: #f093fb;
-  --muscle-primary-bg: #2d7a3a;
-  --muscle-primary-fg: #c8f7d0;
-  --muscle-secondary-bg: #1a4a4a;
-  --muscle-secondary-fg: #a8edea;
-  // Surfaces
-  --bg-body: #000;
-  --bg-card: #111;
+  $red: #e74c3c; // --color-danger
+  $green: #43e97b; // --color-success
+  $lightgreen: #38f9d7; // --color-success-light
+  $darkgreen: #2d7a3a;
+  $blue: #668efa; // --color-primary-light
+  $lightblue: #4facfe; // --color-accent
+  $lightblue2: #00f2fe; // --color-accent-light
+  $darkblue: #667eea; // --color-primary
+  $pink: #f093fb; // --color-pink
+  $darkpink: #f5576c; // --color-pink-dark
+  $purple: #764ba2; // --color-secondary
+  // Structure & Data Types
+  --body: #000;
+  --article: #111;
   --bg-elevated: #1a1a2e;
   --bg-muted: #222;
   --bg-modal: #1a1a1a;
@@ -33,19 +22,23 @@
   --bg-success-muted: #0a1a0a;
   --bg-danger-muted: #2a1a1a;
   --bg-danger-light: #1a0a0a;
+  --muscle-secondary: $darkgreen; // --muscle-secondary
+  --muscle-secondary: $darkblue; // --muscle-secondary
+  // Text
+  --text-primary: #fff;
+  --text-secondary: #ccc;
+  --text-muted: #999;
+  --text-dim: #777;
+  --text-faint: #aaa;
+  --text-soft: #e0e0e0;
+  // Actions
+  --color-add: linear-gradient(135deg, $pink 0%, $darkpink 100%); // Add / Create ➕ and Replay 🔄
+  --color-edit: linear-gradient(135deg, $blue 0%, $purple 100%); // Edit ✏️ and Save 💾
+  --color-yes: linear-gradient(135deg, $green 0%, $lightgreen 100%); // Confirm ✅ and Complete ✔️
+  --color-no: linear-gradient(135deg, $red 0%, $darkpink 100%); // Delete 🗑️ and Cancel ❌
   // Borders
   --border-color: #333;
   --border-pending: #4a4a6a;
-  // Gradients
-  --gradient-primary: linear-gradient(135deg, var(--color-primary) 0%, var(--color-secondary) 100%);
-  --gradient-accent: linear-gradient(135deg, var(--color-accent) 0%, var(--color-accent-light) 100%);
-  --gradient-success: linear-gradient(135deg, var(--color-success) 0%, var(--color-success-light) 100%);
-  --gradient-pink: linear-gradient(135deg, var(--color-pink) 0%, var(--color-pink-dark) 100%);
-  // Semantic action colors
-  --color-add: var(--gradient-pink); // Add / Create ➕
-  --color-edit: var(--gradient-primary); // Edit ✏️ / Save 💾
-  --color-confirm: var(--gradient-success); // Confirm ✅ / Complete ✔️
-  --color-cancel: var(--color-danger); // Delete 🗑️ / Cancel ❌
   ///////// Geometry //////////
   --radius: 12px;
   --spacing: 8px;
