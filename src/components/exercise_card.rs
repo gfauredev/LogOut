@@ -16,48 +16,50 @@ pub fn ExerciseCard(
 
     rsx! {
         article { key: "{exercise.id}",
-            if is_custom {
-                Link {
-                    to: Route::EditExercise { id: exercise.id.clone() },
-                    class: "edit",
-                    "✏️ Edit"
-                }
-            } else {
-                button {
-                    class: "edit",
-                    onclick: {
-                        let exercise = exercise.clone();
-                        move |_| {
-                            let timestamp = get_current_timestamp();
-                            let clone = Exercise {
-                                id: format!("custom_{}", timestamp),
-                                name: exercise.name.clone(),
-                                name_lower: exercise.name_lower.clone(),
-                                category: exercise.category,
-                                force: exercise.force,
-                                level: exercise.level,
-                                mechanic: exercise.mechanic,
-                                equipment: exercise.equipment,
-                                primary_muscles: exercise.primary_muscles.clone(),
-                                secondary_muscles: exercise.secondary_muscles.clone(),
-                                instructions: exercise.instructions.clone(),
-                                images: exercise.images.clone(),
-                            };
-                            let clone_id = clone.id.clone();
-                            storage::add_custom_exercise(clone);
-                            navigator()
-                                .push(Route::EditExercise { id: clone_id });
-                        }
+            header {
+                h2 {
+                    onclick: move |_| {
+                        let current = *show_instructions.read();
+                        show_instructions.set(!current);
                     },
-                    "✏️ Clone & Edit"
+                    "{exercise.name}"
                 }
-            }
-            h2 {
-                onclick: move |_| {
-                    let current = *show_instructions.read();
-                    show_instructions.set(!current);
-                },
-                "{exercise.name}"
+                if is_custom {
+                    Link { class: "edit",
+                        to: Route::EditExercise { id: exercise.id.clone() },
+                        title: "Edit",
+                        "✏️"
+                    }
+                } else {
+                    button { class: "add",
+                        onclick: {
+                            let exercise = exercise.clone();
+                            move |_| {
+                                let timestamp = get_current_timestamp();
+                                let clone = Exercise {
+                                    id: format!("custom_{}", timestamp),
+                                    name: exercise.name.clone(),
+                                    name_lower: exercise.name_lower.clone(),
+                                    category: exercise.category,
+                                    force: exercise.force,
+                                    level: exercise.level,
+                                    mechanic: exercise.mechanic,
+                                    equipment: exercise.equipment,
+                                    primary_muscles: exercise.primary_muscles.clone(),
+                                    secondary_muscles: exercise.secondary_muscles.clone(),
+                                    instructions: exercise.instructions.clone(),
+                                    images: exercise.images.clone(),
+                                };
+                                let clone_id = clone.id.clone();
+                                storage::add_custom_exercise(clone);
+                                navigator()
+                                    .push(Route::EditExercise { id: clone_id });
+                            }
+                        },
+                        title: "Clone then edit",
+                        "+"
+                    }
+                }
             }
             if *show_instructions.read() && !exercise.instructions.is_empty() {
                 ol {
@@ -79,29 +81,29 @@ pub fn ExerciseCard(
                     },
                 }
             }
-            div { class: "tags",
-                span { class: "category", "{exercise.category}" }
+            ul {
+                li { class: "category", "{exercise.category}" }
                 if let Some(force) = &exercise.force {
-                    span { class: "force", "{force}" }
+                    li { class: "force", "{force}" }
                 }
                 if let Some(equipment) = &exercise.equipment {
-                    span { class: "equipment", "{equipment}" }
+                    li { class: "equipment", "{equipment}" }
                 }
                 if let Some(level) = &exercise.level {
-                    span { class: "level", "{level}" }
+                    li { class: "level", "{level}" }
                 }
             }
             if !exercise.primary_muscles.is_empty() {
-                div { class: "tags",
+                ul {
                     for muscle in &exercise.primary_muscles {
-                        span { class: "primary", "{muscle}" }
+                        li { class: "primary", "{muscle}" }
                     }
                 }
             }
             if !exercise.secondary_muscles.is_empty() {
-                div { class: "tags",
+                ul {
                     for muscle in &exercise.secondary_muscles {
-                        span { class: "secondary", "{muscle}" }
+                        li { class: "secondary", "{muscle}" }
                     }
                 }
             }

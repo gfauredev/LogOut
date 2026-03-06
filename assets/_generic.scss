@@ -22,29 +22,47 @@ a:hover {
   text-decoration: underline;
 }
 
-button {
-  border: none;
+button,
+a.edit,
+a.add {
   padding: var(--spacing);
-  background: var(--color-primary);
+  align-items: center;
+  justify-content: center;
+  opacity: 0.8;
+  transition: opacity 0.2s;
   color: var(--text-primary);
   border-radius: var(--radius);
   cursor: pointer;
   text-decoration: none;
   font-weight: bold;
+  background: none;
+  font-size: 1.1em;
+
+  &:hover {
+    opacity: 1;
+  }
 }
 
-// ── Icon-only circular buttons ────────────────────────────────────────────
-// Used for single-emoji buttons (🗑️, ✏️, ❌, ➕, 🔁, 🔄, etc.)
-button.icon {
+
+// Icon-only circular buttons ➕, 🔄, ✏️, 💾, ✅, ☑️, 🗑️, ❌, ▶️, ⏸️
+button:not(.label),
+a.edit:not(.label),
+a.add:not(.label) {
   width: var(--icon-btn-width);
   height: var(--icon-btn-width);
   border-radius: 50%;
+  border: 1px solid var(--add);
   padding: 0;
   line-height: 1;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   font-weight: bold;
+}
+
+#main>button {
+  display: block;
+  margin: var(--spacing) auto;
 }
 
 ul,
@@ -55,7 +73,7 @@ ol {
   line-height: 1.8;
 }
 
-.field-and-add {
+.inputs {
   display: flex;
   align-items: center;
   gap: var(--spacing);
@@ -68,8 +86,8 @@ ol {
   }
 }
 
-.field-and-add a,
-.field-and-add button {
+.inputs a,
+.inputs button {
   width: var(--icon-btn-width);
   height: var(--icon-btn-width);
   border-radius: 50%;
@@ -83,12 +101,11 @@ input[type=url],
 input[type=number] {
   width: 100%;
   padding: var(--spacing);
-  border: 1px solid var(--border-color);
+  border: 1px solid var(--separation);
   border-radius: var(--radius);
-  font-size: var(--font-size-base);
-  box-sizing: border-box;
-  background: var(--bg-card);
   color: inherit;
+  background: var(--article);
+  // box-sizing: border-box;
 }
 
 label {
@@ -96,65 +113,6 @@ label {
   margin: var(--spacing) 0;
   font-weight: bold;
   color: var(--text-secondary);
-}
-
-.tags {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--spacing);
-  margin-bottom: var(--spacing);
-
-  span {
-    padding: calc(var(--spacing) / 2) var(--spacing);
-    background: var(--bg-elevated);
-    color: var(--color-primary);
-    border-radius: var(--radius);
-  }
-
-  span.category {
-    background: var(--color-primary);
-    color: var(--text-primary);
-  }
-
-  span.force {
-    background: var(--color-secondary);
-    color: var(--text-primary);
-  }
-
-  span.equipment {
-    background: var(--color-accent);
-    color: var(--text-primary);
-  }
-
-  span.level {
-    background: var(--color-pink-dark);
-    color: var(--text-primary);
-  }
-
-  span.primary {
-    background: var(--muscle-secondary);
-    color: var(----text-primary);
-  }
-
-  span.secondary {
-    background: var(--muscle-secondary);
-    color: var(--text-secondary);
-  }
-}
-
-.tags .more {
-  padding: 3px 10px;
-  background: var(--bg-muted);
-  color: var(--text-dim);
-  border-radius: var(--radius);
-  font-size: 0.85em;
-  border: none;
-  cursor: pointer;
-}
-
-.tags .more:hover {
-  background: var(--border-color);
-  color: var(--text-faint);
 }
 
 .muscle-tags {
@@ -188,54 +146,30 @@ label {
   }
 }
 
-/* .muscle-row {
-  display: flex;
-  gap: var(--spacing);
-  align-items: center;
-
-  select {
-    flex: 1;
-  }
-
-  input[type=text],
-  input[type=url] {
-    flex: 1;
-    width: auto;
-  }
-} */
-
-// ── Button color variants ──────────────────────────────────────────────────
-// Add / Create ➕ — pink gradient
-button.add {
-  background: var(--gradient-pink);
+button.add,
+a.add {
+  background: var(--add); // Add / Create ➕
+  font-size: 2em; // Bare + sign
 }
 
-// Edit ✏️ / Save 💾 — primary gradient (blue-purple)
-button.edit {
-  background: var(--gradient-primary);
+button.edit,
+a.edit {
+  border-color: var(--edit); // Edit ✏️ / Save 💾
 }
 
-// Confirm ✅ / Complete ✔️ — success gradient (green)
-button.confirm {
-  background: var(--gradient-success);
-  color: #1a3a1a;
+button.yes {
+  border-color: var(--yes); // Confirm ✅ / Complete ✔️
 }
 
-// Delete 🗑️ / Cancel ❌ — danger (red)
-button.danger {
-  background: var(--color-no);
-}
-
-.active {
-  transform: scale(1.25);
+button.no {
+  border-color: var(--no); // Delete 🗑️ / Cancel ❌
 }
 
 article {
   padding: var(--spacing);
-  border: 1px solid var(--border-color);
+  border: 1px solid var(--separation);
   border-radius: var(--radius);
-  background: var(--bg-card);
-  box-shadow: var(--shadow-card-sm);
+  background: var(--article);
 }
 
 article>header {
@@ -243,6 +177,7 @@ article>header {
   align-items: center;
   gap: var(--spacing);
   margin-bottom: var(--spacing);
+  justify-content: space-between;
 }
 
 article>header>* {
@@ -265,37 +200,36 @@ article>header span {
   white-space: nowrap;
 }
 
-article>header button {
-  background: none;
-  border: none;
-  cursor: pointer;
-  font-size: 1.1em;
-  border-radius: 50%;
-  width: var(--icon-btn-width);
-  height: var(--icon-btn-width);
+article>ul {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing);
+  margin-bottom: var(--spacing);
+  list-style: none;
   padding: 0;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  opacity: 0.6;
-  transition: opacity 0.2s;
+
+  li {
+    padding: calc(var(--spacing) / 2) var(--spacing);
+    background: var(--separation);
+    border-radius: var(--radius);
+  }
+
+  // TODO Colors for types of tags and exercises
 }
 
-article>header button:hover {
-  opacity: 1;
-}
-
-article .edit {
-  font-size: 0.85em;
-  color: var(--text-primary);
-  text-decoration: none;
-  padding: 2px 8px;
+.tags .more {
+  padding: 3px 10px;
+  background: var(--bg-muted);
+  color: var(--text-dim);
   border-radius: var(--radius);
+  font-size: 0.85em;
   border: none;
-  background: var(--gradient-primary);
   cursor: pointer;
-  float: right;
-  margin-bottom: 4px;
+}
+
+.tags .more:hover {
+  background: var(--border-color);
+  color: var(--text-faint);
 }
 
 article button:hover {
@@ -335,7 +269,7 @@ article img {
   gap: var(--spacing);
   max-width: var(--col-min-width);
 
-  > div {
+  >div {
     width: 20px;
     height: 20px;
     border-radius: var(--radius);

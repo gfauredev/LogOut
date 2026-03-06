@@ -199,9 +199,8 @@ pub fn Exercises() -> Element {
         header {
             h1 { tabindex: 0, "📚 Exercises" }
             p { "Browse {total} exercises" }
-            div { class: "field-and-add",
-                input {
-                    r#type: "text",
+            div { class: "inputs",
+                input { r#type: "text",
                     placeholder: "Search exercises, muscles, or categories...",
                     value: "{search_query}",
                     oninput: move |evt| {
@@ -209,7 +208,7 @@ pub fn Exercises() -> Element {
                         visible_count.set(PAGE_SIZE);
                     }
                 }
-                Link {
+                Link { class: "add",
                     to: Route::AddExercise {},
                     title: "Add Custom Exercise",
                     "+"

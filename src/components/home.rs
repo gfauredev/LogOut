@@ -5,7 +5,7 @@ use crate::utils::format_session_date;
 use crate::{ExerciseSearchSignal, Route};
 use dioxus::prelude::*;
 
-/// Number of sessions loaded per scroll increment.
+/// Number of sessions loaded per scroll increment
 const PAGE_SIZE: usize = 20;
 
 #[component]
@@ -94,7 +94,7 @@ pub fn Home() -> Element {
             }
         }
         if !*has_active.read() {
-            button {
+            button { class: "icon add",
                 onclick: start_new_session,
                 title: "Start New Workout",
                 "+"
@@ -159,7 +159,7 @@ fn SessionCard(session: WorkoutSession) -> Element {
                 time { "{date_str}" }
                 span { "⏱ {format_time(duration)}" }
                 if !pending_ids.is_empty() {
-                    button {
+                    button { class: "edit",
                         onclick: {
                             let pending_ids = pending_ids.clone();
                             move |_| {
@@ -172,17 +172,16 @@ fn SessionCard(session: WorkoutSession) -> Element {
                         "🔄"
                     }
                 }
-                button {
+                button { class: "no",
                     onclick: move |_| show_delete_confirm.set(true),
                     title: "Delete session",
-                    class: "icon danger",
                     "🗑️"
                 }
             }
             if !unique_exercises.is_empty() {
-                div { class: "tags",
+                ul {
                     for (_, name) in unique_exercises.iter().take(visible_count) {
-                        span {
+                        li {
                             onclick: {
                                 let name = name.clone();
                                 move |_| {
@@ -194,16 +193,13 @@ fn SessionCard(session: WorkoutSession) -> Element {
                         }
                     }
                     if hidden_count > 0 {
-                        button {
-                            class: "more",
+                        li { class: "more",
                             onclick: move |_| show_all_exercises.set(true),
                             "+{hidden_count} more"
                         }
                     }
                 }
             }
-
-            // Delete confirmation modal with backdrop
             if *show_delete_confirm.read() {
                 div {
                     class: "backdrop",
@@ -222,12 +218,12 @@ fn SessionCard(session: WorkoutSession) -> Element {
                                     show_delete_confirm.set(false);
                                 }
                             },
-                            class: "danger",
+                            class: "no label",
                             "🗑️ Delete"
                         }
                         button {
                             onclick: move |_| show_delete_confirm.set(false),
-                            class: "icon danger",
+                            class: "yes", // Safer
                             "❌"
                         }
                     }

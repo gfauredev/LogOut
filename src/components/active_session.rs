@@ -534,7 +534,7 @@ pub fn SessionView() -> Element {
                 }
             }
             if current_exercise_id.read().is_none() {
-                div { class: "field-and-add",
+                div { class: "inputs",
                     input {
                         r#type: "text",
                         placeholder: "Search for an exercise...",
