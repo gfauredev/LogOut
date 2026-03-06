@@ -26,17 +26,16 @@ button,
 a.edit,
 a.add {
   padding: var(--spacing);
-  align-items: center;
-  justify-content: center;
   opacity: 0.8;
   transition: opacity 0.2s;
-  color: var(--text-primary);
+  color: var(--primary);
   border-radius: var(--radius);
   cursor: pointer;
   text-decoration: none;
   font-weight: bold;
   background: none;
   font-size: 1.1em;
+  border: 1px solid var(--add);
 
   &:hover {
     opacity: 1;
@@ -50,12 +49,11 @@ a.add:not(.label) {
   width: var(--icon-btn-width);
   height: var(--icon-btn-width);
   border-radius: 50%;
-  border: 1px solid var(--add);
   padding: 0;
-  line-height: 1;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
+  line-height: 1; // TEST if really useful
+  display: inline-flex; // TEST if really useful
+  align-items: center; // TEST if really useful
+  justify-content: center; // TEST if really useful
   font-weight: bold;
 }
 
@@ -88,8 +86,9 @@ input[type="number"] {
   align-items: center;
   gap: var(--spacing);
   white-space: nowrap;
-  width: fit-content;
-  margin: 0 auto var(--spacing);
+  width: 100%;
+  // width: fit-content;
+  // margin: 0 auto var(--spacing);
 
   &>button,
   &>a {
@@ -148,7 +147,8 @@ input[type=number] {
 
 input[type=url],
 input[type=text] {
-  width: var(--col-min-width);
+  min-width: 12ch;
+  width: 100%;
 }
 
 label {

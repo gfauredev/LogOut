@@ -182,10 +182,7 @@ pub fn ExerciseFormFields(
                         option { value: "{muscle}", "{muscle}" }
                     }
                 }
-                button {
-                    onclick: add_muscle,
-                    "+"
-                }
+                button { class: "add", onclick: add_muscle, "+" }
             }
             if !muscles_list.read().is_empty() {
                 div {
@@ -214,10 +211,7 @@ pub fn ExerciseFormFields(
                         option { value: "{muscle}", "{muscle}" }
                     }
                 }
-                button {
-                    onclick: add_secondary_muscle,
-                    "+"
-                }
+                button { class: "add", onclick: add_secondary_muscle, "+"}
             }
             if !secondary_muscles_list.read().is_empty() {
                 div {
@@ -244,17 +238,14 @@ pub fn ExerciseFormFields(
                     value: "{instructions_input}",
                     oninput: move |evt| instructions_input.set(evt.value()),
                 }
-                button {
-                    onclick: add_instruction,
-                    "+"
-                }
+                button { class: "add", onclick: add_instruction, "+"}
             }
             if !instructions_list.read().is_empty() {
                 ol {
                     for (idx, instruction) in instructions_list.read().iter().enumerate() {
                         li { key: "{idx}",
                             span { "{instruction}" }
-                            button { class: "icon danger",
+                            button { class: "no",
                                 onclick: move |_| remove_instruction(idx),
                                 "🗑️"
                             }
@@ -266,16 +257,12 @@ pub fn ExerciseFormFields(
         div {
             label { "Images (URLs)" }
             div { class: "inputs",
-                input {
-                    r#type: "url",
+                input { r#type: "url",
                     placeholder: "https://example.com/image.jpg",
                     value: "{image_url_input}",
                     oninput: move |evt| image_url_input.set(evt.value()),
                 }
-                button {
-                    onclick: add_image,
-                    "+"
-                }
+                button { class: "add", onclick: add_image, "+" }
             }
             if !images_list.read().is_empty() {
                 div {
@@ -290,10 +277,9 @@ pub fn ExerciseFormFields(
                 }
             }
         }
-        button {
+        button { class: "edit label",
             onclick: move |_| on_save.call(()),
             disabled: name_input.read().trim().is_empty(),
-            class: "edit",
             "💾 {save_label}"
         }
     }

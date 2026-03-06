@@ -48,13 +48,11 @@ pub fn AddExercise() -> Element {
 
     rsx! {
         header {
-            button {
-                onclick: move |_| navigator().go_back(),
-                class: "icon danger",
-                title: "Cancel",
-                "❌"
-            }
             h1 { "Add Exercise" }
+            button { class: "no",
+                onclick: move |_| navigator().go_back(),
+                title: "Cancel", "❌"
+            }
         }
         main { class: "edit",
             ExerciseFormFields {
