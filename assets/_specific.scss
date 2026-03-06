@@ -39,8 +39,8 @@ main.sessions:has(> header) {
 
 main+button {
   display: block;
-  width: var(--btn-fab-size);
-  height: var(--btn-fab-size);
+  width: var(--icon-btn-width);
+  height: var(--icon-btn-width);
   border-radius: 50%;
   background: var(--color-add);
   color: var(--text-primary);
@@ -48,7 +48,6 @@ main+button {
   border: none;
   cursor: pointer;
   box-shadow: var(--shadow-primary);
-  z-index: var(--z-fab);
   margin: var(--spacing-sm) auto;
 }
 
@@ -482,8 +481,8 @@ header>button.danger {
   font-size: 1.1em;
   cursor: pointer;
   padding: 0;
-  width: var(--btn-add-size);
-  height: var(--btn-add-size);
+  width: var(--icon-btn-width);
+  height: var(--icon-btn-width);
   border-radius: 50%;
 }
 
