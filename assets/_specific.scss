@@ -1,11 +1,11 @@
-// Rules targetting one or a few precise elements per page
+// Rules targetting one or a few precise elements on most pages
 #main {
   display: flex;
   flex-direction: column;
   min-height: 100dvh;
   margin: 0 auto;
   max-width: var(--main-max-width);
-  padding: var(--spacing) var(--spacing) 0 var(--spacing);
+  padding: var(--spacing) var(--spacing) 0;
 }
 
 #main>header {
@@ -15,10 +15,10 @@
 
 main {
   flex: 1;
-  width: 100%;
-  box-sizing: border-box;
   gap: var(--spacing);
   grid-auto-rows: max-content;
+  // width: 100%;
+  // box-sizing: border-box;
 }
 
 main.exercises,
@@ -27,14 +27,6 @@ main.credits,
 main.edit {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(var(--col-min-width), 1fr));
-}
-
-main.sessions:has(> header) {
-  display: flex;
-  flex-direction: column;
-  height: 100dvh;
-  padding: 0;
-  gap: 0;
 }
 
 main+button {
