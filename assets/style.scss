@@ -1,71 +1,27 @@
 :root {
-  ////////// Colors //////////
-  $red: #e74c3c; // --color-danger
-  $green: #43e97b; // --color-success
-  $lightgreen: #38f9d7; // --color-success-light
-  $darkgreen: #2d7a3a;
-  $blue: #668efa; // --color-primary-light
-  $lightblue: #4facfe; // --color-accent
-  $lightblue2: #00f2fe; // --color-accent-light
-  $darkblue: #667eea; // --color-primary
-  $pink: #f093fb; // --color-pink
-  $darkpink: #f5576c; // --color-pink-dark
-  $purple: #764ba2; // --color-secondary
-  // Structure & Data Types
+  // Structure & Data Types Colors
   --body: #000;
-  --article: #111;
-  --bg-elevated: #1a1a2e;
-  --bg-muted: #222;
-  --bg-modal: #1a1a1a;
-  --bg-session-form: #0a0a1e;
-  --bg-pending: #0a0a1a;
-  --bg-success-muted: #0a1a0a;
-  --bg-danger-muted: #2a1a1a;
-  --bg-danger-light: #1a0a0a;
-  --muscle-secondary: $darkgreen; // --muscle-secondary
-  --muscle-secondary: $darkblue; // --muscle-secondary
-  // Text
-  --text-primary: #fff;
-  --text-secondary: #ccc;
-  --text-muted: #999;
-  --text-dim: #777;
-  --text-faint: #aaa;
-  --text-soft: #e0e0e0;
-  // Actions
-  --color-add: linear-gradient(135deg, $pink 0%, $darkpink 100%); // Add / Create ➕ and Replay 🔄
-  --color-edit: linear-gradient(135deg, $blue 0%, $purple 100%); // Edit ✏️ and Save 💾
-  --color-yes: linear-gradient(135deg, $green 0%, $lightgreen 100%); // Confirm ✅ and Complete ✔️
-  --color-no: linear-gradient(135deg, $red 0%, $darkpink 100%); // Delete 🗑️ and Cancel ❌
-  // Borders
-  --border-color: #333;
-  --border-pending: #4a4a6a;
-  ///////// Geometry //////////
+  --article: #121212;
+  // Text Colors
+  --primary: #fff;
+  --secondary: #a0a0a0;
+  // Actions Colors
+  --color-add: #2e7dff; // Add / Create ➕ and Replay 🔄
+  --color-edit: #e0e0e0; // Edit ✏️ and Save 💾
+  --color-yes: #00ff94; // Confirm ✅ and Complete ✔️
+  --color-no: #ff3b30; // Delete 🗑️ and Cancel ❌
+  // Layout Sizes
   --radius: 12px;
   --spacing: 8px;
-  --padding-left-list: 14px;
-  --spacing-xs: 8px;
-  --spacing-sm: 8px;
-  --spacing-md: 8px;
-  // Layout
-  --nav-height: 70px;
+  --list-padding-start: 14px;
   --col-min-width: 360px;
   --main-max-width: 1400px;
-  --btn-fab-size: 56px;
-  --btn-add-size: 42px;
-  --font-size-base: 1rem;
-  // Z-indices
-  --z-backdrop: 1;
-  --z-modal: 2;
-  --z-fab: 3;
+  --icon-btn-width: 42px;
+  // Height Indices
+  --z-backdrop: 2;
+  --z-modal: 3;
   --z-nav: 4;
   --z-toast: 5;
-  ////////// Shadows ////////// 
-  --shadow-card: 0 2px 6px rgba(0, 0, 0, .3);
-  --shadow-card-sm: 0 2px 4px rgba(0, 0, 0, .2);
-  --shadow-nav: 0 -2px 10px rgba(0, 0, 0, .3);
-  --shadow-primary: 0 4px 12px rgba(102, 126, 234, .5);
-  --shadow-toast: 0 4px 16px rgba(67, 233, 123, .4);
-  --shadow-btn: 0 2px 4px rgba(0, 0, 0, .3);
 }
 
 @import "generic"; // Generic definitions, arbitrary number of elements
