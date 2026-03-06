@@ -9,7 +9,7 @@ url: http://localhost:8080
 - tapOn:
     css: "main + button"
 - assertVisible:
-    css: "main.sessions > header h2"
+    css: "header.session h2"
 - tapOn: "Search for an exercise..."
 - inputText: "full squat"
 - assertVisible: Barbell Full Squat

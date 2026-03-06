@@ -1,7 +1,7 @@
 // Rules targetting an arbitrary number of elements per page or globally
 h2 {
   margin: 0 0 var(--spacing) 0;
-  color: var(--text-primary);
+  color: var(--primary);
   font-size: 1.2em;
   cursor: pointer;
   clear: both;
@@ -9,12 +9,12 @@ h2 {
 
 p {
   margin: var(--spacing) 0;
-  color: var(--text-muted);
+  color: var(--secondary);
   line-height: 1.5;
 }
 
 a {
-  color: var(--color-primary);
+  color: var(--add);
   text-decoration: none;
 }
 
@@ -66,7 +66,7 @@ ul,
 ol {
   margin: var(--spacing) 0 0 0;
   padding-left: var(--list-padding-start);
-  color: var(--text-muted);
+  color: var(--secondary);
   line-height: 1.8;
 }
 
@@ -87,15 +87,6 @@ input[type="number"] {
   gap: var(--spacing);
   white-space: nowrap;
   width: 100%;
-  // width: fit-content;
-  // margin: 0 auto var(--spacing);
-
-  &>button,
-  &>a {
-    background: var(--gradient-pink);
-    color: var(--text-primary);
-    display: block;
-  }
 }
 
 .inputs a,
@@ -107,27 +98,6 @@ input[type="number"] {
   line-height: 1;
 }
 
-/* main.sessions>form {
-  display: flex;
-  align-items: center;
-  gap: var(--spacing);
-  padding: var(--spacing) var(--spacing);
-  background: var(--bg-card);
-  border-bottom: 1px solid var(--border-color);
-  color: var(--text-secondary);
-  font-size: 0.9em;
-
-  input[type=number] {
-    width: 80px;
-    text-align: center;
-    padding: var(--spacing);
-    border: 1px solid var(--border-color);
-    border-radius: var(--radius);
-    background: var(--bg-card);
-    color: inherit;
-  }
-} */
-
 select,
 input[type=text],
 input[type=url],
@@ -137,7 +107,6 @@ input[type=number] {
   border-radius: var(--radius);
   color: inherit;
   background: var(--article);
-  // box-sizing: border-box;
 }
 
 input[type=number] {
@@ -155,7 +124,7 @@ label {
   display: inline-block;
   margin: var(--spacing) 0;
   font-weight: bold;
-  color: var(--text-secondary);
+  color: var(--secondary);
 }
 
 .muscle-tags {
@@ -165,7 +134,7 @@ label {
 
   >div {
     padding: 6px var(--spacing);
-    background: var(--color-primary);
+    background: var(--add);
     color: white;
     border-radius: var(--radius);
     display: flex;
@@ -173,8 +142,8 @@ label {
     gap: 8px;
 
     &.secondary {
-      background: var(--muscle-secondary);
-      color: var(--text-secondary);
+      background: var(--separation);
+      color: var(--secondary);
     }
 
     >button {
@@ -221,7 +190,6 @@ main.session article {
 
 time {
   display: inline-block;
-  // margin: var(--spacing);
   color: var(--secondary);
 }
 
@@ -230,7 +198,6 @@ article>header {
   align-items: center;
   flex-wrap: nowrap;
   gap: var(--spacing);
-  // margin-bottom: var(--spacing);
   justify-content: space-between;
   flex: 1;
 }
@@ -239,19 +206,10 @@ article>header>* {
   padding: var(--spacing);
 }
 
-/* article>header time {
-  font-size: 0.85em;
-  color: var(--text-muted);
-  font-weight: 500;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  flex: 1;
-} */
-
 article>header span {
   font-size: 0.9em;
   font-weight: 600;
-  color: var(--text-secondary);
+  color: var(--secondary);
   white-space: nowrap;
 }
 
@@ -273,29 +231,14 @@ article>header>ul {
   // TODO Colors for types of tags and exercises
 }
 
-.tags .more {
-  padding: 3px 10px;
-  background: var(--bg-muted);
-  color: var(--text-dim);
-  border-radius: var(--radius);
-  font-size: 0.85em;
-  border: none;
-  cursor: pointer;
-}
-
-.tags .more:hover {
-  background: var(--border-color);
-  color: var(--text-faint);
-}
-
 article button:hover {
-  background: var(--bg-elevated);
+  background: var(--separation);
 }
 
 article ol {
   margin: var(--spacing) 0;
   padding-left: var(--list-padding-start);
-  color: var(--text-faint);
+  color: var(--secondary);
   font-size: 0.9em;
   line-height: 1.5;
 }

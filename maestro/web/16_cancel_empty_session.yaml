@@ -5,7 +5,7 @@ url: http://localhost:8080
 - tapOn:
     css: "main + button"
 - assertVisible:
-    css: "main.sessions > header h2"
+    css: "header.session h2"
 # An empty session shows "Cancel Session" (not "Finish Session")
 - assertVisible:
     css: "button[title='Cancel Session']"

@@ -17,8 +17,6 @@ main {
   flex: 1;
   gap: var(--spacing);
   grid-auto-rows: max-content;
-  // width: 100%;
-  // box-sizing: border-box;
 }
 
 main.exercises,
@@ -27,24 +25,6 @@ main.credits,
 main.edit {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(var(--col-min-width), 1fr));
-}
-
-.exercise-selector {
-  margin-bottom: var(--spacing);
-  display: flex;
-  align-items: center;
-  gap: var(--spacing);
-}
-
-.exercise-selector>div {
-  width: 20px;
-  height: 20px;
-  border-radius: var(--radius);
-  flex-shrink: 0;
-}
-
-.exercise-selector select {
-  flex: 1;
 }
 
 // ── Delete confirmation modal ──────────────────────────────────────────────
@@ -60,12 +40,11 @@ dialog {
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
-  background: var(--bg-modal);
-  border: 1px solid var(--border-color);
+  background: var(--article);
+  border: 1px solid var(--separation);
   border-radius: var(--radius);
   padding: var(--spacing);
   text-align: center;
-  min-width: var(--modal-min-width);
   z-index: var(--z-modal);
 
   p {
@@ -81,13 +60,13 @@ dialog {
 }
 
 // ── Session view layout ────────────────────────────────────────────────────
-main.sessions>header {
+header.session {
   position: sticky;
   top: 0;
-  background: var(--gradient-primary);
-  color: white;
+  background: var(--article);
+  color: var(--primary);
   padding: 15px var(--spacing);
-  box-shadow: var(--shadow-card);
+  border-bottom: 1px solid var(--separation);
   z-index: var(--z-modal);
   display: flex;
   justify-content: space-between;
@@ -98,170 +77,8 @@ main.sessions>header {
     font-size: 1.5em;
   }
 
-  p {
-    margin: 5px 0 0 0;
-    font-size: 1.8em;
-    font-weight: bold;
-    cursor: pointer;
-
-    &:hover {
-      text-decoration: underline;
-    }
-  }
-
-  >div {
-    display: flex;
-    gap: 8px;
-    align-items: center;
-  }
-
   button.no {
-    background: var(--color-no);
-  }
-
-  button.confirm {
-    background: var(--gradient-success);
-    color: #1a3a1a;
-  }
-}
-
-main.sessions>section {
-  flex: 1;
-  overflow-y: auto;
-  overflow-x: hidden;
-  padding: var(--spacing);
-  padding-bottom: var(--nav-height);
-  margin: 0 auto;
-  width: 100%;
-}
-
-/* section.pending {
-  margin-bottom: var(--spacing);
-  padding: 14px;
-  border: 1px dashed var(--border-pending);
-  border-radius: var(--radius);
-  background: var(--bg-pending);
-
-  >h3 {
-    margin: 0 0 var(--spacing) 0;
-    font-size: 1em;
-    color: var(--text-muted);
-    text-transform: uppercase;
-    letter-spacing: 0.06em;
-  }
-
-  >article {
-    display: flex;
-    align-items: center;
-    gap: var(--spacing);
-    padding: var(--spacing) 0;
-    border: none;
-    border-bottom: 1px solid var(--bg-muted);
-    border-radius: 0;
-    box-shadow: none;
-    background: transparent;
-
-    &:last-child {
-      border-bottom: none;
-      padding-bottom: 0;
-    }
-
-    >span {
-      flex: 1;
-      font-weight: 500;
-      color: var(--text-secondary);
-    }
-
-    button.confirm {
-      padding: 7px 14px;
-      font-size: 0.9em;
-      white-space: nowrap;
-    }
-  }
-} */
-
-article.current {
-  border: 2px solid var(--color-primary);
-  background: var(--bg-session-form);
-  margin-bottom: var(--spacing);
-  position: relative;
-
-  >header {
-    justify-content: space-between;
-
-    h3 {
-      margin: 0;
-      padding: 0;
-      color: var(--text-primary);
-      font-size: 1em;
-    }
-
-    span {
-      color: var(--color-primary-light);
-      font-size: 0.9em;
-      font-weight: normal;
-      padding: 0;
-    }
-  }
-
-  >div {
-    display: flex;
-    flex-direction: column;
-    gap: var(--spacing);
-    margin-top: var(--spacing);
-  }
-}
-
-/* .stepper>input {
-  width: 5ch;
-  min-width: 5ch;
-  max-width: 5ch;
-  text-align: center;
-}
-
-.stepper {
-  display: flex;
-  align-items: center;
-  gap: var(--spacing);
-}
-
-.stepper>button {
-  flex-shrink: 0;
-  width: 2.2em;
-  height: 2.2em;
-  font-size: 1.2em;
-  line-height: 1;
-  padding: 0;
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius);
-  background: var(--bg-elevated);
-  color: var(--text-primary);
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-
-  &:active {
-    background: var(--bg-muted);
-  }
-} */
-
-// ── Suggest-next exercise button ──────────────────────────────────────────
-button.suggest {
-  display: block;
-  width: 100%;
-  margin-bottom: var(--spacing);
-  padding: var(--spacing) var(--spacing);
-  background: var(--gradient-success);
-  color: #1a3a1a;
-  border: none;
-  border-radius: var(--radius);
-  font-weight: bold;
-  cursor: pointer;
-  text-align: left;
-
-  &:hover {
-    filter: brightness(1.1);
+    background: var(--no);
   }
 }
 
@@ -276,7 +93,7 @@ article.log {
     h4 {
       margin: 0;
       padding: 0;
-      color: var(--text-primary);
+      color: var(--primary);
       flex: 1;
     }
 
@@ -302,7 +119,7 @@ article.log {
   }
 
   >.details {
-    color: var(--text-muted);
+    color: var(--secondary);
     font-size: 0.9em;
   }
 }
@@ -312,9 +129,9 @@ ul.results {
   list-style: none;
   padding: 0;
   margin-top: var(--spacing);
-  border: 1px solid var(--border-color);
+  border: 1px solid var(--separation);
   border-radius: var(--radius);
-  background: var(--bg-card);
+  background: var(--article);
   max-height: 300px;
   overflow-y: auto;
 
@@ -324,14 +141,14 @@ ul.results {
     align-items: center;
     padding: var(--spacing);
     cursor: pointer;
-    border-bottom: 1px solid var(--bg-muted);
+    border-bottom: 1px solid var(--separation);
 
     &:last-child {
       border-bottom: none;
     }
 
     &:hover {
-      background: var(--bg-elevated);
+      background: var(--separation);
     }
   }
 }
@@ -341,9 +158,9 @@ ul.results {
   padding: var(--spacing) var(--spacing);
   font-size: 1.2em;
   font-weight: bold;
-  background: var(--bg-success-muted);
-  color: var(--color-success);
-  border-bottom: 1px solid var(--border-color);
+  background: color-mix(in srgb, var(--yes) 15%, transparent);
+  color: var(--yes);
+  border-bottom: 1px solid var(--separation);
 
   &.exceeded {
     background: var(--no);
@@ -355,12 +172,12 @@ ul.results {
   padding: var(--spacing) var(--spacing);
   font-size: 2em;
   font-weight: bold;
-  color: var(--text-secondary);
+  color: var(--secondary);
   letter-spacing: 0.05em;
   margin-bottom: var(--spacing);
 
   &.reached {
-    color: var(--color-success);
+    color: var(--yes);
   }
 }
 
@@ -380,7 +197,7 @@ main.analytics {
     justify-content: center;
     min-height: 300px;
     text-align: center;
-    color: var(--text-dim);
+    color: var(--secondary);
   }
 }
 
@@ -402,7 +219,7 @@ main.edit>div {
 }
 
 header>button.no {
-  background: var(--color-no);
+  background: var(--no);
   border: none;
   font-size: 1.1em;
   cursor: pointer;
@@ -440,5 +257,5 @@ header>button.no {
 }
 
 input.invalid {
-  border-color: var(--color-no);
+  border-color: var(--no);
 }
