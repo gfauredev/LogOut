@@ -24,8 +24,9 @@
   --z-toast: 5;
 }
 
-@import "generic"; // Generic definitions, arbitrary number of elements
-@import "specific"; // Specific definitions, one or a few precise elements
+@import "generic"; // Rules targetting an arbitrary number of elements
+@import "specific"; // Rules targetting one or a few precise elements page-wide
+@import "unique"; // Rules targetting one or a few precise elements site-wide
 // @media screen and (prefers-color-scheme: light) { @import "light" }
 // @media (pointer: fine) { @import "fine-pointer" } // Controls needing mouse
 // @media (pointer: none) { @import "no-pointer" } // Keyboard only control
