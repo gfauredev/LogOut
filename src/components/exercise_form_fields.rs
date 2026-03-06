@@ -185,18 +185,13 @@ pub fn ExerciseFormFields(
                 button { class: "add", onclick: add_muscle, "+" }
             }
             if !muscles_list.read().is_empty() {
-                div {
-                    for muscle in muscles_list.read().iter() {
-                        div { key: "{muscle}",
-                            button { class: "danger",
-                                onclick: {
-                                    let m = *muscle;
-                                    move |_| remove_muscle(m)
-                                },
-                                "{muscle}"
-                            }
-                        }
-                    }
+                div { for muscle in muscles_list.read().iter() {
+                    button { key: "{muscle}", class: "no label",
+                        onclick: {
+                            let m = *muscle;
+                            move |_| remove_muscle(m)
+                        }, "{muscle}"
+                    }}
                 }
             }
         }
@@ -214,26 +209,20 @@ pub fn ExerciseFormFields(
                 button { class: "add", onclick: add_secondary_muscle, "+"}
             }
             if !secondary_muscles_list.read().is_empty() {
-                div {
-                    for muscle in secondary_muscles_list.read().iter() {
-                        div { key: "{muscle}", class: "secondary",
-                            button { class: "danger",
-                                onclick: {
-                                    let m = *muscle;
-                                    move |_| remove_secondary_muscle(m)
-                                },
-                                "{muscle}"
-                            }
-                        }
-                    }
+                div { for muscle in secondary_muscles_list.read().iter() {
+                    button { key: "{muscle}", class: "no label",
+                        onclick: {
+                            let m = *muscle;
+                            move |_| remove_secondary_muscle(m)
+                        }, "{muscle}"
+                    }}
                 }
             }
         }
         div {
             label { "Instructions" }
             div { class: "inputs",
-                input {
-                    r#type: "text",
+                input { r#type: "text",
                     placeholder: "Add an instruction step...",
                     value: "{instructions_input}",
                     oninput: move |evt| instructions_input.set(evt.value()),
@@ -241,16 +230,14 @@ pub fn ExerciseFormFields(
                 button { class: "add", onclick: add_instruction, "+"}
             }
             if !instructions_list.read().is_empty() {
-                ol {
-                    for (idx, instruction) in instructions_list.read().iter().enumerate() {
-                        li { key: "{idx}",
-                            span { "{instruction}" }
-                            button { class: "no",
-                                onclick: move |_| remove_instruction(idx),
-                                "🗑️"
-                            }
+                ol { for (idx, instruction) in instructions_list.read().iter().enumerate() {
+                    li { key: "{idx}",
+                        span { "{instruction}" }
+                        button { class: "no",
+                            onclick: move |_| remove_instruction(idx),
+                            "🗑️"
                         }
-                    }
+                    }}
                 }
             }
         }
@@ -268,7 +255,7 @@ pub fn ExerciseFormFields(
                 div {
                     for (idx, url) in images_list.read().iter().enumerate() {
                         div { key: "{idx}",
-                            button { class: "danger",
+                            button { class: "no",
                                 onclick: move |_| remove_image(idx),
                                 "{url}"
                             }

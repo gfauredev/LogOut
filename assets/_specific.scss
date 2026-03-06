@@ -115,7 +115,7 @@ main.sessions>header {
     align-items: center;
   }
 
-  button.danger {
+  button.no {
     background: var(--color-no);
   }
 
@@ -346,8 +346,7 @@ ul.results {
   border-bottom: 1px solid var(--border-color);
 
   &.exceeded {
-    background: var(--bg-danger-light);
-    color: var(--color-no);
+    background: var(--no);
   }
 }
 
@@ -403,7 +402,7 @@ main.edit>div {
 }
 
 // ── Cancel button in page headers ──────────────────────────────────────────
-header>button.danger {
+header>button.no {
   background: var(--color-no);
   border: none;
   font-size: 1.1em;

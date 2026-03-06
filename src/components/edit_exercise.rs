@@ -18,7 +18,7 @@ pub fn EditExercise(id: String) -> Element {
                     p { "Exercise not found" }
                     button {
                         onclick: move |_| navigator().go_back(),
-                        class: "icon danger",
+                        class: "no",
                         title: "Cancel",
                         "❌"
                     }
@@ -74,7 +74,7 @@ pub fn EditExercise(id: String) -> Element {
         header {
             button {
                 onclick: move |_| navigator().go_back(),
-                class: "icon danger",
+                class: "no",
                 title: "Cancel",
                 "❌"
             }
