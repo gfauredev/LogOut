@@ -1,4 +1,4 @@
-// Rules targetting one or a few precise elements on most pages
+// Rules targetting one or a few precise elements per page
 #main {
   display: flex;
   flex-direction: column;
@@ -27,43 +27,6 @@ main.credits,
 main.edit {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(var(--col-min-width), 1fr));
-}
-
-main+button {
-  display: block;
-  width: var(--icon-btn-width);
-  height: var(--icon-btn-width);
-  border-radius: 50%;
-  background: var(--color-add);
-  color: var(--text-primary);
-  font-size: 2em;
-  border: none;
-  cursor: pointer;
-  box-shadow: var(--shadow-primary);
-  margin: var(--spacing) auto;
-}
-
-#main>nav {
-  position: sticky;
-  bottom: 0;
-  margin: auto auto 0 auto;
-  height: max-content;
-  background: var(--bg-card);
-  border-top: 1px solid var(--border-color);
-  display: flex;
-  border-radius: var(--radius) var(--radius) 0 0;
-  z-index: var(--z-nav);
-
-  a {
-    padding: var(--spacing);
-    text-decoration: none;
-    font-size: 1.8rem;
-    line-height: 1;
-  }
-}
-
-.active {
-  transform: scale(1.25);
 }
 
 .exercise-selector {
@@ -172,7 +135,6 @@ main.sessions>section {
   width: 100%;
 }
 
-// ── Pending exercises section ──────────────────────────────────────────────
 section.pending {
   margin-bottom: var(--spacing);
   padding: 14px;

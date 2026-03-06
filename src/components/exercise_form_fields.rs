@@ -173,7 +173,7 @@ pub fn ExerciseFormFields(
         }
         div {
             label { "Primary Muscles" }
-            div { class: "field-and-add",
+            div { class: "inputs",
                 select {
                     value: "{muscle_input}",
                     oninput: move |evt| muscle_input.set(evt.value()),
@@ -205,7 +205,7 @@ pub fn ExerciseFormFields(
         }
         div {
             label { "Secondary Muscles" }
-            div { class: "field-and-add",
+            div { class: "inputs",
                 select {
                     value: "{secondary_muscle_input}",
                     oninput: move |evt| secondary_muscle_input.set(evt.value()),
@@ -237,7 +237,7 @@ pub fn ExerciseFormFields(
         }
         div {
             label { "Instructions" }
-            div { class: "field-and-add",
+            div { class: "inputs",
                 input {
                     r#type: "text",
                     placeholder: "Add an instruction step...",
@@ -265,7 +265,7 @@ pub fn ExerciseFormFields(
         }
         div {
             label { "Images (URLs)" }
-            div { class: "field-and-add",
+            div { class: "inputs",
                 input {
                     r#type: "url",
                     placeholder: "https://example.com/image.jpg",

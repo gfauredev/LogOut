@@ -1,1 +1,24 @@
 // Rules targetting one or a few precise elements on the whole site
+#main>nav {
+  position: sticky;
+  bottom: 0;
+  margin: auto auto 0 auto;
+  height: max-content;
+  background: var(--article);
+  border-top: 1px solid var(--separation);
+  display: flex;
+  border-radius: var(--radius) var(--radius) 0 0;
+  z-index: var(--z-nav);
+
+  a {
+    padding: var(--spacing);
+    text-decoration: none;
+    font-size: 1.8rem;
+    line-height: 1;
+    opacity: .6;
+
+    &.active {
+      opacity: 1;
+    }
+  }
+}
