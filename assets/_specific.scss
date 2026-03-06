@@ -135,7 +135,7 @@ main.sessions>section {
   width: 100%;
 }
 
-section.pending {
+/* section.pending {
   margin-bottom: var(--spacing);
   padding: 14px;
   border: 1px dashed var(--border-pending);
@@ -178,9 +178,8 @@ section.pending {
       white-space: nowrap;
     }
   }
-}
+} */
 
-// ── Active exercise form ───────────────────────────────────────────────────
 article.current {
   border: 2px solid var(--color-primary);
   background: var(--bg-session-form);
@@ -213,8 +212,7 @@ article.current {
   }
 }
 
-// ── Compact number input (≈3 digits wide) with stepper buttons ────────────
-.stepper>input {
+/* .stepper>input {
   width: 5ch;
   min-width: 5ch;
   max-width: 5ch;
@@ -246,7 +244,7 @@ article.current {
   &:active {
     background: var(--bg-muted);
   }
-}
+} */
 
 // ── Suggest-next exercise button ──────────────────────────────────────────
 button.suggest {
@@ -338,7 +336,6 @@ ul.results {
   }
 }
 
-// ── Rest and exercise timers ───────────────────────────────────────────────
 .rest-timer {
   text-align: center;
   padding: var(--spacing) var(--spacing);
@@ -368,29 +365,6 @@ ul.results {
   }
 }
 
-// ── Rest duration configuration form ──────────────────────────────────────
-main.sessions>form {
-  display: flex;
-  align-items: center;
-  gap: var(--spacing);
-  padding: var(--spacing) var(--spacing);
-  background: var(--bg-card);
-  border-bottom: 1px solid var(--border-color);
-  color: var(--text-secondary);
-  font-size: 0.9em;
-
-  input[type=number] {
-    width: 80px;
-    text-align: center;
-    padding: var(--spacing);
-    border: 1px solid var(--border-color);
-    border-radius: var(--radius);
-    background: var(--bg-card);
-    color: inherit;
-  }
-}
-
-// ── Analytics page ─────────────────────────────────────────────────────────
 main.analytics {
   padding: 0;
 
@@ -469,7 +443,6 @@ header>button.danger {
   }
 }
 
-// ── Invalid input highlighting ─────────────────────────────────────────────
 input.invalid {
   border-color: var(--color-no);
 }

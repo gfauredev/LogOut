@@ -22,3 +22,26 @@
     }
   }
 }
+
+main.session>section.exercises {
+  margin: 0 auto;
+  max-width: max-content;
+
+  article {
+    gap: var(--spacing);
+    margin-bottom: var(--spacing);
+
+    button {
+      margin-left: auto;
+    }
+  }
+}
+
+
+main.session>article {
+  max-width: max-content;
+
+  h3 {
+    margin-right: auto;
+  }
+}

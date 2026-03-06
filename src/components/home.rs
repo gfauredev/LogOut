@@ -73,31 +73,31 @@ pub fn Home() -> Element {
     });
 
     rsx! {
-        if !*has_active.read() {
-            header {
-                h1 { tabindex: 0, "💪 LogOut" }
-                p { tabindex: 0, "Turn off your computer, Log your workOut" }
-            }
-        }
-        main { class: "sessions",
-            if *has_active.read() {
-                SessionView {}
-            } else {
-                if completed_sessions().is_empty() {
-                    p { "No past sessions yet" }
-                    p { "Tap + to start your first workout" }
-                } else {
-                    for session in completed_sessions().into_iter().take(*visible_count.read()) {
-                        SessionCard { key: "{session.id}", session: session.clone() }
-                    }
+        if *has_active.read() {
+            SessionView {}
+        } else {
+            if !*has_active.read() {
+                header {
+                    h1 { tabindex: 0, "💪 LogOut" }
+                    p { tabindex: 0, "Turn off your computer, Log your workOut" }
                 }
             }
-        }
-        if !*has_active.read() {
-            button { class: "icon add",
-                onclick: start_new_session,
-                title: "Start New Workout",
-                "+"
+            main { class: "sessions",
+                    if completed_sessions().is_empty() {
+                        p { "No past sessions yet" }
+                        p { "Tap + to start your first workout" }
+                    } else {
+                        for session in completed_sessions().into_iter().take(*visible_count.read()) {
+                            SessionCard { key: "{session.id}", session: session.clone() }
+                        }
+                    }
+            }
+            if !*has_active.read() {
+                button { class: "icon add",
+                    onclick: start_new_session,
+                    title: "Start New Workout",
+                    "+"
+                }
             }
         }
         BottomNav { active_tab: ActiveTab::Sessions }
@@ -157,7 +157,7 @@ fn SessionCard(session: WorkoutSession) -> Element {
         article {
             header {
                 time { "{date_str}" }
-                span { "⏱ {format_time(duration)}" }
+                div { label { "⏱️" } time { "{format_time(duration)}" } }
                 if !pending_ids.is_empty() {
                     button { class: "edit",
                         onclick: {

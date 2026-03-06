@@ -13,8 +13,6 @@ use super::session_timers::{RestTimerDisplay, SessionDurationDisplay};
 /// Default rest duration in seconds
 const DEFAULT_REST_DURATION: u64 = 30;
 
-// ── Helpers ────────────────────────────────────────────────────────────────
-
 /// Prefill the weight / reps / distance inputs from the last recorded log for
 /// `exercise_id`, or clear them if no prior log exists.
 fn prefill_inputs_from_last_log(
@@ -40,8 +38,6 @@ fn prefill_inputs_from_last_log(
     }
 }
 
-// ── Sub-components ─────────────────────────────────────────────────────────
-
 /// Sticky session header showing the elapsed timer and the cancel/finish button.
 #[component]
 fn SessionHeader(
@@ -52,33 +48,25 @@ fn SessionHeader(
     on_finish: EventHandler<()>,
 ) -> Element {
     rsx! {
-        header {
-            div {
-                h2 { tabindex: 0, "⏱️ Active Session" }
-                p {
-                    onclick: move |_| on_click_timer.call(()),
-                    title: "Click to set rest duration",
-                    SessionDurationDisplay {
-                        session_start_time,
-                        session_is_active,
-                    }
+        header { class: "session",
+            h2 { tabindex: 0, "⏱️ Active Session" }
+            time {
+                onclick: move |_| on_click_timer.call(()),
+                title: "Click to set rest duration",
+                SessionDurationDisplay {
+                    session_start_time,
+                    session_is_active,
                 }
             }
-            div {
-                if exercise_count == 0 {
-                    button {
-                        onclick: move |_| on_finish.call(()),
-                        class: "icon danger",
-                        title: "Cancel Session",
-                        "❌"
-                    }
-                } else {
-                    button {
-                        onclick: move |_| on_finish.call(()),
-                        class: "confirm",
-                        title: "Finish Session",
-                        "✔️ Finish"
-                    }
+            if exercise_count == 0 {
+                button { class: "no",
+                    onclick: move |_| on_finish.call(()),
+                    title: "Cancel Session", "❌"
+                }
+            } else {
+                button { class: "yes",
+                    onclick: move |_| on_finish.call(()),
+                    title: "Finish Session", "✅"
                 }
             }
         }
@@ -93,7 +81,7 @@ fn RestDurationInput(
     mut rest_duration: Signal<u64>,
 ) -> Element {
     rsx! {
-        form {
+        form { class: "inputs",
             aria_label: "Set rest duration",
             onsubmit: move |evt| {
                 evt.prevent_default();
@@ -102,7 +90,7 @@ fn RestDurationInput(
                 }
                 show_rest_input.set(false);
             },
-            label { r#for: "rest-duration-field", "Rest duration (seconds):" }
+            label { r#for: "rest-duration-field", "Rest duration" }
             input {
                 id: "rest-duration-field",
                 r#type: "number",
@@ -110,11 +98,7 @@ fn RestDurationInput(
                 value: "{rest_input_value}",
                 oninput: move |evt| rest_input_value.set(evt.value()),
             }
-            button {
-                r#type: "submit",
-                class: "confirm",
-                "✅ Set"
-            }
+            button { class: "yes", r#type: "submit", "✅" }
         }
     }
 }
@@ -126,8 +110,8 @@ fn PendingExercisesSection(pending_ids: Vec<String>, on_start: EventHandler<Stri
     let all_exercises = exercise_db::use_exercises();
     let custom_exercises = storage::use_custom_exercises();
     rsx! {
-        section { class: "pending",
-            h3 { "Pre-added Exercises" }
+        section { class: "exercises",
+            // h3 { "Pre-added Exercises" }
             for exercise_id in pending_ids {
                 {
                     let (name, category) = {
@@ -140,20 +124,17 @@ fn PendingExercisesSection(pending_ids: Vec<String>, on_start: EventHandler<Stri
                         }
                     };
                     rsx! {
-                        article {
-                            span { "{name}" }
-                            div { class: "tags",
-                                span { class: "category", "{category}" }
-                            }
-                            button {
-                                class: "confirm",
+                        article { header {
+                            h4 { "{name}" }
+                            ul { li { "{category}" } }
+                            button { class: "edit",
                                 onclick: {
                                     let id = exercise_id.clone();
                                     move |_| on_start.call(id.clone())
                                 },
-                                "▶ Start"
+                                "🔄"
                             }
-                        }
+                        }}
                     }
                 }
             }
@@ -175,7 +156,6 @@ fn CompletedExercisesSection(
 ) -> Element {
     let all_exercises = exercise_db::use_exercises();
     let custom_exercises = storage::use_custom_exercises();
-
     // Determine whether we can suggest a "next" exercise.
     // Rule: find the last log entry, then search the history backwards for a
     // previous occurrence of the same exercise; if found and a log entry exists
@@ -216,7 +196,7 @@ fn CompletedExercisesSection(
     });
 
     rsx! {
-        section {
+        section { class: "exercises",
             h3 { "Completed Exercises" }
             // Quick-repeat suggestion: shown when no exercise is active and a
             // prior sequence implies what the next exercise should be.
@@ -252,8 +232,6 @@ fn CompletedExercisesSection(
         }
     }
 }
-
-// ── SessionView ────────────────────────────────────────────────────────────
 
 #[component]
 pub fn SessionView() -> Element {
@@ -472,8 +450,6 @@ pub fn SessionView() -> Element {
             },
             on_finish: finish_session,
         }
-
-        // Rest duration input (shown when clicking timer)
         if *show_rest_input.read() {
             RestDurationInput {
                 show_rest_input,
@@ -481,8 +457,6 @@ pub fn SessionView() -> Element {
                 rest_duration,
             }
         }
-
-        // Rest timer (shown when no exercise is active and rest is ongoing)
         if current_exercise_id.read().is_none() {
             RestTimerDisplay {
                 rest_start_time,
@@ -490,11 +464,7 @@ pub fn SessionView() -> Element {
                 rest_bell_count,
             }
         }
-
-        // Main content area
-        section {
-
-            // Pending exercises (pre-added from a previous session)
+        main { class: "session",
             if current_exercise_id.read().is_none() && !pending_ids().is_empty() {
                 PendingExercisesSection {
                     pending_ids: pending_ids(),
@@ -535,13 +505,12 @@ pub fn SessionView() -> Element {
             }
             if current_exercise_id.read().is_none() {
                 div { class: "inputs",
-                    input {
-                        r#type: "text",
+                    input { r#type: "text",
                         placeholder: "Search for an exercise...",
                         value: "{search_query}",
                         oninput: move |evt| search_query.set(evt.value()),
                     }
-                    Link {
+                    Link { class: "add",
                         to: Route::AddExercise {},
                         title: "Add Custom Exercise",
                         "+"
@@ -560,7 +529,6 @@ pub fn SessionView() -> Element {
                     }
                 }
             } else if let Some(exercise_id) = current_exercise_id.read().as_ref().cloned() {
-                // Current exercise input form
                 ExerciseFormPanel {
                     exercise_id,
                     weight_input,
@@ -572,8 +540,6 @@ pub fn SessionView() -> Element {
                     on_cancel: cancel_exercise,
                 }
             }
-
-            // Completed exercises list (antichronological order)
             if !session.read().exercise_logs.is_empty() {
                 CompletedExercisesSection {
                     session,
