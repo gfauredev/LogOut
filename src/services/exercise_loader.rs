@@ -24,6 +24,50 @@ pub fn use_exercises() -> Signal<Vec<Exercise>> {
     use_context::<exercise_db::AllExercisesSignal>().0
 }
 
+/// Clears the current exercise list and immediately re-downloads from the
+/// configured URL.  Intended to be called after saving a new database URL so
+/// the app reflects the change without requiring a full reload.
+pub async fn reload_exercises(mut sig: Signal<Vec<Exercise>>) {
+    // Clear immediately so the UI does not show stale data from the old URL
+    sig.set(Vec::new());
+
+    #[cfg(target_arch = "wasm32")]
+    {
+        use crate::services::storage::idb_exercises;
+        match exercise_db::download_exercises().await {
+            Ok(exercises) if !exercises.is_empty() => {
+                log::info!(
+                    "Reloaded {} exercises from new URL, storing in IndexedDB",
+                    exercises.len()
+                );
+                idb_exercises::store_all_exercises(&exercises).await;
+                exercise_db::record_fetch_timestamp();
+                sig.set(exercises.into_iter().map(|e| e.with_lowercase()).collect());
+            }
+            Ok(_) => log::warn!("Reloaded exercises file was empty"),
+            Err(e) => log::warn!("Failed to reload exercises: {:?}", e),
+        }
+    }
+
+    #[cfg(not(target_arch = "wasm32"))]
+    {
+        use crate::services::storage::native_exercises;
+        match exercise_db::download_exercises().await {
+            Ok(exercises) if !exercises.is_empty() => {
+                log::info!(
+                    "Reloaded {} exercises from new URL, storing in local file",
+                    exercises.len()
+                );
+                native_exercises::store_all_exercises(&exercises);
+                exercise_db::record_fetch_timestamp();
+                sig.set(exercises.into_iter().map(|e| e.with_lowercase()).collect());
+            }
+            Ok(_) => log::warn!("Reloaded exercises file was empty"),
+            Err(e) => log::warn!("Failed to reload exercises: {:?}", e),
+        }
+    }
+}
+
 #[allow(unused_mut, unused_variables)]
 async fn load_exercises(mut sig: Signal<Vec<Exercise>>) {
     // ── Web platform (wasm32 + IndexedDB) ────────────────────────────────────

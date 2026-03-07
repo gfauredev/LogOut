@@ -17,7 +17,7 @@ impl Metric {
             Metric::Weight => "Weight (kg)",
             Metric::Reps => "Repetitions",
             Metric::Distance => "Distance (km)",
-            Metric::Duration => "Duration (minutes)",
+            Metric::Duration => "Duration (min)",
         }
     }
 
@@ -31,8 +31,48 @@ impl Metric {
     }
 }
 
+/// Determine the most adapted display unit for a Distance or Duration metric
+/// based on the actual data values, so the y-axis stays in a readable range.
+/// Returns `(label, scale_factor)` where `scale_factor` is applied to the raw
+/// values (km or minutes) to produce the display values.
+fn adapt_metric_unit(metric: Metric, values: &[f64]) -> (&'static str, f64) {
+    let avg = if values.is_empty() {
+        0.0
+    } else {
+        values.iter().sum::<f64>() / values.len() as f64
+    };
+    match metric {
+        // Raw values are in km; switch to metres when avg < 1 km (keeps 0.0–999.9)
+        Metric::Distance => {
+            if avg < 1.0 {
+                ("Distance (m)", 1000.0)
+            } else {
+                ("Distance (km)", 1.0)
+            }
+        }
+        // Raw values are in minutes; switch to seconds (< 3 min) or hours (≥ 180 min)
+        Metric::Duration => {
+            if avg < 3.0 {
+                ("Duration (s)", 60.0)
+            } else if avg < 180.0 {
+                ("Duration (min)", 1.0)
+            } else {
+                ("Duration (h)", 1.0 / 60.0)
+            }
+        }
+        _ => (metric.label(), 1.0),
+    }
+}
+
 const COLORS: [&str; 8] = [
-    "#667eea", "#f093fb", "#4facfe", "#43e97b", "#fa709a", "#fee140", "#30cfd0", "#a8edea",
+    "#3498db", // blue  (force / cardio)
+    "#e74c3c", // red   (primary muscle / strength)
+    "#2ecc71", // green (secondary muscle)
+    "#9b59b6", // purple (equipment)
+    "#e67e22", // orange (category)
+    "#f1c40f", // yellow (level)
+    "#16a085", // teal   (static)
+    "#e91e63", // pink
 ];
 
 #[component]
@@ -100,6 +140,27 @@ pub fn Analytics() -> Element {
             .collect()
     };
 
+    // Compute the most adapted display unit for Distance / Duration
+    let all_y: Vec<f64> = chart_data
+        .iter()
+        .flat_map(|(_, pts)| pts.iter().map(|(_, y)| *y))
+        .collect();
+    let (y_label, scale) = adapt_metric_unit(*selected_metric.read(), &all_y);
+    // Apply scaling to produce display-ready chart data
+    let display_data: Vec<(String, Vec<(f64, f64)>)> = if scale != 1.0 {
+        chart_data
+            .iter()
+            .map(|(name, pts)| {
+                (
+                    name.clone(),
+                    pts.iter().map(|(x, y)| (*x, y * scale)).collect(),
+                )
+            })
+            .collect()
+    } else {
+        chart_data.clone()
+    };
+
     rsx! {
         header {
             h1 { "📊 Analytics" }
@@ -119,8 +180,8 @@ pub fn Analytics() -> Element {
                     },
                     option { value: "Weight", "Weight (kg)" }
                     option { value: "Reps", "Repetitions" }
-                    option { value: "Distance", "Distance (km)" }
-                    option { value: "Duration", "Duration (minutes)" }
+                    option { value: "Distance", "Distance" }
+                    option { value: "Duration", "Duration" }
                 }
             }
             label { "Exercises (⩽ 8)" }
@@ -159,8 +220,8 @@ pub fn Analytics() -> Element {
                 p { "Select exercises to view analytics" }
             } else {
                 ChartView {
-                    data: chart_data.clone(),
-                    metric: *selected_metric.read(),
+                    data: display_data,
+                    y_label: y_label.to_string(),
                     colors: COLORS.to_vec(),
                 }
             }
@@ -172,7 +233,7 @@ pub fn Analytics() -> Element {
 #[component]
 fn ChartView(
     data: Vec<(String, Vec<(f64, f64)>)>,
-    metric: Metric,
+    y_label: String,
     colors: Vec<&'static str>,
 ) -> Element {
     let (min_x, max_x, min_y, max_y) = {
@@ -271,7 +332,7 @@ fn ChartView(
                 x: "{pad / 2.0}", y: "{pad + chart_height / 2.0}",
                 text_anchor: "middle", font_size: "14", font_weight: "bold", fill: "#e0e0e0",
                 transform: "rotate(-90, {pad / 2.0}, {pad + chart_height / 2.0})",
-                "{metric.label()}"
+                "{y_label}"
             }
 
             // Plot lines

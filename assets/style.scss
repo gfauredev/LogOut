@@ -1,5 +1,5 @@
 :root {
-  // Structure & Data Types Colors
+  // Structure Colors
   --article: #121212;
   --separation: #333;
   // Text Colors
@@ -10,6 +10,17 @@
   --edit: #e0e0e0; // Edit ✏️ and Save 💾 and Replay 🔄
   --yes: #00ff94; // Confirm ✅ and Complete ☑️
   --no: #ff3b30; // Delete 🗑️ and Cancel ❌✖️
+  // Data Type Tag Colors
+  --tag-category: #e67e22; // orange
+  --tag-force: #3498db; // blue
+  --tag-equipment: #9b59b6; // purple
+  --tag-level: #f1c40f; // yellow
+  --tag-primary-muscle: #e74c3c; // red
+  --tag-secondary-muscle: #2ecc71; // green
+  --tag-strength: #c0392b; // dark red — strength (reps) exercises
+  --tag-cardio: #1a78c2; // dark blue — cardio (distance) exercises
+  --tag-static: #16a085; // teal — static (time only) exercises
+  --on-light: #111; // near-black text for use on bright tag backgrounds
   // Layout Sizes
   --radius: 12px;
   --spacing: 8px;

@@ -31,7 +31,7 @@ fn exercises_json_url() -> String {
 // Dioxus integration (provide/use context hooks + async loader) lives in the
 // sibling `exercise_loader` module to keep this file focused on data-access
 // logic and testable at ≥90% coverage.
-pub use crate::services::exercise_loader::{provide_exercises, use_exercises};
+pub use crate::services::exercise_loader::{provide_exercises, reload_exercises, use_exercises};
 
 /// Returns true when the locally-cached exercise list is older than
 /// [`EXERCISE_DB_REFRESH_INTERVAL_SECS`] or has never been fetched.

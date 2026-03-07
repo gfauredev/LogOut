@@ -1,10 +1,14 @@
 use crate::components::{ActiveTab, BottomNav};
+use crate::services::exercise_db;
+use crate::ToastSignal;
 use dioxus::prelude::*;
 
 #[component]
 pub fn Credits() -> Element {
     // Current exercise DB URL (defaults to the compile-time constant)
     let mut url_input = use_signal(crate::utils::get_exercise_db_url);
+    let mut toast = consume_context::<ToastSignal>().0;
+    let exercises_sig = exercise_db::use_exercises();
 
     let save_url = move |evt: Event<FormData>| {
         evt.prevent_default();
@@ -21,7 +25,7 @@ pub fn Credits() -> Element {
                     }
                 }
             }
-            // Clear cached fetch timestamp so exercises refresh from the new URL
+            // Clear cached fetch timestamp so reload_exercises downloads from the new URL
             crate::services::exercise_db::clear_fetch_cache();
         }
         #[cfg(not(target_arch = "wasm32"))]
@@ -36,9 +40,18 @@ pub fn Credits() -> Element {
                     &url,
                 );
             }
-            // Clear cached fetch timestamp so exercises refresh from the new URL
+            // Clear cached fetch timestamp so reload_exercises downloads from the new URL
             crate::services::exercise_db::clear_fetch_cache();
         }
+        // Immediately reload exercises from the (new) URL and replace the list
+        let sig = exercises_sig;
+        spawn(async move {
+            exercise_db::reload_exercises(sig).await;
+        });
+        // Show confirmation toast
+        toast.set(Some(
+            "✅ Exercise database URL saved, reloading…".to_string(),
+        ));
     };
 
     rsx! {

@@ -360,6 +360,22 @@ impl Exercise {
     pub fn get_first_image_url(&self) -> Option<String> {
         self.get_image_url(0)
     }
+
+    /// Returns the CSS class and display label for the exercise type tag.
+    ///
+    /// The tag reflects what metrics are logged for this exercise:
+    /// - `"tag-cardio"` / `"🏃 cardio"` — distance-based (Category::Cardio)
+    /// - `"tag-strength"` / `"💪 strength"` — repetition-based (Force::Pull / Force::Push)
+    /// - `"tag-static"` / `"⏱️ static"` — time-only (static hold, stretch, etc.)
+    pub fn type_tag(&self) -> (&'static str, &'static str) {
+        if self.category == Category::Cardio {
+            ("tag-cardio", "🏃 cardio")
+        } else if self.force.is_some_and(|f| f.has_reps()) {
+            ("tag-strength", "💪 strength")
+        } else {
+            ("tag-static", "⏱️ static")
+        }
+    }
 }
 
 /// A single completed (or in-progress) exercise within a [`WorkoutSession`].
