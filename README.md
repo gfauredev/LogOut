@@ -228,6 +228,8 @@ services, providing a detailed view of the codebase's API.
 
 ## TODO
 
+- Make seach error tolerant so that for example "wide grip bench" finds
+  "Wide-Grip Barbell Bench Press"
 - Sign Android app, ensure it properly installs, publish app on Play Store
 - Consider mocking exercise database with empty `[]` JSON in E2E tests so they
   can load faster and not rely on external network requests

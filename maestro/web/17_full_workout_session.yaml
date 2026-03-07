@@ -14,7 +14,7 @@ url: http://localhost:8080
 
 # ── Search Exercise (bench press from exercises.test.json) ──────────────────
 - tapOn: "Search for an exercise..."
-- inputText: "bench press"
+- inputText: "wide grip b"
 # Exercises are loaded from the local exercises.test.json database
 - assertVisible: Wide-Grip Barbell Bench Press
 - tapOn: "Wide-Grip Barbell Bench Press"
