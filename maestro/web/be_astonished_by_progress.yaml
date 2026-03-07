@@ -13,8 +13,9 @@ url: http://localhost:8080
     css: .metric-selector select
 - tapOn: Repetitions
 # Select "Wide-Grip Barbell Bench Press" in the first exercise selector
-- tapOn: "-- Select Exercise --"
-- tapOn: "Wide-Grip Barbell Bench Press"
+- tapOn: -- Select Exercise --
+- tapOn: Wide-Grip Barbell Bench Press
 # A chart should appear with the metric data
-- assertVisible: "Repetitions"
-- assertVisible: "Wide-Grip Barbell Bench Press"
+- assertVisible: Repetitions
+- assertVisible: Wide-Grip Barbell Bench Press
+- assertVisible: Today
