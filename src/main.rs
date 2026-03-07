@@ -127,7 +127,7 @@ fn App() -> Element {
 fn DeepLinkLayout() -> Element {
     #[cfg(target_arch = "wasm32")]
     {
-        use utils::{DeepLinkAction, SessionExerciseEntry};
+        use utils::DeepLinkAction;
 
         let nav = use_navigator();
         let exercises_sig = services::exercise_db::use_exercises();
@@ -228,7 +228,7 @@ fn build_session_from_entries(
     entries: &[utils::SessionExerciseEntry],
     exercises: &[models::Exercise],
 ) -> models::WorkoutSession {
-    use models::{Category, Distance, ExerciseLog, Force, Weight, WorkoutSession};
+    use models::{Category, Distance, ExerciseLog, Weight, WorkoutSession};
 
     let base_time = models::get_current_timestamp().saturating_sub(3600); // 1 h ago
     let mut session = WorkoutSession::new();
@@ -245,7 +245,9 @@ fn build_session_from_entries(
             .map(|e| (e.name.clone(), e.category, e.force))
             .unwrap_or_else(|| (entry.exercise_id.clone(), Category::Strength, None));
 
-        let weight_hg = entry.weight_hg.map(Weight);
+        let weight_hg = entry
+            .weight_hg
+            .map(|w| Weight(w.min(u16::MAX as u32) as u16));
         let reps = if force.is_some_and(|f| f.has_reps()) {
             entry.reps
         } else {
