@@ -2,5 +2,5 @@
 url: http://localhost:8080
 ---
 - tapOn:
-    css: "header.session button.yes"
-- assertVisible: "💪 LogOut"
+    css: header.session button.yes
+- assertVisible: .*LogOut

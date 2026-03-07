@@ -1,6 +1,5 @@
 # User Story – Navigate to Analytics After Sessions (Web PWA)
-# After completing sessions, the Analytics page shows exercises from the history.
-# This test is self-contained: it creates a session first.
+# After completing sessions, the Analytics page shows exercises from the history
 url: http://localhost:8080
 ---
 - launchApp

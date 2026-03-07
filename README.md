@@ -242,12 +242,13 @@ services, providing a detailed view of the codebase's API.
   - Static (just time) exercise tag
   - Consider reusing those colors for the charts in analytics
 - Make database URL change properly replace the existing one, display toast
-- Mock exercise database with public/exercises.json for E2E tests, so they can
-  load faster and not rely on external network requests
 - In analytics, make distance and duration units dynamically change to the most
   adapted to represent the currently selected exercise’s data
   - i.e. unit such as distance average is expressed between 0.0 and 999.9, and
     duration average between 0.00 and 179.99
+- Consider DRYing E2E tests to only one par user story, or use sequence
+- Mock exercise database with public/exercises.json for E2E tests, so they can
+  load faster and not rely on external network requests
 - Harmonize Rest timer text color when background when rest is due
 - Make layout harmonious but minimal, efficient, look at spacings, sizes
 - Sign Android app, ensure it properly installs, publish app on Play Store

@@ -9,6 +9,6 @@ url: http://localhost:8080
 # Tap "❌" to cancel the empty session
 - runFlow: ../subflows/cancel_session.yaml
 # Back on the home screen
-- assertVisible: "💪 LogOut"
+- assertVisible: .*LogOut
 - assertVisible: No past sessions yet
 - assertVisible: Tap + to start your first workout
