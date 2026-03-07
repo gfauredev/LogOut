@@ -4,7 +4,7 @@
 url: http://localhost:8080
 ---
 - launchApp
-- runFlow: _flows/nav_exercises.yaml
+- runFlow: ../subflows/nav_exercises.yaml
 - assertVisible: "Browse"
 # The "📚" nav button is slightly emphasized (active class)
 - assertVisible:

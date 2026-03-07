@@ -4,9 +4,9 @@ url: http://localhost:8080
 ---
 - launchApp
 # Start from the exercise browser
-- runFlow: _flows/nav_exercises.yaml
+- runFlow: ../subflows/nav_exercises.yaml
 # Navigate back to home with the 💪 button
-- runFlow: _flows/nav_home.yaml
+- runFlow: ../subflows/nav_home.yaml
 # Verify the home page content is visible
 - assertVisible: "Turn off your computer, Log your workOut"
 # The "💪" nav button is slightly emphasized (active class)

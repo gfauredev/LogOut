@@ -6,7 +6,7 @@ url: http://localhost:8080
 - launchApp
 
 # Create a bench press session so the exercise tag is available on the home screen
-- runFlow: _flows/create_bench_squat_session.yaml
+- runFlow: ../subflows/create_bench_squat_session.yaml
 
 # Click the "Wide-Grip Barbell Bench Press" exercise tag on the session card
 - tapOn: "Wide-Grip Barbell Bench Press"

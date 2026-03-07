@@ -6,7 +6,7 @@ url: http://localhost:8080
 - assertVisible: "ℹ️ Credits"
 - tapOn:
     css: "input[type=url]"
-- eraseText
+# - eraseText # A placeholder
 - inputText: "http://localhost:8080"
 - tapOn:
     css: "button[type=submit]"

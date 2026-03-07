@@ -6,11 +6,11 @@ url: http://localhost:8080
 - launchApp
 
 # Set up the local test exercise database
-- runFlow: _flows/setup_local_db.yaml
+- runFlow: ../subflows/setup_local_db.yaml
 
 # Go home and start a new session
-- runFlow: _flows/nav_home.yaml
-- runFlow: _flows/start_session.yaml
+- runFlow: ../subflows/nav_home.yaml
+- runFlow: ../subflows/start_session.yaml
 - assertVisible: ⏱️ Active Session
 
 # ── Search Exercise ───────────────────────────────────────────────────────────
@@ -87,7 +87,7 @@ url: http://localhost:8080
     css: "button[title='Finish Session']"
 
 # ── Finish Session ─────────────────────────────────────────────────────────────
-- runFlow: _flows/finish_session.yaml
+- runFlow: ../subflows/finish_session.yaml
 # A congratulation toast appears
 - assertVisible: "🎉 Great workout! Session complete!"
 # Back on home screen with the completed session

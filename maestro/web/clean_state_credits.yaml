@@ -4,7 +4,7 @@
 url: http://localhost:8080
 ---
 - launchApp
-- runFlow: _flows/nav_credits.yaml
+- runFlow: ../subflows/nav_credits.yaml
 - assertVisible: ⚙️ Exercise Database URL
 # The URL input field should show the default URL
 - assertVisible: https://raw.githubusercontent.com/gfauredev/free-exercise-db/main/

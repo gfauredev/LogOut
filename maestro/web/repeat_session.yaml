@@ -6,7 +6,7 @@ url: http://localhost:8080
 - launchApp
 
 # Create a bench press + squat session to repeat from
-- runFlow: _flows/create_bench_squat_session.yaml
+- runFlow: ../subflows/create_bench_squat_session.yaml
 
 # Tap the 🔄 button to start a new session based on the completed one
 - tapOn:

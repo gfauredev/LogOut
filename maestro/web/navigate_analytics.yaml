@@ -3,7 +3,7 @@
 url: http://localhost:8080
 ---
 - launchApp
-- runFlow: _flows/nav_analytics.yaml
+- runFlow: ../subflows/nav_analytics.yaml
 # The metric selector should be present on the analytics page
 - assertVisible: Metric
 - assertVisible: Weight (kg)

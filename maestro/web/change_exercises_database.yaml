@@ -3,7 +3,7 @@
 url: http://localhost:8080
 ---
 - launchApp
-- runFlow: _flows/nav_credits.yaml
+- runFlow: ../subflows/nav_credits.yaml
 - assertVisible: ⚙️ Exercise Database URL
 - tapOn:
     css: "input[type=url]"

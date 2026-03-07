@@ -3,11 +3,11 @@
 url: http://localhost:8080
 ---
 - launchApp
-- runFlow: _flows/start_session.yaml
+- runFlow: ../subflows/start_session.yaml
 # The "❌ Cancel Session" button is visible when the session is empty
 - assertVisible: "❌"
 # Tap "❌" to cancel the empty session
-- runFlow: _flows/cancel_session.yaml
+- runFlow: ../subflows/cancel_session.yaml
 # Back on the home screen
 - assertVisible: "💪 LogOut"
 - assertVisible: No past sessions yet

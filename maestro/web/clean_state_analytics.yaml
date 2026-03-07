@@ -5,7 +5,7 @@
 url: http://localhost:8080
 ---
 - launchApp
-- runFlow: _flows/nav_analytics.yaml
+- runFlow: ../subflows/nav_analytics.yaml
 # Select the "Weight" metric; no exercise should be selectable yet
 - tapOn: "Weight (kg)"
 - assertVisible: -- Select Exercise --
