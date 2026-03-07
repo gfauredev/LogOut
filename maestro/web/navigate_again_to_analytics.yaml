@@ -1,11 +1,10 @@
 # User Story – Navigate to Analytics After Sessions (Web PWA)
 # After completing sessions, the Analytics page shows exercises from the history
-url: http://localhost:8080
+url: http://localhost:8080/?dl_session=Wide-Grip_Barbell_Bench_Press:80:10,Wide-Grip_Barbell_Bench_Press:77.5:10,Barbell_Full_Squat:60:6
 ---
 - launchApp
-
-# Create a session so exercises are available in analytics
-- runFlow: ../subflows/create_bench_squat_session.yaml
+# Wait for the session created by the deep link to appear
+- assertVisible: Wide-Grip Barbell Bench Press
 
 # Navigate to the exercise list first (to simulate navigating from another page)
 - runFlow: ../subflows/nav_exercises.yaml

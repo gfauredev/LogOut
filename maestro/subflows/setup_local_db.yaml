@@ -1,4 +1,13 @@
-# Set the exercise database URL to the local test server (http://localhost:8080)
+# Set the exercise database URL to the local test server via a deep link.
+# This is faster than navigating through the Credits UI and should be preferred
+# in tests that don't specifically test the database URL change feature.
+#
+# Usage: set the test's `url` to include the deep link parameter, e.g.:
+#   url: http://localhost:8080/?dl_db_url=http://localhost:8080
+# Then call `launchApp` — the URL will be stored in localStorage automatically.
+#
+# Alternatively, use this subflow to change the URL via the Credits UI when
+# that specific UI flow needs to be tested.
 url: http://localhost:8080
 ---
 - tapOn:
@@ -6,7 +15,8 @@ url: http://localhost:8080
 - assertVisible: "ℹ️ Credits"
 - tapOn:
     css: "input[type=url]"
-# - eraseText # A placeholder
+- eraseText
 - inputText: "http://localhost:8080"
 - tapOn:
     css: "button[type=submit]"
+- assertVisible: "✅"

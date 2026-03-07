@@ -35,6 +35,223 @@ pub fn get_exercise_db_url() -> String {
     EXERCISE_DB_BASE_URL.to_string()
 }
 
+// ── Deep link parsing ─────────────────────────────────────────────────────────
+
+/// A pending exercise entry parsed from a deep-link session-creation URL.
+///
+/// `weight_hg` is stored as hectograms (multiply kg × 10); `reps` is raw.
+#[derive(Debug, Clone, PartialEq)]
+pub struct SessionExerciseEntry {
+    /// Exercise ID as it appears in the exercise database.
+    pub exercise_id: String,
+    /// Weight in hectograms (`kg × 10`), or `None` if not specified.
+    pub weight_hg: Option<u32>,
+    /// Repetitions performed, or `None` if not specified.
+    pub reps: Option<u32>,
+}
+
+/// Actions that can be triggered via a `logworkout://` deep link.
+#[derive(Debug, Clone, PartialEq)]
+pub enum DeepLinkAction {
+    /// Navigate to the given route path (e.g. `"/"`, `"/exercises"`).
+    Navigate(String),
+    /// Navigate to exercises with an optional pre-filled search query.
+    SearchExercises(String),
+    /// Store a new exercise-database URL and trigger a reload.
+    SetDbUrl(String),
+    /// Create a completed past session containing the listed exercises.
+    ///
+    /// Exercise metadata is looked up from the loaded exercise list, so this
+    /// action is deferred until exercises are available.
+    CreateSession(Vec<SessionExerciseEntry>),
+    /// Start a new active session with the given exercise IDs pre-queued.
+    StartSession(Vec<String>),
+}
+
+/// Parse a `logworkout://` URL into a [`DeepLinkAction`], returning `None` for
+/// unrecognised or malformed links.
+///
+/// Supported schemes:
+/// - `logworkout://home`
+/// - `logworkout://exercises[?q=<query>]`
+/// - `logworkout://analytics`
+/// - `logworkout://credits[?db_url=<url>]`
+/// - `logworkout://exercise/add`
+/// - `logworkout://session/start[?exercises=<id>,<id>,…]`
+/// - `logworkout://session/create?exercises=<id>:<kg>:<reps>,…`
+pub fn parse_deep_link(url: &str) -> Option<DeepLinkAction> {
+    let rest = url.strip_prefix("logworkout://")?;
+    let (path, query) = rest.split_once('?').unwrap_or((rest, ""));
+    parse_deep_link_path(path, query)
+}
+
+/// Parse web URL query parameters produced by a `?deeplink=logworkout://…` param
+/// or the shorthand `?dl_*` flat params.  Returns `None` when no recognised deep
+/// link parameter is present.
+#[cfg(target_arch = "wasm32")]
+pub fn parse_web_deep_link() -> Option<DeepLinkAction> {
+    let window = web_sys::window()?;
+    let location = window.location();
+    let search = location.search().ok()?;
+    let query = search.trim_start_matches('?');
+
+    // ── Full logworkout:// link encoded as ?deeplink=… ────────────────────
+    if let Some(dl) = get_query_param(query, "deeplink") {
+        if let Some(action) = parse_deep_link(&dl) {
+            return Some(action);
+        }
+    }
+
+    // ── Flat shorthand params (easier to type in YAML test files) ─────────
+    if let Some(url) = get_query_param(query, "dl_db_url") {
+        return Some(DeepLinkAction::SetDbUrl(url));
+    }
+    if let Some(q) = get_query_param(query, "dl_q") {
+        return Some(DeepLinkAction::SearchExercises(q));
+    }
+    if let Some(nav) = get_query_param(query, "dl_navigate") {
+        return Some(DeepLinkAction::Navigate(route_name_to_path(&nav)));
+    }
+    if let Some(exercises) = get_query_param(query, "dl_session") {
+        let entries = parse_session_exercises(&exercises);
+        return Some(DeepLinkAction::CreateSession(entries));
+    }
+    if let Some(exercises) = get_query_param(query, "dl_start") {
+        let ids = exercises
+            .split(',')
+            .filter(|s| !s.is_empty())
+            .map(|s| s.to_string())
+            .collect();
+        return Some(DeepLinkAction::StartSession(ids));
+    }
+
+    None
+}
+
+/// Internal: convert a path + query string from a logworkout:// URL into an action.
+fn parse_deep_link_path(path: &str, query: &str) -> Option<DeepLinkAction> {
+    match path {
+        "home" => Some(DeepLinkAction::Navigate("/".to_string())),
+        "exercises" => {
+            if let Some(q) = get_query_param(query, "q") {
+                Some(DeepLinkAction::SearchExercises(q))
+            } else {
+                Some(DeepLinkAction::Navigate("/exercises".to_string()))
+            }
+        }
+        "analytics" => Some(DeepLinkAction::Navigate("/analytics".to_string())),
+        "credits" => {
+            if let Some(url) = get_query_param(query, "db_url") {
+                Some(DeepLinkAction::SetDbUrl(url))
+            } else {
+                Some(DeepLinkAction::Navigate("/credits".to_string()))
+            }
+        }
+        "exercise/add" => Some(DeepLinkAction::Navigate("/add-exercise".to_string())),
+        "session/start" => {
+            let ids: Vec<String> = get_query_param(query, "exercises")
+                .unwrap_or_default()
+                .split(',')
+                .filter(|s| !s.is_empty())
+                .map(|s| s.to_string())
+                .collect();
+            Some(DeepLinkAction::StartSession(ids))
+        }
+        "session/create" => {
+            let exercises_str = get_query_param(query, "exercises")?;
+            Some(DeepLinkAction::CreateSession(parse_session_exercises(
+                &exercises_str,
+            )))
+        }
+        _ => None,
+    }
+}
+
+/// Parse a comma-separated list of `<id>:<weight_kg>:<reps>` exercise entries.
+/// Any field may be omitted or set to `-` to indicate "not specified".
+///
+/// Example: `"Bench_Press:80:10,Squat:60:6"`
+pub fn parse_session_exercises(s: &str) -> Vec<SessionExerciseEntry> {
+    s.split(',')
+        .filter(|e| !e.is_empty())
+        .map(|entry| {
+            let mut parts = entry.split(':');
+            let exercise_id = parts.next().unwrap_or("").to_string();
+            let weight_hg = parts.next().and_then(|w| {
+                if w.is_empty() || w == "-" {
+                    None
+                } else {
+                    w.parse::<f64>().ok().map(|kg| (kg * 10.0).round() as u32)
+                }
+            });
+            let reps = parts.next().and_then(|r| {
+                if r.is_empty() || r == "-" {
+                    None
+                } else {
+                    r.parse::<u32>().ok()
+                }
+            });
+            SessionExerciseEntry {
+                exercise_id,
+                weight_hg,
+                reps,
+            }
+        })
+        .collect()
+}
+
+/// Look up a single parameter value from a URL query string.
+pub fn get_query_param(query: &str, name: &str) -> Option<String> {
+    query.split('&').find_map(|pair| {
+        let (k, v) = pair.split_once('=')?;
+        if k == name {
+            // Basic percent-decoding for common characters
+            Some(percent_decode(v))
+        } else {
+            None
+        }
+    })
+}
+
+/// Minimal percent-decoder that handles the most common URL-encoded characters.
+fn percent_decode(s: &str) -> String {
+    let mut out = String::with_capacity(s.len());
+    let mut chars = s.chars().peekable();
+    while let Some(c) = chars.next() {
+        if c == '%' {
+            let h1 = chars.next().unwrap_or('0');
+            let h2 = chars.next().unwrap_or('0');
+            let hex = format!("{h1}{h2}");
+            if let Ok(byte) = u8::from_str_radix(&hex, 16) {
+                out.push(byte as char);
+            } else {
+                out.push('%');
+                out.push(h1);
+                out.push(h2);
+            }
+        } else if c == '+' {
+            out.push(' ');
+        } else {
+            out.push(c);
+        }
+    }
+    out
+}
+
+/// Map a human-readable route name (as used in `?dl_navigate=…`) to the
+/// corresponding URL path.
+#[cfg(target_arch = "wasm32")]
+fn route_name_to_path(name: &str) -> String {
+    match name {
+        "home" | "/" => "/".to_string(),
+        "exercises" => "/exercises".to_string(),
+        "analytics" => "/analytics".to_string(),
+        "credits" => "/credits".to_string(),
+        "add-exercise" | "add_exercise" => "/add-exercise".to_string(),
+        other => format!("/{other}"),
+    }
+}
+
 /// Format a session timestamp as a human-readable relative date string.
 pub fn format_session_date(timestamp: u64) -> String {
     let days_ago = days_since(timestamp);
@@ -139,5 +356,162 @@ mod tests {
     fn exercise_db_url_storage_key_is_stable() {
         // The localStorage key should not change accidentally.
         assert_eq!(super::EXERCISE_DB_URL_STORAGE_KEY, "exercise_db_url");
+    }
+
+    // ── Deep link parsing ─────────────────────────────────────────────────────
+
+    #[test]
+    fn parse_deep_link_home() {
+        assert_eq!(
+            super::parse_deep_link("logworkout://home"),
+            Some(DeepLinkAction::Navigate("/".to_string()))
+        );
+    }
+
+    #[test]
+    fn parse_deep_link_exercises_no_query() {
+        assert_eq!(
+            super::parse_deep_link("logworkout://exercises"),
+            Some(DeepLinkAction::Navigate("/exercises".to_string()))
+        );
+    }
+
+    #[test]
+    fn parse_deep_link_exercises_with_query() {
+        assert_eq!(
+            super::parse_deep_link("logworkout://exercises?q=bench+press"),
+            Some(DeepLinkAction::SearchExercises("bench press".to_string()))
+        );
+    }
+
+    #[test]
+    fn parse_deep_link_analytics() {
+        assert_eq!(
+            super::parse_deep_link("logworkout://analytics"),
+            Some(DeepLinkAction::Navigate("/analytics".to_string()))
+        );
+    }
+
+    #[test]
+    fn parse_deep_link_credits_no_url() {
+        assert_eq!(
+            super::parse_deep_link("logworkout://credits"),
+            Some(DeepLinkAction::Navigate("/credits".to_string()))
+        );
+    }
+
+    #[test]
+    fn parse_deep_link_credits_with_db_url() {
+        assert_eq!(
+            super::parse_deep_link("logworkout://credits?db_url=http://localhost:8080"),
+            Some(DeepLinkAction::SetDbUrl(
+                "http://localhost:8080".to_string()
+            ))
+        );
+    }
+
+    #[test]
+    fn parse_deep_link_add_exercise() {
+        assert_eq!(
+            super::parse_deep_link("logworkout://exercise/add"),
+            Some(DeepLinkAction::Navigate("/add-exercise".to_string()))
+        );
+    }
+
+    #[test]
+    fn parse_deep_link_session_start_no_exercises() {
+        assert_eq!(
+            super::parse_deep_link("logworkout://session/start"),
+            Some(DeepLinkAction::StartSession(vec![]))
+        );
+    }
+
+    #[test]
+    fn parse_deep_link_session_start_with_exercises() {
+        assert_eq!(
+            super::parse_deep_link(
+                "logworkout://session/start?exercises=Bench_Press,Barbell_Squat"
+            ),
+            Some(DeepLinkAction::StartSession(vec![
+                "Bench_Press".to_string(),
+                "Barbell_Squat".to_string(),
+            ]))
+        );
+    }
+
+    #[test]
+    fn parse_deep_link_session_create() {
+        assert_eq!(
+            super::parse_deep_link(
+                "logworkout://session/create?exercises=Bench_Press:80:10,Barbell_Squat:60:6"
+            ),
+            Some(DeepLinkAction::CreateSession(vec![
+                SessionExerciseEntry {
+                    exercise_id: "Bench_Press".to_string(),
+                    weight_hg: Some(800),
+                    reps: Some(10),
+                },
+                SessionExerciseEntry {
+                    exercise_id: "Barbell_Squat".to_string(),
+                    weight_hg: Some(600),
+                    reps: Some(6),
+                },
+            ]))
+        );
+    }
+
+    #[test]
+    fn parse_deep_link_session_create_no_weight() {
+        let result = super::parse_deep_link("logworkout://session/create?exercises=Run:-:- ");
+        let entries = match result {
+            Some(DeepLinkAction::CreateSession(e)) => e,
+            _ => panic!("expected CreateSession"),
+        };
+        assert_eq!(entries[0].weight_hg, None);
+        assert_eq!(entries[0].reps, None);
+    }
+
+    #[test]
+    fn parse_deep_link_unknown_returns_none() {
+        assert_eq!(super::parse_deep_link("logworkout://unknown/path"), None);
+    }
+
+    #[test]
+    fn parse_deep_link_wrong_scheme_returns_none() {
+        assert_eq!(super::parse_deep_link("https://example.com"), None);
+    }
+
+    #[test]
+    fn get_query_param_basic() {
+        assert_eq!(
+            super::get_query_param("foo=bar&baz=qux", "foo"),
+            Some("bar".to_string())
+        );
+        assert_eq!(
+            super::get_query_param("foo=bar&baz=qux", "baz"),
+            Some("qux".to_string())
+        );
+        assert_eq!(super::get_query_param("foo=bar&baz=qux", "missing"), None);
+    }
+
+    #[test]
+    fn percent_decode_handles_common_chars() {
+        assert_eq!(
+            super::percent_decode("hello%20world"),
+            "hello world".to_string()
+        );
+        assert_eq!(super::percent_decode("a+b"), "a b".to_string());
+        assert_eq!(
+            super::percent_decode("http%3A%2F%2Flocalhost%3A8080"),
+            "http://localhost:8080".to_string()
+        );
+    }
+
+    #[test]
+    fn parse_session_exercises_weight_rounding() {
+        // 77.5 kg → 775 hg (rounded)
+        let entries = super::parse_session_exercises("Bench:77.5:10");
+        assert_eq!(entries[0].weight_hg, Some(775));
+        assert_eq!(entries[0].reps, Some(10));
     }
 }

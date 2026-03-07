@@ -1,10 +1,10 @@
 # User Story – Repeat Session from History (Web PWA)
 # Start a new session based on a past workout using the 🔄 button
-url: http://localhost:8080
+url: http://localhost:8080/?dl_session=Wide-Grip_Barbell_Bench_Press:80:10,Wide-Grip_Barbell_Bench_Press:77.5:10,Barbell_Full_Squat:60:6
 ---
 - launchApp
-# Create a bench press + squat session to repeat from
-- runFlow: ../subflows/create_bench_squat_session.yaml
+# Wait for the session created by the deep link to appear
+- assertVisible: Wide-Grip Barbell Bench Press
 - tapOn: # 🔄
     css: article header button.edit
 # A new active session opens with exercises pre-added

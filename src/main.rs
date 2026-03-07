@@ -37,9 +37,16 @@ const TOAST_DISMISS_MS: u32 = 3_000;
 #[derive(Clone, Copy)]
 pub struct ExerciseSearchSignal(pub Signal<Option<String>>);
 
+/// Global context signal holding a pending deep-link action that requires the
+/// exercise list to be loaded before it can be executed (e.g. creating a past
+/// session with specific exercises).
+#[derive(Clone, Copy)]
+pub struct PendingDeepLinkSignal(pub Signal<Option<utils::DeepLinkAction>>);
+
 #[derive(Clone, Routable, Debug, PartialEq)]
 #[rustfmt::skip]
 enum Route {
+    #[layout(DeepLinkLayout)]
     #[route("/")]
     Home {},
     #[route("/exercises")]
@@ -76,6 +83,7 @@ fn App() -> Element {
     use_context_provider(|| ToastSignal(Signal::new(None)));
     use_context_provider(|| NotificationPermissionToastSignal(Signal::new(false)));
     use_context_provider(|| ExerciseSearchSignal(Signal::new(None)));
+    use_context_provider(|| PendingDeepLinkSignal(Signal::new(None)));
 
     // Show the notification permission warning toast when permission has not yet
     // been granted.  The toast prompts the user to click it — respecting browsers
@@ -103,7 +111,163 @@ fn App() -> Element {
     }
 }
 
-/// Renders the congratulations toast when a session is successfully completed.
+/// Layout component rendered inside the Router context for all routes.
+///
+/// Handles `logworkout://` deep links (and their web equivalents via `?dl_*`
+/// URL query parameters) on first mount.  Navigation links require the Router
+/// context, so this component is the right place to call `use_navigator()`.
+///
+/// **Immediate actions** (URL storage, exercise search pre-fill, navigation)
+/// are executed inside `use_hook` which runs once per component mount.
+///
+/// **Deferred actions** (creating a past session) are stored in
+/// [`PendingDeepLinkSignal`] and executed via `use_effect` once the exercise
+/// list has been loaded from the network/cache.
+#[component]
+fn DeepLinkLayout() -> Element {
+    #[cfg(target_arch = "wasm32")]
+    {
+        use utils::{DeepLinkAction, SessionExerciseEntry};
+
+        let nav = use_navigator();
+        let exercises_sig = services::exercise_db::use_exercises();
+        let mut search_signal = consume_context::<ExerciseSearchSignal>().0;
+        let mut pending = consume_context::<PendingDeepLinkSignal>().0;
+
+        // ── First-mount: parse URL params and execute immediate actions ──────
+        use_hook(move || {
+            let Some(action) = utils::parse_web_deep_link() else {
+                return;
+            };
+            match action {
+                DeepLinkAction::Navigate(path) => {
+                    let route = path_to_route(&path);
+                    nav.push(route);
+                }
+                DeepLinkAction::SearchExercises(q) => {
+                    search_signal.set(Some(q));
+                    nav.push(Route::Exercises {});
+                }
+                DeepLinkAction::SetDbUrl(url) => {
+                    // Persist the new URL in localStorage immediately so that
+                    // `get_exercise_db_url()` picks it up when exercises reload.
+                    if let Some(window) = web_sys::window() {
+                        if let Ok(Some(storage)) = window.local_storage() {
+                            if url.is_empty() || url == utils::EXERCISE_DB_BASE_URL {
+                                let _ = storage.remove_item(utils::EXERCISE_DB_URL_STORAGE_KEY);
+                            } else {
+                                let _ = storage.set_item(utils::EXERCISE_DB_URL_STORAGE_KEY, &url);
+                            }
+                        }
+                    }
+                    services::exercise_db::clear_fetch_cache();
+                    // No navigation needed — the reload will happen via provide_exercises
+                }
+                DeepLinkAction::StartSession(exercise_ids) => {
+                    let mut session = models::WorkoutSession::new();
+                    session.pending_exercise_ids = exercise_ids;
+                    services::storage::save_session(session);
+                    nav.push(Route::Home {});
+                }
+                // Deferred: needs exercises to be loaded first
+                action @ DeepLinkAction::CreateSession(_) => {
+                    pending.set(Some(action));
+                }
+            }
+        });
+
+        // ── Deferred: create past session once exercises are available ───────
+        use_effect(move || {
+            let exercises = exercises_sig.read();
+            if exercises.is_empty() {
+                return; // not loaded yet
+            }
+            let Some(action) = pending.write().take() else {
+                return;
+            };
+            if let DeepLinkAction::CreateSession(entries) = action {
+                let session = build_session_from_entries(&entries, &exercises);
+                services::storage::save_session(session);
+            }
+        });
+    }
+
+    rsx! { Outlet::<Route> {} }
+}
+
+/// Convert a deep-link path string such as `"/"` or `"/exercises"` to a [`Route`].
+#[cfg(target_arch = "wasm32")]
+fn path_to_route(path: &str) -> Route {
+    match path {
+        "/" | "home" => Route::Home {},
+        "/exercises" | "exercises" => Route::Exercises {},
+        "/analytics" | "analytics" => Route::Analytics {},
+        "/credits" | "credits" => Route::Credits {},
+        "/add-exercise" | "add-exercise" => Route::AddExercise {},
+        other => {
+            // Try to parse /edit-exercise/:id
+            if let Some(id) = other.strip_prefix("/edit-exercise/") {
+                Route::EditExercise { id: id.to_string() }
+            } else {
+                Route::Home {}
+            }
+        }
+    }
+}
+
+/// Build a completed [`models::WorkoutSession`] from deep-link entries,
+/// looking up exercise metadata (name, category, force) from the loaded list.
+#[cfg(target_arch = "wasm32")]
+fn build_session_from_entries(
+    entries: &[utils::SessionExerciseEntry],
+    exercises: &[models::Exercise],
+) -> models::WorkoutSession {
+    use models::{Category, Distance, ExerciseLog, Force, Weight, WorkoutSession};
+
+    let base_time = models::get_current_timestamp().saturating_sub(3600); // 1 h ago
+    let mut session = WorkoutSession::new();
+    session.start_time = base_time;
+
+    for (i, entry) in entries.iter().enumerate() {
+        let start = base_time + i as u64 * 120;
+        let end = start + 60;
+
+        // Look up exercise metadata; fall back to minimal defaults if not found
+        let (name, category, force) = exercises
+            .iter()
+            .find(|e| e.id == entry.exercise_id)
+            .map(|e| (e.name.clone(), e.category, e.force))
+            .unwrap_or_else(|| (entry.exercise_id.clone(), Category::Strength, None));
+
+        let weight_hg = entry.weight_hg.map(Weight);
+        let reps = if force.is_some_and(|f| f.has_reps()) {
+            entry.reps
+        } else {
+            None
+        };
+        let distance_m = if category == Category::Cardio {
+            entry.reps.map(|r| Distance(r * 1000)) // treat reps field as km
+        } else {
+            None
+        };
+
+        session.exercise_logs.push(ExerciseLog {
+            exercise_id: entry.exercise_id.clone(),
+            exercise_name: name,
+            category,
+            force,
+            start_time: start,
+            end_time: Some(end),
+            weight_hg,
+            reps,
+            distance_m,
+        });
+    }
+
+    session.end_time = Some(base_time + entries.len() as u64 * 120 + 60);
+    session
+}
+
 /// The auto-dismiss timer lives here (always mounted) so it is never cancelled
 /// when the SessionView unmounts.
 #[component]

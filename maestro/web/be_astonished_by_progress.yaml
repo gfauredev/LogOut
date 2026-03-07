@@ -1,10 +1,10 @@
 # User Story – Be Astonished by Your Incredible Progress (Web PWA)
 # Select an exercise in Analytics and see a chart of progress over time
-url: http://localhost:8080
+url: http://localhost:8080/?dl_session=Wide-Grip_Barbell_Bench_Press:80:10,Wide-Grip_Barbell_Bench_Press:77.5:10,Barbell_Full_Squat:60:6
 ---
 - launchApp
-# Create a bench press session where reps improved from set 1 (10) to set 2 (12)
-- runFlow: ../subflows/create_bench_squat_session.yaml
+# Wait for the session created by the deep link to appear
+- assertVisible: Wide-Grip Barbell Bench Press
 # Navigate to analytics
 - runFlow: ../subflows/nav_analytics.yaml
 # Select "Repetitions" metric (improved from 10 to 12 reps in the created session)
