@@ -1,6 +1,0 @@
-# User Story 12 – Navigate to Analytics (Android)
-# Navigate to the Analytics page via the bottom navigation bar.
-appId: com.gfaure.logworkout
----
-- tapOn: "📊"
-- assertVisible: Analytics

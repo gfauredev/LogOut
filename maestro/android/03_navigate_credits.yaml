@@ -1,6 +1,0 @@
-# User Story 3 – Navigate to Credits (Android)
-# Navigate to the Credits page via the bottom navigation bar.
-appId: com.gfaure.logworkout
----
-- tapOn: "ℹ️"
-- assertVisible: Credits

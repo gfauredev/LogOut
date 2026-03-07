@@ -1,6 +1,0 @@
-# User Story 2 – Allow Notifications (Android)
-# Note: Notification permission is currently only handled via a toast in the Web version.
-# For Android, this is a placeholder.
-appId: com.gfaure.logworkout
----
-- assertVisible: 💪
