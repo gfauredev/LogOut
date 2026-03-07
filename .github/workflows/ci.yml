@@ -55,36 +55,90 @@ jobs:
       - name: Run unit tests with coverage
         id: tests
         run: |
-          # Run tests with coverage, capturing both test output and coverage data
-          TEST_OUTPUT=$(cargo llvm-cov --bin log-workout --json --output-path coverage.json 2>&1)
-          echo "$TEST_OUTPUT"
-          # Strip Cargo compilation/progress lines; keep only test results
-          CLEAN_OUTPUT=$(echo "$TEST_OUTPUT" | grep -Ev '^\s*(Compiling|Checking|Finished|Downloaded|Downloading|Updating|Locking|Fresh)')
+          # Use tee so the output is always written to a file regardless of exit code.
+          # set +e prevents errexit from aborting the script when cargo returns non-zero
+          # (i.e. when one or more tests fail); PIPESTATUS[0] captures cargo's exit code
+          # (the first command in the pipe) rather than tee's.
+          set +e
+          cargo llvm-cov --bin log-workout --json --output-path coverage.json 2>&1 \
+            | tee /tmp/test_output.txt
+          EXIT_CODE=${PIPESTATUS[0]}
+          set -e
+          # Strip Cargo compilation/progress lines; keep only test results.
+          # || true prevents grep from exiting 1 when all lines are filtered out.
+          CLEAN_OUTPUT=$(grep -Ev '^\s*(Compiling|Checking|Finished|Downloaded|Downloading|Updating|Locking|Fresh)' \
+            /tmp/test_output.txt || true)
           echo "test_output<<EOF" >> "$GITHUB_OUTPUT"
           echo "$CLEAN_OUTPUT" >> "$GITHUB_OUTPUT"
           echo "EOF" >> "$GITHUB_OUTPUT"
+          exit $EXIT_CODE
 
+      # Upload even when tests fail so coverage-gate can still download and report.
       - name: Upload coverage JSON report
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: unit-coverage-json
           path: coverage.json
+          if-no-files-found: ignore
           retention-days: 7
+
+      - name: Post unit test results comment
+        if: always()
+        uses: actions/github-script@v7
+        env:
+          TEST_OUTPUT: ${{ steps.tests.outputs.test_output }}
+          TEST_OUTCOME: ${{ steps.tests.outcome }}
+        with:
+          script: |
+            const output = process.env.TEST_OUTPUT || '(no output captured)';
+            const passed = process.env.TEST_OUTCOME === 'success';
+            const status = passed ? '✅ **PASSED**' : '❌ **FAILED**';
+            const tag = '<!-- unit-tests -->';
+            const body = `${tag}\n## 🧪 Unit Tests ${status}\n\n\`\`\`\n${output}\n\`\`\``;
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+            });
+            const existing = comments.find(c => c.body.includes(tag));
+            if (existing) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: existing.id,
+                body,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body,
+              });
+            }
 
   coverage-gate:
     name: Coverage Gate (≥ 90%)
     needs: unit-tests
+    # Run even when unit-tests fails so we can post a "skipped" comment to the PR.
+    if: always()
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
+      # continue-on-error so the job doesn't abort when unit-tests failed and
+      # never uploaded the artifact.
       - name: Download coverage JSON report
+        id: download
+        continue-on-error: true
         uses: actions/download-artifact@v4
         with:
           name: unit-coverage-json
 
       - name: Generate coverage summary
         id: cov
+        if: steps.download.outcome == 'success'
         run: |
           TOTAL_COVERED=$(jq '.data[0].totals.lines.covered' coverage.json)
           TOTAL_COUNT=$(jq '.data[0].totals.lines.count' coverage.json)
@@ -97,6 +151,7 @@ jobs:
 
       - name: Check coverage gate for tested files
         id: gate
+        if: steps.download.outcome == 'success'
         run: |
           # Files that contain unit tests (have #[cfg(test)] blocks)
           TESTED_FILES=$(grep -rl '#\[cfg(test)\]' src/ | sort)
@@ -106,16 +161,21 @@ jobs:
           FAIL=0
           GATE_REPORT=""
           for f in $TESTED_FILES; do
-            # Extract line coverage for this file from the JSON report using jq
-            FILE_DATA=$(jq --arg f "$f" '
-              .data[0].files[]
-              | select(.filename | endswith($f))
-              | {covered: .summary.lines.covered, count: .summary.lines.count, pct: (.summary.lines.percent | floor)}
-            ' coverage.json | head -1)
+            # Use jq -rc + first() to get a single compact JSON line.
+            # The old pattern (pretty-print | head -1) only captured "{", breaking
+            # subsequent jq calls and silently skipping every coverage check.
+            # The fallback // {...} handles files absent from the coverage report.
+            FILE_DATA=$(jq -rc --arg f "$f" '
+              first(
+                .data[0].files[]
+                | select(.filename | endswith($f))
+                | {covered: .summary.lines.covered, count: .summary.lines.count, pct: (.summary.lines.percent | floor)}
+              ) // {covered: 0, count: 0, pct: 0}
+            ' coverage.json)
 
-            LH=$(echo "$FILE_DATA" | jq -r '.covered // 0')
-            LF=$(echo "$FILE_DATA" | jq -r '.count // 0')
-            PCT=$(echo "$FILE_DATA" | jq -r '.pct // 0')
+            LH=$(echo "$FILE_DATA" | jq -r '.covered')
+            LF=$(echo "$FILE_DATA" | jq -r '.count')
+            PCT=$(echo "$FILE_DATA" | jq -r '.pct')
 
             STATUS="✅"
             if [ "$LF" -eq 0 ]; then
@@ -135,32 +195,40 @@ jobs:
           echo "gate_failed=$FAIL" >> "$GITHUB_OUTPUT"
 
       - name: Post coverage comment
+        if: always()
         uses: actions/github-script@v7
         env:
+          UNIT_TESTS_RESULT: ${{ needs.unit-tests.result }}
           SUMMARY: ${{ steps.cov.outputs.summary }}
           GATE_REPORT: ${{ steps.gate.outputs.gate_report }}
           GATE_FAILED: ${{ steps.gate.outputs.gate_failed }}
         with:
           script: |
+            const unitResult = process.env.UNIT_TESTS_RESULT;
             const summary = process.env.SUMMARY;
             const gateReport = process.env.GATE_REPORT;
             const gateFailed = process.env.GATE_FAILED === '1';
-            const gateStatus = gateFailed
-              ? '❌ **FAILED** — tested files must have ≥ 90% coverage'
-              : '✅ **PASSED** — all tested files have ≥ 90% coverage';
             const tag = '<!-- coverage-gate -->';
-            const body = `${tag}
-            ## 📊 Coverage Gate ${gateStatus}
+            let body;
+            if (unitResult !== 'success' || !summary) {
+              body = `${tag}\n## 📊 Coverage Gate ➖ **SKIPPED** — unit tests did not pass`;
+            } else {
+              const gateStatus = gateFailed
+                ? '❌ **FAILED** — tested files must have ≥ 90% coverage'
+                : '✅ **PASSED** — all tested files have ≥ 90% coverage';
+              body = `${tag}
+## 📊 Coverage Gate ${gateStatus}
 
-            ### Coverage Summary
-            \`\`\`
-            ${summary}
-            \`\`\`
+### Coverage Summary
+\`\`\`
+${summary}
+\`\`\`
 
-            ### Per-file Results
-            | File | Lines Hit/Total | Coverage | Status |
-            |------|----------------|----------|--------|
-            ${gateReport}`;
+### Per-file Results
+| File | Lines Hit/Total | Coverage | Status |
+|------|----------------|----------|--------|
+${gateReport}`;
+            }
             const { data: comments } = await github.rest.issues.listComments({
               owner: context.repo.owner,
               repo: context.repo.repo,
@@ -228,9 +296,16 @@ jobs:
           dx serve --open false --interactive false --web --release &
           SERVER_PID=$!
           sleep 5 # Wait for the server to be ready
-          maestro test --headless maestro/web/
-          TEST_EXIT=$?
+          # Use tee so output is available to the post-comment step.
+          # set +e prevents errexit from aborting before we capture exit code and kill the server.
+          set +e
+          maestro test --headless maestro/web/ 2>&1 | tee /tmp/maestro_output.txt
+          TEST_EXIT=${PIPESTATUS[0]}
+          set -e
           kill $SERVER_PID 2>/dev/null || true
+          echo "maestro_output<<EOF" >> "$GITHUB_OUTPUT"
+          cat /tmp/maestro_output.txt >> "$GITHUB_OUTPUT"
+          echo "EOF" >> "$GITHUB_OUTPUT"
           exit $TEST_EXIT
 
       - name: Upload diagnostics
@@ -242,6 +317,42 @@ jobs:
           if-no-files-found: ignore
           retention-days: 7
 
+      - name: Post E2E test results comment
+        if: always()
+        uses: actions/github-script@v7
+        env:
+          MAESTRO_OUTPUT: ${{ steps.maestro.outputs.maestro_output }}
+          MAESTRO_OUTCOME: ${{ steps.maestro.outcome }}
+        with:
+          script: |
+            const output = process.env.MAESTRO_OUTPUT || '(no output captured)';
+            const passed = process.env.MAESTRO_OUTCOME === 'success';
+            const status = passed ? '✅ **PASSED**' : '❌ **FAILED**';
+            const tag = '<!-- e2e-web -->';
+            const body = `${tag}\n## 🌐 Web E2E Tests ${status}\n\n\`\`\`\n${output}\n\`\`\``;
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+            });
+            const existing = comments.find(c => c.body.includes(tag));
+            if (existing) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: existing.id,
+                body,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body,
+              });
+            }
+
       - name: Fail if Maestro tests failed
         if: steps.maestro.outcome == 'failure'
         run: exit 1
+
