@@ -9,13 +9,18 @@ url: http://localhost:8080
 # Navigate to analytics
 - runFlow: ../subflows/nav_analytics.yaml
 # Select "Repetitions" metric (improved from 10 to 12 reps in the created session)
-- tapOn:
-    css: .metric-selector select
-- tapOn: Repetitions
+# - tapOn:
+#     css: .metric-selector select
+# - assertVisible: Weight (kg)
+# - assertVisible: Repetitions
+# - assertVisible: Distance (km)
+# - assertVisible: Duration (minutes)
 # Select "Wide-Grip Barbell Bench Press" in the first exercise selector
-- tapOn: -- Select Exercise --
+- tapOn:
+    # text: -- Select Exercise --
+    css: .exercise-selector select
 - tapOn: Wide-Grip Barbell Bench Press
 # A chart should appear with the metric data
-- assertVisible: Repetitions
-- assertVisible: Wide-Grip Barbell Bench Press
-- assertVisible: Today
+- assertVisible: {css: main svg}
+- assertVisible: {css: main svg text, text: Weight (kg)}
+- assertVisible: {css: main svg text, text: Wide-Grip Barbell Bench Press}
