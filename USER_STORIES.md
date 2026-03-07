@@ -296,7 +296,8 @@ that** I can log it.
 
 #### Acceptance Criteria
 
-- Input some metrics
+- Input a random number between 0 and 99 inclusive in the first metric
+- If there’s a second metric, tap a dozen times its "+" button
 - **Click** on the "✓ Complete Exercise" button
 - Completed exercise appears in the "Completed Exercises" section, with metrics
 

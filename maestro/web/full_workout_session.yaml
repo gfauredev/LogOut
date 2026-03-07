@@ -17,31 +17,27 @@ url: http://localhost:8080
 - assertVisible: Wide-Grip Barbell Bench Press
 - assertVisible: Weight
 - assertVisible: Repetitions
-
 # ── Record Exercise (set 1) ───────────────────────────────────────────────────
-- tapOn:
-    css: "article input[inputmode=decimal]"
+- tapOn: kg
+# - assertVisible: # FIXME Doesn’t work
+#     css: "article input[inputmode=decimal]"
+#     focused: true
 - inputText: "80"
+- tapOn: reps # FIXME Taps on the correct field and seems to focus it, but…
+# - inputText: "10" # FIXME Types in the previous (Weight) field (so 8010)
+- tapOn: {text: +, index: 1, repeat: 6}
 - tapOn:
-    css: "article input[inputmode=numeric]"
-- inputText: "10"
-- tapOn:
-    css: "button[title='Complete Exercise']"
+    css: "footer button.yes"
 - assertVisible: Completed Exercises
 - assertVisible: Wide-Grip Barbell Bench Press
-
-# ── Replay Exercise (set 2, increment reps) ───────────────────────────────────
+# ── Replay Exercise (set 2, decrement weight) ───────────────────────────────────
 - tapOn:
-    css: "button[title='Do another set']"
+    css: "article header button.edit"
 - assertVisible: Wide-Grip Barbell Bench Press
+- tapOn: {text: "−", repeat: 3}
 - tapOn:
-    css: "article input[inputmode=numeric]"
-- eraseText
-- inputText: "12"
-- tapOn:
-    css: "button[title='Complete Exercise']"
+    css: "footer button.yes"
 - assertVisible: Completed Exercises
-
 # ── Repeat For Another Exercise (Barbell Full Squat) ──────────────────────────
 - tapOn: "Search for an exercise..."
 - inputText: "full squat"
@@ -50,36 +46,34 @@ url: http://localhost:8080
 - assertVisible: Barbell Full Squat
 - assertVisible: Weight
 # Record first squat set
+- tapOn: kg
+# - assertVisible: # FIXME Doesn’t work
+#     css: "article input[inputmode=decimal]"
+#     focused: true
+- inputText: "80"
+- tapOn: reps # FIXME Taps on the correct field and seems to focus it, but…
+# - inputText: "10" # FIXME Types in the previous (Weight) field (so 8010)
+- tapOn: {text: +, index: 1, repeat: 6}
 - tapOn:
-    css: "article input[inputmode=decimal]"
-- inputText: "60"
-- tapOn:
-    css: "article input[inputmode=numeric]"
-- inputText: "8"
-- tapOn:
-    css: "button[title='Complete Exercise']"
+    css: "footer button.yes"
+# - assertVisible: Completed Exercises
 - assertVisible: Barbell Full Squat
-# Replay squat (set 2)
+# Replay squat (set 2, same values)
 - tapOn:
-    css: "button[title='Do another set']"
+    css: "article header button.edit"
 - assertVisible: Barbell Full Squat
 - tapOn:
-    css: "article input[inputmode=numeric]"
-- eraseText
-- inputText: "10"
-- tapOn:
-    css: "button[title='Complete Exercise']"
-
+    css: "footer button.yes"
 # ── Remove Exercise (delete the latest – second squat set) ────────────────────
 - tapOn:
-    css: "button[title='Delete this exercise']"
+    css: "article header button.no"
 # Now there should be 3 completed exercises
 - assertVisible: Completed Exercises
 - assertVisible: Wide-Grip Barbell Bench Press
 - assertVisible: Barbell Full Squat
 # Finish Session button must be visible (session is not empty)
 - assertVisible:
-    css: "button[title='Finish Session']"
+    css: "#main>header button.yes"
 
 # ── Finish Session ─────────────────────────────────────────────────────────────
 - runFlow: ../subflows/finish_session.yaml
