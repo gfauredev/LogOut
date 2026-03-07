@@ -69,9 +69,8 @@ pub fn Credits() -> Element {
                 }
                 form {
                     onsubmit: save_url,
-                    input {
-                        r#type: "url",
-                        value: "{url_input}",
+                    input { r#type: "url",
+                        // value: "{url_input}", // Prevent backspace marathon
                         placeholder: "{crate::utils::EXERCISE_DB_BASE_URL}",
                         oninput: move |evt| url_input.set(evt.value()),
                     }
