@@ -87,11 +87,11 @@ pub fn Home() -> Element {
                         SessionCard { key: "{session.id}", session: session.clone() }
                     }
                 }
-                button { class: "icon add",
-                    onclick: start_new_session,
-                    title: "Start New Workout",
-                    "+"
-                }
+            }
+            button { class: "icon add",
+                onclick: start_new_session,
+                title: "Start New Workout",
+                "+"
             }
         }
         BottomNav { active_tab: ActiveTab::Sessions }
