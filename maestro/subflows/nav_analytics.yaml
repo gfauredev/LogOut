@@ -1,4 +1,6 @@
-# Navigate to the Analytics page via the bottom navigation bar.
+# Navigate to the Analytics page via the bottom navigation bar
+url: http://localhost:8080
+---
 - tapOn:
     css: "nav > .analytics"
 - assertVisible: "📊 Analytics"

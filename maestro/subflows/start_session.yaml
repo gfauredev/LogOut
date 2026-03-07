@@ -1,4 +1,6 @@
-# Start a new workout session from the Home screen.
-# Precondition: app must be on the Home screen with no active session.
+# Start a new workout session from the Home screen
+# Precondition: app must be on the Home screen with no active session
+url: http://localhost:8080
+---
 - tapOn: +
 - assertVisible: ⏱️ Active Session

@@ -1,4 +1,6 @@
-# Navigate to the Home page via the bottom navigation bar.
+# Navigate to the Home page via the bottom navigation bar
+url: http://localhost:8080
+---
 - tapOn:
     css: "nav > .home"
 - assertVisible: "💪 LogOut"

@@ -1,7 +1,7 @@
-# Record one set of Barbell Full Squat in the current active session.
-# Precondition: an active session is open with the exercise search visible.
-# Uses the local test database (exercises.json) which has this exercise.
-
+# Record one set of Barbell Full Squat in the current active session
+# Precondition: an active session is open with the exercise search visible
+url: http://localhost:8080
+---
 # Search and open squat
 - tapOn: "Search for an exercise..."
 - inputText: "full squat"
@@ -9,7 +9,6 @@
 - tapOn: Barbell Full Squat
 - assertVisible: Barbell Full Squat
 - assertVisible: Weight
-
 # Enter weight and reps
 - tapOn:
     css: "article input[inputmode=decimal]"
