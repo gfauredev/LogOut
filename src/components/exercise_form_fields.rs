@@ -116,7 +116,7 @@ pub fn ExerciseFormFields(
             label { "Exercise Name *" }
             input {
                 r#type: "text",
-                placeholder: "e.g., Farmer's Walk",
+                placeholder: "Pushups",
                 value: "{name_input}",
                 oninput: move |evt| name_input.set(evt.value()),
             }

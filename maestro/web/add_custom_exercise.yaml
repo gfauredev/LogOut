@@ -10,7 +10,7 @@ url: http://localhost:8080
 - assertVisible: Add Exercise
 - assertVisible: Exercise Name *
 # Fill in the exercise name
-- tapOn: "e.g., Farmer's Walk"
+- tapOn: "Pushups"
 - inputText: "My Test Exercise"
 # Save the exercise
 - tapOn: "💾 Save Exercise"
