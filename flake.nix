@@ -64,7 +64,7 @@
             pkg-config
             rustToolchain
             selenium-manager
-            # ungoogled-chromium
+            ungoogled-chromium
             # xvfb-run
           ];
           commonBuildInputs =
