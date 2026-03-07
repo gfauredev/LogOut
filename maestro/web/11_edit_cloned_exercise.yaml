@@ -2,6 +2,7 @@
 # Clone a built-in exercise and edit its name.
 url: http://localhost:8080
 ---
+- launchApp
 # Navigate to the exercise browser
 - tapOn:
     css: "nav > .exercises"

@@ -3,6 +3,7 @@
 # The session from Story 15 is preserved for Stories 18–20.
 url: http://localhost:8080
 ---
+- launchApp
 # Wait for the app to load
 
 # Create a small session to delete

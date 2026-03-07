@@ -2,6 +2,7 @@
 # Navigate to the Exercise List via the bottom navigation bar
 url: http://localhost:8080
 ---
+- launchApp
 - tapOn:
     css: "nav > .exercises"
 - assertVisible: "📚 Exercises"

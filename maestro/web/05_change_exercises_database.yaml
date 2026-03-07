@@ -2,6 +2,7 @@
 # Change the database URL via the Credits page
 url: http://localhost:8080
 ---
+- launchApp
 - tapOn:
     css: "nav > .credits"
 - assertVisible: "ℹ️ Credits"

@@ -2,6 +2,7 @@
 # The Credits page shows the default exercise database URL.
 url: http://localhost:8080
 ---
+- launchApp
 - tapOn:
     css: "nav > .credits"
 - assertVisible: "ℹ️ Credits"

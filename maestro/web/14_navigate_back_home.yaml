@@ -2,6 +2,7 @@
 # After navigating away, the "💪" button returns to the Home page.
 url: http://localhost:8080
 ---
+- launchApp
 # Navigate to the exercise browser
 - tapOn:
     css: "nav > .exercises"

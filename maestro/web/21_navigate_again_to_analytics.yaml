@@ -2,6 +2,7 @@
 # After completing sessions, the Analytics page is accessible from any screen.
 url: http://localhost:8080
 ---
+- launchApp
 # Navigate to the exercise list first (to simulate navigating from another page)
 - tapOn:
     css: "nav > .exercises"

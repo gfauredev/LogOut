@@ -3,6 +3,7 @@
 # completed exercise, and finish the session.
 url: http://localhost:8080
 ---
+- launchApp
 # Wait for the app to load
 
 # ── Start Session ────────────────────────────────────────────────────────────

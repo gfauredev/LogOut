@@ -3,6 +3,7 @@
 # because no workout sessions have been completed yet.
 url: http://localhost:8080
 ---
+- launchApp
 - tapOn:
     css: "nav > .analytics"
 - assertVisible: "📊 Analytics"

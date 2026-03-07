@@ -2,6 +2,7 @@
 # Select an exercise in Analytics and see a chart of progress over time.
 url: http://localhost:8080
 ---
+- launchApp
 - tapOn:
     css: "nav > .analytics"
 - assertVisible: "📊 Analytics"

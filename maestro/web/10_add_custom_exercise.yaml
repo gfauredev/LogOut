@@ -2,6 +2,7 @@
 # Navigate to the exercise browser, add a custom exercise, then search it
 url: http://localhost:8080
 ---
+- launchApp
 # Navigate to the exercise browser
 - tapOn:
     css: "nav > .exercises"

@@ -2,6 +2,7 @@
 # Before any custom exercises are added, built-in exercises show "Clone & Edit".
 url: http://localhost:8080
 ---
+- launchApp
 - tapOn:
     css: "nav > .exercises"
 - assertVisible: "📚 Exercises"
