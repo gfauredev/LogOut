@@ -24,13 +24,13 @@ url: http://localhost:8080
 
 # ── Record Exercise (set 1) ──────────────────────────────────────────────────
 - tapOn: kg
-- inputText: "60"
-- tapOn: Weight # Blur
+- inputRandomNumber: {length: 2}
 - tapOn:
-    text: reps
+    text: Weight # Blur
     repeat: 3
     delay: 100
-- inputText: "10"
+- tapOn: reps # FIXME Weight field doesn’t let the focus go
+- inputRandomNumber: {length: 2}
 - tapOn:
     css: article button.yes
     index: 2
