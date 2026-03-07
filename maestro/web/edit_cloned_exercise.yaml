@@ -6,11 +6,9 @@ url: http://localhost:8080
 - runFlow: ../subflows/nav_exercises.yaml
 # Search for Pushups to get a predictable target exercise
 - tapOn: "Search exercises, muscles, or categories..."
-- inputText: "pushups"
+- inputText: _pushups # Remove results such as handstand push ups…
 - assertVisible: Pushups
-# Tap the "+" (Clone then edit) button on the first article
-- tapOn:
-    css: article button
+- tapOn: {css: "article button.add"}
 - assertVisible: "(Add|Edit) Exercise"
 - assertVisible: Exercise Name *
 - tapOn:
@@ -23,5 +21,4 @@ url: http://localhost:8080
 - tapOn: "Search exercises, muscles, or categories..."
 - inputText: "My Cloned Pushups"
 - assertVisible: My Cloned Pushups
-# Custom exercises show the "✏️" (Edit) button
-- assertVisible: "✏️"
+- assertVisible: "✏️" # Custom exercises show the "✏️" (Edit) button
