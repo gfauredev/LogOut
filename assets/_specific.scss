@@ -77,9 +77,9 @@ header.session {
     font-size: 1.5em;
   }
 
-  button.no {
+  /* button.no {
     background: var(--no);
-  }
+  } */
 }
 
 // ── Completed exercise log ─────────────────────────────────────────────────
@@ -218,7 +218,7 @@ main.edit>div {
   gap: var(--spacing);
 }
 
-header>button.no {
+/* header>button.no {
   background: var(--no);
   border: none;
   font-size: 1.1em;
@@ -227,7 +227,7 @@ header>button.no {
   width: var(--icon-btn-width);
   height: var(--icon-btn-width);
   border-radius: 50%;
-}
+} */
 
 .snackbar {
   position: fixed;
