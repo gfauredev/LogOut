@@ -201,10 +201,10 @@ Replace `web` by `android` in the above commands to run the Android E2E tests.
 An emulator must be running, or a physical device must be connected via `ADB`.
 
 > [!TIP]
-> Each test is self-contained and independent — no specific run order is required.
-> Tests that need pre-existing state (e.g. a completed session) set it up via
-> reusable subflows in `maestro/web/_flows/`.
-> Use `maestro studio` to debug a failing test interactively.
+> Each test is self-contained and independent — no specific run order is
+> required. Tests that need pre-existing state (e.g. a completed session) set it
+> up via reusable subflows in `maestro/web/_flows/`. Use `maestro studio` to
+> debug a failing test interactively.
 
 ### Documentation
 
@@ -241,12 +241,10 @@ services, providing a detailed view of the codebase's API.
   - Cardio (distance) exercise tag
   - Static (just time) exercise tag
   - Consider reusing those colors for the charts in analytics
-- Make seach error tolerant so that for example "wide grip bench" finds
-  "Wide-Grip Barbell Bench Press"
+- Make database URL change properly replace the existing one, display toast
+- Mock exercise database with public/exercises.json for E2E tests, so they can
+  load faster and not rely on external network requests
 - Sign Android app, ensure it properly installs, publish app on Play Store
-- Consider mocking exercise database with empty `[]` JSON in E2E tests so they
-  can load faster and not rely on external network requests
-  - User Story Change Exercise Database to `public/exercises.json` anyway
 
 [LogOut]: https://gfauredev.github.io/LogOut
 [800+ exercises]: https://github.com/yuhonas/free-exercise-db
