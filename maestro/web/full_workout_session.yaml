@@ -1,0 +1,96 @@
+# User Story – Full Workout Session (Web PWA)
+# Complete a full workout with two different exercises, replay sets, remove one
+# completed exercise, and finish the session.
+url: http://localhost:8080
+---
+- launchApp
+
+# Set up the local test exercise database
+- runFlow: _flows/setup_local_db.yaml
+
+# Go home and start a new session
+- runFlow: _flows/nav_home.yaml
+- runFlow: _flows/start_session.yaml
+- assertVisible: ⏱️ Active Session
+
+# ── Search Exercise ───────────────────────────────────────────────────────────
+# Token-based search: "wide grip bench" finds "Wide-Grip Barbell Bench Press"
+- tapOn: "Search for an exercise..."
+- inputText: "wide grip bench"
+- assertVisible: Wide-Grip Barbell Bench Press
+- tapOn: "Wide-Grip Barbell Bench Press"
+- assertVisible: Wide-Grip Barbell Bench Press
+- assertVisible: Weight
+- assertVisible: Repetitions
+
+# ── Record Exercise (set 1) ───────────────────────────────────────────────────
+- tapOn:
+    css: "article input[inputmode=decimal]"
+- inputText: "80"
+- tapOn:
+    css: "article input[inputmode=numeric]"
+- inputText: "10"
+- tapOn:
+    css: "button[title='Complete Exercise']"
+- assertVisible: Completed Exercises
+- assertVisible: Wide-Grip Barbell Bench Press
+
+# ── Replay Exercise (set 2, increment reps) ───────────────────────────────────
+- tapOn:
+    css: "button[title='Do another set']"
+- assertVisible: Wide-Grip Barbell Bench Press
+- tapOn:
+    css: "article input[inputmode=numeric]"
+- eraseText
+- inputText: "12"
+- tapOn:
+    css: "button[title='Complete Exercise']"
+- assertVisible: Completed Exercises
+
+# ── Repeat For Another Exercise (Barbell Full Squat) ──────────────────────────
+- tapOn: "Search for an exercise..."
+- inputText: "full squat"
+- assertVisible: Barbell Full Squat
+- tapOn: "Barbell Full Squat"
+- assertVisible: Barbell Full Squat
+- assertVisible: Weight
+# Record first squat set
+- tapOn:
+    css: "article input[inputmode=decimal]"
+- inputText: "60"
+- tapOn:
+    css: "article input[inputmode=numeric]"
+- inputText: "8"
+- tapOn:
+    css: "button[title='Complete Exercise']"
+- assertVisible: Barbell Full Squat
+# Replay squat (set 2)
+- tapOn:
+    css: "button[title='Do another set']"
+- assertVisible: Barbell Full Squat
+- tapOn:
+    css: "article input[inputmode=numeric]"
+- eraseText
+- inputText: "10"
+- tapOn:
+    css: "button[title='Complete Exercise']"
+
+# ── Remove Exercise (delete the latest – second squat set) ────────────────────
+- tapOn:
+    css: "button[title='Delete this exercise']"
+# Now there should be 3 completed exercises
+- assertVisible: Completed Exercises
+- assertVisible: Wide-Grip Barbell Bench Press
+- assertVisible: Barbell Full Squat
+# Finish Session button must be visible (session is not empty)
+- assertVisible:
+    css: "button[title='Finish Session']"
+
+# ── Finish Session ─────────────────────────────────────────────────────────────
+- runFlow: _flows/finish_session.yaml
+# A congratulation toast appears
+- assertVisible: "🎉 Great workout! Session complete!"
+# Back on home screen with the completed session
+- assertVisible: "💪 LogOut"
+- assertVisible: "Today"
+- assertVisible: Wide-Grip Barbell Bench Press

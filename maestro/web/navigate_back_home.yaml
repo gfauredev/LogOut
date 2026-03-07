@@ -1,0 +1,14 @@
+# User Story – Navigate Back to Home (Web PWA)
+# After navigating away, the "💪" button returns to the Home page.
+url: http://localhost:8080
+---
+- launchApp
+# Start from the exercise browser
+- runFlow: _flows/nav_exercises.yaml
+# Navigate back to home with the 💪 button
+- runFlow: _flows/nav_home.yaml
+# Verify the home page content is visible
+- assertVisible: "Turn off your computer, Log your workOut"
+# The "💪" nav button is slightly emphasized (active class)
+- assertVisible:
+    css: "nav > .home.active"

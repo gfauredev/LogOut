@@ -1,16 +1,14 @@
-# User Story 13 – Clean State Analytics (Web PWA)
+# User Story – Clean State Analytics (Web PWA)
 # In the analytics page, selecting a metric shows no exercises can be selected
 # because no workout sessions have been completed yet.
+# Precondition: no workout sessions have been completed.
 url: http://localhost:8080
 ---
 - launchApp
-- tapOn:
-    css: "nav > .analytics"
-- assertVisible: "📊 Analytics"
-# Select the "Weight" metric
+- runFlow: _flows/nav_analytics.yaml
+# Select the "Weight" metric; no exercise should be selectable yet
 - tapOn: "Weight (kg)"
-# The exercise selector should show only the empty option (no exercises done yet)
 - assertVisible: -- Select Exercise --
-# Select "Repetitions" metric and verify same
+# Select "Repetitions" and verify the same
 - tapOn: "Repetitions"
 - assertVisible: -- Select Exercise --

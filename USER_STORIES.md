@@ -42,8 +42,10 @@ tests for all supported platforms.
 - Web browser PWA test via [Maestro] in `maestro/web/`
 - Android native app via [Maestro] in `maestro/android/`
 
-User stories should be able to be executed independently, but their
-preconditions might require setting some state or sequence.
+Each user story corresponds to an independent, isolated test.  Tests that need
+pre-existing state (e.g. a completed session) set it up as part of their own
+execution using reusable subflows from `maestro/web/_flows/`.  No global
+ordering between tests is assumed or required.
 
 ## Clean State Home
 
@@ -53,7 +55,8 @@ Session(s) that shouldn’t.
 
 ### Preconditions
 
-- BEFORE creating any Session(s), or AFTER deleting all of them
+- No sessions present: either the app has never been used, or all previous
+  sessions have been deleted (see _Delete Past Sessions_)
 
 ### Acceptance Criteria
 
@@ -71,7 +74,7 @@ can receive exercise and rest duration reminders.
 
 ### Preconditions
 
-- Should run early as the toast might cover UI elements
+- Notification permission has not yet been granted or blocked in the browser
 
 ### Acceptance Criteria
 
@@ -104,11 +107,11 @@ existing customization that shouldn’t be.
 
 ### Preconditions
 
-- BEFORE changing the exercise database URL
+- The exercise database URL has not been changed from the default value
 
 ### Acceptance Criteria
 
-- The database URL is the default one
+- The database URL input shows the default URL (`https://raw.githubusercontent.com/gfauredev/free-exercise-db/main/`)
 
 ## Change Exercises Database
 
@@ -127,7 +130,7 @@ browse available exercises.
 
 ### Preconditions
 
-- AFTER changing the exercise database URL to the light, test one
+- Exercise database URL set to the local test server (see _Change Exercises Database_)
 - Be on a page other than Exercise List
 
 ### Acceptance Criteria
@@ -145,13 +148,14 @@ existing custom Exercise(s) that shouldn’t.
 
 ### Preconditions
 
-- BEFORE adding any custom Exercise (they cannot be deleted)
-- AFTER changing the exercise database URL to the light, test one
+- No custom exercises added yet (custom exercises cannot be deleted)
+- Exercise database URL set to the local test server (see _Change Exercises Database_)
 
 ### Acceptance Criteria
 
-- There’s only default exercises, not custom ones created by a user
-- Exercises have the button "✏️ Clone & Edit", not just "✏️ Edit"
+- There are only built-in exercises, no custom ones created by a user
+- Built-in exercises show a "+" button (title: "Clone then edit"), not a "✏️" button
+- A "✏️" button (Edit) is only shown on custom exercises
 
 ## Search Exercises in Browser
 
@@ -163,6 +167,8 @@ Exercise List, **so that** I can quickly find a specific one.
 - Exercise List page header displays a search input
 - Typing a search term filters the exercise list
 - Exercises matching the search filter are visible, others are hidden
+- Multi-word queries are error-tolerant: each word is matched independently so that
+  e.g. "wide grip bench" finds "Wide-Grip Barbell Bench Press"
 - The page remains functional after searching
 - Removing search term(s) shows the full exercise list again
 
@@ -201,8 +207,8 @@ that** I can create a custom clone that fits my training better.
 
 ### Acceptance Criteria
 
-- A "✏️ Clone & Edit" button is located on each built-in exercise card
-  - When **clicked**, it opens the Edit Exercise form
+- A "+" button (titled "Clone then edit") is located on each built-in exercise card
+  - When **clicked**, it clones the exercise and opens the Edit Exercise form
 - Changing the exercise name and clicking save button creates a new exercise
 - The modified clone is visible in the Exercise List with the new name
 
@@ -230,7 +236,8 @@ existing training data that shouldn’t.
 
 ### Preconditions
 
-- BEFORE creating any Session(s), or AFTER deleting all of them
+- No completed sessions present: either the app has never been used, or all
+  sessions have been deleted (see _Delete Past Sessions_)
 
 ### Acceptance Criteria
 
@@ -265,7 +272,8 @@ begin logging my exercises.
 - The Home page contains a "+" button
   - When **clicked**, opens the Active Session _view_
 - Active Session
-  - Header displays "Active Session", "Cancel Session" button and a timer
+  - Header displays "⏱️ Active Session", an elapsed timer, and a session button
+  - When the session is empty, the button shows "❌" (Cancel Session)
   - After 1 second, the timer has incremented by 1 second
 
 ### Search Exercise
@@ -276,6 +284,7 @@ that** I can log it.
 #### Acceptance Criteria
 
 - Input an exercise name, category, or muscle in the search bar
+  (multi-word search is supported, e.g. "wide grip bench" finds "Wide-Grip Barbell Bench Press")
 - Select an exercise from the search results to open the exercise form
 
 ### Record Exercise
@@ -326,7 +335,7 @@ it in my history and see my progress over time.
 
 #### Acceptance Criteria
 
-- Finish the session using "Finish Session"
+- Tap the "✅" (Finish Session) button in the active session header
 - The home screen shows the completed session with the current date
 - A congratulation toast appears
 
@@ -337,8 +346,8 @@ can return to the home screen without saving a useless, empty session.
 
 ### Preconditions
 
-- AFTER starting a workout Session
-- BEFORE recording any exercise in the Active Session
+- An empty active session has been started (no exercises recorded yet)
+- The E2E test starts a fresh session itself, so no external setup is needed
 
 ### Acceptance Criteria
 
@@ -356,7 +365,8 @@ that** I can quickly repeat the same exercises.
 
 ### Preconditions
 
-- AFTER completing at least one workout Session with at least one exercise
+- At least one completed workout session with at least one exercise exists;
+  the E2E test creates this session itself using a setup subflow
 
 ### Acceptance Criteria
 
@@ -371,13 +381,14 @@ that** I can remove unwanted or accidental entries.
 
 ### Preconditions
 
-- AFTER completing at least one workout Session with at least one exercise
+- At least one completed workout session with at least one exercise exists;
+  the E2E test creates this session itself using a setup subflow
 
 ### Acceptance Criteria
 
-- **Click** 🗑️ button on the latest Session card, a confirmation dialog opens
-- Confirming the deletion removes the session from the home screen
-- Repeat until no past session is left, main body shows "No past sessions yet"
+- **Click** 🗑️ button on a Session card, a confirmation dialog opens
+- Clicking "🗑️ Delete" in the dialog removes the session from the home screen
+- After all sessions are deleted, the main body shows "No past sessions yet"
 
 ## Lookup a Previously Done Exercise
 
@@ -386,7 +397,8 @@ that** I can find similar exercises.
 
 ### Preconditions
 
-- AFTER completing at least one workout Session with at least one exercise
+- At least one completed workout session with at least one exercise exists;
+  the E2E test creates this session itself using a setup subflow
 
 ### Acceptance Criteria
 
@@ -403,7 +415,8 @@ stay motivated to continue improving further.
 
 ### Preconditions
 
-- AFTER completing at least two sets of the same exercise (one or more sessions)
+- At least two sets of the same exercise completed with an improved metric;
+  the E2E test creates this data itself (bench press set 1: 10 reps, set 2: 12 reps)
 
 ### Acceptance Criteria
 

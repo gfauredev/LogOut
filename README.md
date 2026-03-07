@@ -53,7 +53,8 @@ LogOut/
 │ │ └ …                   Other modular UI components (BottomNav, ExerciseCard…)
 │ └ utils.rs   Pure, side-effect-free utility functions (format, timestamps…)
 ├ maestro/          Maestro end-to-end tests
-│ ├ web/            Web browser PWA (beta)
+│ ├ web/            Web browser PWA tests (order-independent, each self-contained)
+│ │ └ _flows/       Reusable subflows (navigation, session setup, etc.)
 │ └ android/        Android native app
 ├ public/           PWA static assets required by the browser
 │ ├ manifest.json   Web app manifest for PWA installation
@@ -184,10 +185,10 @@ as a full suite.
 ```sh
 # Build and serve the PWA
 dx serve --open false --interactive false --web --release
- # In a second terminal, run all web E2E tests in story order
+ # In a second terminal, run all web E2E tests (order-independent)
 maestro test maestro/web/
 # Or run a single test file
-maestro test maestro/web/01_clean_state_home.yaml
+maestro test maestro/web/full_workout_session.yaml
 # Or run the tests headless
 maestro test --headless maestro/web/
 ```
@@ -200,9 +201,10 @@ Replace `web` by `android` in the above commands to run the Android E2E tests.
 An emulator must be running, or a physical device must be connected via `ADB`.
 
 > [!TIP]
-> Tests are designed to run sequentially and build on each other's state. Run
-> them in numeric order (`01` → `20`) for the full user-story flow. Run
-> `maestro studio` to debug a failing test interactively.
+> Each test is self-contained and independent — no specific run order is required.
+> Tests that need pre-existing state (e.g. a completed session) set it up via
+> reusable subflows in `maestro/web/_flows/`.
+> Use `maestro studio` to debug a failing test interactively.
 
 ### Documentation
 

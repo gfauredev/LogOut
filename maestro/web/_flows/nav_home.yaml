@@ -1,0 +1,4 @@
+# Navigate to the Home page via the bottom navigation bar.
+- tapOn:
+    css: "nav > .home"
+- assertVisible: "💪 LogOut"

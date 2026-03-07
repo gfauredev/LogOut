@@ -1,13 +1,11 @@
-# User Story 10 – Add Custom Exercise (Web PWA)
-# Navigate to the exercise browser, add a custom exercise, then search it
+# User Story – Add Custom Exercise (Web PWA)
+# Navigate to the exercise browser, add a custom exercise, then search for it.
 url: http://localhost:8080
 ---
 - launchApp
-# Navigate to the exercise browser
-- tapOn:
-    css: "nav > .exercises"
-- assertVisible: "📚 Exercises"
-# Tap the "+" button to open the Add Exercise form
+- runFlow: _flows/setup_local_db.yaml
+- runFlow: _flows/nav_exercises.yaml
+# Tap the "+" link to open the Add Exercise form
 - tapOn:
     text: "+"
 - assertVisible: Add Exercise
@@ -17,9 +15,9 @@ url: http://localhost:8080
 - inputText: "My Test Exercise"
 # Save the exercise
 - tapOn: "💾 Save Exercise"
-# We should be back on the exercise browser
+# Back on the exercise browser
 - assertVisible: "📚 Exercises"
-# Search for the new exercise
+# Search for the new exercise to confirm it was added
 - tapOn: "Search exercises, muscles, or categories..."
 - inputText: "My Test Exercise"
 - assertVisible: My Test Exercise

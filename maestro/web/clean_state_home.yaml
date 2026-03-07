@@ -1,5 +1,6 @@
-# User Story 1 – Clean State Home (Web PWA)
+# User Story – Clean State Home (Web PWA)
 # The app loads in a clean initial state with no past sessions.
+# Precondition: no sessions have been created yet (fresh app or all sessions deleted).
 url: http://localhost:8080
 ---
 - launchApp

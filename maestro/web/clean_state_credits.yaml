@@ -1,11 +1,10 @@
-# User Story 4 – Clean State Credits (Web PWA)
+# User Story – Clean State Credits (Web PWA)
 # The Credits page shows the default exercise database URL.
+# Precondition: the exercise database URL has not been changed from the default.
 url: http://localhost:8080
 ---
 - launchApp
-- tapOn:
-    css: "nav > .credits"
-- assertVisible: "ℹ️ Credits"
+- runFlow: _flows/nav_credits.yaml
 - assertVisible: ⚙️ Exercise Database URL
-# The URL input field should show the default URL as placeholder or value
+# The URL input field should show the default URL
 - assertVisible: https://raw.githubusercontent.com/gfauredev/free-exercise-db/main/

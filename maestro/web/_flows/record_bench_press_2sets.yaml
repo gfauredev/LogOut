@@ -1,0 +1,35 @@
+# Record two sets of Wide-Grip Barbell Bench Press in the current active session.
+# Precondition: an active session is open with the exercise search visible.
+# Uses the local test database (exercises.json) which has this exercise.
+
+# Search and open bench press
+- tapOn: "Search for an exercise..."
+- inputText: "wide grip bench"
+- assertVisible: Wide-Grip Barbell Bench Press
+- tapOn: Wide-Grip Barbell Bench Press
+- assertVisible: Wide-Grip Barbell Bench Press
+- assertVisible: Weight
+
+# Set 1: enter weight and reps
+- tapOn:
+    css: "article input[inputmode=decimal]"
+- inputText: "80"
+- tapOn:
+    css: "article input[inputmode=numeric]"
+- inputText: "10"
+- tapOn:
+    css: "button[title='Complete Exercise']"
+- assertVisible: Completed Exercises
+- assertVisible: Wide-Grip Barbell Bench Press
+
+# Set 2 (replay): increment reps
+- tapOn:
+    css: "button[title='Do another set']"
+- assertVisible: Wide-Grip Barbell Bench Press
+- tapOn:
+    css: "article input[inputmode=numeric]"
+- eraseText
+- inputText: "12"
+- tapOn:
+    css: "button[title='Complete Exercise']"
+- assertVisible: Completed Exercises

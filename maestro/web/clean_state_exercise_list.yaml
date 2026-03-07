@@ -1,0 +1,13 @@
+# User Story – Clean State Exercise List (Web PWA)
+# Before any custom exercises are added, built-in exercises show "+" (Clone then edit),
+# not "✏️" (Edit, for custom exercises only).
+# Precondition: no custom exercises added; local test database active.
+url: http://localhost:8080
+---
+- launchApp
+- runFlow: _flows/setup_local_db.yaml
+- runFlow: _flows/nav_exercises.yaml
+# "+" (clone button) must be visible for built-in exercises
+- assertVisible: "\\+"
+# "✏️" (edit button for custom exercises) must NOT be visible yet
+- assertNotVisible: "✏️"

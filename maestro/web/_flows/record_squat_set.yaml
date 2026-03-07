@@ -1,0 +1,23 @@
+# Record one set of Barbell Full Squat in the current active session.
+# Precondition: an active session is open with the exercise search visible.
+# Uses the local test database (exercises.json) which has this exercise.
+
+# Search and open squat
+- tapOn: "Search for an exercise..."
+- inputText: "full squat"
+- assertVisible: Barbell Full Squat
+- tapOn: Barbell Full Squat
+- assertVisible: Barbell Full Squat
+- assertVisible: Weight
+
+# Enter weight and reps
+- tapOn:
+    css: "article input[inputmode=decimal]"
+- inputText: "80"
+- tapOn:
+    css: "article input[inputmode=numeric]"
+- inputText: "8"
+- tapOn:
+    css: "button[title='Complete Exercise']"
+- assertVisible: Completed Exercises
+- assertVisible: Barbell Full Squat

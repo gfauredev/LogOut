@@ -1,0 +1,11 @@
+# User Story – Navigate to Credits (Web PWA)
+# Navigate to the Credits page via the bottom navigation bar.
+url: http://localhost:8080
+---
+- launchApp
+- runFlow: _flows/nav_credits.yaml
+- assertVisible: A simple, efficient and cross-platform workout logging.*
+- assertVisible: ⚙️ Exercise Database URL
+# The "ℹ️" nav button is slightly emphasized (active class)
+- assertVisible:
+    css: "nav > .credits.active"

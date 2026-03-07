@@ -1,11 +1,12 @@
-# User Story 12 – Navigate to Analytics (Web PWA)
+# User Story – Navigate to Analytics (Web PWA)
 # Navigate to the Analytics page via the bottom navigation bar.
 url: http://localhost:8080
 ---
 - launchApp
-- tapOn:
-    css: "nav > .analytics"
-- assertVisible: "📊 Analytics"
+- runFlow: _flows/nav_analytics.yaml
 # The metric selector should be present on the analytics page
 - assertVisible: Metric
 - assertVisible: Weight (kg)
+# The "📊" nav button is slightly emphasized (active class)
+- assertVisible:
+    css: "nav > .analytics.active"

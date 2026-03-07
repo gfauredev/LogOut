@@ -1,0 +1,13 @@
+# User Story – Start Workout Session (Web PWA)
+# Start a new workout session from the home screen and verify the active session.
+url: http://localhost:8080
+---
+- launchApp
+- runFlow: _flows/start_session.yaml
+# Header shows "Cancel Session" button (❌) when the session is empty
+- assertVisible: "❌"
+# Timer is visible and has already incremented past 00:00
+- assertNotVisible: "00:00"
+# Clean up: cancel the session to leave the app in a clean state
+- runFlow: _flows/cancel_session.yaml
+- assertVisible: "💪 LogOut"

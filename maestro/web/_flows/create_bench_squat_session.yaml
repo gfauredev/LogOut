@@ -1,0 +1,19 @@
+# Create a complete workout session with bench press (2 sets) and squat (1 set),
+# then finish it. Used as a setup step for tests that need prior session data.
+# Sets up the local test database first.
+
+# Ensure the local exercise database is active
+- runFlow: _flows/setup_local_db.yaml
+
+# Go home and start a new session
+- runFlow: _flows/nav_home.yaml
+- runFlow: _flows/start_session.yaml
+
+# Record bench press (2 sets) and squat (1 set)
+- runFlow: _flows/record_bench_press_2sets.yaml
+- runFlow: _flows/record_squat_set.yaml
+
+# Finish the session
+- runFlow: _flows/finish_session.yaml
+- assertVisible: "🎉 Great workout! Session complete!"
+- assertVisible: Wide-Grip Barbell Bench Press

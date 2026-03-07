@@ -1,0 +1,4 @@
+# Cancel the current active session (empty sessions only — header shows ❌).
+- tapOn:
+    css: "header.session button.no"
+- assertVisible: "💪 LogOut"

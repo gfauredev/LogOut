@@ -1,0 +1,4 @@
+# Navigate to the Exercise List via the bottom navigation bar.
+- tapOn:
+    css: "nav > .exercises"
+- assertVisible: "📚 Exercises"
