@@ -2646,6 +2646,7 @@ dependencies = [
  "serde-wasm-bindgen",
  "serde_json",
  "strum",
+ "thiserror 2.0.18",
  "time",
  "tokio",
  "wasm-bindgen",

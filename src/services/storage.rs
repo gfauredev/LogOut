@@ -17,7 +17,8 @@
 // to keep this module free of Dioxus hooks so its storage logic is unit-testable.
 pub use super::app_state::{
     add_custom_exercise, delete_session, get_last_exercise_log, provide_app_state, save_session,
-    update_custom_exercise, use_custom_exercises, use_sessions,
+    session_cancel_exercise, session_complete_exercise, session_finish, session_start_exercise,
+    session_start_pending_exercise, update_custom_exercise, use_custom_exercises, use_sessions,
 };
 
 #[cfg(target_arch = "wasm32")]
@@ -216,7 +217,13 @@ pub mod native_exercises {
 
     /// Retrieve all cached exercises from the SQLite exercises store.
     pub fn get_all_exercises() -> Vec<Exercise> {
-        native_storage::get_all::<Exercise>(native_storage::STORE_EXERCISES).unwrap_or_default()
+        match native_storage::get_all::<Exercise>(native_storage::STORE_EXERCISES) {
+            Ok(exercises) => exercises,
+            Err(e) => {
+                log::error!("Failed to load exercises: {e}");
+                Vec::new()
+            }
+        }
     }
 
     /// Persist `exercises` to the SQLite exercises store.
@@ -256,17 +263,105 @@ pub(crate) mod native_storage {
     pub const STORE_CUSTOM_EXERCISES: &str = "custom_exercises";
     pub const STORE_EXERCISES: &str = "exercises";
 
-    const KNOWN_STORES: &[&str] = &[STORE_SESSIONS, STORE_CUSTOM_EXERCISES, STORE_EXERCISES];
+    // ── StorageError ─────────────────────────────────────────────────────────
 
-    /// Validates `store_name` against the known store constants to prevent SQL
-    /// injection from unexpected callers.  Returns `Err` when the name is unknown.
-    fn validate_store(store_name: &str) -> Result<(), String> {
-        if KNOWN_STORES.contains(&store_name) {
-            Ok(())
-        } else {
-            Err(format!("Unknown store: {store_name}"))
+    /// Structured error type for all native (SQLite) storage operations.
+    #[derive(Debug, thiserror::Error)]
+    pub enum StorageError {
+        /// The requested store name is not in the set of known tables.
+        #[error("Unknown store: {0}")]
+        UnknownStore(String),
+        /// A SQLite operation failed.
+        #[error("Database error: {0}")]
+        Database(#[from] rusqlite::Error),
+        /// JSON serialisation or deserialisation failed.
+        #[error("Serialisation error: {0}")]
+        Serialisation(#[from] serde_json::Error),
+        /// A filesystem operation (e.g. creating the data directory) failed.
+        #[error("IO error: {0}")]
+        Io(#[from] std::io::Error),
+        /// An item being stored has no `id` field in its serialised form.
+        #[error("Missing id field in serialised data (store: {store})")]
+        MissingId {
+            /// Name of the store where the item was being inserted.
+            store: &'static str,
+        },
+    }
+
+    // ── Store (type-safe table selector) ─────────────────────────────────────
+
+    /// Type-safe selector for the three data tables.
+    ///
+    /// Resolving a string store name into a `Store` value is the only place
+    /// where the name is checked; all SQL statements are then static string
+    /// literals so `format!` is never used to inject table names into queries.
+    #[derive(Debug, Clone, Copy)]
+    pub(crate) enum Store {
+        Sessions,
+        CustomExercises,
+        Exercises,
+    }
+
+    impl Store {
+        /// Parse a store name constant into the corresponding `Store` variant.
+        pub(crate) fn from_name(name: &str) -> Result<Self, StorageError> {
+            match name {
+                STORE_SESSIONS => Ok(Self::Sessions),
+                STORE_CUSTOM_EXERCISES => Ok(Self::CustomExercises),
+                STORE_EXERCISES => Ok(Self::Exercises),
+                _ => Err(StorageError::UnknownStore(name.to_owned())),
+            }
+        }
+
+        /// Returns the canonical string name of this store.
+        pub(crate) fn name(self) -> &'static str {
+            match self {
+                Self::Sessions => STORE_SESSIONS,
+                Self::CustomExercises => STORE_CUSTOM_EXERCISES,
+                Self::Exercises => STORE_EXERCISES,
+            }
+        }
+
+        /// `SELECT data FROM <table>` query for this store.
+        pub(crate) fn select_all(self) -> &'static str {
+            match self {
+                Self::Sessions => "SELECT data FROM sessions",
+                Self::CustomExercises => "SELECT data FROM custom_exercises",
+                Self::Exercises => "SELECT data FROM exercises",
+            }
+        }
+
+        /// `DELETE FROM <table>` query for this store.
+        pub(crate) fn delete_all(self) -> &'static str {
+            match self {
+                Self::Sessions => "DELETE FROM sessions",
+                Self::CustomExercises => "DELETE FROM custom_exercises",
+                Self::Exercises => "DELETE FROM exercises",
+            }
+        }
+
+        /// `INSERT OR REPLACE INTO <table> (id, data) VALUES (?1, ?2)` query.
+        pub(crate) fn upsert(self) -> &'static str {
+            match self {
+                Self::Sessions => "INSERT OR REPLACE INTO sessions (id, data) VALUES (?1, ?2)",
+                Self::CustomExercises => {
+                    "INSERT OR REPLACE INTO custom_exercises (id, data) VALUES (?1, ?2)"
+                }
+                Self::Exercises => "INSERT OR REPLACE INTO exercises (id, data) VALUES (?1, ?2)",
+            }
+        }
+
+        /// `DELETE FROM <table> WHERE id = ?1` query.
+        pub(crate) fn delete_by_id(self) -> &'static str {
+            match self {
+                Self::Sessions => "DELETE FROM sessions WHERE id = ?1",
+                Self::CustomExercises => "DELETE FROM custom_exercises WHERE id = ?1",
+                Self::Exercises => "DELETE FROM exercises WHERE id = ?1",
+            }
         }
     }
+
+    // ── Database helpers ─────────────────────────────────────────────────────
 
     /// Returns the application data directory, creating it if necessary.
     pub fn data_dir() -> PathBuf {
@@ -282,12 +377,10 @@ pub(crate) mod native_storage {
     /// Opens (or creates) the SQLite database and ensures all required tables exist.
     /// Uses `PRAGMA user_version` to run the schema DDL only once (when the DB is
     /// first created), rather than on every operation.
-    fn open_db() -> Result<Connection, String> {
-        std::fs::create_dir_all(data_dir()).map_err(|e| e.to_string())?;
-        let conn = Connection::open(db_path()).map_err(|e| e.to_string())?;
-        let schema_version: u32 = conn
-            .query_row("PRAGMA user_version", [], |r| r.get(0))
-            .map_err(|e| e.to_string())?;
+    fn open_db() -> Result<Connection, StorageError> {
+        std::fs::create_dir_all(data_dir())?;
+        let conn = Connection::open(db_path())?;
+        let schema_version: u32 = conn.query_row("PRAGMA user_version", [], |r| r.get(0))?;
         if schema_version == 0 {
             conn.execute_batch(
                 "CREATE TABLE IF NOT EXISTS sessions (id TEXT PRIMARY KEY, data TEXT NOT NULL);
@@ -295,22 +388,20 @@ pub(crate) mod native_storage {
                  CREATE TABLE IF NOT EXISTS exercises (id TEXT PRIMARY KEY, data TEXT NOT NULL);
                  CREATE TABLE IF NOT EXISTS config (key TEXT PRIMARY KEY, value TEXT NOT NULL);
                  PRAGMA user_version = 1;",
-            )
-            .map_err(|e| e.to_string())?;
+            )?;
         }
         Ok(conn)
     }
 
+    // ── Public CRUD API ───────────────────────────────────────────────────────
+
     /// Reads all items from a store, deserialising each row's JSON `data` column.
-    pub fn get_all<T: DeserializeOwned>(store_name: &str) -> Result<Vec<T>, String> {
-        validate_store(store_name)?;
+    pub fn get_all<T: DeserializeOwned>(store_name: &str) -> Result<Vec<T>, StorageError> {
+        let store = Store::from_name(store_name)?;
         let conn = open_db()?;
-        let mut stmt = conn
-            .prepare(&format!("SELECT data FROM {store_name}"))
-            .map_err(|e| e.to_string())?;
+        let mut stmt = conn.prepare(store.select_all())?;
         let items = stmt
-            .query_map([], |row| row.get::<_, String>(0))
-            .map_err(|e| e.to_string())?
+            .query_map([], |row| row.get::<_, String>(0))?
             .filter_map(|r| r.ok())
             .filter_map(|data| {
                 serde_json::from_str::<T>(&data)
@@ -322,51 +413,45 @@ pub(crate) mod native_storage {
     }
 
     /// Replaces the entire contents of a store with `items` in a single transaction.
-    pub fn store_all<T: Serialize>(store_name: &str, items: &[T]) -> Result<(), String> {
-        validate_store(store_name)?;
+    pub fn store_all<T: Serialize>(store_name: &str, items: &[T]) -> Result<(), StorageError> {
+        let store = Store::from_name(store_name)?;
         let conn = open_db()?;
-        let tx = conn.unchecked_transaction().map_err(|e| e.to_string())?;
-        tx.execute(&format!("DELETE FROM {store_name}"), [])
-            .map_err(|e| e.to_string())?;
+        let tx = conn.unchecked_transaction()?;
+        tx.execute(store.delete_all(), [])?;
         for item in items {
-            let val = serde_json::to_value(item).map_err(|e| e.to_string())?;
+            let val = serde_json::to_value(item)?;
             let id = val
                 .get("id")
                 .and_then(|v| v.as_str())
-                .unwrap_or("")
-                .to_string();
-            let data = serde_json::to_string(item).map_err(|e| e.to_string())?;
-            tx.execute(
-                &format!("INSERT OR REPLACE INTO {store_name} (id, data) VALUES (?1, ?2)"),
-                params![id, data],
-            )
-            .map_err(|e| e.to_string())?;
+                .ok_or(StorageError::MissingId {
+                    store: store.name(),
+                })?
+                .to_owned();
+            let data = serde_json::to_string(item)?;
+            tx.execute(store.upsert(), params![id, data])?;
         }
-        tx.commit().map_err(|e| e.to_string())
+        tx.commit()?;
+        Ok(())
     }
 
     /// Upserts one item (identified by `id`) into a store.
-    pub fn put_item<T: Serialize>(store_name: &str, id: &str, item: &T) -> Result<(), String> {
-        validate_store(store_name)?;
+    pub fn put_item<T: Serialize>(
+        store_name: &str,
+        id: &str,
+        item: &T,
+    ) -> Result<(), StorageError> {
+        let store = Store::from_name(store_name)?;
         let conn = open_db()?;
-        let data = serde_json::to_string(item).map_err(|e| e.to_string())?;
-        conn.execute(
-            &format!("INSERT OR REPLACE INTO {store_name} (id, data) VALUES (?1, ?2)"),
-            params![id, data],
-        )
-        .map_err(|e| e.to_string())?;
+        let data = serde_json::to_string(item)?;
+        conn.execute(store.upsert(), params![id, data])?;
         Ok(())
     }
 
     /// Deletes the item with `id` from a store (no-op if absent).
-    pub fn delete_item(store_name: &str, id: &str) -> Result<(), String> {
-        validate_store(store_name)?;
+    pub fn delete_item(store_name: &str, id: &str) -> Result<(), StorageError> {
+        let store = Store::from_name(store_name)?;
         let conn = open_db()?;
-        conn.execute(
-            &format!("DELETE FROM {store_name} WHERE id = ?1"),
-            params![id],
-        )
-        .map_err(|e| e.to_string())?;
+        conn.execute(store.delete_by_id(), params![id])?;
         Ok(())
     }
 
@@ -384,23 +469,21 @@ pub(crate) mod native_storage {
     }
 
     /// Sets `key` to `value`.  Passing an empty `value` removes the key.
-    pub fn set_config_value(key: &str, value: &str) -> Result<(), String> {
+    pub fn set_config_value(key: &str, value: &str) -> Result<(), StorageError> {
         let conn = open_db()?;
         if value.is_empty() {
-            conn.execute("DELETE FROM config WHERE key = ?1", params![key])
-                .map_err(|e| e.to_string())?;
+            conn.execute("DELETE FROM config WHERE key = ?1", params![key])?;
         } else {
             conn.execute(
                 "INSERT OR REPLACE INTO config (key, value) VALUES (?1, ?2)",
                 params![key, value],
-            )
-            .map_err(|e| e.to_string())?;
+            )?;
         }
         Ok(())
     }
 
     /// Removes `key` from the config (no-op if absent).
-    pub fn remove_config_value(key: &str) -> Result<(), String> {
+    pub fn remove_config_value(key: &str) -> Result<(), StorageError> {
         set_config_value(key, "")
     }
 
@@ -449,7 +532,13 @@ mod tests {
         let _g = lock();
         let result = native_storage::get_all::<WorkoutSession>("unknown_store");
         assert!(result.is_err());
-        assert!(result.unwrap_err().contains("Unknown store"));
+        assert!(
+            matches!(
+                result.unwrap_err(),
+                native_storage::StorageError::UnknownStore(_)
+            ),
+            "expected UnknownStore error variant"
+        );
     }
 
     // ── data_dir ──────────────────────────────────────────────────────────────
@@ -835,6 +924,63 @@ mod tests {
             reps: None,
             distance_m: None,
             force: Some(Force::Push),
+        }
+    }
+
+    // ── StorageError display ──────────────────────────────────────────────────
+
+    #[test]
+    fn storage_error_unknown_store_display() {
+        let e = native_storage::StorageError::UnknownStore("bad_store".to_owned());
+        assert_eq!(e.to_string(), "Unknown store: bad_store");
+    }
+
+    #[test]
+    fn storage_error_missing_id_display() {
+        let e = native_storage::StorageError::MissingId { store: "sessions" };
+        assert_eq!(
+            e.to_string(),
+            "Missing id field in serialised data (store: sessions)"
+        );
+    }
+
+    // ── Store enum static queries ─────────────────────────────────────────────
+
+    #[test]
+    fn store_from_name_accepts_all_known_stores() {
+        use super::native_storage::Store;
+        assert!(Store::from_name(native_storage::STORE_SESSIONS).is_ok());
+        assert!(Store::from_name(native_storage::STORE_CUSTOM_EXERCISES).is_ok());
+        assert!(Store::from_name(native_storage::STORE_EXERCISES).is_ok());
+    }
+
+    #[test]
+    fn store_from_name_rejects_unknown() {
+        use super::native_storage::Store;
+        let err = Store::from_name("injected; DROP TABLE sessions;--").unwrap_err();
+        assert!(
+            matches!(err, native_storage::StorageError::UnknownStore(_)),
+            "must be UnknownStore variant"
+        );
+    }
+
+    #[test]
+    fn store_queries_contain_no_format_placeholders() {
+        // Verify that the static query strings are plain SQL literals with no
+        // leftover format placeholders (e.g. {store_name}).
+        use super::native_storage::Store;
+        for store in [Store::Sessions, Store::CustomExercises, Store::Exercises] {
+            for q in [
+                store.select_all(),
+                store.delete_all(),
+                store.upsert(),
+                store.delete_by_id(),
+            ] {
+                assert!(
+                    !q.contains('{'),
+                    "query must not contain format placeholder: {q}"
+                );
+            }
         }
     }
 }

@@ -5,7 +5,7 @@
 //! [`storage`](super::storage) module; this module just wires the Dioxus
 //! reactive primitives to those backends.
 
-use crate::models::{Exercise, ExerciseLog, WorkoutSession};
+use crate::models::{get_current_timestamp, Exercise, ExerciseLog, WorkoutSession};
 use crate::ToastSignal;
 use dioxus::prelude::*;
 
@@ -109,6 +109,31 @@ async fn load_storage_data() {
 }
 
 // ──────────────────────────────────────────
+// Persistence helpers (fire-and-forget)
+// ──────────────────────────────────────────
+
+/// Enqueue `session` for persistence without touching the in-memory signal.
+///
+/// All public mutation functions update the signal in-place and then call
+/// this to schedule the write.  Using the queue means writes survive component
+/// unmounts (e.g. finishing a session removes `SessionView`).
+fn persist_session(session: WorkoutSession) {
+    #[cfg(target_arch = "wasm32")]
+    {
+        use super::storage::idb_queue;
+        let toast = consume_context::<ToastSignal>().0;
+        idb_queue::enqueue(idb_queue::IdbOp::PutSession(session, toast));
+    }
+
+    #[cfg(not(target_arch = "wasm32"))]
+    {
+        use super::storage::native_queue;
+        let toast = consume_context::<ToastSignal>().0;
+        native_queue::enqueue(native_queue::NativeOp::PutSession(session, toast));
+    }
+}
+
+// ──────────────────────────────────────────
 // Public mutation helpers (granular DB writes)
 // ──────────────────────────────────────────
 
@@ -127,24 +152,7 @@ pub fn save_session(session: WorkoutSession) {
             sessions.push(session.clone());
         }
     }
-
-    // Use wasm_bindgen_futures::spawn_local instead of Dioxus spawn so that the
-    // IndexedDB write is not cancelled when the calling component unmounts
-    // (e.g. when finishing a session causes SessionView to be removed).
-    // Writes go through the async queue to prevent concurrent transaction conflicts.
-    #[cfg(target_arch = "wasm32")]
-    {
-        use super::storage::idb_queue;
-        let toast = consume_context::<ToastSignal>().0;
-        idb_queue::enqueue(idb_queue::IdbOp::PutSession(session, toast));
-    }
-
-    #[cfg(not(target_arch = "wasm32"))]
-    {
-        use super::storage::native_queue;
-        let toast = consume_context::<ToastSignal>().0;
-        native_queue::enqueue(native_queue::NativeOp::PutSession(session, toast));
-    }
+    persist_session(session);
 }
 
 /// Remove the session with `id` from the in-memory signal and from the backend.
@@ -213,6 +221,149 @@ pub fn update_custom_exercise(exercise: Exercise) {
         native_queue::enqueue(native_queue::NativeOp::PutExercise(exercise, toast));
     }
 }
+
+// ──────────────────────────────────────────
+// Session-mutation helpers (extracted from SessionView)
+// ──────────────────────────────────────────
+
+/// Mark `exercise_id` as the currently active exercise in a session.
+///
+/// Clears any in-progress rest timer, sets the exercise and its start
+/// timestamp, and persists the change.  Returns the start timestamp that was
+/// recorded so the caller can update its own UI state without a second signal
+/// read.
+pub fn session_start_exercise(session_id: &str, exercise_id: String) -> u64 {
+    let timestamp = get_current_timestamp();
+    let mut sig = use_sessions();
+    let to_persist = {
+        let mut sessions = sig.write();
+        sessions.iter_mut().find(|s| s.id == session_id).map(|s| {
+            s.rest_start_time = None;
+            s.current_exercise_id = Some(exercise_id);
+            s.current_exercise_start = Some(timestamp);
+            s.clone()
+        })
+    };
+    if let Some(session) = to_persist {
+        persist_session(session);
+    }
+    timestamp
+}
+
+/// Remove the first occurrence of `exercise_id` from the pending list, start
+/// it as the active exercise, and persist the change.
+///
+/// Returns the start timestamp so the caller can sync local UI signals.
+pub fn session_start_pending_exercise(session_id: &str, exercise_id: &str) -> u64 {
+    let timestamp = get_current_timestamp();
+    let mut sig = use_sessions();
+    let to_persist = {
+        let mut sessions = sig.write();
+        sessions.iter_mut().find(|s| s.id == session_id).map(|s| {
+            // Remove only the first occurrence so repeated exercises are consumed one at a time.
+            let mut removed = false;
+            s.pending_exercise_ids.retain(|x| {
+                if !removed && x == exercise_id {
+                    removed = true;
+                    false
+                } else {
+                    true
+                }
+            });
+            s.rest_start_time = None;
+            s.current_exercise_id = Some(exercise_id.to_owned());
+            s.current_exercise_start = Some(timestamp);
+            s.clone()
+        })
+    };
+    if let Some(session) = to_persist {
+        persist_session(session);
+    }
+    timestamp
+}
+
+/// Append a completed exercise log to the session, start the rest timer, and
+/// clear the active-exercise fields.
+///
+/// Returns the rest-start timestamp so the caller can start the rest timer UI.
+pub fn session_complete_exercise(session_id: &str, log: ExerciseLog) -> u64 {
+    let rest_start = get_current_timestamp();
+    let mut sig = use_sessions();
+    let to_persist = {
+        let mut sessions = sig.write();
+        sessions.iter_mut().find(|s| s.id == session_id).map(|s| {
+            s.exercise_logs.push(log);
+            s.rest_start_time = Some(rest_start);
+            s.current_exercise_id = None;
+            s.current_exercise_start = None;
+            s.clone()
+        })
+    };
+    if let Some(session) = to_persist {
+        persist_session(session);
+    }
+    rest_start
+}
+
+/// Clear the currently active exercise from the session without recording a log.
+pub fn session_cancel_exercise(session_id: &str) {
+    let mut sig = use_sessions();
+    let to_persist = {
+        let mut sessions = sig.write();
+        sessions.iter_mut().find(|s| s.id == session_id).map(|s| {
+            s.current_exercise_id = None;
+            s.current_exercise_start = None;
+            s.clone()
+        })
+    };
+    if let Some(session) = to_persist {
+        persist_session(session);
+    }
+}
+
+/// Finish or cancel the session identified by `session_id`.
+///
+/// * If the session has at least one exercise log it is **finished**: the
+///   `end_time` is set to now and the session is persisted.
+/// * If the session has no exercise logs it is **cancelled**: it is removed
+///   from the signal and deleted from storage.
+///
+/// Returns `true` when the session was finished, `false` when it was cancelled.
+pub fn session_finish(session_id: &str) -> bool {
+    let has_exercises = {
+        let sig = use_sessions();
+        let has = sig
+            .read()
+            .iter()
+            .find(|s| s.id == session_id)
+            .map(|s| !s.is_cancelled())
+            .unwrap_or(false);
+        has
+    };
+
+    if has_exercises {
+        let end_time = get_current_timestamp();
+        let mut sig = use_sessions();
+        let to_persist = {
+            let mut sessions = sig.write();
+            sessions.iter_mut().find(|s| s.id == session_id).map(|s| {
+                s.end_time = Some(end_time);
+                s.clone()
+            })
+        };
+        if let Some(session) = to_persist {
+            persist_session(session);
+        }
+        true
+    } else {
+        delete_session(session_id);
+        false
+    }
+}
+
+// ──────────────────────────────────────────
+// Read helpers
+// ──────────────────────────────────────────
 
 /// Returns the last completed [`ExerciseLog`] for `exercise_id` across all
 /// stored sessions, or `None` if the exercise has never been logged.

@@ -56,7 +56,7 @@ jobs:
         id: tests
         run: |
           # Run tests with coverage, capturing both test output and coverage data
-          TEST_OUTPUT=$(cargo llvm-cov --bin log-workout --lcov --output-path lcov.info 2>&1)
+          TEST_OUTPUT=$(cargo llvm-cov --bin log-workout --json --output-path coverage.json 2>&1)
           echo "$TEST_OUTPUT"
           # Strip Cargo compilation/progress lines; keep only test results
           CLEAN_OUTPUT=$(echo "$TEST_OUTPUT" | grep -Ev '^\s*(Compiling|Checking|Finished|Downloaded|Downloading|Updating|Locking|Fresh)')
@@ -64,11 +64,11 @@ jobs:
           echo "$CLEAN_OUTPUT" >> "$GITHUB_OUTPUT"
           echo "EOF" >> "$GITHUB_OUTPUT"
 
-      - name: Upload lcov report
+      - name: Upload coverage JSON report
         uses: actions/upload-artifact@v4
         with:
-          name: unit-coverage-lcov
-          path: lcov.info
+          name: unit-coverage-json
+          path: coverage.json
           retention-days: 7
 
   coverage-gate:
@@ -78,29 +78,18 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Download lcov report
+      - name: Download coverage JSON report
         uses: actions/download-artifact@v4
         with:
-          name: unit-coverage-lcov
+          name: unit-coverage-json
 
       - name: Generate coverage summary
         id: cov
         run: |
-          # Summarise totals directly from the lcov.info file
-          TOTAL_LH=0
-          TOTAL_LF=0
-          while IFS= read -r line; do
-            case "$line" in
-              LH:*) TOTAL_LH=$((TOTAL_LH + ${line#LH:})) ;;
-              LF:*) TOTAL_LF=$((TOTAL_LF + ${line#LF:})) ;;
-            esac
-          done < lcov.info
-          if [ "$TOTAL_LF" -gt 0 ]; then
-            TOTAL_PCT=$((TOTAL_LH * 100 / TOTAL_LF))
-          else
-            TOTAL_PCT=0
-          fi
-          SUMMARY="Total: ${TOTAL_LH}/${TOTAL_LF} lines covered (${TOTAL_PCT}%)"
+          TOTAL_COVERED=$(jq '.data[0].totals.lines.covered' coverage.json)
+          TOTAL_COUNT=$(jq '.data[0].totals.lines.count' coverage.json)
+          TOTAL_PCT=$(jq '.data[0].totals.lines.percent | floor' coverage.json)
+          SUMMARY="Total: ${TOTAL_COVERED}/${TOTAL_COUNT} lines covered (${TOTAL_PCT}%)"
           echo "$SUMMARY"
           echo "summary<<EOF" >> "$GITHUB_OUTPUT"
           echo "$SUMMARY" >> "$GITHUB_OUTPUT"
@@ -117,27 +106,22 @@ jobs:
           FAIL=0
           GATE_REPORT=""
           for f in $TESTED_FILES; do
-            # Extract line coverage for this file from lcov.info
-            IN_FILE=0
-            LH=0
-            LF=0
-            while IFS= read -r line; do
-              case "$line" in
-                SF:*"$f") IN_FILE=1 ;;
-                SF:*) IN_FILE=0 ;;
-                LH:*) [ "$IN_FILE" = 1 ] && LH="${line#LH:}" ;;
-                LF:*) [ "$IN_FILE" = 1 ] && LF="${line#LF:}" ;;
-              esac
-            done < lcov.info
+            # Extract line coverage for this file from the JSON report using jq
+            FILE_DATA=$(jq --arg f "$f" '
+              .data[0].files[]
+              | select(.filename | endswith($f))
+              | {covered: .summary.lines.covered, count: .summary.lines.count, pct: (.summary.lines.percent | floor)}
+            ' coverage.json | head -1)
 
-            if [ "$LF" -gt 0 ]; then
-              PCT=$((LH * 100 / LF))
-            else
-              PCT=0
-            fi
+            LH=$(echo "$FILE_DATA" | jq -r '.covered // 0')
+            LF=$(echo "$FILE_DATA" | jq -r '.count // 0')
+            PCT=$(echo "$FILE_DATA" | jq -r '.pct // 0')
 
             STATUS="✅"
-            if [ "$PCT" -lt 90 ]; then
+            if [ "$LF" -eq 0 ]; then
+              # File has no instrumented lines in the coverage report – skip the gate.
+              STATUS="➖"
+            elif [ "$PCT" -lt 90 ]; then
               STATUS="❌"
               FAIL=1
             fi

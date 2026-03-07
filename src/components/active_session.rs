@@ -324,20 +324,14 @@ pub fn SessionView() -> Element {
 
     let mut start_exercise = move |exercise_id: String| {
         prefill_inputs_from_last_log(&exercise_id, weight_input, reps_input, distance_input);
-        current_exercise_id.set(Some(exercise_id.clone()));
-        let exercise_start = get_current_timestamp();
+        let session_id = session.read().id.clone();
+        let exercise_start = storage::session_start_exercise(&session_id, exercise_id.clone());
+        current_exercise_id.set(Some(exercise_id));
         current_exercise_start.set(Some(exercise_start));
         search_query.set(String::new());
-        // Clear rest timer when starting a new exercise
         rest_start_time.set(None);
         rest_bell_count.set(0);
         duration_bell_rung.set(false);
-        // Persist exercise start and cleared rest timer in session
-        let mut current_session = session.read().clone();
-        current_session.rest_start_time = None;
-        current_session.current_exercise_id = Some(exercise_id.clone());
-        current_session.current_exercise_start = Some(exercise_start);
-        storage::save_session(current_session);
     };
 
     let complete_exercise = move |_| {
@@ -350,8 +344,6 @@ pub fn SessionView() -> Element {
             Some(time) => *time,
             None => get_current_timestamp(),
         };
-
-        let mut current_session = session.read().clone();
 
         let (exercise_name, category, force) = {
             let all = all_exercises.read();
@@ -378,7 +370,7 @@ pub fn SessionView() -> Element {
         };
 
         let log = ExerciseLog {
-            exercise_id: exercise_id.clone(),
+            exercise_id,
             exercise_name,
             category,
             start_time,
@@ -389,21 +381,14 @@ pub fn SessionView() -> Element {
             force,
         };
 
-        current_session.exercise_logs.push(log);
-        // Save rest timer start time in the session for persistence across tab switches
-        let rest_start = get_current_timestamp();
-        current_session.rest_start_time = Some(rest_start);
-        // Clear performing exercise from session
-        current_session.current_exercise_id = None;
-        current_session.current_exercise_start = None;
-        storage::save_session(current_session);
+        let session_id = session.read().id.clone();
+        let rest_start = storage::session_complete_exercise(&session_id, log);
 
         current_exercise_id.set(None);
         current_exercise_start.set(None);
         weight_input.set(String::new());
         reps_input.set(String::new());
         distance_input.set(String::new());
-        // Start rest timer
         rest_start_time.set(Some(rest_start));
         rest_bell_count.set(0);
         duration_bell_rung.set(false);
@@ -415,24 +400,16 @@ pub fn SessionView() -> Element {
         weight_input.set(String::new());
         reps_input.set(String::new());
         distance_input.set(String::new());
-        // Persist cleared performing state
-        let mut current_session = session.read().clone();
-        current_session.current_exercise_id = None;
-        current_session.current_exercise_start = None;
-        storage::save_session(current_session);
+        let session_id = session.read().id.clone();
+        storage::session_cancel_exercise(&session_id);
     };
 
     let finish_session = move |_| {
-        let mut current_session = session.read().clone();
-        if current_session.is_cancelled() {
-            // No exercises logged: discard the session entirely
-            storage::delete_session(&current_session.id);
-            return;
+        let session_id = session.read().id.clone();
+        if storage::session_finish(&session_id) {
+            // Show congratulatory toast (auto-dismiss is handled by CongratulationsToast)
+            congratulations.set(true);
         }
-        current_session.end_time = Some(get_current_timestamp());
-        storage::save_session(current_session.clone());
-        // Show congratulatory toast (auto-dismiss is handled by CongratulationsToast)
-        congratulations.set(true);
     };
 
     let exercise_count = session.read().exercise_logs.len();
@@ -474,26 +451,10 @@ pub fn SessionView() -> Element {
                             reps_input,
                             distance_input,
                         );
-                        // Remove from pending and save
-                        let mut current_session = session.read().clone();
-                        // Remove only the first occurrence so that repeated
-                        // exercises are consumed one at a time.
-                        let mut removed = false;
-                        current_session.pending_exercise_ids.retain(|x| {
-                            if !removed && x == &exercise_id {
-                                removed = true;
-                                false
-                            } else {
-                                true
-                            }
-                        });
-                        let pending_start = get_current_timestamp();
-                        current_session.rest_start_time = None;
-                        current_session.current_exercise_id = Some(exercise_id.clone());
-                        current_session.current_exercise_start = Some(pending_start);
-                        storage::save_session(current_session);
-                        // Start the exercise
-                        current_exercise_id.set(Some(exercise_id.clone()));
+                        let session_id = session.read().id.clone();
+                        let pending_start =
+                            storage::session_start_pending_exercise(&session_id, &exercise_id);
+                        current_exercise_id.set(Some(exercise_id));
                         current_exercise_start.set(Some(pending_start));
                         search_query.set(String::new());
                         rest_start_time.set(None);
