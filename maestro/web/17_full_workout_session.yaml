@@ -19,7 +19,7 @@ url: http://localhost:8080
 - assertVisible: Wide-Grip Barbell Bench Press
 - tapOn: "Wide-Grip Barbell Bench Press"
 - assertVisible: Wide-Grip Barbell Bench Press
-- assertVisible: Weight (kg)
+- assertVisible: Weight
 - assertVisible: Repetitions
 
 # ── Record Exercise (set 1) ──────────────────────────────────────────────────
