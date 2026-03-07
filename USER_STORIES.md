@@ -42,10 +42,10 @@ tests for all supported platforms.
 - Web browser PWA test via [Maestro] in `maestro/web/`
 - Android native app via [Maestro] in `maestro/android/`
 
-Each user story corresponds to an independent, isolated test.  Tests that need
+Each user story corresponds to an independent, isolated test. Tests that need
 pre-existing state (e.g. a completed session) set it up as part of their own
-execution using reusable subflows from `maestro/web/_flows/`.  No global
-ordering between tests is assumed or required.
+execution using reusable subflows from `maestro/web/_flows/`. No global ordering
+between tests is assumed or required.
 
 ## Clean State Home
 
@@ -88,7 +88,7 @@ can receive exercise and rest duration reminders.
 **As a** _user_, **I want to** navigate to the credits page, **so that** I can
 see information about the app and configure settings.
 
-### Precondition
+### Preconditions
 
 - Be on a page different than credits
 
@@ -111,7 +111,8 @@ existing customization that shouldn’t be.
 
 ### Acceptance Criteria
 
-- The database URL input shows the default URL (`https://raw.githubusercontent.com/gfauredev/free-exercise-db/main/`)
+- The database URL input shows the default URL
+  (`https://raw.githubusercontent.com/gfauredev/free-exercise-db/main/`)
 
 ## Change Exercises Database
 
@@ -130,7 +131,6 @@ browse available exercises.
 
 ### Preconditions
 
-- Exercise database URL set to the local test server (see _Change Exercises Database_)
 - Be on a page other than Exercise List
 
 ### Acceptance Criteria
@@ -149,12 +149,12 @@ existing custom Exercise(s) that shouldn’t.
 ### Preconditions
 
 - No custom exercises added yet (custom exercises cannot be deleted)
-- Exercise database URL set to the local test server (see _Change Exercises Database_)
 
 ### Acceptance Criteria
 
 - There are only built-in exercises, no custom ones created by a user
-- Built-in exercises show a "+" button (title: "Clone then edit"), not a "✏️" button
+- Built-in exercises show a "+" button (title: "Clone then edit"), not a "✏️"
+  button
 - A "✏️" button (Edit) is only shown on custom exercises
 
 ## Search Exercises in Browser
@@ -167,8 +167,8 @@ Exercise List, **so that** I can quickly find a specific one.
 - Exercise List page header displays a search input
 - Typing a search term filters the exercise list
 - Exercises matching the search filter are visible, others are hidden
-- Multi-word queries are error-tolerant: each word is matched independently so that
-  e.g. "wide grip bench" finds "Wide-Grip Barbell Bench Press"
+- Multi-word queries are error-tolerant: each word is matched independently so
+  that e.g. "wide grip bench" finds "Wide-Grip Barbell Bench Press"
 - The page remains functional after searching
 - Removing search term(s) shows the full exercise list again
 
@@ -207,7 +207,8 @@ that** I can create a custom clone that fits my training better.
 
 ### Acceptance Criteria
 
-- A "+" button (titled "Clone then edit") is located on each built-in exercise card
+- A "+" button (titled "Clone then edit") is located on each built-in exercise
+  card
   - When **clicked**, it clones the exercise and opens the Edit Exercise form
 - Changing the exercise name and clicking save button creates a new exercise
 - The modified clone is visible in the Exercise List with the new name
@@ -283,8 +284,9 @@ that** I can log it.
 
 #### Acceptance Criteria
 
-- Input an exercise name, category, or muscle in the search bar
-  (multi-word search is supported, e.g. "wide grip bench" finds "Wide-Grip Barbell Bench Press")
+- Input an exercise name, category, or muscle in the search bar (multi-word
+  search is supported, e.g. "wide grip bench" finds "Wide-Grip Barbell Bench
+  Press")
 - Select an exercise from the search results to open the exercise form
 
 ### Record Exercise
@@ -365,8 +367,8 @@ that** I can quickly repeat the same exercises.
 
 ### Preconditions
 
-- At least one completed workout session with at least one exercise exists;
-  the E2E test creates this session itself using a setup subflow
+- At least one completed workout session with at least one exercise exists; the
+  E2E test creates this session itself using a setup subflow
 
 ### Acceptance Criteria
 
@@ -381,8 +383,8 @@ that** I can remove unwanted or accidental entries.
 
 ### Preconditions
 
-- At least one completed workout session with at least one exercise exists;
-  the E2E test creates this session itself using a setup subflow
+- At least one completed workout session with at least one exercise exists; the
+  E2E test creates this session itself using a setup subflow
 
 ### Acceptance Criteria
 
@@ -397,8 +399,8 @@ that** I can find similar exercises.
 
 ### Preconditions
 
-- At least one completed workout session with at least one exercise exists;
-  the E2E test creates this session itself using a setup subflow
+- At least one completed workout session with at least one exercise exists; the
+  E2E test creates this session itself using a setup subflow
 
 ### Acceptance Criteria
 
@@ -415,8 +417,8 @@ stay motivated to continue improving further.
 
 ### Preconditions
 
-- At least two sets of the same exercise completed with an improved metric;
-  the E2E test creates this data itself (bench press set 1: 10 reps, set 2: 12 reps)
+- At least two sets of the same exercise completed with an improved metric; the
+  E2E test creates this data itself (bench press set 1: 10 reps, set 2: 12 reps)
 
 ### Acceptance Criteria
 
