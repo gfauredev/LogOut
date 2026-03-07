@@ -88,24 +88,24 @@ pub fn CompletedExerciseLog(
             if *is_editing.read() {
                 form {
                     div {
-                        label { "Weight (kg)" }
+                        label { "Weight" }
                         input {
                             r#type: "number",
                             inputmode: "decimal",
                             step: "0.5",
-                            placeholder: "Optional",
+                            placeholder: "kg",
                             value: "{edit_weight_input}",
                             oninput: move |evt| edit_weight_input.set(evt.value()),
                         }
                     }
                     if is_cardio {
                         div {
-                            label { "Distance (km)" }
+                            label { "Distance" }
                             input {
                                 r#type: "number",
                                 inputmode: "decimal",
                                 step: "0.1",
-                                placeholder: "Distance",
+                                placeholder: "km",
                                 value: "{edit_distance_input}",
                                 oninput: move |evt| edit_distance_input.set(evt.value()),
                             }
@@ -117,7 +117,7 @@ pub fn CompletedExerciseLog(
                             input {
                                 r#type: "number",
                                 inputmode: "numeric",
-                                placeholder: "Reps",
+                                placeholder: "reps",
                                 value: "{edit_reps_input}",
                                 oninput: move |evt| edit_reps_input.set(evt.value()),
                             }

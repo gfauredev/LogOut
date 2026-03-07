@@ -69,7 +69,7 @@ pub(super) fn ExerciseFormPanel(
                 let weight_invalid = !weight.is_empty() && parse_weight_kg(&weight).is_none();
                 rsx! {
                     div { class: "inputs",
-                        label { "Weight (kg)" }
+                        label { "Weight" }
                         button { class: "no",
                             r#type: "button",
                             onclick: move |_| {
@@ -83,7 +83,7 @@ pub(super) fn ExerciseFormPanel(
                             r#type: "number",
                             inputmode: "decimal",
                             step: "0.1",
-                            placeholder: "Opt.",
+                            placeholder: "kg",
                             value: "{weight_input}",
                             oninput: move |evt| weight_input.set(evt.value()),
                             class: if weight_invalid { "invalid" } else { "" },
@@ -105,8 +105,8 @@ pub(super) fn ExerciseFormPanel(
                     let distance_invalid = !dist.is_empty() && parse_distance_km(&dist).is_none();
                     rsx! {
                         div { class: "inputs",
-                            label { "Distance (km)" }
-                            // TODO decrent and increment buttons too
+                            label { "Distance" }
+                            // TODO decrement and increment buttons too
                             input {
                                 r#type: "number",
                                 inputmode: "decimal",
@@ -140,7 +140,7 @@ pub(super) fn ExerciseFormPanel(
                             input {
                                 r#type: "number",
                                 inputmode: "numeric",
-                                placeholder: "Reps",
+                                placeholder: "reps",
                                 value: "{reps_input}",
                                 oninput: move |evt| reps_input.set(evt.value()),
                                 class: if reps_invalid { "invalid" } else { "" },
