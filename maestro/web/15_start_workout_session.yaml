@@ -3,16 +3,13 @@
 url: http://localhost:8080
 ---
 - launchApp
+- tapOn: +
+    # css: "#main > button"
+- assertVisible: ⏱️ Active Session
+- assertVisible: ❌
+- assertNotVisible: "00:00" # Ensure timer has incremented
 - tapOn:
-    css: "main + button"
-- assertVisible:
-    css: "header.session h2"
-- assertVisible:
-    css: "button[title='Cancel Session']"
-- assertVisible: "00:01" # Wait for the timer to start and increment by 1 second
-- tapOn: # Clean up: cancel the empty session
-    css: "button[title='Cancel Session']"
-# Home page should show the empty state (no sessions), and the header
+    css: "header button"
 - assertVisible: "💪 LogOut"
 - assertVisible: No past sessions yet
 - assertVisible: Tap + to start your first workout

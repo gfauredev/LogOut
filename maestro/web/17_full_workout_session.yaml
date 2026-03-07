@@ -7,12 +7,10 @@ url: http://localhost:8080
 # Wait for the app to load
 
 # ── Start Session ────────────────────────────────────────────────────────────
-- tapOn:
-    css: "main + button"
-- assertVisible:
-    css: "header.session h2"
-- assertVisible:
-    css: "button[title='Cancel Session']"
+- tapOn: +
+    # css: "#main > button"
+- assertVisible: ⏱️ Active Session
+- assertVisible: ❌
 
 # ── Search Exercise (bench press from exercises.test.json) ──────────────────
 - tapOn: "Search for an exercise..."
@@ -93,8 +91,8 @@ url: http://localhost:8080
     css: "button[title='Finish Session']"
 
 # ── Finish Session ────────────────────────────────────────────────────────────
-- tapOn:
-    css: "button[title='Finish Session']"
+- tapOn: # ❌
+    css: "header button"
 # A congratulation toast appears
 - assertVisible: "🎉 Great workout! Session complete!"
 # Back on home screen with the completed session and header
