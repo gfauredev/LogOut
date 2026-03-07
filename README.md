@@ -228,6 +228,17 @@ services, providing a detailed view of the codebase's API.
 
 ## TODO
 
+- Add different colors for data types
+  - Category
+  - Force
+  - Equipment
+  - Level
+  - Primary muscle
+  - Secondary muscle
+  - Strength (reps) exercise tag
+  - Cardio (distance) exercise tag
+  - Static (just time) exercise tag
+  - Consider reusing those colors for the charts in analytics
 - Make seach error tolerant so that for example "wide grip bench" finds
   "Wide-Grip Barbell Bench Press"
 - Sign Android app, ensure it properly installs, publish app on Play Store
