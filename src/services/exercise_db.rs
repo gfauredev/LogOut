@@ -151,6 +151,15 @@ fn normalize_for_search(s: &str) -> String {
 pub fn search_exercises<'a>(exercises: &'a [Exercise], query: &str) -> Vec<&'a Exercise> {
     let query_lower = query.to_lowercase();
     let query_norm = normalize_for_search(query);
+    // Split query into individual tokens for multi-word search: each token must
+    // independently appear in the normalised name.  Only tokens that contain at
+    // least one alphanumeric character after normalisation are kept so that
+    // punctuation-only tokens (e.g. "…") are silently ignored.
+    let tokens: Vec<String> = query_lower
+        .split_whitespace()
+        .map(normalize_for_search)
+        .filter(|t| t.chars().any(|c| c.is_alphanumeric()))
+        .collect();
     exercises
         .iter()
         .filter(|exercise| {
@@ -163,12 +172,25 @@ pub fn search_exercises<'a>(exercises: &'a [Exercise], query: &str) -> Vec<&'a E
                 computed_name_lower = exercise.name.to_lowercase();
                 &computed_name_lower
             };
-            // Exact (lowercase) substring match first, then normalised (hyphen/space-stripped)
-            // bidirectional match so that e.g. "push-ups" finds "Pushup" and vice-versa.
+            // Exact (lowercase) substring match first, then normalised matching:
+            //  • token-based: all whitespace-separated query tokens must appear
+            //    in the normalised name; this handles multi-word queries with
+            //    interleaved words (e.g. "wide grip bench" → "Wide-Grip Barbell
+            //    Bench Press") and also single-word hyphen/space variants because
+            //    each single token is equivalent to the full normalised query
+            //    (e.g. "push-ups" normalises to "pushups" and matches "Pushups").
+            //  • reverse check: the normalised name is a substring of the
+            //    normalised query, to tolerate over-specified queries
+            //    (e.g. "bench presses" → query_norm "benchpresses" ⊇ name_norm
+            //    "benchpress", so "Bench Press" is still found).
             name_lc.contains(&query_lower)
+                || (!tokens.is_empty() && {
+                    let name_norm = normalize_for_search(name_lc);
+                    tokens.iter().all(|t| name_norm.contains(t.as_str()))
+                })
                 || (!query_norm.is_empty() && {
                     let name_norm = normalize_for_search(name_lc);
-                    name_norm.contains(&query_norm) || query_norm.contains(&name_norm)
+                    query_norm.contains(&name_norm)
                 })
                 || exercise
                     .primary_muscles
@@ -373,6 +395,58 @@ mod tests {
         let results = search_exercises(&exercises, "bench press");
         assert_eq!(results.len(), 1);
         assert_eq!(results[0].id, "bench_press");
+    }
+
+    #[test]
+    fn search_multi_word_finds_interleaved_words() {
+        // "wide grip bench" should find an exercise named "Wide-Grip Barbell Bench Press"
+        // because each token ("wide", "grip", "bench") appears in the normalised name.
+        let exercises = vec![Exercise {
+            id: "wide_grip_bench".into(),
+            name: "Wide-Grip Barbell Bench Press".into(),
+            name_lower: String::new(),
+            force: Some(Force::Push),
+            level: Some(Level::Intermediate),
+            mechanic: None,
+            equipment: Some(Equipment::Barbell),
+            primary_muscles: vec![Muscle::Chest],
+            secondary_muscles: vec![],
+            instructions: vec![],
+            category: Category::Strength,
+            images: vec![],
+        }
+        .with_lowercase()];
+        let results = search_exercises(&exercises, "wide grip bench");
+        assert_eq!(
+            results.len(),
+            1,
+            "token-based search should find the exercise"
+        );
+        assert_eq!(results[0].id, "wide_grip_bench");
+    }
+
+    #[test]
+    fn search_punctuation_only_token_is_ignored() {
+        // A query like "… pushups" should still find "Pushups" because the "…"
+        // token contains no alphanumeric characters and is silently ignored.
+        let exercises = vec![Exercise {
+            id: "pushups".into(),
+            name: "Pushups".into(),
+            name_lower: String::new(),
+            force: Some(Force::Push),
+            level: Some(Level::Beginner),
+            mechanic: None,
+            equipment: Some(Equipment::BodyOnly),
+            primary_muscles: vec![Muscle::Chest],
+            secondary_muscles: vec![],
+            instructions: vec![],
+            category: Category::Strength,
+            images: vec![],
+        }
+        .with_lowercase()];
+        let results = search_exercises(&exercises, "… pushups");
+        assert_eq!(results.len(), 1, "punctuation-only token should be ignored");
+        assert_eq!(results[0].id, "pushups");
     }
 
     #[test]

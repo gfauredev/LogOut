@@ -1,0 +1,4 @@
+# Navigate to the Analytics page via the bottom navigation bar.
+- tapOn:
+    css: "nav > .analytics"
+- assertVisible: "📊 Analytics"

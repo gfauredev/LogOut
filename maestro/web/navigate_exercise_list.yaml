@@ -1,0 +1,11 @@
+# User Story – Navigate to Exercise List (Web PWA)
+# Navigate to the Exercise List via the bottom navigation bar.
+# The local test database is set up automatically via the setup_local_db subflow.
+url: http://localhost:8080
+---
+- launchApp
+- runFlow: _flows/nav_exercises.yaml
+- assertVisible: "Browse"
+# The "📚" nav button is slightly emphasized (active class)
+- assertVisible:
+    css: "nav > .exercises.active"

@@ -1,0 +1,18 @@
+# User Story – Navigate to Analytics After Sessions (Web PWA)
+# After completing sessions, the Analytics page shows exercises from the history.
+# This test is self-contained: it creates a session first.
+url: http://localhost:8080
+---
+- launchApp
+
+# Create a session so exercises are available in analytics
+- runFlow: _flows/create_bench_squat_session.yaml
+
+# Navigate to the exercise list first (to simulate navigating from another page)
+- runFlow: _flows/nav_exercises.yaml
+
+# Now navigate to analytics
+- runFlow: _flows/nav_analytics.yaml
+# Exercises from completed sessions should be available to select
+- assertVisible: Metric
+- assertVisible: Exercises

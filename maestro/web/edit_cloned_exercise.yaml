@@ -1,19 +1,19 @@
-# User Story 11 – Edit a Cloned Exercise (Web PWA)
+# User Story – Edit a Cloned Exercise (Web PWA)
 # Clone a built-in exercise and edit its name.
+# Precondition: local test database active (contains Pushups).
 url: http://localhost:8080
 ---
 - launchApp
-# Navigate to the exercise browser
-- tapOn:
-    css: "nav > .exercises"
-- assertVisible: "📚 Exercises"
+- runFlow: _flows/setup_local_db.yaml
+- runFlow: _flows/nav_exercises.yaml
 # Search for Pushups to get a predictable target exercise
 - tapOn: "Search exercises, muscles, or categories..."
-- inputText: "… pushups" # Avoid matching Handstand Pushups…
+- inputText: "pushups"
 - assertVisible: Pushups
+# Tap the "+" (Clone then edit) button on the first article
 - tapOn:
     css: article button
-- assertVisible: (Add|Edit) Exercise
+- assertVisible: "(Add|Edit) Exercise"
 - assertVisible: Exercise Name *
 - tapOn:
     text: "Pushups"
@@ -25,4 +25,5 @@ url: http://localhost:8080
 - tapOn: "Search exercises, muscles, or categories..."
 - inputText: "My Cloned Pushups"
 - assertVisible: My Cloned Pushups
-- assertVisible: ✏️
+# Custom exercises show the "✏️" (Edit) button
+- assertVisible: "✏️"

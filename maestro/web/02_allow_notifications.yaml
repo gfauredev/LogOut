@@ -1,9 +1,0 @@
-# User Story 2 – Allow Notifications (Web PWA)
-# The notification permission toast is present on load.
-url: http://localhost:8080
----
-- launchApp
-- assertVisible: "⚠️ Tap here to enable notifications"
-- tapOn: "⚠️ Tap here to enable notifications"
-# Browser permission dialog opens — Maestro can't easily interact with it.
-# Clicking outside or ignoring it for now.

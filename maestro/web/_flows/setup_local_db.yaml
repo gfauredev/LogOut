@@ -1,0 +1,11 @@
+# Set the exercise database URL to the local test server (http://localhost:8080).
+# Precondition: app can be on any page.
+- tapOn:
+    css: "nav > .credits"
+- assertVisible: "ℹ️ Credits"
+- tapOn:
+    css: "input[type=url]"
+- eraseText
+- inputText: "http://localhost:8080"
+- tapOn:
+    css: "button[type=submit]"

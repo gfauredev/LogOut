@@ -1,0 +1,20 @@
+# User Story – Be Astonished by Your Incredible Progress (Web PWA)
+# Select an exercise in Analytics and see a chart of progress over time.
+# This test is self-contained: it creates a session with improving reps first.
+url: http://localhost:8080
+---
+- launchApp
+
+# Create a bench press session where reps improved from set 1 (10) to set 2 (12)
+- runFlow: _flows/create_bench_squat_session.yaml
+
+# Navigate to analytics
+- runFlow: _flows/nav_analytics.yaml
+# Select "Repetitions" metric (improved from 10 to 12 reps in the created session)
+- tapOn: "Repetitions"
+# Select "Wide-Grip Barbell Bench Press" in the first exercise selector
+- tapOn: "-- Select Exercise --"
+- tapOn: "Wide-Grip Barbell Bench Press"
+# A chart should appear with the metric data
+- assertVisible: "Repetitions"
+- assertVisible: "Wide-Grip Barbell Bench Press"

@@ -1,0 +1,4 @@
+# Finish the current active session (non-empty sessions — header shows ✅).
+- tapOn:
+    css: "header.session button.yes"
+- assertVisible: "💪 LogOut"

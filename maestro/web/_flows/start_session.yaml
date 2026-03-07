@@ -1,0 +1,4 @@
+# Start a new workout session from the Home screen.
+# Precondition: app must be on the Home screen with no active session.
+- tapOn: +
+- assertVisible: ⏱️ Active Session

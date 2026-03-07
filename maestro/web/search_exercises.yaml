@@ -1,11 +1,10 @@
-# User Story 8 – Search Exercises in Browser (Web PWA)
+# User Story – Search Exercises in Browser (Web PWA)
 # Search for exercises in the Exercise List and verify filtering works.
 url: http://localhost:8080
 ---
 - launchApp
-- tapOn:
-    css: "nav > .exercises"
-- assertVisible: "📚 Exercises"
+- runFlow: _flows/setup_local_db.yaml
+- runFlow: _flows/nav_exercises.yaml
 - tapOn: "Search exercises, muscles, or categories..."
 - inputText: "pullups"
 - assertVisible: "Pullups"
@@ -16,6 +15,5 @@ url: http://localhost:8080
 - assertNotVisible: "chest"
 - assertNotVisible: "triceps"
 - eraseText
-# TODO Test "infinite" scroll
 - assertVisible: "📚 Exercises"
 - assertVisible: "\\+"
