@@ -244,6 +244,9 @@ services, providing a detailed view of the codebase's API.
 - Make database URL change properly replace the existing one, display toast
 - Mock exercise database with public/exercises.json for E2E tests, so they can
   load faster and not rely on external network requests
+- In analytics, make distance and duration units dynamically based on the
+  average of selected exercises, such as distance is expressed between 0.00 and
+  999.99, and duration between 0.00 and 59.99
 - Harmonize Rest timer text color when background when rest is due
 - Make layout harmonious but minimal, efficient, look at spacings, sizes
 - Sign Android app, ensure it properly installs, publish app on Play Store

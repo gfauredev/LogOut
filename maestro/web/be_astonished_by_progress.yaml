@@ -9,7 +9,9 @@ url: http://localhost:8080
 # Navigate to analytics
 - runFlow: ../subflows/nav_analytics.yaml
 # Select "Repetitions" metric (improved from 10 to 12 reps in the created session)
-- tapOn: "Repetitions"
+- tapOn:
+    css: .metric-selector select
+- tapOn: Repetitions
 # Select "Wide-Grip Barbell Bench Press" in the first exercise selector
 - tapOn: "-- Select Exercise --"
 - tapOn: "Wide-Grip Barbell Bench Press"
