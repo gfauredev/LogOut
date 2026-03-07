@@ -25,12 +25,11 @@ url: http://localhost:8080
 # ── Record Exercise (set 1) ──────────────────────────────────────────────────
 - tapOn: kg
 - inputRandomNumber: {length: 2}
+# - tapOn: reps # FIXME Weight field doesn’t let the focus go
 - tapOn:
-    text: Weight # Blur
-    repeat: 3
-    delay: 100
-- tapOn: reps # FIXME Weight field doesn’t let the focus go
-- inputRandomNumber: {length: 2}
+    css: article button.yes
+    index: 1
+    repeat: 5 # Add reps with + button
 - tapOn:
     css: article button.yes
     index: 2
@@ -39,7 +38,7 @@ url: http://localhost:8080
 
 # ── Replay Exercise (set 2, increment reps) ──────────────────────────────────
 - tapOn:
-    css: "button[title=Do another set]"
+    css: "button[title='Do another set']"
 - assertVisible: Wide-Grip Barbell Bench Press
 - assertVisible:
     css: "button[title='Complete Exercise']"
@@ -72,7 +71,7 @@ url: http://localhost:8080
 - assertVisible: Barbell Full Squat
 # Replay squat (set 2)
 - tapOn:
-    css: "button[title=Do another set]"
+    css: "button[title='Do another set']"
 - assertVisible: Barbell Full Squat
 - tapOn:
     text: "8"
