@@ -85,6 +85,10 @@ can receive exercise and rest duration reminders.
 **As a** _user_, **I want to** navigate to the credits page, **so that** I can
 see information about the app and configure settings.
 
+### Precondition
+
+- Be on a page different than credits
+
 ### Acceptance Criteria
 
 - The bottom navigation bar contains a "ℹ️" button
@@ -124,6 +128,7 @@ browse available exercises.
 ### Preconditions
 
 - AFTER changing the exercise database URL to the light, test one
+- Be on a page other than Exercise List
 
 ### Acceptance Criteria
 
@@ -206,6 +211,10 @@ that** I can create a custom clone that fits my training better.
 **As a** _user_, **I want to** navigate to the analytics page, **so that** I can
 view my workout progress over time.
 
+### Preconditions
+
+- Be on a page different than analytics
+
 ### Acceptance Criteria
 
 - The bottom navigation bar contains a "📊" button
@@ -232,6 +241,10 @@ existing training data that shouldn’t.
 
 **As a** _user_, **I want to** navigate back to the home page, **so that** I can
 return to my workout session (history).
+
+### Preconditions
+
+- Be on a page different than home
 
 ### Acceptance Criteria
 
