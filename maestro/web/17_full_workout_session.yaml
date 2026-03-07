@@ -23,14 +23,13 @@ url: http://localhost:8080
 - assertVisible: Repetitions
 
 # ── Record Exercise (set 1) ──────────────────────────────────────────────────
-- tapOn:
-    text: "kg"
+- tapOn: kg
 - inputText: "60"
-- tapOn:
-    text: "reps"
+- tapOn: reps
 - inputText: "10"
 - tapOn:
     css: article button.yes
+    index: 2
 - assertVisible: Completed Exercises
 - assertVisible: Wide-Grip Barbell Bench Press
 
