@@ -8,6 +8,3 @@ url: http://localhost:8080
 - assertVisible: "❌"
 # Timer is visible and has already incremented past 00:00
 - assertVisible: 00:\d[1-9]
-# Clean up: cancel the session to leave the app in a clean state
-- runFlow: ../subflows/cancel_session.yaml
-- assertVisible: "💪 LogOut"

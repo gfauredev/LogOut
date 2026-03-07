@@ -1,6 +1,5 @@
 # User Story – Be Astonished by Your Incredible Progress (Web PWA)
-# Select an exercise in Analytics and see a chart of progress over time.
-# This test is self-contained: it creates a session with improving reps first.
+# Select an exercise in Analytics and see a chart of progress over time
 url: http://localhost:8080
 ---
 - launchApp

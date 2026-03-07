@@ -10,5 +10,5 @@ url: http://localhost:8080
 - runFlow: ./record_squat_set.yaml
 # Finish the session
 - runFlow: ./finish_session.yaml
-- assertVisible: "🎉 Great workout! Session complete!"
+- assertVisible: .*Great workout! Session complete!
 - assertVisible: Wide-Grip Barbell Bench Press

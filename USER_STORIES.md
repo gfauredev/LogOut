@@ -42,10 +42,11 @@ tests for all supported platforms.
 - Web browser PWA test via [Maestro] in `maestro/web/`
 - Android native app via [Maestro] in `maestro/android/`
 
-Each user story corresponds to an independent, isolated test. Tests that need
-pre-existing state (e.g. a completed session) set it up as part of their own
-execution using reusable subflows from `maestro/web/_flows/`. No global ordering
-between tests is assumed or required.
+Each user story corresponds to an independent, isolated test, but some might
+need preconditions like pre-existing state (e.g. a completed session).
+Preconditions may be satisfied by executing other user stories or common sub
+flows before. No global ordering between tests is assumed nor required, and
+tests don’t need to care about the state left.
 
 ## Clean State Home
 

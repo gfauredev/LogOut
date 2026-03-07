@@ -12,7 +12,7 @@ url: http://localhost:8080
 - runFlow: ../subflows/record_squat_set.yaml
 # ── Remove Exercise (delete the latest – second squat set) ────────────────────
 - tapOn:
-    css: "article header button.no"
+    css: article header button.no
 # Now there should be 3 completed exercises
 - assertVisible: Completed Exercises
 - assertVisible: Wide-Grip Barbell Bench Press
@@ -24,8 +24,8 @@ url: http://localhost:8080
 # ── Finish Session ─────────────────────────────────────────────────────────────
 - runFlow: ../subflows/finish_session.yaml
 # A congratulation toast appears
-- assertVisible: "🎉 Great workout! Session complete!"
+- assertVisible: .*Great workout! Session complete!
 # Back on home screen with the completed session
-- assertVisible: "💪 LogOut"
+- assertVisible: .*LogOut
 - assertVisible: "Today"
 - assertVisible: Wide-Grip Barbell Bench Press

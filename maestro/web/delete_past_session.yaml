@@ -1,23 +1,20 @@
 # User Story – Delete Past Sessions (Web PWA)
-# Create a session, then delete it via the 🗑️ button and confirmation dialog.
-# This test is fully self-contained.
+# Create a session, then delete it via the 🗑️ button and confirmation dialog
 url: http://localhost:8080
 ---
 - launchApp
 - runFlow: ../subflows/nav_home.yaml
-
 # Create a session to delete
 - runFlow: ../subflows/start_session.yaml
 - runFlow: ../subflows/record_squat_set.yaml
 - runFlow: ../subflows/finish_session.yaml
 - assertVisible: Barbell Full Squat
-
-# Delete the latest session using the 🗑️ button
-- tapOn:
-    css: "button[title='Delete session']"
+- tapOn: # 🗑️
+    css: article header button.no
 # Confirm the deletion in the dialog
 - assertVisible: Delete this session?
 - tapOn:
-    css: "button.no"  # "🗑️ Delete" button (class "no label")
+    text: .*Delete # 🗑️ Delete
+    css: button.no
 # The deleted session is gone; home shows the empty state if it was the only one
-- assertVisible: "💪 LogOut"
+- assertVisible: .*LogOut
