@@ -240,7 +240,7 @@ main.edit>div {
   z-index: var(--z-toast);
   min-height: 3em;
   text-align: center;
-  width: min(90%, calc(var(--column) * .9));
+  width: min(90%, var(--column));
   animation: snackbar-in 0.3s ease-out;
 }
 
