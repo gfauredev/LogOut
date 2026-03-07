@@ -25,8 +25,9 @@ url: http://localhost:8080
 # ── Record Exercise (set 1) ──────────────────────────────────────────────────
 - tapOn: kg
 - inputText: "60"
-- tapOn: Weight # Blur
-- tapOn: reps
+- pressKey: Tab # Weight input doesn’t want to let focus go
+- pressKey: Tab
+- pressKey: Tab
 - inputText: "10"
 - tapOn:
     css: article button.yes
