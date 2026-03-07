@@ -11,7 +11,8 @@ url: http://localhost:8080
 - tapOn: "Search exercises, muscles, or categories..."
 - inputText: "… pushups" # Avoid matching Handstand Pushups…
 - assertVisible: Pushups
-- tapOn: "+"
+- tapOn:
+    css: article button
 - assertVisible: (Add|Edit) Exercise
 - assertVisible: Exercise Name *
 - tapOn:
