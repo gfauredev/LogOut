@@ -24,7 +24,7 @@ main.sessions,
 main.credits,
 main.edit {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(var(--column), 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(min(var(--column), 100%), 1fr));
 }
 
 // ── Delete confirmation modal ──────────────────────────────────────────────
@@ -231,8 +231,8 @@ main.edit>div {
 
 .snackbar {
   position: fixed;
-  bottom: 20%;
-  left: 5%;
+  bottom: 10%;
+  right: var(--spacing);
   background: color-mix(in srgb, var(--yes) 70%, transparent);
   padding: var(--spacing);
   border-radius: var(--radius);
@@ -240,7 +240,8 @@ main.edit>div {
   z-index: var(--z-toast);
   min-height: 3em;
   text-align: center;
-  width: min(90%, var(--column));
+  max-width: calc(100% - var(--spacing) * 2);
+  width: var(--column);
   animation: snackbar-in 0.3s ease-out;
 }
 
