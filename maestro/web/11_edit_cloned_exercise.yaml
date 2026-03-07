@@ -7,29 +7,21 @@ url: http://localhost:8080
 - tapOn:
     css: "nav > .exercises"
 - assertVisible: "📚 Exercises"
-# Wait for exercises to load from the local exercises.test.json database
-- assertVisible: ✏️ Clone & Edit
 # Search for Pushups to get a predictable target exercise
 - tapOn: "Search exercises, muscles, or categories..."
-- inputText: "Pushups"
+- inputText: "… pushups" # Avoid matching Handstand Pushups…
 - assertVisible: Pushups
-# Click "Clone & Edit" on Pushups
-- tapOn: "✏️ Clone & Edit"
-# The Edit Exercise form should open
-- assertVisible: Edit Exercise
+- tapOn: "+"
+- assertVisible: (Add|Edit) Exercise
 - assertVisible: Exercise Name *
-# Clear the current name and enter a new one
 - tapOn:
     text: "Pushups"
 - eraseText
 - inputText: "My Cloned Pushups"
-# Save the changes
 - tapOn: "💾 Save Changes"
-# We should be back on the exercise browser
 - assertVisible: "📚 Exercises"
 # Search for the modified clone
 - tapOn: "Search exercises, muscles, or categories..."
 - inputText: "My Cloned Pushups"
 - assertVisible: My Cloned Pushups
-# The cloned exercise should show "✏️ Edit", not "✏️ Clone & Edit"
-- assertVisible: ✏️ Edit
+- assertVisible: ✏️

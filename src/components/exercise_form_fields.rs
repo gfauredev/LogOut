@@ -255,7 +255,7 @@ pub fn ExerciseFormFields(
                 div {
                     for (idx, url) in images_list.read().iter().enumerate() {
                         div { key: "{idx}",
-                            button { class: "no",
+                            button { class: "no label",
                                 onclick: move |_| remove_image(idx),
                                 "{url}"
                             }
