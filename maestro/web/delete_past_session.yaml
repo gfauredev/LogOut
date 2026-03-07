@@ -4,7 +4,6 @@
 url: http://localhost:8080
 ---
 - launchApp
-- runFlow: ../subflows/setup_local_db.yaml
 - runFlow: ../subflows/nav_home.yaml
 
 # Create a session to delete

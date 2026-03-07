@@ -1,18 +1,13 @@
 # User Story – Full Workout Session (Web PWA)
 # Complete a full workout with two different exercises, replay sets, remove one
-# completed exercise, and finish the session.
+# completed exercise, and finish the session
 url: http://localhost:8080
 ---
 - launchApp
-
-# Set up the local test exercise database
-- runFlow: ../subflows/setup_local_db.yaml
-
 # Go home and start a new session
 - runFlow: ../subflows/nav_home.yaml
 - runFlow: ../subflows/start_session.yaml
 - assertVisible: ⏱️ Active Session
-
 # ── Search Exercise ───────────────────────────────────────────────────────────
 # Token-based search: "wide grip bench" finds "Wide-Grip Barbell Bench Press"
 - tapOn: "Search for an exercise..."

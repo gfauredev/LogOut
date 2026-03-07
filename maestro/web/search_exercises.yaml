@@ -3,7 +3,6 @@
 url: http://localhost:8080
 ---
 - launchApp
-- runFlow: ../subflows/setup_local_db.yaml
 - runFlow: ../subflows/nav_exercises.yaml
 - tapOn: "Search exercises, muscles, or categories..."
 - inputText: "pullups"

@@ -2,7 +2,6 @@
 # then finish it, for tests that need prior session data
 url: http://localhost:8080
 ---
-- runFlow: ./setup_local_db.yaml
 # Go home and start a new session
 - runFlow: ./nav_home.yaml
 - runFlow: ./start_session.yaml

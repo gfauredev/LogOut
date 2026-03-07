@@ -1,10 +1,8 @@
 # User Story – Learn About an Exercise (Web PWA)
 # Clicking an exercise heading reveals its details: instructions, image, and tags.
-# Precondition: local test database active (contains Pushups with full details).
 url: http://localhost:8080
 ---
 - launchApp
-- runFlow: ../subflows/setup_local_db.yaml
 - runFlow: ../subflows/nav_exercises.yaml
 - tapOn: "Search exercises, muscles, or categories..."
 - inputText: "push-up"
