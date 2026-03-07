@@ -4,7 +4,7 @@
   flex-direction: column;
   min-height: 100dvh;
   margin: 0 auto;
-  max-width: var(--main-max-width);
+  max-width: var(--max-width);
   padding: var(--spacing) var(--spacing) 0;
 }
 
@@ -24,7 +24,7 @@ main.sessions,
 main.credits,
 main.edit {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(var(--col-min-width), 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(var(--column), 1fr));
 }
 
 // ── Delete confirmation modal ──────────────────────────────────────────────
@@ -224,8 +224,8 @@ main.edit>div {
   font-size: 1.1em;
   cursor: pointer;
   padding: 0;
-  width: var(--icon-btn-width);
-  height: var(--icon-btn-width);
+  width: var(--btn-width);
+  height: var(--btn-width);
   border-radius: 50%;
 } */
 

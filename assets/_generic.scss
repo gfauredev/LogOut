@@ -46,8 +46,8 @@ a.add {
 button:not(.label),
 a.edit:not(.label),
 a.add:not(.label) {
-  width: var(--icon-btn-width);
-  height: var(--icon-btn-width);
+  width: var(--btn-width);
+  height: var(--btn-width);
   border-radius: 50%;
   padding: 0;
   line-height: 1; // TEST if really useful
@@ -65,7 +65,7 @@ a.add:not(.label) {
 ul,
 ol {
   margin: var(--spacing) 0 0 0;
-  padding-left: var(--list-padding-start);
+  padding-left: var(--bullets-space);
   color: var(--secondary);
   line-height: 1.8;
 }
@@ -91,8 +91,8 @@ input[type="number"] {
 
 .inputs a,
 .inputs button {
-  width: var(--icon-btn-width);
-  height: var(--icon-btn-width);
+  width: var(--btn-width);
+  height: var(--btn-width);
   border-radius: 50%;
   font-weight: bold;
   line-height: 1;
@@ -237,7 +237,7 @@ article button:hover {
 
 article ol {
   margin: var(--spacing) 0;
-  padding-left: var(--list-padding-start);
+  padding-left: var(--bullets-space);
   color: var(--secondary);
   font-size: 0.9em;
   line-height: 1.5;
@@ -258,7 +258,7 @@ article img {
   display: flex;
   align-items: center;
   gap: var(--spacing);
-  max-width: var(--col-min-width);
+  max-width: var(--column);
 }
 
 .exercise-selector {
@@ -266,7 +266,7 @@ article img {
   display: flex;
   align-items: center;
   gap: var(--spacing);
-  max-width: var(--col-min-width);
+  max-width: var(--column);
 
   >div {
     width: 20px;
