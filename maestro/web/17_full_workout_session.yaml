@@ -26,8 +26,6 @@ url: http://localhost:8080
 - tapOn: kg
 - inputText: "60"
 - pressKey: Tab # Weight input doesn’t want to let focus go
-- pressKey: Tab
-- pressKey: Tab
 - inputText: "10"
 - tapOn:
     css: article button.yes

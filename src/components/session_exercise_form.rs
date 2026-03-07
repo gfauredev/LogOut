@@ -72,6 +72,7 @@ pub(super) fn ExerciseFormPanel(
                         label { "Weight" }
                         button { class: "no",
                             r#type: "button",
+                            tabindex: -1,
                             onclick: move |_| {
                                 let cur: f64 = weight_input.read().parse().unwrap_or(0.0);
                                 let next = (cur - 0.5).max(0.0);
@@ -90,6 +91,7 @@ pub(super) fn ExerciseFormPanel(
                         }
                         button { class: "yes",
                             r#type: "button",
+                            tabindex: -1,
                             onclick: move |_| {
                                 let cur: f64 = weight_input.read().parse().unwrap_or(0.0);
                                 weight_input.set(format!("{:.1}", cur + 0.5));
@@ -129,6 +131,7 @@ pub(super) fn ExerciseFormPanel(
                             label { "Repetitions" }
                             button { class: "no",
                                 r#type: "button",
+                                tabindex: -1,
                                 onclick: move |_| {
                                     let cur: u32 = reps_input.read().parse().unwrap_or(0);
                                     if cur > 1 {
@@ -147,6 +150,7 @@ pub(super) fn ExerciseFormPanel(
                             }
                             button { class: "yes",
                                 r#type: "button",
+                                tabindex: -1,
                                 onclick: move |_| {
                                     let cur: u32 = reps_input.read().parse().unwrap_or(0);
                                     reps_input.set((cur + 1).to_string());
