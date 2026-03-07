@@ -239,6 +239,7 @@ services, providing a detailed view of the codebase's API.
 - Use these deep links in E2E tests to setup state for flows that don’t
   specifically test that feature covered by the deep link
   - Probably the occasion to DRY E2E tests to only one par user story
+- Make the Active Session header (with timer, finish) sticky throughout the app
 - Mock exercise database with public/exercises.json for E2E tests, so they can
   load faster and not rely on external network requests
 - Harmonize Rest timer text color when background when rest is due
