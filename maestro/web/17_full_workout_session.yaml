@@ -24,10 +24,10 @@ url: http://localhost:8080
 
 # ── Record Exercise (set 1) ──────────────────────────────────────────────────
 - tapOn:
-    text: "Optional"
+    text: "kg"
 - inputText: "60"
 - tapOn:
-    text: "Reps"
+    text: "reps"
 - inputText: "10"
 - tapOn:
     css: "button[title='Complete Exercise']"
@@ -56,7 +56,7 @@ url: http://localhost:8080
 - assertVisible: Barbell Full Squat
 - tapOn: "Barbell Full Squat"
 - assertVisible: Barbell Full Squat
-- assertVisible: Weight (kg)
+- assertVisible: Weight
 # Record first squat set
 - tapOn:
     text: "Optional"
