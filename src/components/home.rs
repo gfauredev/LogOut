@@ -73,26 +73,20 @@ pub fn Home() -> Element {
     });
 
     rsx! {
-        if *has_active.read() {
-            SessionView {}
-        } else {
-            if !*has_active.read() {
-                header {
-                    h1 { tabindex: 0, "💪 LogOut" }
-                    p { tabindex: 0, "Turn off your computer, Log your workOut" }
-                }
+        if *has_active.read() { SessionView {} } else {
+            header {
+                h1 { tabindex: 0, "💪 LogOut" }
+                p { tabindex: 0, "Turn off your computer, Log your workOut" }
             }
-            main { class: "sessions",
-                    if completed_sessions().is_empty() {
-                        p { "No past sessions yet" }
-                        p { "Tap + to start your first workout" }
-                    } else {
-                        for session in completed_sessions().into_iter().take(*visible_count.read()) {
-                            SessionCard { key: "{session.id}", session: session.clone() }
-                        }
+            if completed_sessions().is_empty() {
+                p { "No past sessions yet" }
+                p { "Tap + to start your first workout" }
+            } else {
+                main { class: "sessions",
+                    for session in completed_sessions().into_iter().take(*visible_count.read()) {
+                        SessionCard { key: "{session.id}", session: session.clone() }
                     }
-            }
-            if !*has_active.read() {
+                }
                 button { class: "icon add",
                     onclick: start_new_session,
                     title: "Start New Workout",
