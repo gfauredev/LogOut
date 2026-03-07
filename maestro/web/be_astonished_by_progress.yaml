@@ -4,10 +4,8 @@
 url: http://localhost:8080
 ---
 - launchApp
-
 # Create a bench press session where reps improved from set 1 (10) to set 2 (12)
 - runFlow: ../subflows/create_bench_squat_session.yaml
-
 # Navigate to analytics
 - runFlow: ../subflows/nav_analytics.yaml
 # Select "Repetitions" metric (improved from 10 to 12 reps in the created session)

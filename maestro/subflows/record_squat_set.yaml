@@ -2,21 +2,29 @@
 # Precondition: an active session is open with the exercise search visible
 url: http://localhost:8080
 ---
-# Search and open squat
+# ── Repeat For Another Exercise (Barbell Full Squat) ──────────────────────────
 - tapOn: "Search for an exercise..."
 - inputText: "full squat"
 - assertVisible: Barbell Full Squat
-- tapOn: Barbell Full Squat
-- assertVisible: Barbell Full Squat
+- tapOn: "Barbell Full Squat"
+# - assertVisible: Barbell Full Squat
 - assertVisible: Weight
-# Enter weight and reps
-- tapOn:
-    css: "article input[inputmode=decimal]"
+# Record first squat set
+- tapOn: kg
+# - assertVisible: # FIXME Doesn’t work
+#     css: "article input[inputmode=decimal]"
+#     focused: true
 - inputText: "80"
+- tapOn: reps # FIXME Taps on the correct field and seems to focus it, but…
+# - inputText: "10" # FIXME Types in the previous (Weight) field (so 8010)
+- tapOn: {text: +, index: 1, repeat: 6}
 - tapOn:
-    css: "article input[inputmode=numeric]"
-- inputText: "8"
+    css: "footer button.yes"
+# - assertVisible: Completed Exercises
+# - assertVisible: Barbell Full Squat
+# Replay squat (set 2, same values)
 - tapOn:
-    css: "button[title='Complete Exercise']"
-- assertVisible: Completed Exercises
+    css: "article header button.edit"
 - assertVisible: Barbell Full Squat
+- tapOn:
+    css: "footer button.yes"

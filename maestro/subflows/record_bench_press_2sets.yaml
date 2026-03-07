@@ -2,32 +2,33 @@
 # Precondition: an active session is open with the exercise search visible
 url: http://localhost:8080
 ---
-# Search and open bench press
+# ── Search Exercise ───────────────────────────────────────────────────────────
+# Token-based search: "wide grip bench" finds "Wide-Grip Barbell Bench Press"
 - tapOn: "Search for an exercise..."
 - inputText: "wide grip bench"
 - assertVisible: Wide-Grip Barbell Bench Press
-- tapOn: Wide-Grip Barbell Bench Press
+- tapOn: "Wide-Grip Barbell Bench Press"
 - assertVisible: Wide-Grip Barbell Bench Press
 - assertVisible: Weight
-# Set 1: enter weight and reps
-- tapOn:
-    css: "article input[inputmode=decimal]"
+- assertVisible: Repetitions
+# ── Record Exercise (set 1) ───────────────────────────────────────────────────
+- tapOn: kg
+# - assertVisible: # FIXME Doesn’t work
+#     css: "article input[inputmode=decimal]"
+#     focused: true
 - inputText: "80"
+- tapOn: reps # FIXME Taps on the correct field and seems to focus it, but…
+# - inputText: "10" # FIXME Types in the previous (Weight) field (so 8010)
+- tapOn: {text: +, index: 1, repeat: 6}
 - tapOn:
-    css: "article input[inputmode=numeric]"
-- inputText: "10"
-- tapOn:
-    css: "button[title='Complete Exercise']"
+    css: "footer button.yes"
 - assertVisible: Completed Exercises
 - assertVisible: Wide-Grip Barbell Bench Press
-# Set 2 (replay): increment reps
+# ── Replay Exercise (set 2, decrement weight) ───────────────────────────────────
 - tapOn:
-    css: "button[title='Do another set']"
+    css: "article header button.edit"
 - assertVisible: Wide-Grip Barbell Bench Press
+- tapOn: {text: "−", repeat: 3}
 - tapOn:
-    css: "article input[inputmode=numeric]"
-- eraseText
-- inputText: "12"
-- tapOn:
-    css: "button[title='Complete Exercise']"
+    css: "footer button.yes"
 - assertVisible: Completed Exercises
