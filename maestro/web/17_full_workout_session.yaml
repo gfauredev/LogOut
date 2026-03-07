@@ -30,7 +30,7 @@ url: http://localhost:8080
     text: "reps"
 - inputText: "10"
 - tapOn:
-    css: "button[title='Complete Exercise']"
+    css: article button.yes
 - assertVisible: Completed Exercises
 - assertVisible: Wide-Grip Barbell Bench Press
 
