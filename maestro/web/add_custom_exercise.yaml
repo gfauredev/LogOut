@@ -1,5 +1,4 @@
-# User Story – Add Custom Exercise (Web PWA)
-# Navigate to the exercise browser, add a custom exercise, then search for it.
+# Navigate to the exercise browser, add a custom exercise, then search for it
 url: http://localhost:8080
 ---
 - launchApp
