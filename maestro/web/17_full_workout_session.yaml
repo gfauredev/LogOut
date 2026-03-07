@@ -25,6 +25,7 @@ url: http://localhost:8080
 # ── Record Exercise (set 1) ──────────────────────────────────────────────────
 - tapOn: kg
 - inputText: "60"
+- tapOn: Weight # Blur
 - tapOn: reps
 - inputText: "10"
 - tapOn:
