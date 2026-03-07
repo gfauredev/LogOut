@@ -213,9 +213,13 @@ pub fn get_query_param(query: &str, name: &str) -> Option<String> {
     })
 }
 
-/// Minimal percent-decoder that handles the most common URL-encoded characters.
+/// Minimal percent-decoder that handles both ASCII and multi-byte UTF-8 sequences.
+///
+/// Percent-encoded sequences are collected as raw bytes and decoded together so
+/// that multi-byte UTF-8 characters (e.g. `%C3%A9` → `é`) are handled correctly.
+/// `+` is treated as a space (application/x-www-form-urlencoded convention).
 fn percent_decode(s: &str) -> String {
-    let mut out = String::with_capacity(s.len());
+    let mut bytes: Vec<u8> = Vec::with_capacity(s.len());
     let mut chars = s.chars().peekable();
     while let Some(c) = chars.next() {
         if c == '%' {
@@ -223,19 +227,21 @@ fn percent_decode(s: &str) -> String {
             let h2 = chars.next().unwrap_or('0');
             let hex = format!("{h1}{h2}");
             if let Ok(byte) = u8::from_str_radix(&hex, 16) {
-                out.push(byte as char);
+                bytes.push(byte);
             } else {
-                out.push('%');
-                out.push(h1);
-                out.push(h2);
+                bytes.push(b'%');
+                let mut buf = [0u8; 4];
+                bytes.extend_from_slice(h1.encode_utf8(&mut buf).as_bytes());
+                bytes.extend_from_slice(h2.encode_utf8(&mut buf).as_bytes());
             }
         } else if c == '+' {
-            out.push(' ');
+            bytes.push(b' ');
         } else {
-            out.push(c);
+            let mut buf = [0u8; 4];
+            bytes.extend_from_slice(c.encode_utf8(&mut buf).as_bytes());
         }
     }
-    out
+    String::from_utf8_lossy(&bytes).into_owned()
 }
 
 /// Map a human-readable route name (as used in `?dl_navigate=…`) to the
@@ -505,6 +511,12 @@ mod tests {
             super::percent_decode("http%3A%2F%2Flocalhost%3A8080"),
             "http://localhost:8080".to_string()
         );
+    }
+
+    #[test]
+    fn percent_decode_handles_multibyte_utf8() {
+        // %C3%A9 is the UTF-8 encoding of 'é'
+        assert_eq!(super::percent_decode("%C3%A9"), "é".to_string());
     }
 
     #[test]
