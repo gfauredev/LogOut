@@ -36,6 +36,7 @@
           pkgs = nixpkgsFor.${system};
           rustToolchain = pkgs.rust-bin.stable.latest.default.override {
             extensions = [
+              "llvm-tools-preview"
               "rust-src"
               "rust-analyzer"
             ];
@@ -58,6 +59,8 @@
           };
           commonNativeBuildInputs = with pkgs; [
             binaryen
+            cargo-binutils
+            cargo-llvm-cov
             chromedriver
             dioxus-cli
             maestro
