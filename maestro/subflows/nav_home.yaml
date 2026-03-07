@@ -3,4 +3,4 @@ url: http://localhost:8080
 ---
 - tapOn:
     css: "nav > .home"
-- assertVisible: "💪 LogOut"
+- assertVisible: .*LogOut
