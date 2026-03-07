@@ -1,10 +1,10 @@
 # User Story – Lookup a Previously Done Exercise (Web PWA)
 # Click an exercise tag on a session card to pre-fill the Exercise List search
-url: http://localhost:8080
+url: http://localhost:8080/?dl_session=Wide-Grip_Barbell_Bench_Press:80:10,Wide-Grip_Barbell_Bench_Press:77.5:10,Barbell_Full_Squat:60:6
 ---
 - launchApp
-# Create bench press session so exercise tag is available on the home screen
-- runFlow: ../subflows/create_bench_squat_session.yaml
+# Wait for the session created by the deep link to appear
+- assertVisible: Wide-Grip Barbell Bench Press
 # Click the "Wide-Grip Barbell Bench Press" exercise tag on the session card
 - tapOn: Wide-Grip Barbell Bench Press
 # The Exercise List should open with the exercise name pre-filled in the search

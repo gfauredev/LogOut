@@ -113,14 +113,21 @@ fn SessionCard(session: WorkoutSession) -> Element {
     let date_str = format_session_date(session.start_time);
 
     // Collect unique exercise names (deduplicated by ID, preserving order)
-    let unique_exercises: Vec<(String, String)> = {
+    // Each entry also carries the type-tag CSS class and icon for visual styling.
+    let unique_exercises: Vec<(String, String, &'static str, &'static str)> = {
         let mut seen = std::collections::HashSet::new();
         session
             .exercise_logs
             .iter()
             .filter_map(|log| {
                 if seen.insert(log.exercise_id.clone()) {
-                    Some((log.exercise_id.clone(), log.exercise_name.clone()))
+                    let (tag_class, tag_icon) = log.type_tag();
+                    Some((
+                        log.exercise_id.clone(),
+                        log.exercise_name.clone(),
+                        tag_class,
+                        tag_icon,
+                    ))
                 } else {
                     None
                 }
@@ -174,8 +181,8 @@ fn SessionCard(session: WorkoutSession) -> Element {
             }
             if !unique_exercises.is_empty() {
                 ul {
-                    for (_, name) in unique_exercises.iter().take(visible_count) {
-                        li {
+                    for (_, name, tag_class, tag_icon) in unique_exercises.iter().take(visible_count) {
+                        li { class: "{tag_class}",
                             onclick: {
                                 let name = name.clone();
                                 move |_| {
@@ -183,7 +190,7 @@ fn SessionCard(session: WorkoutSession) -> Element {
                                     navigator.push(Route::Exercises {});
                                 }
                             },
-                            "{name}"
+                            "{tag_icon} {name}"
                         }
                     }
                     if hidden_count > 0 {

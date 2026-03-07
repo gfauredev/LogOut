@@ -7,7 +7,7 @@ use dioxus::prelude::*;
 pub fn Credits() -> Element {
     // Current exercise DB URL (defaults to the compile-time constant)
     let mut url_input = use_signal(crate::utils::get_exercise_db_url);
-    let mut toast = consume_context::<ToastSignal>().0;
+    let toast = consume_context::<ToastSignal>().0;
     let exercises_sig = exercise_db::use_exercises();
 
     let save_url = move |evt: Event<FormData>| {
@@ -43,15 +43,11 @@ pub fn Credits() -> Element {
             // Clear cached fetch timestamp so reload_exercises downloads from the new URL
             crate::services::exercise_db::clear_fetch_cache();
         }
-        // Immediately reload exercises from the (new) URL and replace the list
+        // Immediately reload exercises from the (new) URL, with toast feedback
         let sig = exercises_sig;
         spawn(async move {
-            exercise_db::reload_exercises(sig).await;
+            exercise_db::reload_exercises(sig, toast).await;
         });
-        // Show confirmation toast
-        toast.set(Some(
-            "✅ Exercise database URL saved, reloading…".to_string(),
-        ));
     };
 
     rsx! {
@@ -83,7 +79,7 @@ pub fn Credits() -> Element {
                 form {
                     onsubmit: save_url,
                     input { r#type: "url",
-                        // value: "{url_input}", // Prevent backspace marathon
+                        value: "{url_input}",
                         placeholder: "{crate::utils::EXERCISE_DB_BASE_URL}",
                         oninput: move |evt| url_input.set(evt.value()),
                     }

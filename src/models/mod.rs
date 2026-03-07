@@ -361,20 +361,30 @@ impl Exercise {
         self.get_image_url(0)
     }
 
-    /// Returns the CSS class and display label for the exercise type tag.
+    /// Returns the CSS class and icon for the exercise type tag.
     ///
     /// The tag reflects what metrics are logged for this exercise:
-    /// - `"tag-cardio"` / `"🏃 cardio"` — distance-based (Category::Cardio)
-    /// - `"tag-strength"` / `"💪 strength"` — repetition-based (Force::Pull / Force::Push)
-    /// - `"tag-static"` / `"⏱️ static"` — time-only (static hold, stretch, etc.)
+    /// - `"tag-cardio"` / `"🏃"` — distance-based (Category::Cardio)
+    /// - `"tag-strength"` / `"💪"` — repetition-based (Force::Pull / Force::Push)
+    /// - `"tag-static"` / `"⏱️"` — time-only (static hold, stretch, etc.)
     pub fn type_tag(&self) -> (&'static str, &'static str) {
-        if self.category == Category::Cardio {
-            ("tag-cardio", "🏃 cardio")
-        } else if self.force.is_some_and(|f| f.has_reps()) {
-            ("tag-strength", "💪 strength")
-        } else {
-            ("tag-static", "⏱️ static")
-        }
+        exercise_type_tag(self.category, self.force)
+    }
+}
+
+/// Pure helper shared by [`Exercise::type_tag`] and [`ExerciseLog::type_tag`].
+///
+/// Returns `(css_class, icon)` for the given category and force.
+pub(crate) fn exercise_type_tag(
+    category: Category,
+    force: Option<Force>,
+) -> (&'static str, &'static str) {
+    if category == Category::Cardio {
+        ("tag-cardio", "🏃")
+    } else if force.is_some_and(|f| f.has_reps()) {
+        ("tag-strength", "💪")
+    } else {
+        ("tag-static", "⏱️")
     }
 }
 
@@ -411,6 +421,14 @@ impl ExerciseLog {
     /// Check if this log is complete (has end time)
     pub fn is_complete(&self) -> bool {
         self.end_time.is_some()
+    }
+
+    /// Returns the CSS class and icon for this log's exercise type tag.
+    ///
+    /// Mirrors [`Exercise::type_tag`] using the denormalised category and force
+    /// stored on the log, so no database lookup is required.
+    pub fn type_tag(&self) -> (&'static str, &'static str) {
+        exercise_type_tag(self.category, self.force)
     }
 }
 
@@ -1675,5 +1693,80 @@ mod tests {
         let json = r#"{"id":"s1","start_time":1000,"end_time":null,"exercise_logs":[],"version":0,"pending_exercise_ids":[]}"#;
         let session: WorkoutSession = serde_json::from_str(json).unwrap();
         assert!(session.rest_start_time.is_none());
+    }
+
+    // ── Exercise::type_tag / ExerciseLog::type_tag ────────────────────────────
+
+    #[test]
+    fn exercise_type_tag_cardio() {
+        let ex = Exercise {
+            id: "run1".into(),
+            name: "Running".into(),
+            name_lower: String::new(),
+            category: Category::Cardio,
+            force: None,
+            level: None,
+            mechanic: None,
+            equipment: None,
+            primary_muscles: vec![],
+            secondary_muscles: vec![],
+            instructions: vec![],
+            images: vec![],
+        };
+        assert_eq!(ex.type_tag(), ("tag-cardio", "🏃"));
+    }
+
+    #[test]
+    fn exercise_type_tag_strength() {
+        let ex = Exercise {
+            id: "bench1".into(),
+            name: "Bench Press".into(),
+            name_lower: String::new(),
+            category: Category::Strength,
+            force: Some(Force::Push),
+            level: None,
+            mechanic: None,
+            equipment: None,
+            primary_muscles: vec![],
+            secondary_muscles: vec![],
+            instructions: vec![],
+            images: vec![],
+        };
+        assert_eq!(ex.type_tag(), ("tag-strength", "💪"));
+    }
+
+    #[test]
+    fn exercise_type_tag_static() {
+        let ex = Exercise {
+            id: "plank1".into(),
+            name: "Plank".into(),
+            name_lower: String::new(),
+            category: Category::Strength,
+            force: Some(Force::Static),
+            level: None,
+            mechanic: None,
+            equipment: None,
+            primary_muscles: vec![],
+            secondary_muscles: vec![],
+            instructions: vec![],
+            images: vec![],
+        };
+        assert_eq!(ex.type_tag(), ("tag-static", "⏱️"));
+    }
+
+    #[test]
+    fn exercise_log_type_tag_mirrors_exercise() {
+        let log = ExerciseLog {
+            exercise_id: "bench1".into(),
+            exercise_name: "Bench Press".into(),
+            category: Category::Strength,
+            force: Some(Force::Push),
+            start_time: 1000,
+            end_time: Some(1060),
+            weight_hg: None,
+            reps: None,
+            distance_m: None,
+        };
+        assert_eq!(log.type_tag(), ("tag-strength", "💪"));
     }
 }

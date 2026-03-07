@@ -27,7 +27,11 @@ pub fn use_exercises() -> Signal<Vec<Exercise>> {
 /// Clears the current exercise list and immediately re-downloads from the
 /// configured URL.  Intended to be called after saving a new database URL so
 /// the app reflects the change without requiring a full reload.
-pub async fn reload_exercises(mut sig: Signal<Vec<Exercise>>) {
+///
+/// On success the toast shows a confirmation message; on error (network,
+/// empty response, JSON parse) it shows an appropriate error message so the
+/// user knows the URL change did not take effect.
+pub async fn reload_exercises(mut sig: Signal<Vec<Exercise>>, mut toast: Signal<Option<String>>) {
     // Clear immediately so the UI does not show stale data from the old URL
     sig.set(Vec::new());
 
@@ -43,9 +47,20 @@ pub async fn reload_exercises(mut sig: Signal<Vec<Exercise>>) {
                 idb_exercises::store_all_exercises(&exercises).await;
                 exercise_db::record_fetch_timestamp();
                 sig.set(exercises.into_iter().map(|e| e.with_lowercase()).collect());
+                toast.set(Some(
+                    "✅ Exercise database reloaded successfully".to_string(),
+                ));
             }
-            Ok(_) => log::warn!("Reloaded exercises file was empty"),
-            Err(e) => log::warn!("Failed to reload exercises: {:?}", e),
+            Ok(_) => {
+                log::warn!("Reloaded exercises file was empty");
+                toast.set(Some(
+                    "⚠️ exercises.json was empty — check the database URL".to_string(),
+                ));
+            }
+            Err(e) => {
+                log::warn!("Failed to reload exercises: {:?}", e);
+                toast.set(Some(format!("❌ Failed to reload exercises: {e}")));
+            }
         }
     }
 
@@ -61,9 +76,20 @@ pub async fn reload_exercises(mut sig: Signal<Vec<Exercise>>) {
                 native_exercises::store_all_exercises(&exercises);
                 exercise_db::record_fetch_timestamp();
                 sig.set(exercises.into_iter().map(|e| e.with_lowercase()).collect());
+                toast.set(Some(
+                    "✅ Exercise database reloaded successfully".to_string(),
+                ));
             }
-            Ok(_) => log::warn!("Reloaded exercises file was empty"),
-            Err(e) => log::warn!("Failed to reload exercises: {:?}", e),
+            Ok(_) => {
+                log::warn!("Reloaded exercises file was empty");
+                toast.set(Some(
+                    "⚠️ exercises.json was empty — check the database URL".to_string(),
+                ));
+            }
+            Err(e) => {
+                log::warn!("Failed to reload exercises: {:?}", e);
+                toast.set(Some(format!("❌ Failed to reload exercises: {e}")));
+            }
         }
     }
 }
