@@ -6,22 +6,20 @@ url: http://localhost:8080
 - tapOn:
     css: "nav > .exercises"
 - assertVisible: "📚 Exercises"
-# Wait for exercises to load
-- assertVisible: Pushups
-# Click the exercise heading to reveal instructions
+- tapOn: "Search exercises, muscles, or categories..."
+- inputText: "push-up" # Tests fuzzy search
+- scrollUntilVisible:
+    element: "Pushups"
+    direction: DOWN
 - tapOn: "Pushups"
-# Instructions should appear
 - assertVisible: ".*Lie on the floor.*"
-# Tags should be visible
 - assertVisible: "strength"
 - assertVisible: "push"
 - assertVisible: "body only"
 - assertVisible: "beginner"
-# Muscles
 - assertVisible: "chest"
 - assertVisible: "shoulders"
 - assertVisible: "triceps"
-# Click the exercise image to cycle (optional check)
 - tapOn:
     point: "50%, 50%"
-    optional: true
+    optional: true # Not all have images

@@ -1,13 +1,10 @@
 # User Story 7 – Clean State Exercise List (Web PWA)
-# Before any custom exercises are added, built-in exercises show "Clone & Edit".
+# Before any custom exercises are added, built-in exercises show "Clone & Edit"
 url: http://localhost:8080
 ---
 - launchApp
 - tapOn:
     css: "nav > .exercises"
 - assertVisible: "📚 Exercises"
-# Wait for exercises to load from the local exercises.test.json database
-- assertVisible: ✏️ Clone & Edit
-- assertVisible: ✏️ Clone & Edit
-# Built-in exercises should not show "✏️ Edit" only (that's only for custom exercises)
-- assertNotVisible: "✏️ Edit"
+- assertVisible: "\\+"
+- assertNotVisible: "✏️"

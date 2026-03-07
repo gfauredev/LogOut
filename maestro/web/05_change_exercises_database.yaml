@@ -12,5 +12,5 @@ url: http://localhost:8080
 - inputText: "http://localhost:8080"
 - tapOn: # 💾
     css: button[type=submit]
-# The URL should now be set and saved
+# The URL should now be set and saved # FIXME
 - assertVisible: "https?://localhost:8080"

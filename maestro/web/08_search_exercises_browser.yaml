@@ -6,12 +6,16 @@ url: http://localhost:8080
 - tapOn:
     css: "nav > .exercises"
 - assertVisible: "📚 Exercises"
-# Type a search term and verify results appear
 - tapOn: "Search exercises, muscles, or categories..."
 - inputText: "pullups"
 - assertVisible: "Pullups"
-# Clear the search and verify the full list is restored
+- assertVisible: "strength"
+- assertVisible: "pull"
+- assertVisible: "lats"
+- assertNotVisible: "push"
+- assertNotVisible: "chest"
+- assertNotVisible: "triceps"
 - eraseText
+# TODO Test "infinite" scroll
 - assertVisible: "📚 Exercises"
-- assertVisible: ✏️ Clone & Edit
-- assertVisible: "Trail Running/Walking"
+- assertVisible: "\\+"

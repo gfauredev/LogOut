@@ -1,11 +1,10 @@
 # User Story 3 – Navigate to Credits (Web PWA)
-# Navigate to the Credits page via the bottom navigation bar.
+# Navigate to the Credits page via the bottom navigation bar
 url: http://localhost:8080
 ---
 - launchApp
 - tapOn:
     css: "nav > .credits"
 - assertVisible: "ℹ️ Credits"
-# The credits page should show the app description and DB URL configuration
-- assertVisible: Turn off your computer
+- assertVisible: A simple, efficient and cross-platform workout logging.*
 - assertVisible: ⚙️ Exercise Database URL
