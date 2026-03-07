@@ -230,23 +230,15 @@ services, providing a detailed view of the codebase's API.
 
 ## TODO
 
-- Add different colors for data types
-  - Category
-  - Force
-  - Equipment
-  - Level
-  - Primary muscle
-  - Secondary muscle
-  - Strength (reps) exercise tag
-  - Cardio (distance) exercise tag
-  - Static (just time) exercise tag
-  - Consider reusing those colors for the charts in analytics
-- Make database URL change properly replace the existing one, display toast
-- In analytics, make distance and duration units dynamically change to the most
-  adapted to represent the currently selected exercise’s data
-  - i.e. unit such as distance average is expressed between 0.0 and 999.9, and
-    duration average between 0.00 and 179.99
-- Consider DRYing E2E tests to only one par user story, or use sequence
+- Fix database URL change, make it properly replace the existing one, or display
+  error toasts (no `exercises.json` found, deserialization or network error…)
+- Remove "strength", "cardio" and "static" labels from exercise list, use
+  instead their colors and icons in Past Sessions exercises tags
+- Implement deep `logworkout://` links that allow accessing any view of the app,
+  directly creating an exercise or a session with parameters…
+- Use these deep links in E2E tests to setup state for flows that don’t
+  specifically test that feature covered by the deep link
+  - Probably the occasion to DRY E2E tests to only one par user story
 - Mock exercise database with public/exercises.json for E2E tests, so they can
   load faster and not rely on external network requests
 - Harmonize Rest timer text color when background when rest is due
