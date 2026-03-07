@@ -226,9 +226,17 @@ article>header>ul {
     padding: calc(var(--spacing) / 2) var(--spacing);
     background: var(--separation);
     border-radius: var(--radius);
-  }
 
-  // TODO Colors for types of tags and exercises
+    &.category { background: var(--tag-category); color: var(--primary); }
+    &.force { background: var(--tag-force); color: var(--primary); }
+    &.equipment { background: var(--tag-equipment); color: var(--primary); }
+    &.level { background: var(--tag-level); color: var(--on-light); }
+    &.primary-muscle { background: var(--tag-primary-muscle); color: var(--primary); }
+    &.secondary-muscle { background: var(--tag-secondary-muscle); color: var(--on-light); }
+    &.tag-strength { background: var(--tag-strength); color: var(--primary); }
+    &.tag-cardio { background: var(--tag-cardio); color: var(--primary); }
+    &.tag-static { background: var(--tag-static); color: var(--primary); }
+  }
 }
 
 article button:hover {
