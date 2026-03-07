@@ -3,8 +3,8 @@
 url: http://localhost:8080
 ---
 - launchApp
-- runFlow: _flows/setup_local_db.yaml
-- runFlow: _flows/nav_exercises.yaml
+- runFlow: ../subflows/setup_local_db.yaml
+- runFlow: ../subflows/nav_exercises.yaml
 # Tap the "+" link to open the Add Exercise form
 - tapOn:
     text: "+"
