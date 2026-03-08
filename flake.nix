@@ -203,6 +203,10 @@
                 strace
               ]);
             buildInputs = env.commonBuildInputs;
+            postPatch = ''
+              # Ensure the targets list is clean and only contains aarch64
+              sed -i 's/targets = .*/targets = ["aarch64-linux-android"]/' Dioxus.toml
+            '';
             ANDROID_HOME = "${env.androidComposition.androidsdk}/libexec/android-sdk";
             ANDROID_NDK_HOME = "${env.androidComposition.ndk-bundle}/libexec/android-sdk/ndk-bundle";
             buildPhase = ''
@@ -210,8 +214,11 @@
               export XDG_DATA_HOME=$HOME/.local/share
               export GRADLE_USER_HOME=$HOME/.gradle
               mkdir -p $HOME
+              # Pre-create the directory wry expects to avoid canonicalization failure
+              # Dioxus CLI uses the binary name 'log-out' for this path.
+              mkdir -p target/dx/log-out/release/android/app/app/src/main/kotlin/dev/dioxus/main
               export CARGO_TARGET_DIR=target
-              dx build --android --release
+              dx build --android --release --target aarch64-linux-android
             '';
             installPhase = ''
               mkdir -p $out/bin
