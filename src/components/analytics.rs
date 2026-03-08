@@ -41,9 +41,8 @@ fn adapt_metric_unit(metric: Metric, values: &[f64]) -> (&'static str, f64) {
         0.0
     } else {
         #[allow(clippy::cast_precision_loss)]
-        {
-            values.iter().sum::<f64>() / values.len() as f64
-        }
+        let len = values.len() as f64;
+        values.iter().sum::<f64>() / len
     };
     match metric {
         // Raw values are in km; switch to metres when avg < 1 km (keeps 0.0–999.9)

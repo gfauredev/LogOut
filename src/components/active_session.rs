@@ -221,8 +221,7 @@ fn CompletedExercisesSection(
                             show_replay: no_exercise_active,
                             on_replay: {
                                 let id = log.exercise_id.clone();
-                                #[allow(clippy::ignored_unit_patterns)]
-                                move |_| on_replay.call(id.clone())
+                                move |()| on_replay.call(id.clone())
                             },
                         }
                     }
@@ -233,7 +232,6 @@ fn CompletedExercisesSection(
 }
 
 #[component]
-#[allow(clippy::ignored_unit_patterns)]
 pub fn SessionView() -> Element {
     let sessions = storage::use_sessions();
     let session = use_memo(move || {
@@ -348,8 +346,7 @@ pub fn SessionView() -> Element {
         storage::save_session(current_session);
     };
 
-    #[allow(clippy::ignored_unit_patterns)]
-    let complete_exercise = move |_| {
+    let complete_exercise = move |()| {
         let exercise_id = match current_exercise_id.read().as_ref() {
             Some(id) => id.clone(),
             None => return,
@@ -418,8 +415,7 @@ pub fn SessionView() -> Element {
         duration_bell_rung.set(false);
     };
 
-    #[allow(clippy::ignored_unit_patterns)]
-    let cancel_exercise = move |_| {
+    let cancel_exercise = move |()| {
         current_exercise_id.set(None);
         current_exercise_start.set(None);
         weight_input.set(String::new());
@@ -542,7 +538,6 @@ pub fn SessionView() -> Element {
 /// via the global [`crate::ShowRestInputSignal`].
 /// The finish/cancel button ends or discards the session from any page.
 #[component]
-#[allow(clippy::ignored_unit_patterns)]
 pub fn GlobalSessionHeader() -> Element {
     let sessions = storage::use_sessions();
     let session = use_memo(move || sessions.read().iter().find(|s| s.is_active()).cloned());
@@ -558,8 +553,7 @@ pub fn GlobalSessionHeader() -> Element {
     let session_start_time = sess.start_time;
     let session_is_active = sess.is_active();
 
-    #[allow(clippy::ignored_unit_patterns)]
-    let on_finish = move |_| {
+    let on_finish = move |()| {
         let Some(s) = session() else { return };
         if s.is_cancelled() {
             storage::delete_session(&s.id);
@@ -576,8 +570,7 @@ pub fn GlobalSessionHeader() -> Element {
             session_start_time,
             session_is_active,
             exercise_count,
-            on_click_timer: #[allow(clippy::ignored_unit_patterns)]
-            move |_| {
+            on_click_timer: move |()| {
                 let current = *show_rest.peek();
                 show_rest.set(!current);
             },

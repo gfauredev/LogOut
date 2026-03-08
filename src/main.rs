@@ -257,7 +257,7 @@ fn build_session_from_entries(
     entries: &[utils::SessionExerciseEntry],
     exercises: &[models::Exercise],
 ) -> models::WorkoutSession {
-    use models::{Category, Distance, ExerciseLog, Weight, WorkoutSession};
+    use models::{Category, Distance, ExerciseLog, Force, Weight, WorkoutSession};
 
     let base_time = models::get_current_timestamp().saturating_sub(3600); // 1 h ago
     let mut session = WorkoutSession::new();
