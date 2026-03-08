@@ -41,7 +41,7 @@ rusqlite = { version = "0.32", features = ["bundled"] }
 jni = "0.21"
 
 [[bin]]
-name = "log-workout"
+name = "log-out"
 path = "src/main.rs"
 
 [profile.release]

@@ -163,7 +163,7 @@
         in
         {
           web = env.pkgs.rustPlatform.buildRustPackage {
-            pname = "log-workout-web";
+            pname = "log-out-web";
             version = "0.1.0";
             src = self;
             cargoLock.lockFile = ./Cargo.lock;
@@ -175,12 +175,12 @@
             '';
             installPhase = ''
               mkdir -p $out
-              cp -r target/dx/log-workout/release/web/public/* $out/
+              cp -r target/dx/log-out/release/web/public/* $out/
             '';
             doCheck = true;
           };
           android = env.pkgs.rustPlatform.buildRustPackage {
-            pname = "log-workout-android";
+            pname = "log-out-android";
             version = "0.1.0";
             src = self;
             cargoLock.lockFile = ./Cargo.lock;
@@ -208,7 +208,7 @@
             doCheck = true;
           };
           default = env.pkgs.symlinkJoin {
-            name = "log-workout-all";
+            name = "log-out-all";
             paths = [
               self.packages.${system}.web
               self.packages.${system}.android

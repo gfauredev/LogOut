@@ -25,7 +25,7 @@ pub(crate) mod idb {
     use rexie::{ObjectStore, Rexie, TransactionMode};
     use wasm_bindgen::JsValue;
 
-    const DB_NAME: &str = "log_workout_db";
+    const DB_NAME: &str = "log_out_db";
     const DB_VERSION: u32 = 2;
 
     pub const STORE_SESSIONS: &str = "sessions";
@@ -239,8 +239,8 @@ pub(crate) use super::native_queue;
 
 /// SQLite-backed storage for Android and desktop builds.
 ///
-/// A single `log-workout.db` SQLite database file is kept inside the app-
-/// specific data directory (`dirs::data_local_dir()/log-workout/`).
+/// A single `log-out.db` SQLite database file is kept inside the app-
+/// specific data directory (`dirs::data_local_dir()/log-out/`).
 /// Each "store" maps to a table with columns `id TEXT PRIMARY KEY, data TEXT`.
 /// A separate `config` table holds arbitrary key/value string pairs.
 ///
@@ -272,11 +272,11 @@ pub(crate) mod native_storage {
     pub fn data_dir() -> PathBuf {
         dirs::data_local_dir()
             .unwrap_or_else(|| PathBuf::from("."))
-            .join("log-workout")
+            .join("log-out")
     }
 
     fn db_path() -> PathBuf {
-        data_dir().join("log-workout.db")
+        data_dir().join("log-out.db")
     }
 
     /// Opens (or creates) the SQLite database and ensures all required tables exist.
@@ -459,7 +459,7 @@ mod tests {
         let _g = lock();
         let p = native_storage::data_dir();
         assert!(p.to_str().is_some());
-        assert!(p.ends_with("log-workout"));
+        assert!(p.ends_with("log-out"));
     }
 
     // ── put_item / get_all / delete_item ─────────────────────────────────────
@@ -717,7 +717,7 @@ mod tests {
     #[test]
     fn schema_migration_runs_on_fresh_database() {
         let _g = lock();
-        let db_path = native_storage::data_dir().join("log-workout.db");
+        let db_path = native_storage::data_dir().join("log-out.db");
         // Reset to a blank-slate: drop all tables and reset user_version.
         if db_path.exists() {
             let conn = rusqlite::Connection::open(&db_path).unwrap();
@@ -759,7 +759,7 @@ mod tests {
     #[test]
     fn get_all_skips_corrupt_rows() {
         let _g = lock();
-        let db_path = native_storage::data_dir().join("log-workout.db");
+        let db_path = native_storage::data_dir().join("log-out.db");
         // Ensure the DB exists (open_db creates it if absent).
         native_storage::get_all::<WorkoutSession>(native_storage::STORE_SESSIONS).unwrap();
         // Insert a corrupt (non-JSON) row directly via rusqlite.

@@ -117,7 +117,7 @@ To build for web as a PWA, run
 dx build --platform web --release
 ```
 
-Output is written to `target/dx/log-workout/release/web/public/`.
+Output is written to `target/dx/log-out/release/web/public/`.
 
 To serve the PWA locally with hot-reload during development, run
 
@@ -170,11 +170,11 @@ The `main` branch must always pass `100%` of unit tests, covering more than
 They can be run with `cargo llvm-cov` (might need to be installed).
 
 ```sh
-cargo llvm-cov --bin log-workout # Summary inline
+cargo llvm-cov --bin log-out # Summary inline
 ```
 
 ```sh
-cargo llvm-cov --bin log-workout --lcov --output-path lcov.info # LCOV report
+cargo llvm-cov --bin log-out --lcov --output-path lcov.info # LCOV report
 ```
 
 ### End-to-End Testing
