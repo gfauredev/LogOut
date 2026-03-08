@@ -103,42 +103,17 @@ jobs:
           ./scripts/android-sign.sh "$APK_FILE"
           cp "$APK_FILE" logout-android-arm64.apk
 
-      - name: Build and Sign AAB
-        env:
-          ANDROID_KEYSTORE_PASS: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
-          ANDROID_KEY_PASS: ${{ secrets.ANDROID_KEY_PASSWORD }}
-        run: |
-          # AAB will use the fixed icons from the previous step
-          GRADLE_W=$(find target/dx/log-out/release/android/ -name "gradlew" | head -n 1)
-          GRADLE_DIR=$(dirname "$GRADLE_W")
-          cd "$GRADLE_DIR"
-          ./gradlew bundleRelease \
-            -Pandroid.injected.signing.store.file="$GITHUB_WORKSPACE/android/secrets/logout.jks" \
-            -Pandroid.injected.signing.store.password="$ANDROID_KEYSTORE_PASS" \
-            -Pandroid.injected.signing.key.alias="logout-key" \
-            -Pandroid.injected.signing.key.password="$ANDROID_KEY_PASS"
-          AAB_FILE=$(find . -name "*.aab" | head -n 1)
-          if [ -z "$AAB_FILE" ]; then
-            echo "::error::No AAB found"
-            exit 1
-          fi
-          cp "$AAB_FILE" "$GITHUB_WORKSPACE/logout-android-arm64.aab"
-
       - name: Upload Artifacts
         uses: actions/upload-artifact@v4
         with:
           name: android-arm64
-          path: |
-            logout-android-arm64.apk
-            logout-android-arm64.aab
+          path: logout-android-arm64.apk
 
       - name: Publish to GitHub Release
         if: github.event_name == 'release'
         uses: softprops/action-gh-release@v2
         with:
-          files: |
-            logout-android-arm64.apk
-            logout-android-arm64.aab
+          files: logout-android-arm64.apk
 
       - name: Update Latest Rolling Release
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
@@ -146,10 +121,10 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           TAG="latest-android"
-          NOTES="Latest arm64 builds from main branch.\n\n- [logout-android-arm64.apk](https://github.com/${{ github.repository }}/releases/download/$TAG/logout-android-arm64.apk)\n- [logout-android-arm64.aab](https://github.com/${{ github.repository }}/releases/download/$TAG/logout-android-arm64.aab)"
+          NOTES="Latest arm64 builds from main branch.\n\n- [logout-android-arm64.apk](https://github.com/${{ github.repository }}/releases/download/$TAG/logout-android-arm64.apk)"
           if gh release view "$TAG" >/dev/null 2>&1; then
-            gh release upload "$TAG" logout-android-arm64.apk logout-android-arm64.aab --clobber
+            gh release upload "$TAG" logout-android-arm64.apk --clobber
             gh release edit "$TAG" --notes "$NOTES"
           else
-            gh release create "$TAG" logout-android-arm64.apk logout-android-arm64.aab --prerelease --title "Latest Android Build (arm64)" --notes "$NOTES"
+            gh release create "$TAG" logout-android-arm64.apk --prerelease --title "Latest Android Build (arm64)" --notes "$NOTES"
           fi
