@@ -37,7 +37,6 @@ pub fn enqueue(op: NativeOp) {
     });
 }
 
-#[allow(clippy::unused_async)]
 async fn drain() {
     loop {
         let op = QUEUE.with(|q| q.borrow_mut().1.pop_front());
@@ -68,5 +67,7 @@ async fn drain() {
                 }
             }
         }
+        // Yield to the executor to keep the UI responsive during batch writes
+        tokio::task::yield_now().await;
     }
 }

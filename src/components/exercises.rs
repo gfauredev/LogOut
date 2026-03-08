@@ -6,7 +6,7 @@ use dioxus::prelude::*;
 /// Number of exercises loaded per scroll increment.
 const PAGE_SIZE: usize = 20;
 /// Pixels from the bottom of the page at which an auto-pagination is triggered.
-const SCROLL_THRESHOLD_PX: f64 = 300.0;
+const SCROLL_THRESHOLD_PX: u32 = 300;
 /// Polling interval (ms) for the non-wasm scroll detection loop.
 #[cfg(not(target_arch = "wasm32"))]
 const SCROLL_POLL_INTERVAL_MS: u32 = 400;
@@ -125,7 +125,7 @@ pub fn Exercises() -> Element {
             let client_height = el.client_height() as f64;
             let scroll_height = el.scroll_height() as f64;
 
-            if scroll_top + client_height >= scroll_height - SCROLL_THRESHOLD_PX {
+            if scroll_top + client_height >= scroll_height - f64::from(SCROLL_THRESHOLD_PX) {
                 let cur = *visible_count.peek();
                 let total = exercises.peek().len();
                 if cur < total {
@@ -147,7 +147,6 @@ pub fn Exercises() -> Element {
     // the user is near the bottom; Rust receives it and increments visible_count.
     #[cfg(not(target_arch = "wasm32"))]
     use_hook(move || {
-        #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
         let js = format!(
             r"
             (function() {{
@@ -162,7 +161,7 @@ pub fn Exercises() -> Element {
                 }}, {interval});
             }})()
             ",
-            threshold = SCROLL_THRESHOLD_PX as u32,
+            threshold = SCROLL_THRESHOLD_PX,
             interval = SCROLL_POLL_INTERVAL_MS,
         );
         spawn(async move {

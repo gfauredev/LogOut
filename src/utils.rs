@@ -211,8 +211,15 @@ pub fn parse_session_exercises(s: &str) -> Vec<SessionExerciseEntry> {
                 if w.is_empty() || w == "-" {
                     None
                 } else {
-                    #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
-                    w.parse::<f64>().ok().map(|kg| (kg * 10.0).round() as u32)
+                    w.parse::<f64>().ok().and_then(|kg| {
+                        let hg = (kg * 10.0).round();
+                        // Ensure the value fits in u32 (up to ~429,496,729.5 kg)
+                        if (0.0..=f64::from(u32::MAX)).contains(&hg) {
+                            Some(hg as u32)
+                        } else {
+                            None
+                        }
+                    })
                 }
             });
             let reps = parts.next().and_then(|r| {
