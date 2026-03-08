@@ -324,7 +324,10 @@ fn CongratulationsToast() -> Element {
                 #[cfg(target_arch = "wasm32")]
                 gloo_timers::future::TimeoutFuture::new(TOAST_DISMISS_MS).await;
                 #[cfg(not(target_arch = "wasm32"))]
-                tokio::time::sleep(std::time::Duration::from_millis(u64::from(TOAST_DISMISS_MS))).await;
+                tokio::time::sleep(std::time::Duration::from_millis(u64::from(
+                    TOAST_DISMISS_MS,
+                )))
+                .await;
                 if *gen.peek() == next {
                     show.set(false);
                 }
@@ -360,7 +363,10 @@ fn Toast() -> Element {
                 #[cfg(target_arch = "wasm32")]
                 gloo_timers::future::TimeoutFuture::new(TOAST_DISMISS_MS).await;
                 #[cfg(not(target_arch = "wasm32"))]
-                tokio::time::sleep(std::time::Duration::from_millis(u64::from(TOAST_DISMISS_MS))).await;
+                tokio::time::sleep(std::time::Duration::from_millis(u64::from(
+                    TOAST_DISMISS_MS,
+                )))
+                .await;
                 if *gen.peek() == next {
                     toast.set(None);
                 }

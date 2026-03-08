@@ -50,7 +50,10 @@ pub(crate) fn is_refresh_due() -> bool {
     let Ok(last_fetch) = ts_str.parse::<f64>() else {
         return true;
     };
-    let now_secs = time::OffsetDateTime::now_utc().unix_timestamp().max(0).cast_unsigned();
+    let now_secs = time::OffsetDateTime::now_utc()
+        .unix_timestamp()
+        .max(0)
+        .cast_unsigned();
     let last_secs = last_fetch as u64;
     now_secs.saturating_sub(last_secs) >= EXERCISE_DB_REFRESH_INTERVAL_SECS
 }
@@ -62,7 +65,10 @@ pub(crate) fn is_refresh_due() -> bool {
     use crate::services::storage::native_storage;
     let last_fetch =
         native_storage::get_config_value(LAST_FETCH_KEY).and_then(|s| s.parse::<u64>().ok());
-    let now = time::OffsetDateTime::now_utc().unix_timestamp().max(0).cast_unsigned();
+    let now = time::OffsetDateTime::now_utc()
+        .unix_timestamp()
+        .max(0)
+        .cast_unsigned();
     is_refresh_due_for(now, last_fetch)
 }
 

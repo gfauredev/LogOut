@@ -46,7 +46,12 @@ pub async fn reload_exercises(mut sig: Signal<Vec<Exercise>>, mut toast: Signal<
                 );
                 idb_exercises::store_all_exercises(&exercises).await;
                 exercise_db::record_fetch_timestamp();
-                sig.set(exercises.into_iter().map(Exercise::with_lowercase).collect());
+                sig.set(
+                    exercises
+                        .into_iter()
+                        .map(Exercise::with_lowercase)
+                        .collect(),
+                );
                 toast.set(Some(
                     "✅ Exercise database reloaded successfully".to_string(),
                 ));
@@ -75,7 +80,12 @@ pub async fn reload_exercises(mut sig: Signal<Vec<Exercise>>, mut toast: Signal<
                 );
                 native_exercises::store_all_exercises(&exercises);
                 exercise_db::record_fetch_timestamp();
-                sig.set(exercises.into_iter().map(Exercise::with_lowercase).collect());
+                sig.set(
+                    exercises
+                        .into_iter()
+                        .map(Exercise::with_lowercase)
+                        .collect(),
+                );
                 toast.set(Some(
                     "✅ Exercise database reloaded successfully".to_string(),
                 ));
@@ -125,7 +135,12 @@ async fn load_exercises(mut sig: Signal<Vec<Exercise>>) {
                 );
                 idb_exercises::store_all_exercises(&exercises).await;
                 exercise_db::record_fetch_timestamp();
-                sig.set(exercises.into_iter().map(Exercise::with_lowercase).collect());
+                sig.set(
+                    exercises
+                        .into_iter()
+                        .map(Exercise::with_lowercase)
+                        .collect(),
+                );
                 return;
             }
             Ok(_) => log::warn!("Downloaded exercises file was empty"),
@@ -160,7 +175,12 @@ async fn load_exercises(mut sig: Signal<Vec<Exercise>>) {
                 );
                 native_exercises::store_all_exercises(&exercises);
                 exercise_db::record_fetch_timestamp();
-                sig.set(exercises.into_iter().map(Exercise::with_lowercase).collect());
+                sig.set(
+                    exercises
+                        .into_iter()
+                        .map(Exercise::with_lowercase)
+                        .collect(),
+                );
                 return;
             }
             Ok(_) => log::warn!("Downloaded exercises file was empty"),

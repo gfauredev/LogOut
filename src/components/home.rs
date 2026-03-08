@@ -165,7 +165,7 @@ fn SessionCard(session: WorkoutSession) -> Element {
                             move |_| {
                                         let mut new_session = WorkoutSession::new();
                                         new_session.pending_exercise_ids.clone_from(&pending_ids);
-                                
+
                                 storage::save_session(new_session);
                             }
                         },

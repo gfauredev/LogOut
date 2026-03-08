@@ -577,7 +577,8 @@ mod tests {
         let ex3 = make_exercise("store_all_ex3", "Exercise Three");
 
         native_storage::store_all(native_storage::STORE_EXERCISES, &[ex1, ex2]).unwrap();
-        native_storage::store_all(native_storage::STORE_EXERCISES, std::slice::from_ref(&ex3)).unwrap();
+        native_storage::store_all(native_storage::STORE_EXERCISES, std::slice::from_ref(&ex3))
+            .unwrap();
 
         let loaded: Vec<Exercise> =
             native_storage::get_all(native_storage::STORE_EXERCISES).unwrap();

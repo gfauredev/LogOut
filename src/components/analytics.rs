@@ -124,7 +124,7 @@ pub fn Analytics() -> Element {
                         if &log.exercise_id == exercise_id {
                             if let Some(value) = metric.extract_value(log) {
                                 #[allow(clippy::cast_precision_loss)]
-                            points.push((log.start_time as f64, value));
+                                points.push((log.start_time as f64, value));
                             }
                         }
                     }
