@@ -18,6 +18,8 @@ pub fn AddExercise() -> Element {
     let image_url_input = use_signal(String::new);
     let images_list = use_signal(Vec::<String>::new);
 
+    let sessions = storage::use_sessions();
+
     let save_exercise = move |_: ()| {
         let name = name_input.read().trim().to_string();
         if name.is_empty() {
@@ -42,8 +44,21 @@ pub fn AddExercise() -> Element {
             images: images_list.read().clone(),
         };
 
+        let exercise_id = exercise.id.clone();
         storage::add_custom_exercise(exercise);
-        navigator().go_back();
+
+        // If an active session exists, directly start the new exercise in it
+        let active = sessions.read().iter().find(|s| s.is_active()).cloned();
+        if let Some(mut active_session) = active {
+            let start = get_current_timestamp();
+            active_session.current_exercise_id = Some(exercise_id);
+            active_session.current_exercise_start = Some(start);
+            active_session.rest_start_time = None;
+            storage::save_session(active_session);
+            navigator().push(crate::Route::Home {});
+        } else {
+            navigator().go_back();
+        }
     };
 
     rsx! {

@@ -6,6 +6,32 @@ pub(crate) const EXERCISE_DB_BASE_URL: &str =
 /// localStorage / config-file key used to store a user-configured exercise database URL.
 pub(crate) const EXERCISE_DB_URL_STORAGE_KEY: &str = "exercise_db_url";
 
+/// Normalise a user-supplied exercise database URL so it is safe to use as a
+/// base URL for building file paths.
+///
+/// Applies the following transformations:
+/// - Leading/trailing whitespace is stripped.
+/// - If no scheme (`http://` / `https://`) is present, `https://` is prepended.
+/// - If no trailing `/` is present, one is appended.
+///
+/// An empty string is returned unchanged (it signals "reset to default").
+pub fn normalize_db_url(url: &str) -> String {
+    let url = url.trim();
+    if url.is_empty() {
+        return String::new();
+    }
+    let url = if url.starts_with("http://") || url.starts_with("https://") {
+        url.to_string()
+    } else {
+        format!("https://{url}")
+    };
+    if url.ends_with('/') {
+        url
+    } else {
+        format!("{url}/")
+    }
+}
+
 /// Returns the effective exercise database base URL.
 /// On WASM, checks localStorage for a user-configured URL first.
 /// On native, checks the app config file.
@@ -525,5 +551,61 @@ mod tests {
         let entries = super::parse_session_exercises("Bench:77.5:10");
         assert_eq!(entries[0].weight_hg, Some(775));
         assert_eq!(entries[0].reps, Some(10));
+    }
+
+    // ── normalize_db_url ─────────────────────────────────────────────────────
+
+    #[test]
+    fn normalize_db_url_empty_returns_empty() {
+        assert_eq!(super::normalize_db_url(""), "");
+        assert_eq!(super::normalize_db_url("   "), "");
+    }
+
+    #[test]
+    fn normalize_db_url_adds_trailing_slash() {
+        assert_eq!(
+            super::normalize_db_url("https://example.com"),
+            "https://example.com/"
+        );
+        assert_eq!(
+            super::normalize_db_url("http://localhost:8080"),
+            "http://localhost:8080/"
+        );
+    }
+
+    #[test]
+    fn normalize_db_url_keeps_existing_trailing_slash() {
+        assert_eq!(
+            super::normalize_db_url("https://example.com/"),
+            "https://example.com/"
+        );
+    }
+
+    #[test]
+    fn normalize_db_url_adds_https_scheme() {
+        assert_eq!(
+            super::normalize_db_url("example.com"),
+            "https://example.com/"
+        );
+        assert_eq!(
+            super::normalize_db_url("localhost:8080"),
+            "https://localhost:8080/"
+        );
+    }
+
+    #[test]
+    fn normalize_db_url_keeps_http_scheme() {
+        assert_eq!(
+            super::normalize_db_url("http://localhost:8080"),
+            "http://localhost:8080/"
+        );
+    }
+
+    #[test]
+    fn normalize_db_url_trims_whitespace() {
+        assert_eq!(
+            super::normalize_db_url("  https://example.com  "),
+            "https://example.com/"
+        );
     }
 }

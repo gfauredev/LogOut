@@ -13,7 +13,9 @@ pub fn Credits() -> Element {
     let save_url = move |evt: Event<FormData>| {
         evt.prevent_default();
         #[allow(unused_variables)]
-        let url = url_input.read().trim().to_string();
+        let url = crate::utils::normalize_db_url(url_input.read().trim());
+        // Keep the input in sync with what was actually stored
+        url_input.set(url.clone());
         #[cfg(target_arch = "wasm32")]
         {
             if let Some(window) = web_sys::window() {

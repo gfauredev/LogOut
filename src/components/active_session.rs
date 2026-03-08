@@ -263,10 +263,20 @@ pub fn SessionView() -> Element {
     let mut reps_input = use_signal(String::new);
     let mut distance_input = use_signal(String::new);
 
-    // Rest duration setting (configurable by clicking the timer)
+    // Rest duration setting (configurable by clicking the timer header)
     let rest_duration = use_signal(|| DEFAULT_REST_DURATION);
-    let mut show_rest_input = use_signal(|| false);
+    // show_rest_input is driven by the global ShowRestInputSignal so that
+    // the header (rendered in the layout) can toggle it from any page.
+    let show_rest_input = use_context::<crate::ShowRestInputSignal>().0;
     let mut rest_input_value = use_signal(|| DEFAULT_REST_DURATION.to_string());
+
+    // Pre-fill the rest duration input with the current value each time the
+    // rest-input panel is opened (so the field always reflects the latest setting).
+    use_effect(move || {
+        if *show_rest_input.read() {
+            rest_input_value.set(rest_duration.read().to_string());
+        }
+    });
 
     // Rest timer state: tracks when the last exercise was completed
     let mut rest_start_time = use_signal(move || {
@@ -276,9 +286,6 @@ pub fn SessionView() -> Element {
             .find(|s| s.is_active())
             .and_then(|s| s.rest_start_time)
     });
-
-    // Congratulations toast (global context, survives session unmount)
-    let mut congratulations = use_context::<crate::CongratulationsSignal>().0;
 
     // Bell rung tracker: how many times the rest bell has rung this rest period
     let mut rest_bell_count = use_signal(|| 0u64);
@@ -422,33 +429,8 @@ pub fn SessionView() -> Element {
         storage::save_session(current_session);
     };
 
-    let finish_session = move |_| {
-        let mut current_session = session.read().clone();
-        if current_session.is_cancelled() {
-            // No exercises logged: discard the session entirely
-            storage::delete_session(&current_session.id);
-            return;
-        }
-        current_session.end_time = Some(get_current_timestamp());
-        storage::save_session(current_session.clone());
-        // Show congratulatory toast (auto-dismiss is handled by CongratulationsToast)
-        congratulations.set(true);
-    };
-
-    let exercise_count = session.read().exercise_logs.len();
-
     rsx! {
-        SessionHeader {
-            session_start_time: session.read().start_time,
-            session_is_active: session.read().is_active(),
-            exercise_count,
-            on_click_timer: move |_| {
-                rest_input_value.set(rest_duration.read().to_string());
-                let current = *show_rest_input.read();
-                show_rest_input.set(!current);
-            },
-            on_finish: finish_session,
-        }
+        // NOTE: SessionHeader is rendered by GlobalSessionHeader in the layout.
         if *show_rest_input.read() {
             RestDurationInput {
                 show_rest_input,
@@ -546,6 +528,54 @@ pub fn SessionView() -> Element {
                     on_replay: move |exercise_id: String| start_exercise(exercise_id),
                 }
             }
+        }
+    }
+}
+
+/// Sticky session header rendered in the app-level layout so it remains
+/// visible on every page while a workout session is active.
+///
+/// Clicking the timer toggles the rest-duration input form in [`SessionView`]
+/// via the global [`crate::ShowRestInputSignal`].
+/// The finish/cancel button ends or discards the session from any page.
+#[component]
+pub fn GlobalSessionHeader() -> Element {
+    let sessions = storage::use_sessions();
+    let session = use_memo(move || sessions.read().iter().find(|s| s.is_active()).cloned());
+
+    let mut show_rest = use_context::<crate::ShowRestInputSignal>().0;
+    let mut congratulations = use_context::<crate::CongratulationsSignal>().0;
+
+    let Some(sess) = session() else {
+        return rsx! {};
+    };
+
+    let exercise_count = sess.exercise_logs.len();
+    let session_start_time = sess.start_time;
+    let session_is_active = sess.is_active();
+
+    let on_finish = move |_| {
+        let Some(s) = session() else { return };
+        if s.is_cancelled() {
+            storage::delete_session(&s.id);
+        } else {
+            let mut s = s.clone();
+            s.end_time = Some(get_current_timestamp());
+            storage::save_session(s);
+            congratulations.set(true);
+        }
+    };
+
+    rsx! {
+        SessionHeader {
+            session_start_time,
+            session_is_active,
+            exercise_count,
+            on_click_timer: move |_| {
+                let current = *show_rest.peek();
+                show_rest.set(!current);
+            },
+            on_finish,
         }
     }
 }

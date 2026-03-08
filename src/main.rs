@@ -14,7 +14,9 @@ mod services;
 /// Pure utility helpers (date formatting, URL resolution, timestamp helpers).
 pub mod utils;
 
-use components::{AddExercise, Analytics, Credits, EditExercise, Exercises, Home};
+use components::{
+    AddExercise, Analytics, Credits, EditExercise, Exercises, GlobalSessionHeader, Home,
+};
 
 /// Global context signal for the congratulations toast shown after completing a session.
 #[derive(Clone, Copy)]
@@ -29,6 +31,13 @@ pub struct ToastSignal(pub Signal<Option<String>>);
 /// to trigger the browser permission dialog.
 #[derive(Clone, Copy)]
 pub struct NotificationPermissionToastSignal(pub Signal<bool>);
+
+/// Global context signal used to show/hide the rest-duration input form in
+/// the active [`SessionView`].  The form is toggled by clicking the timer in
+/// the [`GlobalSessionHeader`] which lives in the layout and is shared across
+/// all pages.
+#[derive(Clone, Copy)]
+pub struct ShowRestInputSignal(pub Signal<bool>);
 
 /// Auto-dismiss delay for toasts in milliseconds.
 const TOAST_DISMISS_MS: u32 = 3_000;
@@ -84,6 +93,7 @@ fn App() -> Element {
     use_context_provider(|| NotificationPermissionToastSignal(Signal::new(false)));
     use_context_provider(|| ExerciseSearchSignal(Signal::new(None)));
     use_context_provider(|| PendingDeepLinkSignal(Signal::new(None)));
+    use_context_provider(|| ShowRestInputSignal(Signal::new(false)));
 
     // Show the notification permission warning toast when permission has not yet
     // been granted.  The toast prompts the user to click it — respecting browsers
@@ -149,6 +159,9 @@ fn DeepLinkLayout() -> Element {
                     nav.push(Route::Exercises {});
                 }
                 DeepLinkAction::SetDbUrl(url) => {
+                    // Normalise the URL before persisting so it is always
+                    // ready to be used as a base URL (scheme + trailing slash).
+                    let url = utils::normalize_db_url(&url);
                     // Persist the new URL in localStorage immediately so that
                     // `get_exercise_db_url()` picks it up when exercises reload.
                     if let Some(window) = web_sys::window() {
@@ -177,14 +190,23 @@ fn DeepLinkLayout() -> Element {
         });
 
         // ── Deferred: create past session once exercises are available ───────
+        //
+        // Both `exercises_sig` and `pending` are READ here so that the effect
+        // re-fires when either changes.  Using `.write().take()` for `pending`
+        // would only write (no reactive subscription), causing the effect to
+        // miss the stored action when exercises finish loading.
         use_effect(move || {
             let exercises = exercises_sig.read();
-            if exercises.is_empty() {
-                return; // not loaded yet
-            }
-            let Some(action) = pending.write().take() else {
-                return;
+            // Clone the pending action to release the read lock before any write
+            let action = { (*pending.read()).clone() };
+            let Some(action) = action else {
+                return; // nothing pending
             };
+            if exercises.is_empty() {
+                return; // exercises not loaded yet; will retry when they load
+            }
+            // Clear the pending action to avoid reprocessing on future re-runs
+            pending.set(None);
             if let DeepLinkAction::CreateSession(entries) = action {
                 let session = build_session_from_entries(&entries, &exercises);
                 services::storage::save_session(session);
@@ -192,7 +214,10 @@ fn DeepLinkLayout() -> Element {
         });
     }
 
-    rsx! { Outlet::<Route> {} }
+    rsx! {
+        GlobalSessionHeader {}
+        Outlet::<Route> {}
+    }
 }
 
 /// Convert a deep-link path string such as `"/"` or `"/exercises"` to a [`Route`].
