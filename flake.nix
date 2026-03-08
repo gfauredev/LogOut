@@ -49,8 +49,16 @@
             ];
           };
           androidComposition = pkgs.androidenv.composeAndroidPackages {
-            platformVersions = [ "35" ]; # Target latest Android
-            buildToolsVersions = [ "35.0.0" ];
+            platformVersions = [
+              "33"
+              "34"
+              "35"
+            ]; # Target latest Android
+            buildToolsVersions = [
+              "33.0.2"
+              "34.0.0"
+              "35.0.0"
+            ];
             includeNDK = true;
             includeEmulator = false; # Clean up unused
             includeSystemImages = false; # Clean up unused
@@ -73,7 +81,6 @@
             # xvfb-run
           ];
           commonBuildInputs =
-            with pkgs;
             [ ]
             ++ pkgs.lib.optionals pkgs.stdenv.isDarwin [
               pkgs.darwin.apple_sdk.frameworks.Security
@@ -101,6 +108,7 @@
             packages = with env.pkgs; [
               # biome
               # bun # JS runtime, bundler, package manager
+              patchelf
               sass
               scss-lint
               strace
@@ -121,12 +129,24 @@
                 openjdk
               ]);
             buildInputs = env.commonBuildInputs;
-
             ANDROID_HOME = "${env.androidComposition.androidsdk}/libexec/android-sdk";
             ANDROID_NDK_HOME = "${env.androidComposition.ndk-bundle}/libexec/android-sdk/ndk-bundle";
-
+            LD_LIBRARY_PATH =
+              with env.pkgs;
+              lib.makeLibraryPath [
+                stdenv.cc.cc.lib
+                zlib
+              ];
             shellHook = ''
               export SE_CACHE_PATH="$PWD/.selenium"
+              # Patch aapt2 if found in gradle cache, workaround Android on Nix
+              find /home/gf/.gradle/caches -name aapt2 -type f -executable 2>/dev/null | while read -r aapt2; do
+                if ! patchelf --print-interpreter "$aapt2" >/dev/null 2>&1 || [[ "$(patchelf --print-interpreter "$aapt2")" == /lib* ]]; then
+                  echo "🔧 Patching aapt2 at $aapt2"
+                  patchelf --set-interpreter "$(cat $NIX_CC/nix-support/dynamic-linker)" "$aapt2" || true
+                  patchelf --set-rpath "$LD_LIBRARY_PATH" "$aapt2" || true
+                fi
+              done
               echo "💪 LogOut Dev Environment Ready"
               echo "- Rust $(rustc --version)"
               echo "- Dioxus CLI $(dx --version)"
