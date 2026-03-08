@@ -16,7 +16,7 @@
     let
       forAllSystems = nixpkgs.lib.genAttrs [
         "x86_64-linux"
-        "aarch64-linux"
+        # "aarch64-linux"
         "aarch64-darwin"
       ];
       nixpkgsFor = forAllSystems (
@@ -43,9 +43,9 @@
             targets = [
               "wasm32-unknown-unknown"
               "aarch64-linux-android"
-              "armv7-linux-androideabi"
-              "i686-linux-android"
               "x86_64-linux-android"
+              # "armv7-linux-androideabi"
+              # "i686-linux-android"
             ];
           };
           androidComposition = pkgs.androidenv.composeAndroidPackages {
@@ -171,7 +171,7 @@
             buildInputs = env.commonBuildInputs;
             buildPhase = ''
               export CARGO_TARGET_DIR=target
-              dx build --release --platform web
+              dx build --web --release
             '';
             installPhase = ''
               mkdir -p $out
@@ -198,7 +198,7 @@
             ANDROID_NDK_HOME = "${env.androidComposition.ndk-bundle}/libexec/android-sdk/ndk-bundle";
             buildPhase = ''
               export CARGO_TARGET_DIR=target
-              dx build --release --platform android
+              dx build --android --release
             '';
             installPhase = ''
               mkdir -p $out/bin

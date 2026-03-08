@@ -3,8 +3,10 @@ name = "LogOut"
 default_platform = "web"
 
 [bundle]
-identifier = "com.gfaure.logworkout"
+name = "LogOut"
+identifier = "com.gfaure.logout"
 publisher = "gfaure"
+icon = ["logo.png"]
 
 [web.app]
 title = "LogOut - Workout Logger"
@@ -14,4 +16,5 @@ reload_html = true
 index_on_404 = true
 
 [android]
-targets = ["aarch64-linux-android", "x86_64-linux-android"]
+theme = "Theme.AppCompat.NoActionBar"
+targets = ["aarch64-linux-android"]

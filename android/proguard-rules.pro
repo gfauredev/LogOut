@@ -1,6 +1,6 @@
 # Keep Dioxus and NDK bridge classes
 -keep class dev.dioxus.** { *; }
--keep class com.gfaure.logworkout.** { *; }
+-keep class com.gfaure.logout.** { *; }
 -keep class androidx.webkit.** { *; }
 
 # Allow obfuscation but keep the essential bridge

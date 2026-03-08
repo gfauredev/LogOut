@@ -3,7 +3,7 @@
   --article: #121212;
   --separation: #333;
   // Text Colors
-  --primary: #fff;
+  --primary: white;
   --secondary: #a0a0a0;
   // Actions Colors
   --add: #2e7dff; // Add / Create ➕
@@ -33,6 +33,19 @@
   --z-modal: 3;
   --z-nav: 4;
   --z-toast: 5;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background: black;
+  color: var(--primary);
+  font-family: system-ui, sans-serif;
+  min-height: 100vh;
 }
 
 @import "generic"; // Rules targetting an arbitrary number of elements
