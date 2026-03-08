@@ -72,7 +72,7 @@ jobs:
           mkdir -p android/secrets
           echo "${{ secrets.ANDROID_KEYSTORE_B64 }}" | base64 -d > android/secrets/logout.jks
 
-      - name: Build Android (arm64)
+      - name: Build Android (Project Prep)
         run: >-
           dx build
           --platform android
@@ -80,13 +80,22 @@ jobs:
           --no-default-features
           --features mobile-platform
 
+      - name: Fix Icons and Rebuild APK
+        run: |
+          chmod +x scripts/android-icon.sh
+          ./scripts/android-icon.sh
+
       - name: Sign APK
         env:
           ANDROID_KEYSTORE_PASS: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
           ANDROID_KEY_PASS: ${{ secrets.ANDROID_KEY_PASSWORD }}
           ANDROID_KEYSTORE_PATH: "android/secrets/logout.jks"
         run: |
-          APK_FILE=$(find target/dx/log-out/release/android/ -name "*.apk" | head -n 1)
+          chmod +x scripts/android-sign.sh
+          APK_FILE=$(find target/dx/log-out/release/android/ -name "*release-unsigned.apk" | head -n 1)
+          if [ -z "$APK_FILE" ]; then
+            APK_FILE=$(find target/dx/log-out/release/android/ -name "*.apk" | head -n 1)
+          fi
           if [ -z "$APK_FILE" ]; then
             echo "::error::No APK found"
             exit 1
@@ -99,6 +108,7 @@ jobs:
           ANDROID_KEYSTORE_PASS: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
           ANDROID_KEY_PASS: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: |
+          # AAB will use the fixed icons from the previous step
           GRADLE_W=$(find target/dx/log-out/release/android/ -name "gradlew" | head -n 1)
           GRADLE_DIR=$(dirname "$GRADLE_W")
           cd "$GRADLE_DIR"
@@ -108,6 +118,10 @@ jobs:
             -Pandroid.injected.signing.key.alias="logout-key" \
             -Pandroid.injected.signing.key.password="$ANDROID_KEY_PASS"
           AAB_FILE=$(find . -name "*.aab" | head -n 1)
+          if [ -z "$AAB_FILE" ]; then
+            echo "::error::No AAB found"
+            exit 1
+          fi
           cp "$AAB_FILE" "$GITHUB_WORKSPACE/logout-android-arm64.aab"
 
       - name: Upload Artifacts
