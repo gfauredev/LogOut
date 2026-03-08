@@ -12,7 +12,7 @@ pub mod home;
 mod session_exercise_form;
 mod session_timers;
 
-pub use active_session::SessionView;
+pub use active_session::{GlobalSessionHeader, SessionView};
 pub use add_exercise::AddExercise;
 pub use analytics::Analytics;
 pub use bottom_nav::{ActiveTab, BottomNav};

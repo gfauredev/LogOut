@@ -367,6 +367,7 @@ impl Exercise {
     /// - `"tag-cardio"` / `"🏃"` — distance-based (Category::Cardio)
     /// - `"tag-strength"` / `"💪"` — repetition-based (Force::Pull / Force::Push)
     /// - `"tag-static"` / `"⏱️"` — time-only (static hold, stretch, etc.)
+    #[allow(dead_code)]
     pub fn type_tag(&self) -> (&'static str, &'static str) {
         exercise_type_tag(self.category, self.force)
     }
