@@ -78,7 +78,6 @@
             rustToolchain
             selenium-manager
             ungoogled-chromium
-            # xvfb-run
           ];
           commonBuildInputs =
             [ ]
@@ -106,15 +105,13 @@
         {
           default = env.pkgs.mkShell {
             packages = with env.pkgs; [
-              # biome
-              # bun # JS runtime, bundler, package manager
+              biome
               patchelf
               sass
               scss-lint
               strace
               taplo # TOML LSP
-              # typescript
-              # typescript-language-server # TS LSP
+              typescript-language-server # TS LSP
               vscode-langservers-extracted # HTML/CSS/JS(ON)
               yaml-language-server # YAML LSP
 
@@ -131,6 +128,7 @@
             buildInputs = env.commonBuildInputs;
             ANDROID_HOME = "${env.androidComposition.androidsdk}/libexec/android-sdk";
             ANDROID_NDK_HOME = "${env.androidComposition.ndk-bundle}/libexec/android-sdk/ndk-bundle";
+            GRADLE_USER_HOME = "$PWD/.gradle";
             LD_LIBRARY_PATH =
               with env.pkgs;
               lib.makeLibraryPath [
@@ -139,10 +137,11 @@
               ];
             shellHook = ''
               export SE_CACHE_PATH="$PWD/.selenium"
-              # Patch aapt2 if found in gradle cache, workaround Android on Nix
-              find /home/gf/.gradle/caches -name aapt2 -type f -executable 2>/dev/null | while read -r aapt2; do
+              # Patch aapt2 if in gradle cache or target dir (Android on Nix)
+              find "$GRADLE_USER_HOME/caches" "$PWD/target" -name aapt2 -type f -executable 2>/dev/null | while read -r aapt2; do
                 if ! patchelf --print-interpreter "$aapt2" >/dev/null 2>&1 || [[ "$(patchelf --print-interpreter "$aapt2")" == /lib* ]]; then
                   echo "🔧 Patching aapt2 at $aapt2"
+                  chmod +x "$aapt2" # Just in case
                   patchelf --set-interpreter "$(cat $NIX_CC/nix-support/dynamic-linker)" "$aapt2" || true
                   patchelf --set-rpath "$LD_LIBRARY_PATH" "$aapt2" || true
                 fi
