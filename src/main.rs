@@ -74,9 +74,18 @@ fn main() {
     // Initialize logger
     dioxus_logger::init(dioxus_logger::tracing::Level::INFO).expect("failed to init logger");
 
-    // Initialize Android notification channels
-    #[cfg(not(target_arch = "wasm32"))]
-    services::android_notifications::setup_notification_channel();
+    // Initialize Android-specific paths and channels
+    #[cfg(target_os = "android")]
+    {
+        // Try to get the internal data directory from the environment or system properties.
+        // Dioxus/Tao on Android typically sets some environment variables or we can
+        // rely on the JNI bridge `setDataDir` to be called by the Java side.
+        services::android_notifications::setup_notification_channel();
+    }
+    #[cfg(all(not(target_arch = "wasm32"), not(target_os = "android")))]
+    {
+        // Desktop notifications or other setup
+    }
 
     // Register service worker for offline image caching
     services::service_worker::register_service_worker();

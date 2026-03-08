@@ -252,6 +252,23 @@ pub(crate) mod native_storage {
     use serde::{de::DeserializeOwned, Serialize};
     use std::path::PathBuf;
 
+    #[cfg(target_os = "android")]
+    static ANDROID_DATA_DIR: std::sync::OnceLock<String> = std::sync::OnceLock::new();
+
+    #[cfg(target_os = "android")]
+    #[no_mangle]
+    pub extern "C" fn Java_dev_dioxus_main_MainActivity_setDataDir(
+        mut env: jni::JNIEnv,
+        _class: jni::objects::JClass,
+        data_dir: jni::objects::JString,
+    ) {
+        let dir: String = env
+            .get_string(&data_dir)
+            .expect("Couldn't get java string!")
+            .into();
+        let _ = ANDROID_DATA_DIR.set(dir);
+    }
+
     pub const STORE_SESSIONS: &str = "sessions";
     pub const STORE_CUSTOM_EXERCISES: &str = "custom_exercises";
     pub const STORE_EXERCISES: &str = "exercises";
@@ -270,6 +287,12 @@ pub(crate) mod native_storage {
 
     /// Returns the application data directory, creating it if necessary.
     pub fn data_dir() -> PathBuf {
+        #[cfg(target_os = "android")]
+        {
+            if let Some(dir) = ANDROID_DATA_DIR.get() {
+                return PathBuf::from(dir);
+            }
+        }
         dirs::data_local_dir()
             .unwrap_or_else(|| PathBuf::from("."))
             .join("log-out")
