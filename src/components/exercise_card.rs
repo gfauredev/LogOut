@@ -92,11 +92,10 @@ pub fn ExerciseCard(
                 if let Some(level) = &exercise.level {
                     li { class: "level", "{level}" }
                 }
-                // Exercise type tag: shows what kind of metrics are logged
-                {
-                    let (tag_class, tag_label) = exercise.type_tag();
-                    rsx! { li { class: "{tag_class}", "{tag_label}" } }
-                }
+                // {
+                //     let (tag_class, tag_label) = exercise.type_tag();
+                //     rsx! { li { class: "{tag_class}", "{tag_label}" } }
+                // }
             }
             if !exercise.primary_muscles.is_empty() {
                 ul {

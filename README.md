@@ -230,16 +230,12 @@ services, providing a detailed view of the codebase's API.
 
 ## TODO
 
-- Fix database URL change, make it properly replace the existing one, or display
-  error toasts (no `exercises.json` found, deserialization or network error…)
-- Remove "strength", "cardio" and "static" labels from exercise list, use
-  instead their colors and icons in Past Sessions exercises tags
-- Implement deep `logworkout://` links that allow accessing any view of the app,
-  directly creating an exercise or a session with parameters…
-- Use these deep links in E2E tests to setup state for flows that don’t
-  specifically test that feature covered by the deep link
-  - Probably the occasion to DRY E2E tests to only one par user story
+- Make database URL change properly persistent and more tolerant to URL
+  formatting (optional trailing slash, missing `http(s)://`…)
+- Fix database URL change removing colors from Exercises Tags
+- Fix web `?dl_session` link that don’t seem to work
 - Make the Active Session header (with timer, finish) sticky throughout the app
+- DRY E2E tests to only one par user story, they can still runFlow others
 - Mock exercise database with public/exercises.json for E2E tests, so they can
   load faster and not rely on external network requests
 - Harmonize Rest timer text color when background when rest is due

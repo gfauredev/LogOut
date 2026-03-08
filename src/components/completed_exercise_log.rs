@@ -124,7 +124,7 @@ pub fn CompletedExerciseLog(
                         }
                     }
                     footer {
-                        button { class: "edit", onclick: save_edit, "💾 Save" }
+                        button { class: "edit", onclick: save_edit, "💾" }
                         button { class: "no",
                             onclick: move |_| is_editing.set(false), "❌"
                         }
