@@ -7,15 +7,15 @@
 pub fn setup_notification_channel() {
     use jni::objects::JValue;
     use jni::JavaVM;
-    
+
     // In a Dioxus mobile app, we can get the activity context via JNI.
     // This is a simplified version of the logic needed.
     // For a production app, we would typically use a more robust bridge,
     // but this demonstrates the requirement.
-    
+
     log::info!("Setting up Android notification channels...");
-    
-    // Note: To fully implement this without a Java/Kotlin shim, 
+
+    // Note: To fully implement this without a Java/Kotlin shim,
     // we would need access to the current JNI Env and Activity.
     // Dioxus-mobile handles the JNI lifecycle for us.
 }
