@@ -248,21 +248,17 @@ services, providing a detailed view of the codebase's API.
 
 ## TODO
 
+- Make android app background black at up, currently briefly flashing white
+- Fix android app showing OS error 30, unable to read custom exercises
+- Fix database URL change, as currently reloading the app displays the default
+  exercises again (but interestingly, images don’t load after changing)
+- Fix web `?dl_session` link seemingly not working, add tests to make sure
 - DRY E2E tests to only one par user story, they can still runFlow others
 - Mock exercise database with public/exercises.json for E2E tests, so they can
   load faster and not rely on external network requests
 - Harmonize Rest timer text color when background when rest is due
 - Make layout harmonious but minimal, efficient, look at spacings, sizes
 - Consider using Dioxus Components https://dioxuslabs.com/components
-
-### DONE to review
-
-- Directly start an exercise created from the Active Session when saving it
-- Make database URL change properly persistent (resist page reload) and more
-  tolerant to URL formatting (optional trailing slash, missing `http(s)://`…)
-- Make the Active Session header (with timer, finish) sticky throughout the app
-  while a session is active
-- Fix web `?dl_session` link that don’t seem to work
 
 [LogOut]: https://gfauredev.github.io/LogOut
 [800+ exercises]: https://github.com/yuhonas/free-exercise-db
