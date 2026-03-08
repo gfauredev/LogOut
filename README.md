@@ -248,11 +248,6 @@ services, providing a detailed view of the codebase's API.
 
 ## TODO
 
-- Fix android app showing OS error 30, unable to read custom exercises
-- Make android app background black at startup, currently briefly flashing white
-- Fix database URL change, as currently reloading the app displays the default
-  exercises again (but interestingly, images don’t load after changing)
-- Fix web `?dl_session` link seemingly not working, add tests to make sure
 - DRY E2E tests to only one par user story, they can still runFlow others
 - Mock exercise database with public/exercises.json for E2E tests, so they can
   load faster and not rely on external network requests

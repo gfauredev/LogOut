@@ -187,7 +187,11 @@ fn DeepLinkLayout() -> Element {
                         }
                     }
                     services::exercise_db::clear_fetch_cache();
-                    // No navigation needed — the reload will happen via provide_exercises
+                    // Immediately reload exercises so the UI reflects the new URL
+                    let toast = consume_context::<ToastSignal>().0;
+                    spawn(async move {
+                        services::exercise_db::reload_exercises(exercises_sig, toast).await;
+                    });
                 }
                 DeepLinkAction::StartSession(exercise_ids) => {
                     let mut session = models::WorkoutSession::new();
@@ -261,7 +265,7 @@ fn path_to_route(path: &str) -> Route {
 /// value is reinterpreted as a distance in kilometres (multiplied by 1000 to get
 /// metres), since cardio deep-link params typically encode a distance rather than
 /// a repetition count.  Strength and static exercises use `reps` directly.
-#[cfg(target_arch = "wasm32")]
+#[cfg_attr(not(target_arch = "wasm32"), allow(dead_code))]
 fn build_session_from_entries(
     entries: &[utils::SessionExerciseEntry],
     exercises: &[models::Exercise],
@@ -280,12 +284,15 @@ fn build_session_from_entries(
         let (name, category, force) = exercises
             .iter()
             .find(|e| e.id == entry.exercise_id)
-            .map(|e| (e.name.clone(), e.category, e.force))
-            .unwrap_or_else(|| (entry.exercise_id.clone(), Category::Strength, None));
+            .map_or_else(
+                || (entry.exercise_id.clone(), Category::Strength, None),
+                |e| (e.name.clone(), e.category, e.force),
+            );
 
+        #[allow(clippy::cast_possible_truncation)]
         let weight_hg = entry
             .weight_hg
-            .map(|w| Weight(w.min(u16::MAX as u32) as u16));
+            .map(|w| Weight(w.min(u32::from(u16::MAX)) as u16));
         let reps = if force.is_some_and(Force::has_reps) {
             entry.reps
         } else {
@@ -432,4 +439,144 @@ fn NotificationPermissionToast() -> Element {
 
     #[cfg(not(all(target_arch = "wasm32", feature = "web-platform")))]
     rsx! {}
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use models::{Category, Exercise, Force};
+
+    fn sample_exercises() -> Vec<Exercise> {
+        vec![
+            Exercise {
+                id: "Wide-Grip_Barbell_Bench_Press".into(),
+                name: "Wide-Grip Barbell Bench Press".into(),
+                name_lower: String::new(),
+                force: Some(Force::Push),
+                level: None,
+                mechanic: None,
+                equipment: None,
+                primary_muscles: vec![],
+                secondary_muscles: vec![],
+                instructions: vec![],
+                category: Category::Strength,
+                images: vec![],
+            },
+            Exercise {
+                id: "Barbell_Full_Squat".into(),
+                name: "Barbell Full Squat".into(),
+                name_lower: String::new(),
+                force: Some(Force::Push),
+                level: None,
+                mechanic: None,
+                equipment: None,
+                primary_muscles: vec![],
+                secondary_muscles: vec![],
+                instructions: vec![],
+                category: Category::Strength,
+                images: vec![],
+            },
+            Exercise {
+                id: "Running".into(),
+                name: "Running".into(),
+                name_lower: String::new(),
+                force: None,
+                level: None,
+                mechanic: None,
+                equipment: None,
+                primary_muscles: vec![],
+                secondary_muscles: vec![],
+                instructions: vec![],
+                category: Category::Cardio,
+                images: vec![],
+            },
+        ]
+    }
+
+    #[test]
+    fn build_session_from_dl_entries_strength() {
+        let exercises = sample_exercises();
+        let entries = utils::parse_session_exercises(
+            "Wide-Grip_Barbell_Bench_Press:80:10,Barbell_Full_Squat:60:6",
+        );
+        let session = build_session_from_entries(&entries, &exercises);
+        assert_eq!(session.exercise_logs.len(), 2);
+        assert_eq!(
+            session.exercise_logs[0].exercise_name,
+            "Wide-Grip Barbell Bench Press"
+        );
+        assert_eq!(
+            session.exercise_logs[0].weight_hg,
+            Some(models::Weight(800))
+        );
+        assert_eq!(session.exercise_logs[0].reps, Some(10));
+        assert_eq!(session.exercise_logs[1].exercise_name, "Barbell Full Squat");
+        assert_eq!(
+            session.exercise_logs[1].weight_hg,
+            Some(models::Weight(600))
+        );
+        assert_eq!(session.exercise_logs[1].reps, Some(6));
+        assert!(session.end_time.is_some());
+    }
+
+    #[test]
+    fn build_session_from_dl_entries_cardio_uses_distance() {
+        let exercises = sample_exercises();
+        let entries = utils::parse_session_exercises("Running:-:5");
+        let session = build_session_from_entries(&entries, &exercises);
+        assert_eq!(session.exercise_logs.len(), 1);
+        let log = &session.exercise_logs[0];
+        assert_eq!(log.exercise_name, "Running");
+        assert_eq!(log.category, Category::Cardio);
+        // Cardio: reps is reinterpreted as distance (km × 1000 → metres)
+        assert_eq!(log.distance_m, Some(models::Distance(5000)));
+        // Cardio exercises with no force should not have reps set
+        assert_eq!(log.reps, None);
+    }
+
+    #[test]
+    fn build_session_from_dl_entries_unknown_exercise_falls_back() {
+        let exercises = sample_exercises();
+        let entries = utils::parse_session_exercises("Unknown_Exercise:50:8");
+        let session = build_session_from_entries(&entries, &exercises);
+        assert_eq!(session.exercise_logs.len(), 1);
+        // Falls back to using the ID as the name
+        assert_eq!(session.exercise_logs[0].exercise_name, "Unknown_Exercise");
+        assert_eq!(session.exercise_logs[0].category, Category::Strength);
+    }
+
+    #[test]
+    fn build_session_from_dl_entries_empty() {
+        let exercises = sample_exercises();
+        let entries = utils::parse_session_exercises("");
+        let session = build_session_from_entries(&entries, &exercises);
+        assert!(session.exercise_logs.is_empty());
+        assert!(session.end_time.is_some());
+    }
+
+    #[test]
+    fn build_session_from_dl_entries_duplicate_exercises() {
+        let exercises = sample_exercises();
+        let entries = utils::parse_session_exercises(
+            "Wide-Grip_Barbell_Bench_Press:80:10,Wide-Grip_Barbell_Bench_Press:77.5:10,Barbell_Full_Squat:60:6",
+        );
+        let session = build_session_from_entries(&entries, &exercises);
+        assert_eq!(session.exercise_logs.len(), 3);
+        assert_eq!(
+            session.exercise_logs[0].exercise_name,
+            "Wide-Grip Barbell Bench Press"
+        );
+        assert_eq!(
+            session.exercise_logs[0].weight_hg,
+            Some(models::Weight(800))
+        );
+        assert_eq!(
+            session.exercise_logs[1].exercise_name,
+            "Wide-Grip Barbell Bench Press"
+        );
+        assert_eq!(
+            session.exercise_logs[1].weight_hg,
+            Some(models::Weight(775))
+        );
+    }
 }
