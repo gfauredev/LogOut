@@ -5,9 +5,6 @@
 
 #[cfg(target_os = "android")]
 pub fn setup_notification_channel() {
-    use jni::objects::JValue;
-    use jni::JavaVM;
-
     // In a Dioxus mobile app, we can get the activity context via JNI.
     // This is a simplified version of the logic needed.
     // For a production app, we would typically use a more robust bridge,

@@ -14,7 +14,7 @@ reload_html = true
 index_on_404 = true
 
 [bundle.android]
-jks_file = "android/secrets/logout-production.jks"
+jks_file = "android/secrets/logout.jks"
 jks_password = "DIOXUS_ASSET_SIGNING_STORE_PASS"
 key_alias = "logout-key"
 key_password = "DIOXUS_ASSET_SIGNING_KEY_PASS"
