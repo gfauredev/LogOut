@@ -1,10 +1,10 @@
+#[cfg(not(target_arch = "wasm32"))]
+pub mod android_notifications;
 pub mod app_state;
 pub mod exercise_db;
 pub mod exercise_loader;
 #[cfg(not(target_arch = "wasm32"))]
 pub(crate) mod native_queue;
-#[cfg(not(target_arch = "wasm32"))]
-pub mod android_notifications;
 pub mod service_worker;
 pub mod storage;
 pub mod wake_lock;
