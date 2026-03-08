@@ -2589,6 +2589,7 @@ dependencies = [
  "dioxus-logger",
  "dirs",
  "gloo-timers",
+ "jni",
  "js-sys",
  "log",
  "reqwest",
