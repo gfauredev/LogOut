@@ -23,3 +23,8 @@ node_modules/
 .direnv/
 .cache/
 .selenium/
+
+# Android Signing Secrets
+android/secrets/
+*.jks
+.env.signing
