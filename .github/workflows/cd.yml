@@ -149,18 +149,23 @@ jobs:
       - name: Decode Keystore
         run: |
           mkdir -p android/secrets
-          echo "${{ secrets.ANDROID_KEYSTORE_B64 }}" | base64 -d > android/secrets/logout-production.jks
+          echo "${{ secrets.ANDROID_KEYSTORE_B64 }}" | base64 -d > android/secrets/logout.jks
 
       - name: Build arm64 APK
-        env:
-          DIOXUS_ASSET_SIGNING_STORE_PASS: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
-          DIOXUS_ASSET_SIGNING_KEY_PASS: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: >-
           dx build
           --platform android
           --release
           --no-default-features
           --features mobile-platform
+
+      - name: Sign arm64 APK
+        env:
+          ANDROID_KEYSTORE_PASS: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_PASS: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          SRC=$(find target/dx -name "*.apk" -maxdepth 10 | head -1)
+          ./scripts/sign.sh "$SRC"
 
       - name: Locate arm64 APK
         id: apk
@@ -190,14 +195,18 @@ jobs:
 
       - name: Build AAB
         env:
-          DIOXUS_ASSET_SIGNING_STORE_PASS: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
-          DIOXUS_ASSET_SIGNING_KEY_PASS: ${{ secrets.ANDROID_KEY_PASSWORD }}
+          ANDROID_KEYSTORE_PASS: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_PASS: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: |
           GRADLE_DIR=$(find target/dx -name "gradlew" -maxdepth 10 -type f | head -1 | xargs dirname)
           [ -n "$GRADLE_DIR" ] || { echo "::error::Gradle project not found under target/dx"; exit 1; }
           echo "Gradle project at: $GRADLE_DIR"
           cd "$GRADLE_DIR"
-          ./gradlew bundleRelease
+          ./gradlew bundleRelease \
+            -Pandroid.injected.signing.store.file="$GITHUB_WORKSPACE/android/secrets/logout.jks" \
+            -Pandroid.injected.signing.store.password="$ANDROID_KEYSTORE_PASS" \
+            -Pandroid.injected.signing.key.alias="logout-key" \
+            -Pandroid.injected.signing.key.password="$ANDROID_KEY_PASS"
 
       - name: Locate AAB
         id: aab
