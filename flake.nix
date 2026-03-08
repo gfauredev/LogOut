@@ -74,7 +74,7 @@
           ];
           commonBuildInputs =
             with pkgs;
-            []
+            [ ]
             ++ pkgs.lib.optionals pkgs.stdenv.isDarwin [
               pkgs.darwin.apple_sdk.frameworks.Security
               pkgs.darwin.apple_sdk.frameworks.SystemConfiguration
@@ -108,7 +108,7 @@
               # typescript
               # typescript-language-server # TS LSP
               vscode-langservers-extracted # HTML/CSS/JS(ON)
-              # yaml-language-server # YAML LSP
+              yaml-language-server # YAML LSP
 
             ];
             nativeBuildInputs =
@@ -174,10 +174,8 @@
                 openjdk
               ]);
             buildInputs = env.commonBuildInputs;
-
             ANDROID_HOME = "${env.androidComposition.androidsdk}/libexec/android-sdk";
             ANDROID_NDK_HOME = "${env.androidComposition.ndk-bundle}/libexec/android-sdk/ndk-bundle";
-
             buildPhase = ''
               export CARGO_TARGET_DIR=target
               dx build --release --platform android
