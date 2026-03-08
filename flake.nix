@@ -43,6 +43,9 @@
             targets = [
               "wasm32-unknown-unknown"
               "aarch64-linux-android"
+              "armv7-linux-androideabi"
+              "i686-linux-android"
+              "x86_64-linux-android"
             ];
           };
           androidComposition = pkgs.androidenv.composeAndroidPackages {
@@ -114,17 +117,24 @@
               ++ (with env.pkgs; [
                 cargo-ndk
                 android-tools
+                env.androidComposition.androidsdk
                 env.androidComposition.ndk-bundle
                 openjdk
               ]);
             buildInputs = env.commonBuildInputs;
             OPENSSL_DIR = "${env.pkgs.openssl.dev}";
             OPENSSL_LIB_DIR = "${env.pkgs.openssl.out}/lib";
+
+            ANDROID_HOME = "${env.androidComposition.androidsdk}/libexec/android-sdk";
+            ANDROID_NDK_HOME = "${env.androidComposition.ndk-bundle}/libexec/android-sdk/ndk-bundle";
+
             shellHook = ''
               export SE_CACHE_PATH="$PWD/.selenium"
               echo "💪 LogOut Dev Environment Ready"
               echo "- Rust $(rustc --version)"
               echo "- Dioxus CLI $(dx --version)"
+              echo "- Android SDK $ANDROID_HOME"
+              echo "- Android NDK $ANDROID_NDK_HOME"
             '';
           };
         }
@@ -167,6 +177,10 @@
                 openjdk
               ]);
             buildInputs = env.commonBuildInputs;
+
+            ANDROID_HOME = "${env.androidComposition.androidsdk}/libexec/android-sdk";
+            ANDROID_NDK_HOME = "${env.androidComposition.ndk-bundle}/libexec/android-sdk/ndk-bundle";
+
             buildPhase = ''
               export CARGO_TARGET_DIR=target
               dx build --release --platform android
