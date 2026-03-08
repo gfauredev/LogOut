@@ -114,7 +114,7 @@ development shell loading with `direnv allow`.
 To build for web as a PWA, run
 
 ```sh
-dx build --platform web --release
+dx build --web --release
 ```
 
 Output is written to `target/dx/log-out/release/web/public/`.
@@ -129,6 +129,21 @@ dx serve # Serves at http://localhost:8080
 
 The PWA is deployed automatically on every push to `main` by
 `.github/workflows/cd.yml` on `https://gfauredev.github.io/LogOut`.
+
+### Building the Android App
+
+To build for Android as APK, run
+
+```sh
+dx build --android --release
+```
+
+Dioxus `0.7` don’t yet supports signing (it does, but keys have to be in clear
+in Dioxus.toml) the APK and adding icon(s) to it. So two scripts allow that.
+
+Run `scripts/android-icon.sh` to add `android/res` icons to the app.
+
+Run `scripts/android-sign.sh` to generate a signed `release-signed.apk` APK.
 
 ## Code Quality & Conventions
 
