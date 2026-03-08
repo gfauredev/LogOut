@@ -74,6 +74,10 @@ fn main() {
     // Initialize logger
     dioxus_logger::init(dioxus_logger::tracing::Level::INFO).expect("failed to init logger");
 
+    // Initialize Android notification channels
+    #[cfg(not(target_arch = "wasm32"))]
+    services::android_notifications::setup_notification_channel();
+
     // Register service worker for offline image caching
     services::service_worker::register_service_worker();
 
