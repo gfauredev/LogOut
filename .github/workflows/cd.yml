@@ -3,6 +3,11 @@ name: CD
 on:
   push:
     branches: [main]
+    paths-ignore:
+      - '**.md'
+      - 'LICENSE'
+      - '.gitignore'
+      - '.gitattributes'
   release:
     types: [published]
   workflow_dispatch:
@@ -16,7 +21,7 @@ jobs:
   deploy-web:
     name: Deploy to GitHub Pages
     runs-on: ubuntu-latest
-    if: github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && (contains(github.event.head_commit.message, 'feat') || contains(github.event.head_commit.message, 'fix'))) || github.event_name == 'release'
+    if: github.event_name != 'push' || github.ref == 'refs/heads/main'
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
@@ -50,7 +55,7 @@ jobs:
   build-android:
     name: Build Android arm64
     runs-on: ubuntu-latest
-    if: github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && (contains(github.event.head_commit.message, 'feat') || contains(github.event.head_commit.message, 'fix'))) || github.event_name == 'release'
+    if: github.event_name != 'push' || github.ref == 'refs/heads/main'
     steps:
       - uses: actions/checkout@v4
       - name: Set up JDK 17
@@ -103,29 +108,19 @@ jobs:
           ./scripts/android-sign.sh "$APK_FILE"
           cp "$APK_FILE" logout-android-arm64.apk
 
-      # - name: Update Nightly Tag
-      #   run: |
-      #     git tag -f nightly
-      #     git push -f origin nightly
+      - name: Manage Rolling Tag
+        if: github.event_name != 'release'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git tag -f latest-android
+          git push -f origin latest-android
 
-      - name: Publish to Nightly Release
+      - name: Upload APK to Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: nightly
-          name: "Nightly Build"
+          tag_name: ${{ github.event_name == 'release' && github.event.release.tag_name || 'latest-android' }}
+          name: ${{ github.event_name == 'release' && github.event.release.name || 'Latest Android Build (arm64)' }}
+          body: ${{ github.event_name == 'release' && github.event.release.body || 'Latest arm64 builds from main branch.' }}
           prerelease: true
           files: logout-android-arm64.apk
-
-      - name: Update Latest Rolling Release
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          TAG="latest-android"
-          NOTES="Latest arm64 builds from main branch.\n\n- [logout-android-arm64.apk](https://github.com/${{ github.repository }}/releases/download/$TAG/logout-android-arm64.apk)"
-          if gh release view "$TAG" >/dev/null 2>&1; then
-            gh release upload "$TAG" logout-android-arm64.apk --clobber
-            gh release edit "$TAG" --notes "$NOTES"
-          else
-            gh release create "$TAG" logout-android-arm64.apk --prerelease --title "Latest Android Build (arm64)" --notes "$NOTES"
-          fi

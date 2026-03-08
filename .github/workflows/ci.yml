@@ -2,8 +2,11 @@ name: CI # Code Quality Gates
 
 on:
   pull_request:
-  # push:
-  #   branches: [ main ]
+    paths-ignore:
+      - '**.md'
+      - 'LICENSE'
+      - '.gitignore'
+      - '.gitattributes'
 
 permissions:
   contents: read
