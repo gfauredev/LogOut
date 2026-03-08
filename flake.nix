@@ -49,15 +49,14 @@
             ];
           };
           androidComposition = pkgs.androidenv.composeAndroidPackages {
-            platformVersions = [ "33" ]; # Targeting Android 13
-            buildToolsVersions = [ "33.0.2" ];
+            platformVersions = [ "35" ]; # Target latest Android
+            buildToolsVersions = [ "35.0.0" ];
             includeNDK = true;
-            includeEmulator = true;
-            includeSystemImages = true;
-            systemImageTypes = [ "google_apis" ];
+            includeEmulator = false; # Clean up unused
+            includeSystemImages = false; # Clean up unused
             abiVersions = [
               "x86_64"
-              # "arm64-v8a"
+              "arm64-v8a" # Add common real device ABI
             ];
           };
           commonNativeBuildInputs = with pkgs; [
@@ -75,7 +74,7 @@
           ];
           commonBuildInputs =
             with pkgs;
-            [ openssl ]
+            []
             ++ pkgs.lib.optionals pkgs.stdenv.isDarwin [
               pkgs.darwin.apple_sdk.frameworks.Security
               pkgs.darwin.apple_sdk.frameworks.SystemConfiguration
@@ -122,8 +121,6 @@
                 openjdk
               ]);
             buildInputs = env.commonBuildInputs;
-            OPENSSL_DIR = "${env.pkgs.openssl.dev}";
-            OPENSSL_LIB_DIR = "${env.pkgs.openssl.out}/lib";
 
             ANDROID_HOME = "${env.androidComposition.androidsdk}/libexec/android-sdk";
             ANDROID_NDK_HOME = "${env.androidComposition.ndk-bundle}/libexec/android-sdk/ndk-bundle";
