@@ -155,14 +155,12 @@ pub fn Exercises() -> Element {
                     var scrollTop = window.scrollY || el.scrollTop || 0;
                     var clientHeight = el.clientHeight || window.innerHeight || 0;
                     var scrollHeight = el.scrollHeight || 0;
-                    if (scrollHeight > 0 && scrollTop + clientHeight >= scrollHeight - {threshold}) {{
+                    if (scrollHeight > 0 && scrollTop + clientHeight >= scrollHeight - {SCROLL_THRESHOLD_PX}) {{
                         dioxus.send(true);
                     }}
-                }}, {interval});
+                }}, {SCROLL_POLL_INTERVAL_MS});
             }})()
-            ",
-            threshold = SCROLL_THRESHOLD_PX,
-            interval = SCROLL_POLL_INTERVAL_MS,
+            "
         );
         spawn(async move {
             let mut eval = dioxus::prelude::document::eval(&js);

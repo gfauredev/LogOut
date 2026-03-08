@@ -18,6 +18,7 @@ pub fn setup_notification_channel() {
 }
 
 #[cfg(not(target_os = "android"))]
+#[allow(dead_code)]
 pub fn setup_notification_channel() {
     // No-op on other platforms
 }
