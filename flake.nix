@@ -171,6 +171,9 @@
             nativeBuildInputs = env.commonNativeBuildInputs;
             buildInputs = env.commonBuildInputs;
             buildPhase = ''
+              export HOME=$TMPDIR/fake-home
+              export XDG_DATA_HOME=$HOME/.local/share
+              mkdir -p $HOME
               export CARGO_TARGET_DIR=target
               dx build --web --release
             '';
@@ -180,8 +183,8 @@
             '';
             doCheck = true;
             preCheck = ''
-              export HOME=$TMPDIR
-              export XDG_DATA_HOME=$TMPDIR/.local/share
+              export HOME=$TMPDIR/fake-home
+              export XDG_DATA_HOME=$HOME/.local/share
             '';
           };
           android = env.pkgs.rustPlatform.buildRustPackage {
@@ -197,11 +200,16 @@
                 env.androidComposition.androidsdk
                 env.androidComposition.ndk-bundle
                 openjdk
+                strace
               ]);
             buildInputs = env.commonBuildInputs;
             ANDROID_HOME = "${env.androidComposition.androidsdk}/libexec/android-sdk";
             ANDROID_NDK_HOME = "${env.androidComposition.ndk-bundle}/libexec/android-sdk/ndk-bundle";
             buildPhase = ''
+              export HOME=$TMPDIR/fake-home
+              export XDG_DATA_HOME=$HOME/.local/share
+              export GRADLE_USER_HOME=$HOME/.gradle
+              mkdir -p $HOME
               export CARGO_TARGET_DIR=target
               dx build --android --release
             '';
@@ -212,8 +220,8 @@
             '';
             doCheck = true;
             preCheck = ''
-              export HOME=$TMPDIR
-              export XDG_DATA_HOME=$TMPDIR/.local/share
+              export HOME=$TMPDIR/fake-home
+              export XDG_DATA_HOME=$HOME/.local/share
             '';
           };
           default = env.pkgs.symlinkJoin {
