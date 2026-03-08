@@ -238,6 +238,7 @@ services, providing a detailed view of the codebase's API.
   load faster and not rely on external network requests
 - Harmonize Rest timer text color when background when rest is due
 - Make layout harmonious but minimal, efficient, look at spacings, sizes
+- Consider using Dioxus Components https://dioxuslabs.com/components
 
 ### DONE to review
 

@@ -68,6 +68,7 @@
             ];
           };
           commonNativeBuildInputs = with pkgs; [
+            apksigner
             binaryen
             cargo-binutils
             cargo-llvm-cov
