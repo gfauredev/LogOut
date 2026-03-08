@@ -6,7 +6,7 @@ default_platform = "web"
 name = "LogOut"
 identifier = "com.gfaure.logout"
 publisher = "gfaure"
-icon = ["logo.png"]
+icon = ["./logo.png"]
 
 [web.app]
 title = "LogOut - Workout Logger"
