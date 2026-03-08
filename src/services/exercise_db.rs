@@ -714,7 +714,7 @@ mod tests {
         let exercises = sample_exercises();
         // running has equipment: None, so only barbell and body only appear
         let equipment = get_equipment_types(&exercises);
-        assert!(equipment.iter().all(|e| e.as_ref().len() > 0));
+        assert!(equipment.iter().all(|e| !e.as_ref().is_empty()));
     }
 
     #[test]

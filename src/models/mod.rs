@@ -829,7 +829,7 @@ mod tests {
 
     #[test]
     fn find_active_session_returns_first_without_end_time() {
-        let sessions = vec![
+        let sessions = [
             WorkoutSession {
                 id: "s1".into(),
                 start_time: 1000,
@@ -859,7 +859,7 @@ mod tests {
 
     #[test]
     fn find_active_session_returns_none_when_all_finished() {
-        let sessions = vec![WorkoutSession {
+        let sessions = [WorkoutSession {
             id: "s1".into(),
             start_time: 1000,
             end_time: Some(2000),
