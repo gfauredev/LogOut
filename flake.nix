@@ -179,6 +179,10 @@
               cp -r target/dx/log-out/release/web/public/* $out/
             '';
             doCheck = true;
+            preCheck = ''
+              export HOME=$TMPDIR
+              export XDG_DATA_HOME=$TMPDIR/.local/share
+            '';
           };
           android = env.pkgs.rustPlatform.buildRustPackage {
             pname = "log-out-android";
@@ -207,6 +211,10 @@
               echo "APK successfully copied to $out"
             '';
             doCheck = true;
+            preCheck = ''
+              export HOME=$TMPDIR
+              export XDG_DATA_HOME=$TMPDIR/.local/share
+            '';
           };
           default = env.pkgs.symlinkJoin {
             name = "log-out-all";
