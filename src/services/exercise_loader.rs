@@ -38,6 +38,9 @@ pub async fn reload_exercises(mut sig: Signal<Vec<Exercise>>, mut toast: Signal<
     #[cfg(target_arch = "wasm32")]
     {
         use crate::services::storage::idb_exercises;
+        // Purge the cached exercises so a subsequent page reload does not
+        // serve stale data from the previous URL while the download runs.
+        idb_exercises::clear_all_exercises().await;
         match exercise_db::download_exercises().await {
             Ok(exercises) if !exercises.is_empty() => {
                 log::info!(
@@ -72,6 +75,9 @@ pub async fn reload_exercises(mut sig: Signal<Vec<Exercise>>, mut toast: Signal<
     #[cfg(not(target_arch = "wasm32"))]
     {
         use crate::services::storage::native_exercises;
+        // Purge the cached exercises so a subsequent app restart does not
+        // serve stale data from the previous URL while the download runs.
+        native_exercises::clear_all_exercises();
         match exercise_db::download_exercises().await {
             Ok(exercises) if !exercises.is_empty() => {
                 log::info!(

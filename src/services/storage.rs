@@ -88,6 +88,18 @@ pub(crate) mod idb {
         Ok(())
     }
 
+    /// Remove all items from a store.
+    pub async fn clear_all(store_name: &str) -> Result<(), String> {
+        let db = open_db().await.map_err(|e| format!("{e}"))?;
+        let tx = db
+            .transaction(&[store_name], TransactionMode::ReadWrite)
+            .map_err(|e| format!("{e}"))?;
+        let store = tx.store(store_name).map_err(|e| format!("{e}"))?;
+        store.clear().await.map_err(|e| format!("{e}"))?;
+        tx.done().await.map_err(|e| format!("{e}"))?;
+        Ok(())
+    }
+
     /// Load all items from a store.
     pub async fn get_all<T: serde::de::DeserializeOwned>(
         store_name: &str,
@@ -206,6 +218,13 @@ pub mod idb_exercises {
             log::error!("Failed to store exercises in IndexedDB: {e}");
         }
     }
+
+    /// Remove all cached exercises from the IndexedDB exercises store.
+    pub async fn clear_all_exercises() {
+        if let Err(e) = idb::clear_all(idb::STORE_EXERCISES).await {
+            log::error!("Failed to clear exercises from IndexedDB: {e}");
+        }
+    }
 }
 
 /// File-backed exercise storage for native platforms (Android / desktop).
@@ -223,6 +242,15 @@ pub mod native_exercises {
     pub fn store_all_exercises(exercises: &[Exercise]) {
         if let Err(e) = native_storage::store_all(native_storage::STORE_EXERCISES, exercises) {
             log::error!("Failed to store exercises: {e}");
+        }
+    }
+
+    /// Remove all cached exercises from the `SQLite` exercises store.
+    pub fn clear_all_exercises() {
+        // store_all with an empty slice performs DELETE FROM … then commits.
+        if let Err(e) = native_storage::store_all::<Exercise>(native_storage::STORE_EXERCISES, &[])
+        {
+            log::error!("Failed to clear exercises: {e}");
         }
     }
 }

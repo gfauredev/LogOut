@@ -7,10 +7,11 @@ typealias BuildConfig = BuildConfig
 
 class MainActivity : WryActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
         // Provide the internal data directory to the Rust backend
-        // before any database operations occur.
+        // BEFORE super.onCreate() which initialises the Dioxus/Wry
+        // runtime and may trigger database operations immediately.
         setDataDir(filesDir.absolutePath)
+        super.onCreate(savedInstanceState)
     }
 
     private external fun setDataDir(dataDir: String)
