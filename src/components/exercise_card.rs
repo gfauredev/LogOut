@@ -37,7 +37,7 @@ pub fn ExerciseCard(
                             move |_| {
                                 let timestamp = get_current_timestamp();
                                 let clone = Exercise {
-                                    id: format!("custom_{}", timestamp),
+                                    id: format!("custom_{timestamp}"),
                                     name: exercise.name.clone(),
                                     name_lower: exercise.name_lower.clone(),
                                     category: exercise.category,

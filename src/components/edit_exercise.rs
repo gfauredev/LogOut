@@ -10,21 +10,18 @@ pub fn EditExercise(id: String) -> Element {
     // Load the exercise to edit
     let exercise = use_memo(move || custom_exercises.read().iter().find(|e| e.id == id).cloned());
 
-    let ex = match exercise() {
-        Some(e) => e,
-        None => {
-            return rsx! {
-                main { class: "edit",
-                    p { "Exercise not found" }
-                    button {
-                        onclick: move |_| navigator().go_back(),
-                        class: "no",
-                        title: "Cancel",
-                        "❌"
-                    }
+    let Some(ex) = exercise() else {
+        return rsx! {
+            main { class: "edit",
+                p { "Exercise not found" }
+                button {
+                    onclick: move |_evt: Event<MouseData>| navigator().go_back(),
+                    class: "no",
+                    title: "Cancel",
+                    "❌"
                 }
-            };
-        }
+            }
+        };
     };
 
     let name_input = use_signal(|| ex.name.clone());
@@ -44,7 +41,7 @@ pub fn EditExercise(id: String) -> Element {
     let exercise_level = ex.level;
     let exercise_mechanic = ex.mechanic;
 
-    let save_exercise = move |_: ()| {
+    let save_exercise = move |()| {
         let name = name_input.read().trim().to_string();
         if name.is_empty() {
             return;

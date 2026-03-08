@@ -1,4 +1,6 @@
-use crate::models::{format_time, parse_distance_km, parse_weight_kg, Category};
+use crate::models::{
+    format_time, parse_distance_km, parse_weight_kg, Category, ExerciseLog, Force,
+};
 use crate::services::{exercise_db, storage};
 use dioxus::prelude::*;
 
@@ -41,10 +43,10 @@ pub(super) fn ExerciseFormPanel(
         }
     };
 
-    let show_reps = force.is_some_and(|f| f.has_reps());
+    let show_reps = force.is_some_and(Force::has_reps);
     let is_cardio = category == Category::Cardio;
     let last_log = storage::get_last_exercise_log(&exercise_id);
-    let last_duration = last_log.as_ref().and_then(|log| log.duration_seconds());
+    let last_duration = last_log.as_ref().and_then(ExerciseLog::duration_seconds);
 
     // Secondary static timer: shown when exercise has no reps and no distance
     let show_static_timer = !show_reps && !is_cardio;
@@ -76,7 +78,7 @@ pub(super) fn ExerciseFormPanel(
                             onclick: move |_| {
                                 let cur: f64 = weight_input.read().parse().unwrap_or(0.0);
                                 let next = (cur - 0.5).max(0.0);
-                                weight_input.set(format!("{:.1}", next));
+                                weight_input.set(format!("{next:.1}"));
                             },
                             "−"
                         }

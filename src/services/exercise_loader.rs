@@ -46,7 +46,7 @@ pub async fn reload_exercises(mut sig: Signal<Vec<Exercise>>, mut toast: Signal<
                 );
                 idb_exercises::store_all_exercises(&exercises).await;
                 exercise_db::record_fetch_timestamp();
-                sig.set(exercises.into_iter().map(|e| e.with_lowercase()).collect());
+                sig.set(exercises.into_iter().map(Exercise::with_lowercase).collect());
                 toast.set(Some(
                     "✅ Exercise database reloaded successfully".to_string(),
                 ));
@@ -58,7 +58,7 @@ pub async fn reload_exercises(mut sig: Signal<Vec<Exercise>>, mut toast: Signal<
                 ));
             }
             Err(e) => {
-                log::warn!("Failed to reload exercises: {:?}", e);
+                log::warn!("Failed to reload exercises: {e:?}");
                 toast.set(Some(format!("❌ Failed to reload exercises: {e}")));
             }
         }
@@ -75,7 +75,7 @@ pub async fn reload_exercises(mut sig: Signal<Vec<Exercise>>, mut toast: Signal<
                 );
                 native_exercises::store_all_exercises(&exercises);
                 exercise_db::record_fetch_timestamp();
-                sig.set(exercises.into_iter().map(|e| e.with_lowercase()).collect());
+                sig.set(exercises.into_iter().map(Exercise::with_lowercase).collect());
                 toast.set(Some(
                     "✅ Exercise database reloaded successfully".to_string(),
                 ));
@@ -87,7 +87,7 @@ pub async fn reload_exercises(mut sig: Signal<Vec<Exercise>>, mut toast: Signal<
                 ));
             }
             Err(e) => {
-                log::warn!("Failed to reload exercises: {:?}", e);
+                log::warn!("Failed to reload exercises: {e:?}");
                 toast.set(Some(format!("❌ Failed to reload exercises: {e}")));
             }
         }
@@ -106,7 +106,7 @@ async fn load_exercises(mut sig: Signal<Vec<Exercise>>) {
 
         if !cached.is_empty() {
             log::info!("Loaded {} exercises from IndexedDB", cached.len());
-            sig.set(cached.into_iter().map(|e| e.with_lowercase()).collect());
+            sig.set(cached.into_iter().map(Exercise::with_lowercase).collect());
 
             if !needs_refresh {
                 return;
@@ -125,11 +125,11 @@ async fn load_exercises(mut sig: Signal<Vec<Exercise>>) {
                 );
                 idb_exercises::store_all_exercises(&exercises).await;
                 exercise_db::record_fetch_timestamp();
-                sig.set(exercises.into_iter().map(|e| e.with_lowercase()).collect());
+                sig.set(exercises.into_iter().map(Exercise::with_lowercase).collect());
                 return;
             }
             Ok(_) => log::warn!("Downloaded exercises file was empty"),
-            Err(e) => log::warn!("Failed to download exercises: {:?}", e),
+            Err(e) => log::warn!("Failed to download exercises: {e:?}"),
         }
     }
 
@@ -143,7 +143,7 @@ async fn load_exercises(mut sig: Signal<Vec<Exercise>>) {
 
         if !cached.is_empty() {
             log::info!("Loaded {} exercises from local file", cached.len());
-            sig.set(cached.into_iter().map(|e| e.with_lowercase()).collect());
+            sig.set(cached.into_iter().map(Exercise::with_lowercase).collect());
 
             if !needs_refresh {
                 return;
@@ -160,11 +160,11 @@ async fn load_exercises(mut sig: Signal<Vec<Exercise>>) {
                 );
                 native_exercises::store_all_exercises(&exercises);
                 exercise_db::record_fetch_timestamp();
-                sig.set(exercises.into_iter().map(|e| e.with_lowercase()).collect());
+                sig.set(exercises.into_iter().map(Exercise::with_lowercase).collect());
                 return;
             }
             Ok(_) => log::warn!("Downloaded exercises file was empty"),
-            Err(e) => log::warn!("Failed to download exercises: {:?}", e),
+            Err(e) => log::warn!("Failed to download exercises: {e:?}"),
         }
     }
 

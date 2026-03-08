@@ -20,7 +20,7 @@ pub fn AddExercise() -> Element {
 
     let sessions = storage::use_sessions();
 
-    let save_exercise = move |_: ()| {
+    let save_exercise = move |()| {
         let name = name_input.read().trim().to_string();
         if name.is_empty() {
             return;
@@ -30,7 +30,7 @@ pub fn AddExercise() -> Element {
         let name_lower = name.to_lowercase();
 
         let exercise = Exercise {
-            id: format!("custom_{}", timestamp),
+            id: format!("custom_{timestamp}"),
             name,
             name_lower,
             category: *category_input.read(),

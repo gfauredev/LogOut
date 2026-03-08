@@ -14,7 +14,7 @@ pub fn Home() -> Element {
     #[cfg_attr(not(target_arch = "wasm32"), allow(unused_mut))]
     let mut visible_count = use_signal(|| PAGE_SIZE);
 
-    let has_active = use_memo(move || sessions.read().iter().any(|s| s.is_active()));
+    let has_active = use_memo(move || sessions.read().iter().any(WorkoutSession::is_active));
 
     let start_new_session = move |_| {
         let new_session = WorkoutSession::new();
@@ -100,6 +100,7 @@ pub fn Home() -> Element {
 
 #[component]
 fn SessionCard(session: WorkoutSession) -> Element {
+    const MAX_VISIBLE: usize = 9;
     let mut show_delete_confirm = use_signal(|| false);
     let mut show_all_exercises = use_signal(|| false);
     let session_id = session.id.clone();
@@ -108,8 +109,7 @@ fn SessionCard(session: WorkoutSession) -> Element {
 
     let duration = session
         .end_time
-        .map(|end| end.saturating_sub(session.start_time))
-        .unwrap_or(0);
+        .map_or(0, |end| end.saturating_sub(session.start_time));
     let date_str = format_session_date(session.start_time);
 
     // Collect unique exercise names (deduplicated by ID, preserving order)
@@ -145,7 +145,6 @@ fn SessionCard(session: WorkoutSession) -> Element {
         .collect();
 
     // Up to 9 tags visible initially (~3 lines of 3 tags each)
-    const MAX_VISIBLE: usize = 9;
     let total_unique = unique_exercises.len();
     let visible_count = if *show_all_exercises.read() {
         total_unique
@@ -164,8 +163,9 @@ fn SessionCard(session: WorkoutSession) -> Element {
                         onclick: {
                             let pending_ids = pending_ids.clone();
                             move |_| {
-                                let mut new_session = WorkoutSession::new();
-                                new_session.pending_exercise_ids = pending_ids.clone();
+                                        let mut new_session = WorkoutSession::new();
+                                        new_session.pending_exercise_ids.clone_from(&pending_ids);
+                                
                                 storage::save_session(new_session);
                             }
                         },

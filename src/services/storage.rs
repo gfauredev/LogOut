@@ -1,11 +1,11 @@
-//! Platform-specific storage backends for the LogOut application.
+//! Platform-specific storage backends for the `LogOut` application.
 //!
 //! This module provides two storage backends that share the same logical interface:
 //!
-//! - **Web** (`wasm32`): IndexedDB via the `rexie` crate, serialised through an
+//! - **Web** (`wasm32`): `IndexedDB` via the `rexie` crate, serialised through an
 //!   async write queue so concurrent callers never fight over read-write
 //!   transactions.
-//! - **Native** (Android / desktop): SQLite via `rusqlite` stored in the OS
+//! - **Native** (Android / desktop): `SQLite` via `rusqlite` stored in the OS
 //!   app-data directory.
 //!
 //! All Dioxus reactive state (signals, context helpers, mutation functions) lives
@@ -106,7 +106,7 @@ pub(crate) mod idb {
         for (i, js_val) in js_values.into_iter().enumerate() {
             match serde_wasm_bindgen::from_value::<T>(js_val) {
                 Ok(item) => items.push(item),
-                Err(e) => log::warn!("Skipping corrupt IndexedDB entry at index {}: {}", i, e),
+                Err(e) => log::warn!("Skipping corrupt IndexedDB entry at index {i}: {e}"),
             }
         }
         Ok(items)
@@ -214,12 +214,12 @@ pub mod native_exercises {
     use super::native_storage;
     use crate::models::Exercise;
 
-    /// Retrieve all cached exercises from the SQLite exercises store.
+    /// Retrieve all cached exercises from the `SQLite` exercises store.
     pub fn get_all_exercises() -> Vec<Exercise> {
         native_storage::get_all::<Exercise>(native_storage::STORE_EXERCISES).unwrap_or_default()
     }
 
-    /// Persist `exercises` to the SQLite exercises store.
+    /// Persist `exercises` to the `SQLite` exercises store.
     pub fn store_all_exercises(exercises: &[Exercise]) {
         if let Err(e) = native_storage::store_all(native_storage::STORE_EXERCISES, exercises) {
             log::error!("Failed to store exercises: {e}");
@@ -237,9 +237,9 @@ pub(crate) use super::native_queue;
 // Native SQLite-based storage (non-wasm platforms: Android / desktop)
 // ──────────────────────────────────────────
 
-/// SQLite-backed storage for Android and desktop builds.
+/// `SQLite`-backed storage for Android and desktop builds.
 ///
-/// A single `log-out.db` SQLite database file is kept inside the app-
+/// A single `log-out.db` `SQLite` database file is kept inside the app-
 /// specific data directory (`dirs::data_local_dir()/log-out/`).
 /// Each "store" maps to a table with columns `id TEXT PRIMARY KEY, data TEXT`.
 /// A separate `config` table holds arbitrary key/value string pairs.
@@ -279,7 +279,7 @@ pub(crate) mod native_storage {
         data_dir().join("log-out.db")
     }
 
-    /// Opens (or creates) the SQLite database and ensures all required tables exist.
+    /// Opens (or creates) the `SQLite` database and ensures all required tables exist.
     /// Uses `PRAGMA user_version` to run the schema DDL only once (when the DB is
     /// first created), rather than on every operation.
     fn open_db() -> Result<Connection, String> {
@@ -311,7 +311,7 @@ pub(crate) mod native_storage {
         let items = stmt
             .query_map([], |row| row.get::<_, String>(0))
             .map_err(|e| e.to_string())?
-            .filter_map(|r| r.ok())
+            .filter_map(Result::ok)
             .filter_map(|data| {
                 serde_json::from_str::<T>(&data)
                     .inspect_err(|e| log::warn!("Skipping corrupt SQLite row: {e}"))
@@ -414,7 +414,7 @@ pub(crate) mod native_storage {
     pub(crate) fn test_lock() -> std::sync::MutexGuard<'static, ()> {
         static LOCK: std::sync::OnceLock<std::sync::Mutex<()>> = std::sync::OnceLock::new();
         let m = LOCK.get_or_init(|| std::sync::Mutex::new(()));
-        m.lock().unwrap_or_else(|e| e.into_inner())
+        m.lock().unwrap_or_else(std::sync::PoisonError::into_inner)
     }
 }
 
@@ -713,7 +713,7 @@ mod tests {
     // ── schema migration ─────────────────────────────────────────────────────
 
     /// Verify that `open_db` creates all required tables when the database is
-    /// brand-new (user_version == 0), covering the schema-migration code path.
+    /// brand-new (`user_version` == 0), covering the schema-migration code path.
     #[test]
     fn schema_migration_runs_on_fresh_database() {
         let _g = lock();
@@ -754,7 +754,7 @@ mod tests {
 
     // ── get_all skips corrupt rows ────────────────────────────────────────────
 
-    /// Insert a row with invalid JSON directly into SQLite and verify that
+    /// Insert a row with invalid JSON directly into `SQLite` and verify that
     /// `get_all` silently skips it rather than returning an error.
     #[test]
     fn get_all_skips_corrupt_rows() {

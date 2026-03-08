@@ -89,9 +89,9 @@ pub(super) fn SessionDurationDisplay(session_start_time: u64, session_is_active:
 /// Renders the rest timer and fires a notification when the rest period ends.
 #[component]
 pub(super) fn RestTimerDisplay(
-    rest_start_time: Signal<Option<u64>>,
-    rest_duration: Signal<u64>,
-    mut rest_bell_count: Signal<u64>,
+    start_time: Signal<Option<u64>>,
+    duration: Signal<u64>,
+    mut bell_count: Signal<u64>,
 ) -> Element {
     let mut now_tick = use_signal(get_current_timestamp);
     use_coroutine(move |_: UnboundedReceiver<()>| async move {
@@ -105,18 +105,18 @@ pub(super) fn RestTimerDisplay(
     });
 
     let tick = *now_tick.read();
-    let Some(start) = *rest_start_time.read() else {
+    let Some(start) = *start_time.read() else {
         return rsx! {};
     };
     let elapsed = tick.saturating_sub(start);
-    let rd = *rest_duration.read();
+    let rd = *duration.read();
 
     // Fire bell at each completed rest interval
     if rd > 0 && elapsed > 0 {
         let intervals = elapsed / rd;
-        let prev_count = *rest_bell_count.read();
+        let prev_count = *bell_count.read();
         if intervals > prev_count {
-            rest_bell_count.set(intervals);
+            bell_count.set(intervals);
             #[cfg(target_arch = "wasm32")]
             send_notification(false);
         }

@@ -22,11 +22,12 @@ const LAST_FETCH_KEY: &str = "exercise_db_last_fetch";
 /// Returns the URL for the exercises JSON file.
 /// Available on all platforms; `get_exercise_db_url()` handles per-platform config.
 fn exercises_json_url() -> String {
-    format!("{}exercises.json", crate::utils::get_exercise_db_url())
+    let base_url = crate::utils::get_exercise_db_url();
+    format!("{base_url}exercises.json")
 }
 
 /// Provide the exercises signal in the Dioxus context.
-/// On first launch, downloads exercises from the API and stores them in IndexedDB
+/// On first launch, downloads exercises from the API and stores them in `IndexedDB`
 /// (web) or a local file (native).  On subsequent launches, loads from cache.
 // Dioxus integration (provide/use context hooks + async loader) lives in the
 // sibling `exercise_loader` module to keep this file focused on data-access
@@ -49,7 +50,7 @@ pub(crate) fn is_refresh_due() -> bool {
     let Ok(last_fetch) = ts_str.parse::<f64>() else {
         return true;
     };
-    let now_secs = time::OffsetDateTime::now_utc().unix_timestamp().max(0) as u64;
+    let now_secs = time::OffsetDateTime::now_utc().unix_timestamp().max(0).cast_unsigned();
     let last_secs = last_fetch as u64;
     now_secs.saturating_sub(last_secs) >= EXERCISE_DB_REFRESH_INTERVAL_SECS
 }
@@ -61,7 +62,7 @@ pub(crate) fn is_refresh_due() -> bool {
     use crate::services::storage::native_storage;
     let last_fetch =
         native_storage::get_config_value(LAST_FETCH_KEY).and_then(|s| s.parse::<u64>().ok());
-    let now = time::OffsetDateTime::now_utc().unix_timestamp().max(0) as u64;
+    let now = time::OffsetDateTime::now_utc().unix_timestamp().max(0).cast_unsigned();
     is_refresh_due_for(now, last_fetch)
 }
 
@@ -144,7 +145,7 @@ pub(crate) async fn download_exercises() -> Result<Vec<Exercise>, String> {
 fn normalize_for_search(s: &str) -> String {
     s.chars()
         .filter(|c| !matches!(c, '-' | '\'' | ' ' | '.'))
-        .flat_map(|c| c.to_lowercase())
+        .flat_map(char::to_lowercase)
         .collect()
 }
 
@@ -158,7 +159,7 @@ pub fn search_exercises<'a>(exercises: &'a [Exercise], query: &str) -> Vec<&'a E
     let tokens: Vec<String> = query_lower
         .split_whitespace()
         .map(normalize_for_search)
-        .filter(|t| t.chars().any(|c| c.is_alphanumeric()))
+        .filter(|t| t.chars().any(char::is_alphanumeric))
         .collect();
     exercises
         .iter()
@@ -166,11 +167,11 @@ pub fn search_exercises<'a>(exercises: &'a [Exercise], query: &str) -> Vec<&'a E
             // Use the pre-computed lowercase name when available to avoid per-call allocations.
             // Fall back to computing on the fly for exercises created without calling with_lowercase().
             let computed_name_lower;
-            let name_lc: &str = if !exercise.name_lower.is_empty() {
-                &exercise.name_lower
-            } else {
+            let name_lc: &str = if exercise.name_lower.is_empty() {
                 computed_name_lower = exercise.name.to_lowercase();
                 &computed_name_lower
+            } else {
+                &exercise.name_lower
             };
             // Exact (lowercase) substring match first, then normalised matching:
             //  • token-based: all whitespace-separated query tokens must appear
@@ -203,16 +204,13 @@ pub fn search_exercises<'a>(exercises: &'a [Exercise], query: &str) -> Vec<&'a E
                 || exercise.category.as_ref().contains(&query_lower)
                 || exercise
                     .force
-                    .map(|f| f.as_ref().contains(&query_lower))
-                    .unwrap_or(false)
+                    .is_some_and(|f| f.as_ref().contains(&query_lower))
                 || exercise
                     .equipment
-                    .map(|e| e.as_ref().contains(&query_lower))
-                    .unwrap_or(false)
+                    .is_some_and(|e| e.as_ref().contains(&query_lower))
                 || exercise
                     .level
-                    .map(|l| l.as_ref().contains(&query_lower))
-                    .unwrap_or(false)
+                    .is_some_and(|l| l.as_ref().contains(&query_lower))
         })
         .collect()
 }
@@ -235,7 +233,7 @@ pub fn resolve_exercise<'a>(
 #[cfg(test)]
 pub fn get_equipment_types(exercises: &[Exercise]) -> Vec<Equipment> {
     let mut equipment: Vec<Equipment> = exercises.iter().filter_map(|e| e.equipment).collect();
-    equipment.sort_by_key(|a| a.to_string());
+    equipment.sort_by_key(std::string::ToString::to_string);
     equipment.dedup();
     equipment
 }
@@ -246,7 +244,7 @@ pub fn get_muscle_groups(exercises: &[Exercise]) -> Vec<Muscle> {
         .iter()
         .flat_map(|e| e.primary_muscles.iter().copied())
         .collect();
-    muscles.sort_by_key(|a| a.to_string());
+    muscles.sort_by_key(std::string::ToString::to_string);
     muscles.dedup();
     muscles
 }

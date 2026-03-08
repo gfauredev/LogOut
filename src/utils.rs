@@ -15,6 +15,7 @@ pub(crate) const EXERCISE_DB_URL_STORAGE_KEY: &str = "exercise_db_url";
 /// - If no trailing `/` is present, one is appended.
 ///
 /// An empty string is returned unchanged (it signals "reset to default").
+#[must_use]
 pub fn normalize_db_url(url: &str) -> String {
     let url = url.trim();
     if url.is_empty() {
@@ -36,6 +37,7 @@ pub fn normalize_db_url(url: &str) -> String {
 /// On WASM, checks localStorage for a user-configured URL first.
 /// On native, checks the app config file.
 /// Falls back to [`EXERCISE_DB_BASE_URL`] if not set.
+#[must_use]
 pub fn get_exercise_db_url() -> String {
     #[cfg(target_arch = "wasm32")]
     {
@@ -105,6 +107,7 @@ pub enum DeepLinkAction {
 /// - `logworkout://exercise/add`
 /// - `logworkout://session/start[?exercises=<id>,<id>,…]`
 /// - `logworkout://session/create?exercises=<id>:<kg>:<reps>,…`
+#[must_use]
 pub fn parse_deep_link(url: &str) -> Option<DeepLinkAction> {
     let rest = url.strip_prefix("logworkout://")?;
     let (path, query) = rest.split_once('?').unwrap_or((rest, ""));
@@ -146,7 +149,7 @@ pub fn parse_web_deep_link() -> Option<DeepLinkAction> {
         let ids = exercises
             .split(',')
             .filter(|s| !s.is_empty())
-            .map(|s| s.to_string())
+            .map(std::string::ToString::to_string)
             .collect();
         return Some(DeepLinkAction::StartSession(ids));
     }
@@ -179,7 +182,7 @@ fn parse_deep_link_path(path: &str, query: &str) -> Option<DeepLinkAction> {
                 .unwrap_or_default()
                 .split(',')
                 .filter(|s| !s.is_empty())
-                .map(|s| s.to_string())
+                .map(std::string::ToString::to_string)
                 .collect();
             Some(DeepLinkAction::StartSession(ids))
         }
@@ -197,6 +200,7 @@ fn parse_deep_link_path(path: &str, query: &str) -> Option<DeepLinkAction> {
 /// Any field may be omitted or set to `-` to indicate "not specified".
 ///
 /// Example: `"Bench_Press:80:10,Squat:60:6"`
+#[must_use]
 pub fn parse_session_exercises(s: &str) -> Vec<SessionExerciseEntry> {
     s.split(',')
         .filter(|e| !e.is_empty())
@@ -207,6 +211,7 @@ pub fn parse_session_exercises(s: &str) -> Vec<SessionExerciseEntry> {
                 if w.is_empty() || w == "-" {
                     None
                 } else {
+                    #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
                     w.parse::<f64>().ok().map(|kg| (kg * 10.0).round() as u32)
                 }
             });
@@ -227,6 +232,7 @@ pub fn parse_session_exercises(s: &str) -> Vec<SessionExerciseEntry> {
 }
 
 /// Look up a single parameter value from a URL query string.
+#[must_use]
 pub fn get_query_param(query: &str, name: &str) -> Option<String> {
     query.split('&').find_map(|pair| {
         let (k, v) = pair.split_once('=')?;
@@ -285,12 +291,13 @@ fn route_name_to_path(name: &str) -> String {
 }
 
 /// Format a session timestamp as a human-readable relative date string.
+#[must_use]
 pub fn format_session_date(timestamp: u64) -> String {
     let days_ago = days_since(timestamp);
     match days_ago {
         0 => "Today".to_string(),
         1 => "Yesterday".to_string(),
-        n => format!("{} days ago", n),
+        n => format!("{n} days ago"),
     }
 }
 
@@ -307,7 +314,7 @@ fn days_since(timestamp: u64) -> i64 {
             .unwrap_or(OffsetDateTime::now_utc())
     };
     let offset = now.offset();
-    let ts_dt = OffsetDateTime::from_unix_timestamp(timestamp as i64)
+    let ts_dt = OffsetDateTime::from_unix_timestamp(timestamp.cast_signed())
         .unwrap_or(OffsetDateTime::UNIX_EPOCH)
         .to_offset(offset);
     let now_date = now.date();
@@ -324,7 +331,7 @@ mod tests {
         let now = OffsetDateTime::now_local().unwrap_or_else(|_| OffsetDateTime::now_utc());
         // Build a datetime at local midnight for today and convert back to unix seconds.
         let midnight = now.replace_time(time::Time::MIDNIGHT);
-        midnight.unix_timestamp().max(0) as u64
+        midnight.unix_timestamp().max(0).cast_unsigned()
     }
 
     #[test]
@@ -495,9 +502,8 @@ mod tests {
     #[test]
     fn parse_deep_link_session_create_no_weight() {
         let result = super::parse_deep_link("logworkout://session/create?exercises=Run:-:- ");
-        let entries = match result {
-            Some(DeepLinkAction::CreateSession(e)) => e,
-            _ => panic!("expected CreateSession"),
+        let Some(DeepLinkAction::CreateSession(entries)) = result else {
+            panic!("expected CreateSession")
         };
         assert_eq!(entries[0].weight_hg, None);
         assert_eq!(entries[0].reps, None);

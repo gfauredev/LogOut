@@ -1,4 +1,4 @@
-//! **LogOut** – Turn off your computer, Log your workOut
+//! **`LogOut`** – Turn off your computer, Log your workOut
 //!
 //! A simple, efficient and cross-platform workout logging application with
 //! 800+ built-in exercises.  The app is built with [Dioxus] and targets both
@@ -277,7 +277,7 @@ fn build_session_from_entries(
         let weight_hg = entry
             .weight_hg
             .map(|w| Weight(w.min(u16::MAX as u32) as u16));
-        let reps = if force.is_some_and(|f| f.has_reps()) {
+        let reps = if force.is_some_and(Force::has_reps) {
             entry.reps
         } else {
             None
@@ -306,7 +306,7 @@ fn build_session_from_entries(
 }
 
 /// The auto-dismiss timer lives here (always mounted) so it is never cancelled
-/// when the SessionView unmounts.
+/// when the `SessionView` unmounts.
 #[component]
 fn CongratulationsToast() -> Element {
     let mut show = use_context::<CongratulationsSignal>().0;
@@ -324,7 +324,7 @@ fn CongratulationsToast() -> Element {
                 #[cfg(target_arch = "wasm32")]
                 gloo_timers::future::TimeoutFuture::new(TOAST_DISMISS_MS).await;
                 #[cfg(not(target_arch = "wasm32"))]
-                tokio::time::sleep(std::time::Duration::from_millis(TOAST_DISMISS_MS as u64)).await;
+                tokio::time::sleep(std::time::Duration::from_millis(u64::from(TOAST_DISMISS_MS))).await;
                 if *gen.peek() == next {
                     show.set(false);
                 }
@@ -360,7 +360,7 @@ fn Toast() -> Element {
                 #[cfg(target_arch = "wasm32")]
                 gloo_timers::future::TimeoutFuture::new(TOAST_DISMISS_MS).await;
                 #[cfg(not(target_arch = "wasm32"))]
-                tokio::time::sleep(std::time::Duration::from_millis(TOAST_DISMISS_MS as u64)).await;
+                tokio::time::sleep(std::time::Duration::from_millis(u64::from(TOAST_DISMISS_MS))).await;
                 if *gen.peek() == next {
                     toast.set(None);
                 }

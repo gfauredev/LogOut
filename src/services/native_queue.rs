@@ -37,6 +37,7 @@ pub fn enqueue(op: NativeOp) {
     });
 }
 
+#[allow(clippy::unused_async)]
 async fn drain() {
     loop {
         let op = QUEUE.with(|q| q.borrow_mut().1.pop_front());

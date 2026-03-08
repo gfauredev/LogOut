@@ -147,8 +147,9 @@ pub fn Exercises() -> Element {
     // the user is near the bottom; Rust receives it and increments visible_count.
     #[cfg(not(target_arch = "wasm32"))]
     use_hook(move || {
+        #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
         let js = format!(
-            r#"
+            r"
             (function() {{
                 setInterval(function() {{
                     var el = document.documentElement;
@@ -160,7 +161,7 @@ pub fn Exercises() -> Element {
                     }}
                 }}, {interval});
             }})()
-            "#,
+            ",
             threshold = SCROLL_THRESHOLD_PX as u32,
             interval = SCROLL_POLL_INTERVAL_MS,
         );

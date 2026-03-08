@@ -12,7 +12,7 @@ pub enum Metric {
 }
 
 impl Metric {
-    fn label(&self) -> &'static str {
+    fn label(self) -> &'static str {
         match self {
             Metric::Weight => "Weight (kg)",
             Metric::Reps => "Repetitions",
@@ -21,11 +21,12 @@ impl Metric {
         }
     }
 
-    fn extract_value(&self, log: &ExerciseLog) -> Option<f64> {
+    #[allow(clippy::cast_precision_loss)]
+    fn extract_value(self, log: &ExerciseLog) -> Option<f64> {
         match self {
-            Metric::Weight => log.weight_hg.map(|w| w.0 as f64 / 10.0),
-            Metric::Reps => log.reps.map(|r| r as f64),
-            Metric::Distance => log.distance_m.map(|d| d.0 as f64 / 1000.0),
+            Metric::Weight => log.weight_hg.map(|w| f64::from(w.0) / 10.0),
+            Metric::Reps => log.reps.map(f64::from),
+            Metric::Distance => log.distance_m.map(|d| f64::from(d.0) / 1000.0),
             Metric::Duration => log.duration_seconds().map(|d| d as f64 / 60.0),
         }
     }
@@ -39,7 +40,10 @@ fn adapt_metric_unit(metric: Metric, values: &[f64]) -> (&'static str, f64) {
     let avg = if values.is_empty() {
         0.0
     } else {
-        values.iter().sum::<f64>() / values.len() as f64
+        #[allow(clippy::cast_precision_loss)]
+        {
+            values.iter().sum::<f64>() / values.len() as f64
+        }
     };
     match metric {
         // Raw values are in km; switch to metres when avg < 1 km (keeps 0.0–999.9)
@@ -120,7 +124,8 @@ pub fn Analytics() -> Element {
                     for log in &session.exercise_logs {
                         if &log.exercise_id == exercise_id {
                             if let Some(value) = metric.extract_value(log) {
-                                points.push((log.start_time as f64, value));
+                                #[allow(clippy::cast_precision_loss)]
+                            points.push((log.start_time as f64, value));
                             }
                         }
                     }
@@ -132,8 +137,7 @@ pub fn Analytics() -> Element {
                     .read()
                     .iter()
                     .find(|(id, _)| id == exercise_id)
-                    .map(|(_, name)| name.clone())
-                    .unwrap_or_else(|| exercise_id.clone());
+                    .map_or_else(|| exercise_id.clone(), |(_, name)| name.clone());
 
                 (exercise_name, points)
             })
@@ -147,7 +151,9 @@ pub fn Analytics() -> Element {
         .collect();
     let (y_label, scale) = adapt_metric_unit(*selected_metric.read(), &all_y);
     // Apply scaling to produce display-ready chart data
-    let display_data: Vec<(String, Vec<(f64, f64)>)> = if scale != 1.0 {
+    let display_data: Vec<(String, Vec<(f64, f64)>)> = if (scale - 1.0).abs() < f64::EPSILON {
+        chart_data.clone()
+    } else {
         chart_data
             .iter()
             .map(|(name, pts)| {
@@ -157,8 +163,6 @@ pub fn Analytics() -> Element {
                 )
             })
             .collect()
-    } else {
-        chart_data.clone()
     };
 
     rsx! {
@@ -171,7 +175,6 @@ pub fn Analytics() -> Element {
                     value: "{selected_metric:?}",
                     onchange: move |evt| {
                         selected_metric.set(match evt.value().as_str() {
-                            "Weight" => Metric::Weight,
                             "Reps" => Metric::Reps,
                             "Distance" => Metric::Distance,
                             "Duration" => Metric::Duration,
@@ -266,7 +269,7 @@ fn ChartView(
     let chart_height = height - 2.0 * pad;
 
     let scale_x = move |x: f64| -> f64 {
-        if max_x == min_x {
+        if (max_x - min_x).abs() < f64::EPSILON {
             pad + chart_width / 2.0
         } else {
             pad + (x - min_x) / (max_x - min_x) * chart_width
@@ -274,15 +277,19 @@ fn ChartView(
     };
 
     let scale_y = move |y: f64| -> f64 {
-        if max_y == min_y {
+        if (max_y - min_y).abs() < f64::EPSILON {
             pad + chart_height / 2.0
         } else {
             pad + chart_height - (y - min_y) / (max_y - min_y) * chart_height
         }
     };
 
-    let format_date =
-        |timestamp: f64| -> String { crate::utils::format_session_date(timestamp as u64) };
+    let format_date = |timestamp: f64| -> String {
+        #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+        {
+            crate::utils::format_session_date(timestamp as u64)
+        }
+    };
 
     rsx! {
         svg {
@@ -298,7 +305,7 @@ fn ChartView(
             // Y-axis labels
             for i in 0..5 {
                 {
-                    let y_val = min_y + (max_y - min_y) * (i as f64 / 4.0);
+                    let y_val = min_y + (max_y - min_y) * (f64::from(i) / 4.0);
                     let y_pos = scale_y(y_val);
                     rsx! {
                         g { key: "ylabel_{i}",
@@ -315,7 +322,8 @@ fn ChartView(
                 rsx! {
                     for i in 0..num_labels {
                         {
-                            let x_val = min_x + (max_x - min_x) * (i as f64 / (num_labels - 1) as f64);
+                            #[allow(clippy::cast_precision_loss)]
+                    let x_val = min_x + (max_x - min_x) * (i as f64 / (num_labels - 1) as f64);
                             let x_pos = scale_x(x_val);
                             rsx! {
                                 g { key: "xlabel_{i}",
@@ -342,7 +350,7 @@ fn ChartView(
                         let path_data = points.iter().enumerate()
                             .map(|(i, (x, y))| {
                                 let sx = scale_x(*x); let sy = scale_y(*y);
-                                if i == 0 { format!("M {} {}", sx, sy) } else { format!("L {} {}", sx, sy) }
+                                if i == 0 { format!("M {sx} {sy}") } else { format!("L {sx} {sy}") }
                             })
                             .collect::<Vec<_>>().join(" ");
                         let color = colors.get(idx).unwrap_or(&"#ccc");
@@ -361,6 +369,7 @@ fn ChartView(
             // Legend
             for (idx, (exercise_name, _)) in data.iter().enumerate() {
                 {
+                    #[allow(clippy::cast_precision_loss)]
                     let y_offset = 20.0 + idx as f64 * 20.0;
                     let color = colors.get(idx).unwrap_or(&"#ccc");
                     rsx! {

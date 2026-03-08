@@ -40,8 +40,7 @@ jobs:
       - name: Run Clippy
         id: lint
         continue-on-error: true
-        run: cargo clippy --all-targets -- -D warnings -W clippy::all
-        # -W clippy::pedantic
+        run: cargo clippy --all-targets -- -D warnings -W clippy::all -W clippy::pedantic
 
   unit-tests:
     name: Unit Tests

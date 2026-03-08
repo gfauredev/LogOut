@@ -2,7 +2,7 @@ use crate::models::{Category, Equipment, Force, Muscle};
 use dioxus::prelude::*;
 use strum::IntoEnumIterator;
 
-/// Shared form fields used by both AddCustomExercisePage and EditCustomExercisePage.
+/// Shared form fields used by both `AddCustomExercisePage` and `EditCustomExercisePage`.
 #[component]
 pub fn ExerciseFormFields(
     name_input: Signal<String>,

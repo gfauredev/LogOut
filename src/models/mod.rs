@@ -1,4 +1,4 @@
-//! Data models for the LogOut application.
+//! Data models for the `LogOut` application.
 //!
 //! This module contains all shared data types used across the application:
 //! enums for exercise properties, unit-safe value types ([`Weight`],
@@ -237,7 +237,7 @@ impl fmt::Display for Weight {
         if self.0.is_multiple_of(10) {
             write!(f, "{} kg", self.0 / 10)
         } else {
-            write!(f, "{:.1} kg", self.0 as f64 / 10.0)
+            write!(f, "{:.1} kg", f64::from(self.0) / 10.0)
         }
     }
 }
@@ -252,7 +252,7 @@ impl fmt::Display for Distance {
             if self.0.is_multiple_of(1000) {
                 write!(f, "{} km", self.0 / 1000)
             } else {
-                write!(f, "{:.2} km", self.0 as f64 / 1000.0)
+                write!(f, "{:.2} km", f64::from(self.0) / 1000.0)
             }
         } else {
             write!(f, "{} m", self.0)
@@ -267,9 +267,10 @@ pub fn parse_weight_kg(input: &str) -> Option<Weight> {
         return None;
     }
     let hg = (val * 10.0).round();
-    if hg < 1.0 || hg > u16::MAX as f64 {
+    if hg < 1.0 || hg > f64::from(u16::MAX) {
         return None;
     }
+    #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
     Some(Weight(hg as u16))
 }
 
@@ -280,9 +281,10 @@ pub fn parse_distance_km(input: &str) -> Option<Distance> {
         return None;
     }
     let m = (val * 1000.0).round();
-    if m < 1.0 || m > u32::MAX as f64 {
+    if m < 1.0 || m > f64::from(u32::MAX) {
         return None;
     }
+    #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
     Some(Distance(m as u32))
 }
 
@@ -339,18 +341,14 @@ impl Exercise {
     /// Get the URL for a specific image by index.
     /// Images that are already full URLs (start with http:// or https://) are
     /// returned as-is.  Relative paths from the exercise-db are prefixed with
-    /// the EXERCISES_IMAGE_BASE_URL.
+    /// the `EXERCISES_IMAGE_BASE_URL`.
     pub fn get_image_url(&self, index: usize) -> Option<String> {
         self.images.get(index).map(|img| {
             if img.starts_with("http://") || img.starts_with("https://") {
                 img.clone()
             } else {
-                format!(
-                    "{}{}{}",
-                    crate::utils::get_exercise_db_url(),
-                    EXERCISES_IMAGE_SUB_PATH,
-                    img
-                )
+                let base_url = crate::utils::get_exercise_db_url();
+                format!("{base_url}{EXERCISES_IMAGE_SUB_PATH}{img}")
             }
         })
     }
@@ -364,8 +362,8 @@ impl Exercise {
     /// Returns the CSS class and icon for the exercise type tag.
     ///
     /// The tag reflects what metrics are logged for this exercise:
-    /// - `"tag-cardio"` / `"🏃"` — distance-based (Category::Cardio)
-    /// - `"tag-strength"` / `"💪"` — repetition-based (Force::Pull / Force::Push)
+    /// - `"tag-cardio"` / `"🏃"` — distance-based (`Category::Cardio`)
+    /// - `"tag-strength"` / `"💪"` — repetition-based (`Force::Pull` / `Force::Push`)
     /// - `"tag-static"` / `"⏱️"` — time-only (static hold, stretch, etc.)
     #[allow(dead_code)]
     pub fn type_tag(&self) -> (&'static str, &'static str) {
@@ -382,7 +380,7 @@ pub(crate) fn exercise_type_tag(
 ) -> (&'static str, &'static str) {
     if category == Category::Cardio {
         ("tag-cardio", "🏃")
-    } else if force.is_some_and(|f| f.has_reps()) {
+    } else if force.is_some_and(Force::has_reps) {
         ("tag-strength", "💪")
     } else {
         ("tag-static", "⏱️")
@@ -466,7 +464,7 @@ impl WorkoutSession {
     pub fn new() -> Self {
         let timestamp = get_current_timestamp();
         Self {
-            id: format!("session_{}", timestamp),
+            id: format!("session_{timestamp}"),
             start_time: timestamp,
             end_time: None,
             exercise_logs: Vec::new(),
@@ -494,7 +492,7 @@ impl WorkoutSession {
 /// Uses the `time` crate which handles both WASM (via `wasm-bindgen` feature)
 /// and native seamlessly.
 pub fn get_current_timestamp() -> u64 {
-    time::OffsetDateTime::now_utc().unix_timestamp().max(0) as u64
+    time::OffsetDateTime::now_utc().unix_timestamp().max(0).cast_unsigned()
 }
 
 /// Format a duration in seconds as HH:MM:SS or MM:SS
@@ -503,9 +501,9 @@ pub fn format_time(seconds: u64) -> String {
     let minutes = (seconds % 3600) / 60;
     let secs = seconds % 60;
     if hours > 0 {
-        format!("{:02}:{:02}:{:02}", hours, minutes, secs)
+        format!("{hours:02}:{minutes:02}:{secs:02}")
     } else {
-        format!("{:02}:{:02}", minutes, secs)
+        format!("{minutes:02}:{secs:02}")
     }
 }
 
@@ -725,7 +723,7 @@ mod tests {
     }
 
     /// A session with no exercises is cancelled and must be deleted (not saved).
-    /// finish_session uses is_cancelled() to decide between delete_session and save_session.
+    /// `finish_session` uses `is_cancelled()` to decide between `delete_session` and `save_session`.
     #[test]
     fn finish_session_cancelled_session_is_not_stored() {
         let session = WorkoutSession {
@@ -746,8 +744,8 @@ mod tests {
         );
     }
 
-    /// A session that has exercises is not cancelled and must be saved with an end_time.
-    /// finish_session uses is_cancelled() to decide between delete_session and save_session.
+    /// A session that has exercises is not cancelled and must be saved with an `end_time`.
+    /// `finish_session` uses `is_cancelled()` to decide between `delete_session` and `save_session`.
     #[test]
     fn finish_session_with_exercises_is_stored() {
         let log = ExerciseLog {
@@ -1663,7 +1661,7 @@ mod tests {
     #[test]
     fn parse_distance_km_overflow_u32_rejected() {
         // A value larger than u32::MAX meters must be rejected.
-        let too_large = format!("{}", (u32::MAX as f64 / 1000.0) + 1.0);
+        let too_large = format!("{}", (f64::from(u32::MAX) / 1000.0) + 1.0);
         assert_eq!(parse_distance_km(&too_large), None);
     }
 

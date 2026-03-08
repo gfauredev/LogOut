@@ -1,5 +1,5 @@
 use crate::models::{
-    format_time, parse_distance_km, parse_weight_kg, Category, ExerciseLog, WorkoutSession,
+    format_time, parse_distance_km, parse_weight_kg, Category, ExerciseLog, Force, WorkoutSession,
 };
 use crate::services::storage;
 use dioxus::prelude::*;
@@ -27,13 +27,13 @@ pub fn CompletedExerciseLog(
         move |_| {
             edit_weight_input.set(
                 log.weight_hg
-                    .map(|w| format!("{:.1}", w.0 as f64 / 10.0))
+                    .map(|w| format!("{:.1}", f64::from(w.0) / 10.0))
                     .unwrap_or_default(),
             );
             edit_reps_input.set(log.reps.map(|r| r.to_string()).unwrap_or_default());
             edit_distance_input.set(
                 log.distance_m
-                    .map(|d| format!("{:.2}", d.0 as f64 / 1000.0))
+                    .map(|d| format!("{:.2}", f64::from(d.0) / 1000.0))
                     .unwrap_or_default(),
             );
             is_editing.set(true);
@@ -45,7 +45,7 @@ pub fn CompletedExerciseLog(
         if let Some(log) = current_session.exercise_logs.get_mut(idx) {
             log.weight_hg = parse_weight_kg(&edit_weight_input.read());
             let force = log.force;
-            log.reps = if force.is_some_and(|f| f.has_reps()) {
+            log.reps = if force.is_some_and(Force::has_reps) {
                 edit_reps_input.read().parse().ok()
             } else {
                 None
@@ -62,7 +62,7 @@ pub fn CompletedExerciseLog(
     };
 
     let force = log.force;
-    let show_reps = force.is_some_and(|f| f.has_reps());
+    let show_reps = force.is_some_and(Force::has_reps);
     let is_cardio = log.category == Category::Cardio;
 
     rsx! {
