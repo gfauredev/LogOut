@@ -1,0 +1,5 @@
+builds:
+  branch: main
+  exclude:
+    - "*.aarch64-darwin.*"
+    # - "packages.*.android" # GitHub CI/CD only for now
