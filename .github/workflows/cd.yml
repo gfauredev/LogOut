@@ -146,7 +146,15 @@ jobs:
         with:
           tool: dioxus-cli
 
+      - name: Decode Keystore
+        run: |
+          mkdir -p android/secrets
+          echo "${{ secrets.ANDROID_KEYSTORE_B64 }}" | base64 -d > android/secrets/logout-production.jks
+
       - name: Build arm64 APK
+        env:
+          DIOXUS_ASSET_SIGNING_STORE_PASS: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          DIOXUS_ASSET_SIGNING_KEY_PASS: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: >-
           dx build
           --platform android
@@ -170,6 +178,9 @@ jobs:
         run: rustup target add armv7-linux-androideabi i686-linux-android x86_64-linux-android
 
       - name: Rebuild for all architectures
+        env:
+          DIOXUS_ASSET_SIGNING_STORE_PASS: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          DIOXUS_ASSET_SIGNING_KEY_PASS: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: >-
           dx build
           --platform android
@@ -178,6 +189,9 @@ jobs:
           --features mobile-platform
 
       - name: Build AAB
+        env:
+          DIOXUS_ASSET_SIGNING_STORE_PASS: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          DIOXUS_ASSET_SIGNING_KEY_PASS: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: |
           GRADLE_DIR=$(find target/dx -name "gradlew" -maxdepth 10 -type f | head -1 | xargs dirname)
           [ -n "$GRADLE_DIR" ] || { echo "::error::Gradle project not found under target/dx"; exit 1; }
