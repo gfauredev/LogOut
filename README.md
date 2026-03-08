@@ -135,7 +135,7 @@ The PWA is deployed automatically on every push to `main` by
 To build for Android as APK, run
 
 ```sh
-dx build --android --release
+dx build --android --release --target aarch64-linux-android
 ```
 
 Dioxus `0.7` don’t yet supports signing (it does, but keys have to be in clear

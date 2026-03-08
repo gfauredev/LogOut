@@ -53,18 +53,19 @@
               "33"
               "34"
               "35"
+              "36"
             ]; # Target latest Android
             buildToolsVersions = [
-              "33.0.2"
               "34.0.0"
               "35.0.0"
+              "36.0.0"
             ];
             includeNDK = true;
             includeEmulator = false; # Clean up unused
             includeSystemImages = false; # Clean up unused
             abiVersions = [
+              "arm64-v8a"
               "x86_64"
-              "arm64-v8a" # Add common real device ABI
             ];
           };
           commonNativeBuildInputs = with pkgs; [
