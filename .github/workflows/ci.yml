@@ -2,6 +2,8 @@ name: CI # Code Quality Gates
 
 on:
   pull_request:
+  # push:
+  #   branches: [ main ]
 
 permissions:
   contents: read
@@ -9,174 +11,245 @@ permissions:
 
 jobs:
   format:
-    name: Check Formatting (cargo fmt)
+    name: Formatting
     runs-on: ubuntu-latest
+    outputs:
+      outcome: ${{ steps.check.outcome }}
     steps:
       - uses: actions/checkout@v4
-
       - uses: dtolnay/rust-toolchain@stable
         with:
           components: rustfmt
-
       - uses: swatinem/rust-cache@v2
-
       - name: Check formatting
-        run: cargo fmt --check
+        id: check
+        continue-on-error: true
+        run: cargo fmt --all -- --check
 
   clippy:
-    name: Lint (cargo clippy)
+    name: Lint
     runs-on: ubuntu-latest
+    outputs:
+      outcome: ${{ steps.lint.outcome }}
     steps:
       - uses: actions/checkout@v4
-
       - uses: dtolnay/rust-toolchain@stable
         with:
           components: clippy
-
       - uses: swatinem/rust-cache@v2
-
-      - name: Run Clippy (deny warnings)
-        run: cargo clippy -- -D warnings
+      - name: Run Clippy
+        id: lint
+        continue-on-error: true
+        run: cargo clippy --all-targets -- -D warnings -W clippy::all
+        # -W clippy::pedantic
 
   unit-tests:
     name: Unit Tests
     runs-on: ubuntu-latest
+    outputs:
+      outcome: ${{ steps.tests.outcome }}
+      summary: ${{ steps.summarize.outputs.summary }}
     steps:
       - uses: actions/checkout@v4
-
       - uses: dtolnay/rust-toolchain@stable
         with:
           components: llvm-tools-preview
-
       - uses: swatinem/rust-cache@v2
-
       - uses: taiki-e/install-action@cargo-llvm-cov
-
       - name: Run unit tests with coverage
         id: tests
+        continue-on-error: true
         run: |
-          # Run tests with coverage, capturing both test output and coverage data
-          TEST_OUTPUT=$(cargo llvm-cov --bin log-workout --lcov --output-path lcov.info 2>&1)
-          echo "$TEST_OUTPUT"
-          # Strip Cargo compilation/progress lines; keep only test results
-          CLEAN_OUTPUT=$(echo "$TEST_OUTPUT" | grep -Ev '^\s*(Compiling|Checking|Finished|Downloaded|Downloading|Updating|Locking|Fresh)')
-          echo "test_output<<EOF" >> "$GITHUB_OUTPUT"
-          echo "$CLEAN_OUTPUT" >> "$GITHUB_OUTPUT"
-          echo "EOF" >> "$GITHUB_OUTPUT"
-
+          cargo llvm-cov --all-features --bin log-out --lcov --output-path lcov.info 2>&1 | tee unit_test_output.txt
+      - name: Summarize unit tests
+        id: summarize
+        run: |
+          SUMMARY=$(grep -E "test result: .*\. [0-9]+ passed; [0-9]+ failed; [0-9]+ ignored" unit_test_output.txt | tail -n 1)
+          if [ -z "$SUMMARY" ]; then
+            SUMMARY="Unit tests failed before summary."
+          fi
+          echo "summary=$SUMMARY" >> "$GITHUB_OUTPUT"
       - name: Upload lcov report
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: unit-coverage-lcov
           path: lcov.info
+          if-no-files-found: ignore
           retention-days: 7
 
-  coverage-gate:
-    name: Coverage Gate (≥ 90%)
-    needs: unit-tests
+  e2e-web:
+    name: Web E2E Tests
     runs-on: ubuntu-latest
+    outputs:
+      outcome: ${{ steps.maestro.outcome }}
+      summary: ${{ steps.summarize.outputs.summary }}
     steps:
       - uses: actions/checkout@v4
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: "17"
+          distribution: temurin
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+      - uses: swatinem/rust-cache@v2
+      - name: Install Dioxus CLI
+        uses: taiki-e/install-action@v2
+        with:
+          tool: dioxus-cli
+      - name: Build web release
+        run: dx build --web --release
+      - name: Install Maestro
+        run: |
+          curl -Ls "https://get.maestro.mobile.dev" | bash
+          echo "$HOME/.maestro/bin" >> "$GITHUB_PATH"
+      - name: Serve PWA and run Maestro web tests
+        id: maestro
+        continue-on-error: true
+        run: |
+          dx serve --open false --interactive false --web --release &
+          SERVER_PID=$!
+          # Wait for server to be responsive
+          timeout 60 bash -c 'until curl -sf http://localhost:8080 > /dev/null; do sleep 2; done' || (kill $SERVER_PID && exit 1)
+          maestro test --headless maestro/web/ | tee maestro_output.txt
+          TEST_EXIT=$?
+          kill $SERVER_PID 2>/dev/null || true
+          exit $TEST_EXIT
+          
+      - name: Summarize Maestro tests
+        id: summarize
+        run: |
+          SUMMARY=$(grep -E "Tests passed: [0-9]+, Tests failed: [0-9]+" maestro_output.txt | tail -n 1)
+          if [ -z "$SUMMARY" ]; then
+             SUMMARY=$(grep -E "[0-9]+ passed, [0-9]+ failed" maestro_output.txt | tail -n 1)
+          fi
+          if [ -z "$SUMMARY" ]; then
+            if [ "${{ steps.maestro.outcome }}" == "success" ]; then
+              SUMMARY="✅ All Maestro tests passed"
+            else
+              SUMMARY="❌ Maestro tests failed"
+            fi
+          fi
+          echo "summary=$SUMMARY" >> "$GITHUB_OUTPUT"
 
+      - name: Upload diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: web-e2e-diagnostics
+          path: ~/.maestro/tests/
+          if-no-files-found: ignore
+          retention-days: 7
+
+  report:
+    name: PR Summary Report
+    needs: [format, clippy, unit-tests, e2e-web]
+    if: always()
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v4
       - name: Download lcov report
+        continue-on-error: true
         uses: actions/download-artifact@v4
         with:
           name: unit-coverage-lcov
-
-      - name: Generate coverage summary
+          
+      - name: Process Coverage
         id: cov
         run: |
-          # Summarise totals directly from the lcov.info file
-          TOTAL_LH=0
-          TOTAL_LF=0
-          while IFS= read -r line; do
-            case "$line" in
-              LH:*) TOTAL_LH=$((TOTAL_LH + ${line#LH:})) ;;
-              LF:*) TOTAL_LF=$((TOTAL_LF + ${line#LF:})) ;;
-            esac
-          done < lcov.info
-          if [ "$TOTAL_LF" -gt 0 ]; then
-            TOTAL_PCT=$((TOTAL_LH * 100 / TOTAL_LF))
-          else
-            TOTAL_PCT=0
-          fi
-          SUMMARY="Total: ${TOTAL_LH}/${TOTAL_LF} lines covered (${TOTAL_PCT}%)"
-          echo "$SUMMARY"
-          echo "summary<<EOF" >> "$GITHUB_OUTPUT"
-          echo "$SUMMARY" >> "$GITHUB_OUTPUT"
-          echo "EOF" >> "$GITHUB_OUTPUT"
-
-      - name: Check coverage gate for tested files
-        id: gate
-        run: |
-          # Files that contain unit tests (have #[cfg(test)] blocks)
-          TESTED_FILES=$(grep -rl '#\[cfg(test)\]' src/ | sort)
-          echo "Tested files:"
-          echo "$TESTED_FILES"
-
-          FAIL=0
-          GATE_REPORT=""
-          for f in $TESTED_FILES; do
-            # Extract line coverage for this file from lcov.info
-            IN_FILE=0
-            LH=0
-            LF=0
+          if [ -f lcov.info ]; then
+            TOTAL_LH=0
+            TOTAL_LF=0
             while IFS= read -r line; do
               case "$line" in
-                SF:*"$f") IN_FILE=1 ;;
-                SF:*) IN_FILE=0 ;;
-                LH:*) [ "$IN_FILE" = 1 ] && LH="${line#LH:}" ;;
-                LF:*) [ "$IN_FILE" = 1 ] && LF="${line#LF:}" ;;
+                LH:*) TOTAL_LH=$((TOTAL_LH + ${line#LH:})) ;;
+                LF:*) TOTAL_LF=$((TOTAL_LF + ${line#LF:})) ;;
               esac
             done < lcov.info
-
-            if [ "$LF" -gt 0 ]; then
-              PCT=$((LH * 100 / LF))
+            if [ "$TOTAL_LF" -gt 0 ]; then
+              TOTAL_PCT=$((TOTAL_LH * 100 / TOTAL_LF))
             else
-              PCT=0
+              TOTAL_PCT=0
             fi
+            SUMMARY="Total: ${TOTAL_LH}/${TOTAL_LF} lines covered (${TOTAL_PCT}%)"
+            
+            # Coverage gate check (≥ 90%)
+            TESTED_FILES=$(grep -rl '#\[cfg(test)\]' src/ | sort)
+            GATE_REPORT=""
+            FAIL=0
+            for f in $TESTED_FILES; do
+              LH=0; LF=0; IN_FILE=0
+              while IFS= read -r line; do
+                case "$line" in
+                  SF:*"$f") IN_FILE=1 ;;
+                  SF:*) IN_FILE=0 ;;
+                  LH:*) [ "$IN_FILE" = 1 ] && LH="${line#LH:}" ;;
+                  LF:*) [ "$IN_FILE" = 1 ] && LF="${line#LF:}" ;;
+                esac
+              done < lcov.info
+              if [ "$LF" -gt 0 ]; then PCT=$((LH * 100 / LF)); else PCT=0; fi
+              STATUS="✅"; if [ "$PCT" -lt 90 ]; then STATUS="❌"; FAIL=1; fi
+              GATE_REPORT="${GATE_REPORT}| ${f} | ${LH}/${LF} | ${PCT}% | ${STATUS} |\n"
+            done
+            
+            echo "summary=$SUMMARY" >> "$GITHUB_OUTPUT"
+            echo -e "gate_report=$GATE_REPORT" >> "$GITHUB_OUTPUT"
+            echo "gate_failed=$FAIL" >> "$GITHUB_OUTPUT"
+            echo "has_coverage=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "has_coverage=false" >> "$GITHUB_OUTPUT"
+          fi
 
-            STATUS="✅"
-            if [ "$PCT" -lt 90 ]; then
-              STATUS="❌"
-              FAIL=1
-            fi
-            GATE_REPORT="${GATE_REPORT}| ${f} | ${LH}/${LF} | ${PCT}% | ${STATUS} |\n"
-            echo "$f: $LH/$LF lines covered ($PCT%)"
-          done
-
-          echo "gate_report<<EOF" >> "$GITHUB_OUTPUT"
-          echo -e "$GATE_REPORT" >> "$GITHUB_OUTPUT"
-          echo "EOF" >> "$GITHUB_OUTPUT"
-          echo "gate_failed=$FAIL" >> "$GITHUB_OUTPUT"
-
-      - name: Post coverage comment
+      - name: Post/Update PR Comment
+        if: github.event_name == 'pull_request'
         uses: actions/github-script@v7
         env:
-          SUMMARY: ${{ steps.cov.outputs.summary }}
-          GATE_REPORT: ${{ steps.gate.outputs.gate_report }}
-          GATE_FAILED: ${{ steps.gate.outputs.gate_failed }}
+          FORMAT_STATUS: ${{ needs.format.outputs.outcome }}
+          CLIPPY_STATUS: ${{ needs.clippy.outputs.outcome }}
+          UNIT_STATUS: ${{ needs.unit-tests.outputs.outcome }}
+          UNIT_SUMMARY: ${{ needs.unit-tests.outputs.summary }}
+          E2E_STATUS: ${{ needs.e2e-web.outputs.outcome }}
+          E2E_SUMMARY: ${{ needs.e2e-web.outputs.summary }}
+          COV_SUMMARY: ${{ steps.cov.outputs.summary }}
+          COV_GATE_REPORT: ${{ steps.cov.outputs.gate_report }}
+          COV_GATE_FAILED: ${{ steps.cov.outputs.gate_failed }}
+          HAS_COV: ${{ steps.cov.outputs.has_coverage }}
         with:
           script: |
-            const summary = process.env.SUMMARY;
-            const gateReport = process.env.GATE_REPORT;
-            const gateFailed = process.env.GATE_FAILED === '1';
-            const gateStatus = gateFailed
-              ? '❌ **FAILED** — tested files must have ≥ 90% coverage'
-              : '✅ **PASSED** — all tested files have ≥ 90% coverage';
-            const tag = '<!-- coverage-gate -->';
-            const body = `${tag}
-            ## 📊 Coverage Gate ${gateStatus}
-
-            ### Coverage Summary
-            \`\`\`
-            ${summary}
-            \`\`\`
-
-            ### Per-file Results
-            | File | Lines Hit/Total | Coverage | Status |
-            |------|----------------|----------|--------|
-            ${gateReport}`;
+            const getIcon = (outcome) => outcome === 'success' ? '✅' : (outcome === 'failure' ? '❌' : '⚠️');
+            const tag = '<!-- ci-dashboard -->';
+            
+            let body = `${tag}\n## 📊 CI Dashboard\n\n`;
+            
+            body += `### 🛠️ Checks\n`;
+            body += `| Check | Status |\n`;
+            body += `|-------|--------|\n`;
+            body += `| Formatting | ${getIcon(process.env.FORMAT_STATUS)} |\n`;
+            body += `| Linting | ${getIcon(process.env.CLIPPY_STATUS)} |\n\n`;
+            
+            body += `### 🧪 Test Results\n`;
+            body += `| Suite | Status | Summary |\n`;
+            body += `|-------|--------|---------|\n`;
+            body += `| Unit Tests | ${getIcon(process.env.UNIT_STATUS)} | ${process.env.UNIT_SUMMARY || 'N/A'} |\n`;
+            body += `| E2E Tests (Web) | ${getIcon(process.env.E2E_STATUS)} | ${process.env.E2E_SUMMARY || 'N/A'} |\n\n`;
+            
+            if (process.env.HAS_COV === 'true') {
+              const gateStatus = process.env.COV_GATE_FAILED === '1'
+                ? '❌ **FAILED** (tested files must have ≥ 90% coverage)'
+                : '✅ **PASSED**';
+              body += `### 📊 Coverage Gate ${gateStatus}\n`;
+              body += `\`${process.env.COV_SUMMARY}\`\n\n`;
+              body += `<details>\n<summary>Per-file Results</summary>\n\n`;
+              body += `| File | Lines | Coverage | Status |\n`;
+              body += `|------|-------|----------|--------|\n`;
+              body += process.env.COV_GATE_REPORT.replace(/\\n/g, '\n');
+              body += `\n</details>\n\n`;
+            }
+            
             const { data: comments } = await github.rest.issues.listComments({
               owner: context.repo.owner,
               repo: context.repo.repo,
@@ -199,65 +272,12 @@ jobs:
               });
             }
 
-      - name: Fail if coverage gate not met
-        if: steps.gate.outputs.gate_failed == '1'
+      - name: Fail if any check failed
         run: |
-          echo "::error::Coverage gate failed: one or more tested files have less than 90% line coverage."
-          exit 1
-
-  e2e-web:
-    name: Web E2E Tests (Maestro)
-    needs: [format, clippy, unit-tests]
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Set up JDK 17
-        uses: actions/setup-java@v4
-        with:
-          java-version: "17"
-          distribution: temurin
-
-      - uses: dtolnay/rust-toolchain@stable
-        with:
-          targets: wasm32-unknown-unknown
-
-      - uses: swatinem/rust-cache@v2
-
-      - name: Install Dioxus CLI
-        uses: taiki-e/install-action@v2
-        with:
-          tool: dioxus-cli
-
-      - name: Build web release
-        run: dx build --web --release
-
-      - name: Install Maestro
-        run: |
-          curl -Ls "https://get.maestro.mobile.dev" | bash
-          echo "$HOME/.maestro/bin" >> "$GITHUB_PATH"
-
-      - name: Serve PWA and run Maestro web tests
-        id: maestro
-        continue-on-error: true
-        run: |
-          dx serve --open false --interactive false --web --release &
-          SERVER_PID=$!
-          sleep 5 # Wait for the server to be ready
-          maestro test --headless maestro/web/
-          TEST_EXIT=$?
-          kill $SERVER_PID 2>/dev/null || true
-          exit $TEST_EXIT
-
-      - name: Upload diagnostics
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: web-e2e-diagnostics
-          path: ~/.maestro/tests/
-          if-no-files-found: ignore
-          retention-days: 7
-
-      - name: Fail if Maestro tests failed
-        if: steps.maestro.outcome == 'failure'
-        run: exit 1
+          FAIL=0
+          if [ "${{ needs.format.outputs.outcome }}" != "success" ]; then echo "Format check failed"; FAIL=1; fi
+          if [ "${{ needs.clippy.outputs.outcome }}" != "success" ]; then echo "Clippy check failed"; FAIL=1; fi
+          if [ "${{ needs.unit-tests.outputs.outcome }}" != "success" ]; then echo "Unit tests failed"; FAIL=1; fi
+          if [ "${{ needs.e2e-web.outputs.outcome }}" != "success" ]; then echo "E2E tests failed"; FAIL=1; fi
+          if [ "${{ steps.cov.outputs.gate_failed }}" == "1" ]; then echo "Coverage gate failed"; FAIL=1; fi
+          exit $FAIL
