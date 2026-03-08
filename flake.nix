@@ -214,11 +214,13 @@
               export XDG_DATA_HOME=$HOME/.local/share
               export GRADLE_USER_HOME=$HOME/.gradle
               mkdir -p $HOME
+              # Use absolute paths to avoid canonicalization issues in Nix sandbox
+              export CARGO_TARGET_DIR=$PWD/target
               # Pre-create the directory wry expects to avoid canonicalization failure
               # Dioxus CLI uses the binary name 'log-out' for this path.
-              mkdir -p target/dx/log-out/release/android/app/app/src/main/kotlin/dev/dioxus/main
-              export CARGO_TARGET_DIR=target
-              dx build --android --release --target aarch64-linux-android
+              export WRY_ANDROID_KOTLIN_FILES_OUT_DIR=$CARGO_TARGET_DIR/dx/log-out/release/android/app/app/src/main/kotlin/dev/dioxus/main
+              mkdir -p $WRY_ANDROID_KOTLIN_FILES_OUT_DIR
+              dx build --android --release --target aarch64-linux-android --verbose
             '';
             installPhase = ''
               mkdir -p $out/bin

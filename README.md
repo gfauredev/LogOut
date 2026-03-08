@@ -248,8 +248,8 @@ services, providing a detailed view of the codebase's API.
 
 ## TODO
 
-- Make android app background black at up, currently briefly flashing white
 - Fix android app showing OS error 30, unable to read custom exercises
+- Make android app background black at startup, currently briefly flashing white
 - Fix database URL change, as currently reloading the app displays the default
   exercises again (but interestingly, images don’t load after changing)
 - Fix web `?dl_session` link seemingly not working, add tests to make sure
