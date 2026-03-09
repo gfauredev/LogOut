@@ -11,7 +11,14 @@ jobs:
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@v4
-      - name: Wait for Garnix (Coverage)
+      - name: Wait for Garnix flake.nix evaluation
+        uses: lewagon/wait-on-check-action@v1.5.0
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          check-regexp: 'Evaluate flake.nix'
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          wait-interval: 10
+      - name: Wait for Garnix coverage check
         uses: lewagon/wait-on-check-action@v1.5.0
         continue-on-error: true
         with:
@@ -56,7 +63,7 @@ jobs:
         with:
           issue-number: ${{ github.event.pull_request.number }}
           body: |
-            ### 📊 Coverage Report (from Garnix)
+            ### 📊 Coverage Report (from Garnix cache)
             **Total Line Coverage: ${{ steps.coverage_report.outputs.PERCENT }}%**
             
             ```text
@@ -83,7 +90,7 @@ jobs:
             extra-substituters = https://cache.garnix.io
             extra-trusted-public-keys = cache.garnix.io:CTFPyKSLcx5RMJKfLo5EEPUObbA78b0YQ2DTCJXqr9g=
       - uses: DeterminateSystems/magic-nix-cache-action@v13
-      - name: Wait for Garnix (Web)
+      - name: Wait for Garnix Web package
         uses: lewagon/wait-on-check-action@v1.5.0
         continue-on-error: true
         with:
@@ -126,7 +133,7 @@ jobs:
             extra-substituters = https://cache.garnix.io
             extra-trusted-public-keys = cache.garnix.io:CTFPyKSLcx5RMJKfLo5EEPUObbA78b0YQ2DTCJXqr9g=
       - uses: DeterminateSystems/magic-nix-cache-action@v13
-      - name: Wait for Garnix (Web)
+      - name: Wait for Garnix Web package
         uses: lewagon/wait-on-check-action@v1.5.0
         continue-on-error: true
         with:
