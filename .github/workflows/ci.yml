@@ -13,6 +13,28 @@ permissions:
   pull-requests: write
 
 jobs:
+  rebased-check:
+    name: Check if rebased on ${{ github.base_ref }}
+    runs-on: ubuntu-latest
+    outputs:
+      is-rebased: ${{ steps.check.outputs.is-rebased }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Check if branch is rebased
+        id: check
+        run: |
+          git fetch origin "${{ github.base_ref }}"
+          BASE_SHA=$(git rev-parse "origin/${{ github.base_ref }}")
+          if git merge-base --is-ancestor "$BASE_SHA" HEAD; then
+            echo "Branch is rebased on ${{ github.base_ref }}"
+            echo "is-rebased=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "Branch is NOT rebased on ${{ github.base_ref }}, skipping E2E tests"
+            echo "is-rebased=false" >> "$GITHUB_OUTPUT"
+          fi
+
   format:
     name: Formatting
     runs-on: ubuntu-latest
@@ -82,6 +104,8 @@ jobs:
 
   e2e-web:
     name: Web E2E Tests
+    needs: [rebased-check]
+    if: needs.rebased-check.outputs.is-rebased == 'true'
     runs-on: ubuntu-latest
     outputs:
       outcome: ${{ steps.maestro.outcome }}
@@ -145,9 +169,43 @@ jobs:
           if-no-files-found: ignore
           retention-days: 7
 
+  cache-artifacts:
+    name: Cache Build Artifacts for CD
+    needs: [format, clippy, unit-tests, e2e-web]
+    if: |
+      always() &&
+      needs.format.result == 'success' &&
+      needs.clippy.result == 'success' &&
+      needs.unit-tests.result == 'success' &&
+      needs.e2e-web.result == 'success'
+    permissions:
+      actions: write
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          lfs: true
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+      - uses: swatinem/rust-cache@v2
+      - name: Install Dioxus CLI
+        uses: taiki-e/install-action@v2
+        with:
+          tool: dioxus-cli
+      - name: Build web for CD deployment
+        run: dx build --release --platform web --base-path /LogOut
+      - name: Upload web deployment build
+        uses: actions/upload-artifact@v4
+        with:
+          name: web-deploy-${{ hashFiles('Cargo.lock', 'src/**', 'assets/**', 'index.html', 'Dioxus.toml') }}
+          path: ./target/dx/log-out/release/web/public
+          retention-days: 7
+          overwrite: true
+
   report:
     name: PR Summary Report
-    needs: [format, clippy, unit-tests, e2e-web]
+    needs: [format, clippy, unit-tests, e2e-web, rebased-check]
     if: always()
     runs-on: ubuntu-latest
     permissions:
@@ -216,12 +274,15 @@ jobs:
           UNIT_SUMMARY: ${{ needs.unit-tests.outputs.summary }}
           E2E_STATUS: ${{ needs.e2e-web.outputs.outcome }}
           E2E_SUMMARY: ${{ needs.e2e-web.outputs.summary }}
+          IS_REBASED: ${{ needs.rebased-check.outputs.is-rebased }}
+          BASE_REF: ${{ github.base_ref }}
           COV_SUMMARY: ${{ steps.cov.outputs.summary }}
           COV_GATE_REPORT: ${{ steps.cov.outputs.gate_report }}
           COV_GATE_FAILED: ${{ steps.cov.outputs.gate_failed }}
           HAS_COV: ${{ steps.cov.outputs.has_coverage }}
         with:
           script: |
+            const isRebased = process.env.IS_REBASED === 'true';
             const getIcon = (outcome) => outcome === 'success' ? '✅' : (outcome === 'failure' ? '❌' : '⚠️');
             const tag = '<!-- ci-dashboard -->';
             
@@ -237,7 +298,11 @@ jobs:
             body += `| Suite | Status | Summary |\n`;
             body += `|-------|--------|---------|\n`;
             body += `| Unit Tests | ${getIcon(process.env.UNIT_STATUS)} | ${process.env.UNIT_SUMMARY || 'N/A'} |\n`;
-            body += `| E2E Tests (Web) | ${getIcon(process.env.E2E_STATUS)} | ${process.env.E2E_SUMMARY || 'N/A'} |\n\n`;
+            const e2eIcon = isRebased ? getIcon(process.env.E2E_STATUS) : '⏭️';
+            const e2eSummary = isRebased
+              ? (process.env.E2E_SUMMARY || 'N/A')
+              : `Skipped: branch not rebased on ${process.env.BASE_REF || 'main'}`;
+            body += `| E2E Tests (Web) | ${e2eIcon} | ${e2eSummary} |\n\n`;
             
             if (process.env.HAS_COV === 'true') {
               const gateStatus = process.env.COV_GATE_FAILED === '1'
@@ -280,6 +345,6 @@ jobs:
           if [ "${{ needs.format.outputs.outcome }}" != "success" ]; then echo "Format check failed"; FAIL=1; fi
           if [ "${{ needs.clippy.outputs.outcome }}" != "success" ]; then echo "Clippy check failed"; FAIL=1; fi
           if [ "${{ needs.unit-tests.outputs.outcome }}" != "success" ]; then echo "Unit tests failed"; FAIL=1; fi
-          if [ "${{ needs.e2e-web.outputs.outcome }}" != "success" ]; then echo "E2E tests failed"; FAIL=1; fi
+          if [ "${{ needs.rebased-check.outputs.is-rebased }}" == "true" ] && [ "${{ needs.e2e-web.result }}" != "success" ]; then echo "E2E tests failed"; FAIL=1; fi
           if [ "${{ steps.cov.outputs.gate_failed }}" == "1" ]; then echo "Coverage gate failed"; FAIL=1; fi
           exit $FAIL

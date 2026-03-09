@@ -36,9 +36,10 @@ jobs:
             echo "changed=true" >> $GITHUB_OUTPUT
             exit 0
           fi
-          LATEST_TAG=$(git tag -l "nightly" || true)
-          if [ -n "$LATEST_TAG" ]; then
-            TAG_SHA=$(git rev-parse nightly)
+          # Support both the legacy "nightly" tag and the new timestamped "nightly-*" tags
+          LATEST_NIGHTLY=$(git tag -l "nightly" "nightly-*" | sort -r | head -n 1)
+          if [ -n "$LATEST_NIGHTLY" ]; then
+            TAG_SHA=$(git rev-parse "$LATEST_NIGHTLY")
             CURRENT_SHA=$(git rev-parse HEAD)
             if [ "$TAG_SHA" = "$CURRENT_SHA" ]; then
               echo "No changes since last nightly build. Skipping."
@@ -52,6 +53,58 @@ jobs:
             echo "changed=true" >> $GITHUB_OUTPUT
           fi
 
+  cleanup-old-nightlies:
+    name: Clean up old nightly releases
+    needs: check-changes
+    # Only run for nightly/scheduled builds, not for tagged version releases
+    if: |
+      needs.check-changes.outputs.changed == 'true' &&
+      github.event_name != 'release' &&
+      !startsWith(github.ref, 'refs/tags/v')
+    permissions:
+      contents: write
+    runs-on: ubuntu-latest
+    steps:
+      - name: Delete stale nightly releases and tags
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const now = Date.now();
+            const twelveHoursMs = 12 * 60 * 60 * 1000;
+            const thirtyDaysMs = 30 * 24 * 60 * 60 * 1000;
+
+            const releases = await github.paginate(
+              github.rest.repos.listReleases,
+              { owner: context.repo.owner, repo: context.repo.repo }
+            );
+
+            for (const release of releases) {
+              if (!release.tag_name.startsWith('nightly-') && release.tag_name !== 'nightly') continue;
+              const age = now - new Date(release.created_at).getTime();
+              if (age >= twelveHoursMs && age <= thirtyDaysMs) continue;
+
+              console.log(`Deleting nightly release: ${release.tag_name} (age: ${Math.round(age / 3600000)}h)`);
+              try {
+                await github.rest.repos.deleteRelease({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  release_id: release.id,
+                });
+              } catch (e) {
+                console.log(`Failed to delete release ${release.tag_name}: ${e.message}`);
+              }
+              try {
+                await github.rest.git.deleteRef({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  ref: `tags/${release.tag_name}`,
+                });
+              } catch (e) {
+                console.log(`Failed to delete tag ${release.tag_name}: ${e.message}`);
+              }
+            }
+
   deploy-web:
     name: Deploy to GitHub Pages
     needs: check-changes
@@ -60,6 +113,7 @@ jobs:
       contents: read
       pages: write
       id-token: write
+      actions: read
     runs-on: ubuntu-latest
     environment:
       name: github-pages
@@ -71,15 +125,48 @@ jobs:
       - uses: actions/checkout@v4
         with:
             lfs: true
+      - name: Find CI build artifact for current source
+        id: ci-artifact
+        uses: actions/github-script@v7
+        env:
+          ARTIFACT_NAME: web-deploy-${{ hashFiles('Cargo.lock', 'src/**', 'assets/**', 'index.html', 'Dioxus.toml') }}
+        with:
+          script: |
+            const artifactName = process.env.ARTIFACT_NAME;
+            const { data } = await github.rest.actions.listArtifactsForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              name: artifactName,
+              per_page: 1,
+            });
+            if (data.total_count > 0 && !data.artifacts[0].expired) {
+              core.setOutput('artifact-id', String(data.artifacts[0].id));
+              core.setOutput('found', 'true');
+              console.log(`Found CI artifact: ${artifactName} (id: ${data.artifacts[0].id})`);
+            } else {
+              core.setOutput('found', 'false');
+              console.log(`No CI artifact found for: ${artifactName}, will rebuild`);
+            }
+      - name: Download CI web build
+        if: steps.ci-artifact.outputs.found == 'true'
+        uses: actions/download-artifact@v4
+        with:
+          artifact-id: ${{ steps.ci-artifact.outputs.artifact-id }}
+          path: ./target/dx/log-out/release/web/public
+          github-token: ${{ secrets.GITHUB_TOKEN }}
       - uses: dtolnay/rust-toolchain@stable
+        if: steps.ci-artifact.outputs.found != 'true'
         with:
           targets: wasm32-unknown-unknown
       - uses: swatinem/rust-cache@v2
+        if: steps.ci-artifact.outputs.found != 'true'
       - name: Install Dioxus CLI
+        if: steps.ci-artifact.outputs.found != 'true'
         uses: taiki-e/install-action@v2
         with:
           tool: dioxus-cli
       - name: Build Web
+        if: steps.ci-artifact.outputs.found != 'true'
         run: dx build --release --platform web --base-path /LogOut
       - name: Setup Pages
         uses: actions/configure-pages@v4
@@ -93,8 +180,12 @@ jobs:
 
   build-android:
     name: Build Android arm64
-    needs: check-changes
-    if: needs.check-changes.outputs.changed == 'true' && (github.event_name != 'push' || github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v'))
+    needs: [check-changes, cleanup-old-nightlies]
+    if: |
+      always() &&
+      needs.check-changes.outputs.changed == 'true' &&
+      (github.event_name != 'push' || github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v')) &&
+      (needs.cleanup-old-nightlies.result == 'success' || needs.cleanup-old-nightlies.result == 'skipped')
     permissions:
       contents: write
     runs-on: ubuntu-latest
@@ -152,18 +243,22 @@ jobs:
           ./scripts/android-sign.sh "$APK_FILE"
           SHORT_SHA=$(echo "${{ github.sha }}" | cut -c1-7)
           if [ "${{ github.event_name }}" = "release" ] || [[ "${{ github.ref }}" == refs/tags/v* ]]; then
+            NIGHTLY_TAG="${{ github.ref_name }}"
             FILENAME="logout-android-arm64-$SHORT_SHA.apk"
           else
-            FILENAME="logout-android-arm64-nightly.apk"
+            TIMESTAMP=$(date -u +%Y%m%d-%H%M%S)
+            NIGHTLY_TAG="nightly-$TIMESTAMP-$SHORT_SHA"
+            FILENAME="logout-android-arm64-nightly-$TIMESTAMP-$SHORT_SHA.apk"
           fi
           cp "$APK_FILE" "$FILENAME"
           echo "SHORT_SHA=$SHORT_SHA" >> $GITHUB_ENV
+          echo "NIGHTLY_TAG=$NIGHTLY_TAG" >> $GITHUB_ENV
           echo "RELEASE_FILENAME=$FILENAME" >> $GITHUB_ENV
 
       - name: Upload APK to Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ (github.event_name == 'release' || startsWith(github.ref, 'refs/tags/v')) && github.ref_name || 'nightly' }}
+          tag_name: ${{ env.NIGHTLY_TAG }}
           target_commitish: ${{ github.sha }}
           name: ${{ (github.event_name == 'release' || startsWith(github.ref, 'refs/tags/v')) && (github.event.release.name || github.ref_name) || 'Nightly Build' }}
           body: ${{ (github.event_name == 'release' || startsWith(github.ref, 'refs/tags/v')) && github.event.release.body || 'Automated nightly build from the latest main branch.' }}
