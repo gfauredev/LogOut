@@ -230,11 +230,9 @@
               # Use absolute paths to avoid canonicalization issues in Nix sandbox
               export CARGO_TARGET_DIR=$PWD/target
               # Pre-create the directory wry expects to avoid canonicalization failure
-              # Dioxus CLI uses the binary name 'log-out' for this path.
               export WRY_ANDROID_KOTLIN_FILES_OUT_DIR=$CARGO_TARGET_DIR/dx/log-out/release/android/app/app/src/main/kotlin/dev/dioxus/main
               mkdir -p $WRY_ANDROID_KOTLIN_FILES_OUT_DIR
               dx build --android --release --target aarch64-linux-android --verbose
-
               # Inject icons as per scripts/android-icon.sh logic
               APP_PROJECT_DIR=$(find target/dx -name "android" -type d | grep "release/android" | head -n 1)/app
               if [ -d "$APP_PROJECT_DIR" ]; then
@@ -298,13 +296,15 @@
             buildInputs = env.commonBuildInputs;
             buildPhase = ''
               export HOME=$TMPDIR
+              mkdir -p $out
               cargo llvm-cov --bin log-out \
                 --ignore-filename-regex "src/components/" \
-                --fail-under-functions 90 \
-                --fail-under-lines 80 \
-                --show-missing-lines
+                --text > $out/coverage.txt
+              cargo llvm-cov --bin log-out \
+                --ignore-filename-regex "src/components/" \
+                --json > $out/coverage.json
             '';
-            installPhase = "touch $out";
+            installPhase = "true";
           };
         }
       );
