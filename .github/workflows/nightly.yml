@@ -27,6 +27,38 @@ jobs:
 
       - name: Run cargo-mutants
         run: |
-          # Mutants can be very slow, so we might want to limit it or use a timeout
-          # We'll run it on the main crate
-          nix develop -c cargo mutants --no-shuffle -v --timeout 300
+          # Mutants focus on core logic, excluding UI components
+          nix develop -c cargo mutants --no-shuffle -v --timeout 300 \
+            --exclude "src/components/*"
+
+  e2e-android:
+    name: Android End-to-End (Maestro)
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: determinate-systems/nix-installer-action@v16
+      - uses: determinate-systems/magic-nix-cache-action@v11
+
+      - name: Build Android APK
+        run: nix build .#android -o android-dist
+
+      - name: Run Android E2E
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 33
+          target: google_apis
+          arch: x86_64
+          force-avd-creation: false
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
+          disable-animations: false
+          script: |
+            APK=$(find android-dist -name "*.apk" | head -n 1)
+            adb install "$APK"
+            nix develop -c maestro test maestro/android/launch.yaml
+
+      - name: Upload Maestro Reports
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: maestro-android-report
+          path: ~/.maestro/tests/
