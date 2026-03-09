@@ -264,7 +264,12 @@
                     echo "🔧 Patching aapt2 at $aapt2"
                     chmod +x "$aapt2"
                     patchelf --set-interpreter "$(cat $NIX_CC/nix-support/dynamic-linker)" "$aapt2" || true
-                    patchelf --set-rpath "${env.pkgs.lib.makeLibraryPath [ env.pkgs.stdenv.cc.cc.lib env.pkgs.zlib ]}" "$aapt2" || true
+                    patchelf --set-rpath "${
+                      env.pkgs.lib.makeLibraryPath [
+                        env.pkgs.stdenv.cc.cc.lib
+                        env.pkgs.zlib
+                      ]
+                    }" "$aapt2" || true
                   fi
                 done
 
@@ -315,6 +320,7 @@
               cargo clippy --all-targets -- -D warnings -W clippy::all -W clippy::pedantic
             '';
             installPhase = "touch $out";
+            doCheck = false;
           };
           coverage = env.rustPlatform.buildRustPackage {
             pname = "log-out-coverage";
@@ -334,6 +340,7 @@
                 --json > $out/coverage.json
             '';
             installPhase = "true";
+            doCheck = false;
           };
         }
       );
