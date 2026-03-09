@@ -206,6 +206,8 @@ checks that run every night at 2:00 AM (UTC) on the `main` branch.
 
 ## TODO
 
+- Fix CI LightHouse and Maestro
+- Use a FOD for Gradle downloads to build Android app purely with Nix
 - DRY E2E tests to only one par user story, they can still runFlow others
 - Mock exercise database with public/exercises.json for E2E tests, so they can
   load faster and not rely on external network requests
