@@ -72,7 +72,7 @@ jobs:
           script: |
             const now = Date.now();
             const twelveHoursMs = 12 * 60 * 60 * 1000;
-            const thirtyDaysMs = 30 * 24 * 60 * 60 * 1000;
+            const sevenDaysMs = 7 * 24 * 60 * 60 * 1000;
 
             const releases = await github.paginate(
               github.rest.repos.listReleases,
@@ -82,7 +82,7 @@ jobs:
             for (const release of releases) {
               if (!release.tag_name.startsWith('nightly-') && release.tag_name !== 'nightly') continue;
               const age = now - new Date(release.created_at).getTime();
-              if (age >= twelveHoursMs && age <= thirtyDaysMs) continue;
+              if (age >= twelveHoursMs && age <= sevenDaysMs) continue;
 
               console.log(`Deleting nightly release: ${release.tag_name} (age: ${Math.round(age / 3600000)}h)`);
               try {
@@ -200,7 +200,7 @@ jobs:
           distribution: temurin
       - uses: dtolnay/rust-toolchain@stable
         with:
-          targets: aarch64-linux-android
+          targets: aarch64-linux-android, x86_64-linux-android
       - uses: swatinem/rust-cache@v2
       - name: Install Dioxus CLI
         uses: taiki-e/install-action@v2

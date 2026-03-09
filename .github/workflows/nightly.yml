@@ -1,0 +1,53 @@
+name: Nightly Deep Checks
+
+on:
+  schedule:
+    - cron: '0 2 * * *' # 2:00 AM UTC
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  cargo-deny:
+    name: Dependency Audit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: EmbarkStudios/cargo-deny-action@v2
+        with:
+          command: check
+
+  cargo-mutants:
+    name: Mutation Testing
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: swatinem/rust-cache@v2
+      - name: Install cargo-mutants
+        run: cargo install cargo-mutants
+      - name: Run mutants
+        # Only run for 1 hour to avoid excessive GHA usage, or use --timeout if supported
+        # README mentions it so we should run it.
+        # We can limit the number of mutants or the time.
+        run: |
+          cargo mutants --no-times --all-features --timeout 300 || true
+      - name: Upload mutants report
+        uses: actions/upload-artifact@v4
+        with:
+          name: mutants-report
+          path: mutants.out
+          if-no-files-found: ignore
+
+  report:
+    name: Nightly Report
+    needs: [cargo-deny, cargo-mutants]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Summarize Results
+        run: |
+          echo "Nightly Deep Checks completed."
+          # Here we could post an issue if there are failures

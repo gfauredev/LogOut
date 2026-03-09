@@ -125,8 +125,8 @@ jobs:
         uses: taiki-e/install-action@v2
         with:
           tool: dioxus-cli
-      - name: Build web
-        run: dx build --web
+      - name: Build web release
+        run: dx build --web --release
       - name: Install Maestro
         run: |
           curl -Ls "https://get.maestro.mobile.dev" | bash
@@ -135,7 +135,7 @@ jobs:
         id: maestro
         continue-on-error: true
         run: |
-          dx serve --open false --interactive false --web &
+          dx serve --open false --interactive false --web --release &
           SERVER_PID=$!
           # Wait for server to be responsive
           timeout 60 bash -c 'until curl -sf http://localhost:8080 > /dev/null; do sleep 2; done' || (kill $SERVER_PID && exit 1)
@@ -169,15 +169,87 @@ jobs:
           if-no-files-found: ignore
           retention-days: 7
 
+  e2e-android:
+    name: Android E2E Tests
+    needs: [rebased-check]
+    if: needs.rebased-check.outputs.is-rebased == 'true'
+    runs-on: macos-13 # Intel macos for nested virtualization support
+    outputs:
+      outcome: ${{ steps.maestro.outcome }}
+      summary: ${{ steps.summarize.outputs.summary }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: "17"
+          distribution: temurin
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-linux-android, x86_64-linux-android
+      - uses: swatinem/rust-cache@v2
+      - name: Install Dioxus CLI
+        uses: taiki-e/install-action@v2
+        with:
+          tool: dioxus-cli
+      - name: Build Android (Project Prep)
+        run: |
+          dx build --android --release --no-default-features --features mobile-platform
+      - name: Install Maestro
+        run: |
+          curl -Ls "https://get.maestro.mobile.dev" | bash
+          echo "$HOME/.maestro/bin" >> "$GITHUB_PATH"
+      - name: Run Maestro Android tests
+        uses: reactivecircus/android-emulator-runner@v2
+        id: maestro
+        continue-on-error: true
+        with:
+          api-level: 33
+          target: google_apis
+          arch: x86_64
+          force-avd-creation: false
+          emulator-options: -no-window -gpu libgpu_guest -no-audio -no-boot-anim -camera-back none
+          disable-animations: true
+          script: |
+            APK_FILE=$(find target/dx/log-out/release/android/ -name "*.apk" | head -n 1)
+            maestro install "$APK_FILE"
+            maestro test maestro/android/ | tee maestro_output.txt
+            
+      - name: Summarize Maestro tests
+        id: summarize
+        run: |
+          SUMMARY=$(grep -E "Tests passed: [0-9]+, Tests failed: [0-9]+" maestro_output.txt | tail -n 1)
+          if [ -z "$SUMMARY" ]; then
+             SUMMARY=$(grep -E "[0-9]+ passed, [0-9]+ failed" maestro_output.txt | tail -n 1)
+          fi
+          if [ -z "$SUMMARY" ]; then
+            if [ "${{ steps.maestro.outcome }}" == "success" ]; then
+              SUMMARY="✅ All Maestro tests passed"
+            else
+              SUMMARY="❌ Maestro tests failed"
+            fi
+          fi
+          echo "summary=$SUMMARY" >> "$GITHUB_OUTPUT"
+
+      - name: Upload diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-e2e-diagnostics
+          path: ~/.maestro/tests/
+          if-no-files-found: ignore
+          retention-days: 7
+
   build-release-web:
     name: Build Release Web
-    needs: [format, clippy, unit-tests, e2e-web, rebased-check]
+    needs: [format, clippy, unit-tests, e2e-web, e2e-android, rebased-check]
     if: |
       always() &&
       needs.format.result == 'success' &&
       needs.clippy.result == 'success' &&
       needs.unit-tests.result == 'success' &&
       needs.e2e-web.result == 'success' &&
+      needs.e2e-android.result == 'success' &&
       needs.rebased-check.outputs.is-rebased == 'true'
     permissions:
       actions: write
@@ -235,7 +307,7 @@ jobs:
 
   report:
     name: PR Summary Report
-    needs: [format, clippy, unit-tests, e2e-web, rebased-check, build-release-web]
+    needs: [format, clippy, unit-tests, e2e-web, e2e-android, rebased-check, build-release-web]
     if: always()
     runs-on: ubuntu-latest
     permissions:
@@ -303,8 +375,10 @@ jobs:
           BUILD_STATUS: ${{ needs.build-release-web.result }}
           UNIT_STATUS: ${{ needs.unit-tests.outputs.outcome }}
           UNIT_SUMMARY: ${{ needs.unit-tests.outputs.summary }}
-          E2E_STATUS: ${{ needs.e2e-web.outputs.outcome }}
-          E2E_SUMMARY: ${{ needs.e2e-web.outputs.summary }}
+          E2E_WEB_STATUS: ${{ needs.e2e-web.outputs.outcome }}
+          E2E_WEB_SUMMARY: ${{ needs.e2e-web.outputs.summary }}
+          E2E_ANDROID_STATUS: ${{ needs.e2e-android.outputs.outcome }}
+          E2E_ANDROID_SUMMARY: ${{ needs.e2e-android.outputs.summary }}
           IS_REBASED: ${{ needs.rebased-check.outputs.is-rebased }}
           BASE_REF: ${{ github.base_ref }}
           COV_SUMMARY: ${{ steps.cov.outputs.summary }}
@@ -331,11 +405,18 @@ jobs:
             body += `| Suite | Status | Summary |\n`;
             body += `|-------|--------|---------|\n`;
             body += `| Unit Tests | ${getIcon(process.env.UNIT_STATUS)} | ${process.env.UNIT_SUMMARY || 'N/A'} |\n`;
-            const e2eIcon = isRebased ? getIcon(process.env.E2E_STATUS) : '⏭️';
-            const e2eSummary = isRebased
-              ? (process.env.E2E_SUMMARY || 'N/A')
+            
+            const e2eWebIcon = isRebased ? getIcon(process.env.E2E_WEB_STATUS) : '⏭️';
+            const e2eWebSummary = isRebased
+              ? (process.env.E2E_WEB_SUMMARY || 'N/A')
               : `Skipped: branch not rebased on ${process.env.BASE_REF || 'main'}`;
-            body += `| E2E Tests (Web) | ${e2eIcon} | ${e2eSummary} |\n\n`;
+            body += `| E2E Tests (Web) | ${e2eWebIcon} | ${e2eWebSummary} |\n`;
+            
+            const e2eAndroidIcon = isRebased ? getIcon(process.env.E2E_ANDROID_STATUS) : '⏭️';
+            const e2eAndroidSummary = isRebased
+              ? (process.env.E2E_ANDROID_SUMMARY || 'N/A')
+              : `Skipped: branch not rebased on ${process.env.BASE_REF || 'main'}`;
+            body += `| E2E Tests (Android) | ${e2eAndroidIcon} | ${e2eAndroidSummary} |\n\n`;
             
             if (process.env.HAS_COV === 'true') {
               const gateStatus = process.env.COV_GATE_FAILED === '1'
@@ -378,7 +459,10 @@ jobs:
           if [ "${{ needs.format.outputs.outcome }}" != "success" ]; then echo "Format check failed"; FAIL=1; fi
           if [ "${{ needs.clippy.outputs.outcome }}" != "success" ]; then echo "Clippy check failed"; FAIL=1; fi
           if [ "${{ needs.unit-tests.outputs.outcome }}" != "success" ]; then echo "Unit tests failed"; FAIL=1; fi
-          if [ "${{ needs.rebased-check.outputs.is-rebased }}" == "true" ] && [ "${{ needs.e2e-web.result }}" != "success" ]; then echo "E2E tests failed"; FAIL=1; fi
-          if [ "${{ needs.rebased-check.outputs.is-rebased }}" == "true" ] && [ "${{ needs.build-release-web.result }}" == "failure" ]; then echo "Release build failed"; FAIL=1; fi
+          if [ "${{ needs.rebased-check.outputs.is-rebased }}" == "true" ]; then
+            if [ "${{ needs.e2e-web.result }}" != "success" ]; then echo "Web E2E tests failed"; FAIL=1; fi
+            if [ "${{ needs.e2e-android.result }}" != "success" ]; then echo "Android E2E tests failed"; FAIL=1; fi
+            if [ "${{ needs.build-release-web.result }}" == "failure" ]; then echo "Release build failed"; FAIL=1; fi
+          fi
           if [ "${{ steps.cov.outputs.gate_failed }}" == "1" ]; then echo "Coverage gate failed"; FAIL=1; fi
           exit $FAIL

@@ -177,7 +177,7 @@ PRs) must pass (for some, at a certain level) for it to be merged into `main`.
   - Publish a report with build times, Lighthouse scores, screenshots of failed
     E2E tests… in a PR message
 - Cache compilation outputs, dependencies, artifacts… for future use
-  - Even if brittle E2E tests and PageSpeed audits don’t pass
+  - Even if some brittle checks like Maestro and PageSpeed ones didn’t pass
 
 ## Continuous Deployment (CD)
 
