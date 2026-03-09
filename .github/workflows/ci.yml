@@ -14,8 +14,8 @@ jobs:
       - name: Wait for Garnix
         uses: lewagon/wait-on-check-action@v1.5.0
         with:
-          ref: ${{ github.sha }}
-          check-name: 'Garnix'
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          check-regexp: '.*Garnix.*'
           repo-token: ${{ secrets.GITHUB_TOKEN }}
           wait-interval: 20
       - uses: cachix/install-nix-action@v31.10.0
