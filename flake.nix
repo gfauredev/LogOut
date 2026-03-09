@@ -76,7 +76,9 @@
             apksigner
             binaryen
             cargo-binutils
+            cargo-deny
             cargo-llvm-cov
+            cargo-mutants
             chromedriver
             dioxus-cli
             maestro
@@ -244,6 +246,36 @@
               self.packages.${system}.android
             ];
           };
+        }
+      );
+      checks = forAllSystems (
+        system:
+        let
+          env = sharedEnvFor system;
+        in
+        {
+          fmt = env.pkgs.runCommand "cargo-fmt-check" { nativeBuildInputs = [ env.rustToolchain ]; } ''
+            cd ${self}
+            cargo fmt --all -- --check
+            touch $out
+          '';
+          clippy = env.pkgs.runCommand "cargo-clippy-check" { nativeBuildInputs = env.commonNativeBuildInputs; } ''
+            cd ${self}
+            export HOME=$TMPDIR
+            cargo clippy --all-targets -- -D warnings -W clippy::all -W clippy::pedantic
+            touch $out
+          '';
+          coverage = env.pkgs.runCommand "cargo-coverage" {
+            nativeBuildInputs = env.commonNativeBuildInputs ++ [ env.pkgs.lcov ];
+          } ''
+            cd ${self}
+            export HOME=$TMPDIR
+            # We need a writable directory for cargo
+            cp -r . /tmp/src
+            cd /tmp/src
+            chmod -R +w .
+            cargo llvm-cov --bin log-out --lcov --output-path $out
+          '';
         }
       );
     };

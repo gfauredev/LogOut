@@ -1,0 +1,113 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+jobs:
+  coverage:
+    name: Coverage Gate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: determinate-systems/nix-installer-action@v16
+      - uses: determinate-systems/magic-nix-cache-action@v11
+
+      - name: Generate Coverage
+        run: nix develop -c cargo llvm-cov --bin log-out --lcov --output-path lcov.info
+
+      - name: Check Coverage Gate
+        run: ./scripts/coverage-gate.sh
+
+      - name: Post Coverage Report
+        if: always()
+        run: |
+          # Simple summary of coverage for PR comment
+          echo "### Coverage Report" >> $GITHUB_STEP_SUMMARY
+          echo "| File | Coverage (%) | Lines |" >> $GITHUB_STEP_SUMMARY
+          echo "|------|--------------|-------|" >> $GITHUB_STEP_SUMMARY
+          # Parse lcov.info or just use the output of coverage-gate.sh if it was redirected
+          ./scripts/coverage-gate.sh | grep "✅" | sed 's/✅ //' | awk -F': ' '{print "| " $1 " | " $2 " |"}' >> $GITHUB_STEP_SUMMARY || true
+
+  lighthouse:
+    name: PageSpeed Lighthouse
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: determinate-systems/nix-installer-action@v16
+      - uses: determinate-systems/magic-nix-cache-action@v11
+
+      - name: Build Web
+        run: nix build .#web -o public-dist
+
+      - name: Lighthouse Audit
+        uses: treosh/lighthouse-ci-action@v12
+        with:
+          uploadArtifacts: true
+          temporaryPublicStorage: true
+          # Use our built public-dist instead of what's in the config file if necessary
+          # Or we can override it via flags
+          configPath: .lighthouserc.json
+        env:
+          LHCI_COLLECT_STATIC_DIST_DIR: ./public-dist
+
+  e2e-web:
+    name: Web End-to-End (Maestro)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: determinate-systems/nix-installer-action@v16
+      - uses: determinate-systems/magic-nix-cache-action@v11
+
+      - name: Build and Serve
+        run: |
+          nix build .#web -o public-dist
+          # Start a simple python server in background
+          cd public-dist && python3 -m http.server 8080 &
+          sleep 2
+
+      - name: Run Maestro Web Tests
+        run: |
+          # Install maestro if not available or use from nix
+          nix develop -c maestro test maestro/web
+
+      - name: Upload Maestro Reports
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: maestro-web-report
+          path: ~/.maestro/tests/
+
+  e2e-android:
+    name: Android End-to-End (Maestro)
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: determinate-systems/nix-installer-action@v16
+      - uses: determinate-systems/magic-nix-cache-action@v11
+
+      - name: Build Android APK
+        run: nix build .#android -o android-dist
+
+      - name: Run Android E2E
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 33
+          target: google_apis
+          arch: x86_64
+          force-avd-creation: false
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
+          disable-animations: false
+          script: |
+            APK=$(find android-dist -name "*.apk" | head -n 1)
+            adb install "$APK"
+            nix develop -c maestro test maestro/android/launch.yaml
+
+      - name: Upload Maestro Reports
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: maestro-android-report
+          path: ~/.maestro/tests/

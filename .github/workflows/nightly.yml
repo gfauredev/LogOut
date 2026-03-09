@@ -1,0 +1,32 @@
+name: Nightly Deep Checks
+
+on:
+  schedule:
+    - cron: '0 2 * * *' # 2:00 AM UTC
+  workflow_dispatch: # Allow manual trigger
+
+jobs:
+  cargo-deny:
+    name: Dependency Audit (cargo-deny)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: determinate-systems/nix-installer-action@v16
+      - uses: determinate-systems/magic-nix-cache-action@v11
+
+      - name: Run cargo-deny
+        run: nix develop -c cargo deny check
+
+  cargo-mutants:
+    name: Mutation Testing (cargo-mutants)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: determinate-systems/nix-installer-action@v16
+      - uses: determinate-systems/magic-nix-cache-action@v11
+
+      - name: Run cargo-mutants
+        run: |
+          # Mutants can be very slow, so we might want to limit it or use a timeout
+          # We'll run it on the main crate
+          nix develop -c cargo mutants --no-shuffle -v --timeout 300

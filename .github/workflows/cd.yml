@@ -1,0 +1,93 @@
+name: CD
+
+on:
+  push:
+    branches:
+      - main
+    tags:
+      - 'v*'
+
+jobs:
+  deploy-pwa:
+    name: Deploy PWA
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: determinate-systems/nix-installer-action@v16
+      - uses: determinate-systems/magic-nix-cache-action@v11
+
+      - name: Build Web
+        run: nix build .#web -o public-dist
+
+      - name: Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./public-dist
+          cname: logout.guilhemfau.re # (Optional: based on README/URL)
+
+  release-android:
+    name: Release Android
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: determinate-systems/nix-installer-action@v16
+      - uses: determinate-systems/magic-nix-cache-action@v11
+
+      - name: Build Android
+        run: nix build .#android -o android-dist
+
+      - name: Sign APK
+        env:
+          ANDROID_KEYSTORE_PASS: ${{ secrets.ANDROID_KEYSTORE_PASS }}
+          ANDROID_KEY_PASS: ${{ secrets.ANDROID_KEYSTORE_PASS }} # Assume same if not provided
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS || 'logout-key' }}
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+        run: |
+          # Create keystore from secret
+          mkdir -p android/secrets
+          echo "$ANDROID_KEYSTORE_BASE64" | base64 -d > android/secrets/logout.jks
+          # Sign it
+          nix develop -c ./scripts/android-sign.sh
+
+      - name: Rolling Release
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Get current date
+          DATE=$(date -u +%Y-%m-%d)
+          TAG="rolling-$DATE"
+          
+          # Check if tag already exists (to avoid spamming multiple pushes in one day)
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            echo "Rolling release for $DATE already exists. Skipping."
+          else
+            # Delete old rolling releases (older than 7 days)
+            gh release list --limit 100 | grep "rolling-" | while read -r line; do
+              OLD_TAG=$(echo "$line" | awk '{print $1}')
+              # Extracts date from rolling-YYYY-MM-DD
+              OLD_DATE=${OLD_TAG#rolling-}
+              # If older than 7 days
+              if [ "$(date -d "$OLD_DATE" +%s)" -lt "$(date -d "7 days ago" +%s)" ]; then
+                 echo "Deleting old rolling release: $OLD_TAG"
+                 gh release delete "$OLD_TAG" --yes --cleanup-tag
+              fi
+            done
+            
+            # Create new release
+            APK=$(find android-dist -name "*.apk" | head -n 1)
+            gh release create "$TAG" "$APK" --title "Rolling $DATE" --notes "Automated rolling release for $DATE" --prerelease
+          fi
+
+      - name: Stable Release
+        if: startsWith(github.ref, 'refs/tags/v')
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAG=${GITHUB_REF#refs/tags/}
+          APK=$(find android-dist -name "*.apk" | head -n 1)
+          gh release create "$TAG" "$APK" --title "LogOut $TAG" --notes "Release $TAG"
