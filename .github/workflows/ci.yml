@@ -257,7 +257,7 @@ jobs:
           tool: dioxus-cli
       - name: Build Android (Project Prep)
         run: |
-          dx build --android --release --no-default-features --features mobile-platform
+          dx build --android --release --target aarch64-linux-android --no-default-features --features mobile-platform
       - name: Install Maestro
         run: |
           curl -Ls "https://get.maestro.mobile.dev" | bash
@@ -267,14 +267,17 @@ jobs:
         id: maestro
         continue-on-error: true
         with:
-          api-level: 33
+          api-level: 31
           target: google_apis
           arch: arm64-v8a
           force-avd-creation: false
-          emulator-options: -no-window -gpu libgpu_guest -no-audio -no-boot-anim -camera-back none
+          emulator-options: -no-window -gpu swiftshader_indirect -no-audio -no-boot-anim -camera-back none -no-snapshot-save
           disable-animations: true
           script: |
-            APK_FILE=$(find target/dx/log-out/release/android/ -name "*.apk" | head -n 1)
+            APK_FILE=$(find target/dx/log-out/release/android/ -name "*aarch64*.apk" | head -n 1)
+            if [ -z "$APK_FILE" ]; then
+              APK_FILE=$(find target/dx/log-out/release/android/ -name "*.apk" | head -n 1)
+            fi
             maestro install "$APK_FILE"
             START_TIME=$(date +%s)
             maestro test maestro/android/ | tee maestro_output.txt
@@ -603,9 +606,11 @@ jobs:
           FORMAT_STATUS: ${{ needs.format.outputs.outcome || needs.format.result }}
           CLIPPY_STATUS: ${{ needs.clippy.outputs.outcome || needs.clippy.result }}
           CLIPPY_WARNINGS: ${{ needs.clippy.outputs.warnings }}
+          CLIPPY_DETAILS: ${{ needs.clippy.outputs.details }}
           UNIT_STATUS: ${{ needs.unit-tests.outputs.outcome || needs.unit-tests.result }}
           UNIT_SUMMARY: ${{ needs.unit-tests.outputs.summary }}
           UNIT_DURATION: ${{ needs.unit-tests.outputs.duration }}
+          UNIT_FAILURES: ${{ needs.unit-tests.outputs.failures }}
           BUILD_STATUS: ${{ needs.build-release-web.result }}
           BUILD_DURATION: ${{ needs.build-release-web.outputs.duration }}
           E2E_WEB_STATUS: ${{ needs.e2e-web.outputs.outcome || needs.e2e-web.result }}
@@ -640,6 +645,12 @@ jobs:
             const buildDetails = isRebased ? `Built in ${process.env.BUILD_DURATION || 'N/A'}` : 'N/A';
             body += `| Release Build | ${buildIcon} | ${buildDetails} |\n\n`;
             
+            if (process.env.CLIPPY_DETAILS) {
+              body += `#### 📝 Linting Issues\n\`\`\`\n${process.env.CLIPPY_DETAILS}\n\`\`\`\n\n`;
+            } else if (process.env.CLIPPY_STATUS === 'success') {
+              body += `✅ **No lint warnings**\n\n`;
+            }
+
             body += `### 🧪 Test Results\n`;
             body += `| Suite | Status | Summary | Duration |\n`;
             body += `|-------|--------|---------|----------|\n`;
@@ -653,9 +664,20 @@ jobs:
             const e2eAndroidSummary = isRebased ? (process.env.E2E_ANDROID_SUMMARY || 'N/A') : `Skipped: branch not rebased`;
             body += `| E2E Tests (Android) | ${e2eAndroidIcon} | ${e2eAndroidSummary} | ${process.env.E2E_ANDROID_DURATION || 'N/A'} |\n\n`;
             
+            if (process.env.UNIT_FAILURES) {
+              body += `#### ❌ Failed Unit Tests\n\`\`\`\n${process.env.UNIT_FAILURES}\n\`\`\`\n\n`;
+            } else if (process.env.UNIT_STATUS === 'success') {
+              body += `✅ **All unit tests passed**\n\n`;
+            }
+
             if (process.env.HAS_COV === 'true') {
               const gateStatus = process.env.COV_GATE_FAILED === '1' ? '❌ **FAILED**' : '✅ **PASSED**';
-              body += `### 📊 Coverage Gate ${gateStatus}\n\`${process.env.COV_SUMMARY}\`\n\n`;
+              body += `### 📊 Full Coverage Report\n**Gate: ${gateStatus}**\n\`${process.env.COV_SUMMARY}\`\n\n`;
+              body += `<details>\n<summary>Per-file Coverage (Lines & Functions)</summary>\n\n`;
+              body += `| File | Lines | Functions | Coverage (Line/Func) | Status |\n`;
+              body += `|------|-------|-----------|----------------------|--------|\n`;
+              body += process.env.COV_GATE_REPORT.replace(/\\n/g, '\n');
+              body += `\n</details>\n\n`;
             }
 
             if (isRebased && process.env.LIGHTHOUSE_RESULTS) {
@@ -685,6 +707,10 @@ jobs:
             if (existing) {
               await github.rest.issues.updateComment({
                 owner: context.repo.owner, repo: context.repo.repo, comment_id: existing.id, body,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner, repo: context.repo.repo, issue_number: context.issue.number, body,
               });
             }
 
