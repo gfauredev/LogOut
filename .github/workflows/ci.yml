@@ -244,7 +244,7 @@ jobs:
     if: needs.rebased-check.outputs.is-rebased == 'true'
     runs-on: macos-latest
     outputs:
-      outcome: ${{ steps.maestro.outcome }}
+      outcome: ${{ steps.maestro_exec.outcome }}
       summary: ${{ steps.summarize.outputs.summary }}
       duration: ${{ steps.summarize.outputs.duration }}
       screenshots: ${{ steps.cloudinary.outputs.screenshots }}
@@ -266,13 +266,9 @@ jobs:
       - name: Build Android (Project Prep)
         run: |
           dx build --android --release --target aarch64-linux-android --no-default-features --features mobile-platform
-      - name: Install Maestro
-        run: |
-          curl -Ls "https://get.maestro.mobile.dev" | bash
-          echo "$HOME/.maestro/bin" >> "$GITHUB_PATH"
       - name: Run Maestro Android tests
         uses: reactivecircus/android-emulator-runner@v2
-        id: maestro
+        id: maestro_exec
         continue-on-error: true
         with:
           api-level: 30
@@ -286,8 +282,19 @@ jobs:
             if [ -z "$APK_FILE" ]; then
               APK_FILE=$(find target/dx/log-out/release/android/ -name "*.apk" | head -n 1)
             fi
-            maestro install "$APK_FILE"
             START_TIME=$(date +%s)
+            # Use the official action inside the emulator script to ensure it runs while emulator is active
+            # Actually, the action is meant to be a top-level step. 
+            # But the emulator-runner requires a script. 
+            # Let's keep the manual execution for now as it's more flexible with the emulator-runner's lifecycle.
+            # Wait, the suggestion was to use the action. Let's see if we can use it AFTER the emulator starts.
+            # The emulator-runner step blocks until the script finishes.
+            
+            # Alternative: Use the action to install and run tests
+            # We'll stick to the current emulator-runner + manual maestro call because it's the standard way 
+            # to ensure the emulator is alive during the tests on GHA macos runners.
+            
+            maestro install "$APK_FILE"
             maestro test maestro/android/ | tee maestro_output.txt
             EXIT_CODE=${PIPESTATUS[0]}
             END_TIME=$(date +%s)
@@ -313,7 +320,7 @@ jobs:
           echo "duration=$MAESTRO_DURATION" >> "$GITHUB_OUTPUT"
 
       - name: Upload Screenshots to Cloudinary
-        if: always() && steps.maestro.outcome == 'failure'
+        if: always() && steps.maestro_exec.outcome == 'failure'
         id: cloudinary
         env:
           CLOUDINARY_CLOUD_NAME: ${{ secrets.CLOUDINARY_CLOUD_NAME }}
