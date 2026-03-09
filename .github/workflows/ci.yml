@@ -114,7 +114,7 @@ jobs:
           echo "EOF" >> "$GITHUB_OUTPUT"
       - name: Upload lcov report
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: unit-coverage-lcov
           path: lcov.info
@@ -231,7 +231,7 @@ jobs:
 
       - name: Upload diagnostics
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: web-e2e-diagnostics
           path: ~/.maestro/tests/
@@ -283,7 +283,7 @@ jobs:
           temporaryPublicStorage: true
           configPath: ./.lighthouserc.json
       - name: Upload web deployment build
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: web-deploy-${{ hashFiles('Cargo.lock', 'src/**', 'assets/**', 'index.html', 'Dioxus.toml') }}
           path: ./target/dx/log-out/release/web/public
