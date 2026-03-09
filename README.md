@@ -166,8 +166,7 @@ PRs) must pass (for some, at a certain level) for it to be merged into `main`.
   - Check if the code is properly **formated** `cargo fmt --all -- --check`
   - **Lint** `cargo clippy -- -D warnings -W clippy::all -W clippy::pedantic`
   - **Unit test** while measuring **coverage** with `cargo llvm-cov`
-  - Optimized **production build** for Web `dx build --web --release`
-  - Optimized **production build** for Android `dx build --android --release`
+  - **Build production** release for Web `dx build --web --release`
   - At each step, cache outputs to avoid redundant work (automatic in Garnix)
 - Run in standard Linux or macOS runners once necessary outputs are available
   - Check that more than `80%` of code (excluding `components`) is covered,
@@ -184,7 +183,8 @@ deployment pipeline running at every push on `main` branch (coming only from
 validated PRs), on standard Linux runners.
 
 - Deploy the _production_ **Progressive Web App** to GitHub Pages
-- Deploy **Android APK** in a “Rolling” timestamped GitHub (pre-)Release
+- **Build production** release for Android `dx build --android --release`
+  - Deploy **Android APK** in a “Rolling” timestamped GitHub (pre-)Release
   - Sign it with GitHub secrets and `scripts/android-sign.sh`
   - Only if the last release is from the previous (UTC) day, to avoid spamming
   - Remove the previous “Rolling” pre-releases older than a week
