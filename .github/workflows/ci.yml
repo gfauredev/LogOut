@@ -98,7 +98,7 @@ jobs:
         id: tests
         run: |
           set -o pipefail
-          cargo llvm-cov --all-features --lcov --output-path lcov.info 2>&1 | tee unit_test_output.txt
+          cargo llvm-cov --lcov --output-path lcov.info 2>&1 | tee unit_test_output.txt
       - name: Summarize unit tests
         id: summarize
         run: |

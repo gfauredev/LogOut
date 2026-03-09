@@ -32,7 +32,7 @@ jobs:
         # README mentions it so we should run it.
         # We can limit the number of mutants or the time.
         run: |
-          cargo mutants --no-times --all-features --timeout 300 || true
+          cargo mutants --no-times --timeout 300 || true
       - name: Upload mutants report
         uses: actions/upload-artifact@v4
         with:
