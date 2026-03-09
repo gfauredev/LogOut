@@ -5,8 +5,6 @@ on:
   push:
     branches:
       - main
-  repository_dispatch:
-    types: [garnix_finished]
 
 jobs:
   coverage:
@@ -14,9 +12,15 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
+      - name: Wait for Garnix
+        uses: lewagon/wait-on-check-action@v1.5.0
         with:
-          # Use the SHA from the dispatch payload if available
-          ref: ${{ github.event.client_payload.sha || github.sha }}
+          ref: ${{ github.sha }}
+          check-name: 'Garnix'
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          wait-interval: 20
+
       - uses: cachix/install-nix-action@v31.10.0
         with:
           github_access_token: ${{ secrets.GITHUB_TOKEN }}
@@ -34,7 +38,7 @@ jobs:
             --show-missing-lines
 
       - name: Get Coverage Output
-        if: always() && (github.event_name == 'pull_request' || github.event.client_payload.pr_number)
+        if: always() && github.event_name == 'pull_request'
         id: coverage_report
         run: |
           REPORT=$(nix develop -c cargo llvm-cov --bin log-out --ignore-filename-regex "src/components/")
@@ -43,10 +47,10 @@ jobs:
           echo "EOF" >> $GITHUB_OUTPUT
 
       - name: Post Coverage Comment
-        if: always() && (github.event_name == 'pull_request' || github.event.client_payload.pr_number)
+        if: always() && github.event_name == 'pull_request'
         uses: peter-evans/create-or-update-comment@v4
         with:
-          issue-number: ${{ github.event.pull_request.number || github.event.client_payload.pr_number }}
+          issue-number: ${{ github.event.pull_request.number }}
           body: |
             ### 📊 Coverage Report (Excluding Components)
             ```text
@@ -59,8 +63,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event.client_payload.sha || github.sha }}
       - uses: cachix/install-nix-action@v31.10.0
         with:
           github_access_token: ${{ secrets.GITHUB_TOKEN }}
@@ -83,10 +85,10 @@ jobs:
           LHCI_COLLECT_STATIC_DIST_DIR: ./public-dist
 
       - name: Post Lighthouse Comment
-        if: github.event_name == 'pull_request' || github.event.client_payload.pr_number
+        if: github.event_name == 'pull_request'
         uses: peter-evans/create-or-update-comment@v4
         with:
-          issue-number: ${{ github.event.pull_request.number || github.event.client_payload.pr_number }}
+          issue-number: ${{ github.event.pull_request.number }}
           body: |
             ### 🚀 Lighthouse Audit
             Check out the [full report here](${{ steps.lighthouse_audit.outputs.links }})
@@ -97,8 +99,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event.client_payload.sha || github.sha }}
       - uses: cachix/install-nix-action@v31.10.0
         with:
           github_access_token: ${{ secrets.GITHUB_TOKEN }}
@@ -118,7 +118,7 @@ jobs:
           nix develop -c maestro test maestro/web
 
       - name: Upload Maestro Screenshots to Cloudinary
-        if: failure() && (github.event_name == 'pull_request' || github.event.client_payload.pr_number)
+        if: failure() && github.event_name == 'pull_request'
         id: upload_screenshots
         env:
           CLOUDINARY_URL: ${{ secrets.CLOUDINARY_URL }}
@@ -151,10 +151,10 @@ jobs:
           echo "EOF" >> $GITHUB_OUTPUT
 
       - name: Post E2E Failure Comment
-        if: failure() && (github.event_name == 'pull_request' || github.event.client_payload.pr_number)
+        if: failure() && github.event_name == 'pull_request'
         uses: peter-evans/create-or-update-comment@v4
         with:
-          issue-number: ${{ github.event.pull_request.number || github.event.client_payload.pr_number }}
+          issue-number: ${{ github.event.pull_request.number }}
           body: ${{ steps.upload_screenshots.outputs.REPORT_BODY }}
 
       - name: Upload Maestro Reports
