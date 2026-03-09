@@ -206,7 +206,6 @@ checks that run every night at 2:00 AM (UTC) on the `main` branch.
 
 ## TODO
 
-- Use standard actions/upload-pages-artifact@v4.0.0 to deploy to Pages
 - DRY E2E tests to only one par user story, they can still runFlow others
 - Mock exercise database with public/exercises.json for E2E tests, so they can
   load faster and not rely on external network requests
