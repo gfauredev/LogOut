@@ -11,8 +11,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: determinate-systems/nix-installer-action@v16
-      - uses: determinate-systems/magic-nix-cache-action@v11
+      - uses: cachix/install-nix-action@v31.10.0
+        with:
+          github_access_token: ${{ secrets.GITHUB_TOKEN }}
+          extra_nix_config: |
+            extra-substituters = https://cache.garnix.io
+            extra-trusted-public-keys = cache.garnix.io:CTFPyKSLcx5RMJKfLo5EEPUObbA78b0YQ2DTCJXqr9g=
 
       - name: Run cargo-deny
         run: nix develop -c cargo deny check
@@ -40,9 +44,12 @@ jobs:
           fi
 
       - if: steps.check_changes.outputs.SKIP != 'true'
-        uses: determinate-systems/nix-installer-action@v16
-      - if: steps.check_changes.outputs.SKIP != 'true'
-        uses: determinate-systems/magic-nix-cache-action@v11
+        uses: cachix/install-nix-action@v31.10.0
+        with:
+          github_access_token: ${{ secrets.GITHUB_TOKEN }}
+          extra_nix_config: |
+            extra-substituters = https://cache.garnix.io
+            extra-trusted-public-keys = cache.garnix.io:CTFPyKSLcx5RMJKfLo5EEPUObbA78b0YQ2DTCJXqr9g=
 
       - name: Run cargo-mutants
         if: steps.check_changes.outputs.SKIP != 'true'
@@ -56,8 +63,12 @@ jobs:
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: determinate-systems/nix-installer-action@v16
-      - uses: determinate-systems/magic-nix-cache-action@v11
+      - uses: cachix/install-nix-action@v31.10.0
+        with:
+          github_access_token: ${{ secrets.GITHUB_TOKEN }}
+          extra_nix_config: |
+            extra-substituters = https://cache.garnix.io
+            extra-trusted-public-keys = cache.garnix.io:CTFPyKSLcx5RMJKfLo5EEPUObbA78b0YQ2DTCJXqr9g=
 
       - name: Build Android APK
         run: nix build .#android -o android-dist
