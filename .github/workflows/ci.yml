@@ -119,34 +119,38 @@ jobs:
           nix build .#web -o public-dist
           cd public-dist && python3 -m http.server 8080 &
           sleep 2
-      - name: Run Maestro Web Tests
-        run: |
-          nix develop -c maestro test maestro/web
-      - name: Upload Maestro Screenshots to Cloudinary
-        if: failure() && github.event_name == 'pull_request' && secrets.CLOUDINARY_CLOUD_NAME != '' && secrets.CLOUDINARY_UPLOAD_PRESET != ''
-        id: upload_screenshots
-        env:
-          CLOUD_NAME: ${{ secrets.CLOUDINARY_CLOUD_NAME }}
-          UPLOAD_PRESET: ${{ secrets.CLOUDINARY_UPLOAD_PRESET }}
-        run: |
-          REPORT_BODY="### ❌ Maestro Web E2E Failures\n"
-          # Find all screenshots in maestro report dir
-          find ~/.maestro/tests/ -name "*.png" | while read -r img; do
-            echo "Uploading $img to Cloudinary (unsigned)..."
-            UPLOAD_URL="https://api.cloudinary.com/v1_1/${CLOUD_NAME}/image/upload"
-            RESULT=$(curl -s -X POST "$UPLOAD_URL" \
-              -F "file=@$img" \
-              -F "upload_preset=$UPLOAD_PRESET")
-            IMG_URL=$(echo "$RESULT" | jq -r '.secure_url')
-            if [ "$IMG_URL" != "null" ]; then
-              REPORT_BODY="${REPORT_BODY}\n- ![Screenshot]($IMG_URL)"
-            else
-              echo "Failed to upload $img: $RESULT"
-            fi
-          done
-          echo "REPORT_BODY<<EOF" >> $GITHUB_OUTPUT
-          echo -e "$REPORT_BODY" >> $GITHUB_OUTPUT
-          echo "EOF" >> $GITHUB_OUTPUT
+            - name: Run Maestro Web Tests
+              run: |
+                set -o pipefail
+                nix develop -c maestro test maestro/web |& tee maestro_console.log
+            - name: Upload Maestro Screenshots to Cloudinary
+              if: failure() && github.event_name == 'pull_request'
+              id: upload_screenshots
+              env:
+                CLOUD_NAME: ${{ secrets.CLOUDINARY_CLOUD_NAME }}
+                UPLOAD_PRESET: ${{ secrets.CLOUDINARY_UPLOAD_PRESET }}
+              run: |
+                REPORT_BODY="### ❌ Maestro Web E2E Failures\n"
+                if [ -f maestro_console.log ]; then
+                  # Use sed to strip ANSI escape codes for cleaner markdown
+                  CLEAN_LOG=$(sed 's/\x1b\[[0-9;]*[mG]//g' maestro_console.log | tail -n 100)
+                  REPORT_BODY="${REPORT_BODY}\n<details>\n<summary>📜 Maestro Console Output (Last 100 lines)</summary>\n\n\`\`\`text\n${CLEAN_LOG}\n\`\`\`\n</details>\n"
+                fi
+                if [ -n "$CLOUD_NAME" ] && [ -n "$UPLOAD_PRESET" ]; then
+                  REPORT_BODY="${REPORT_BODY}\n#### 📸 Screenshots\n"
+                  find ~/.maestro/tests/ -name "*.png" | while read -r img; do
+                    echo "Uploading $img to Cloudinary (unsigned)..."
+                    UPLOAD_URL="https://api.cloudinary.com/v1_1/${CLOUD_NAME}/image/upload"
+                    RESULT=$(curl -s -X POST "$UPLOAD_URL" -F "file=@$img" -F "upload_preset=$UPLOAD_PRESET")
+                    IMG_URL=$(echo "$RESULT" | jq -r '.secure_url')
+                    if [ "$IMG_URL" != "null" ]; then
+                      REPORT_BODY="${REPORT_BODY}\n- ![Screenshot]($IMG_URL)"
+                    fi
+                  done
+                fi
+                echo "REPORT_BODY<<EOF" >> $GITHUB_OUTPUT
+                echo -e "$REPORT_BODY" >> $GITHUB_OUTPUT
+                echo "EOF" >> $GITHUB_OUTPUT
       - name: Post E2E Failure Comment
         if: failure() && github.event_name == 'pull_request' && steps.upload_screenshots.outputs.REPORT_BODY != ''
         uses: peter-evans/create-or-update-comment@v4
