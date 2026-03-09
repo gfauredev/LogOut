@@ -170,13 +170,12 @@ PRs) must pass (for some, at a certain level) for it to be merged into `main`.
   - Optimized **production build** for Android `dx build --android --release`
   - At each step, cache outputs to avoid redundant work (automatic in Garnix)
 - Run in standard Linux or macOS runners once necessary outputs are available
-  - Check that coverage (of unit testable files) is above `90%`, publish a full
-    coverage table with each file covered functions, lines… as a PR message
+  - Check that more than `80%` of code (excluding `model` files) is covered,
+    publish the full coverage summary table as a PR comment
   - Slower checks, only if above pass _and_ branch is up-to-date with `main`
-    - **PageSpeed** Lighthouse audit on PWA, publish report as a PR message
-    - Web **end-to-end tests** Maestro `maestro test maestro/web`
-    - Android **end-to-end tests** Maestro `maestro test maestro/android`
-    - Publish a report with screenshots of failed E2E tests as a PR message
+    - **PageSpeed** Lighthouse audit on PWA, publish report as a PR comment
+    - Web Maestro **end-to-end tests** with `maestro test maestro/web`
+    - Publish a report with screenshots of failed E2E tests as a PR comment
 
 ## Continuous Deployment (CD)
 
@@ -200,6 +199,7 @@ checks that run every night at 2:00 AM (UTC) on the `main` branch.
 
 - Test the tests’ comprehensiveness by introducing bugs they should catch
   - **Mutation testing** with `cargo-mutants`
+- Run Android **end-to-end tests** in emulator `maestro test maestro/android`
 - Analyze dependencies for vulnerabilities or deprecations with `cargo deny`
   - Automatically open PRs to update dependencies and flake with `renovate`
 - Publish report(s) of the above checks accessible via the forge
