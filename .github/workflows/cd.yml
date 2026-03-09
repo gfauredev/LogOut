@@ -110,21 +110,18 @@ jobs:
             exit 1
           fi
           ./scripts/android-sign.sh "$APK_FILE"
-          cp "$APK_FILE" logout-android-arm64.apk
-
-      - name: Manage Rolling Tag
-        if: github.event_name != 'release'
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git tag -f latest-android
-          git push -f origin latest-android
+          SHORT_SHA=$(echo "${{ github.sha }}" | cut -c1-7)
+          cp "$APK_FILE" "logout-android-arm64-$SHORT_SHA.apk"
+          echo "SHORT_SHA=$SHORT_SHA" >> $GITHUB_ENV
 
       - name: Upload APK to Release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ github.event_name == 'release' && github.event.release.tag_name || 'latest-android' }}
-          name: ${{ github.event_name == 'release' && github.event.release.name || 'Latest Android Build (arm64)' }}
-          body: ${{ github.event_name == 'release' && github.event.release.body || 'Latest arm64 builds from main branch.' }}
+          target_commitish: ${{ github.sha }}
+          name: ${{ github.event_name == 'release' && github.event.release.name || format('Rolling Build ({0})', env.SHORT_SHA) }}
+          body: ${{ github.event_name == 'release' && github.event.release.body || 'Automated rolling build from the latest main branch.' }}
           prerelease: true
-          files: logout-android-arm64.apk
+          files: logout-android-arm64-*.apk
+          generate_release_notes: true
+          make_latest: false
