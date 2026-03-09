@@ -17,7 +17,7 @@ lang: en
 - [Code Conventions & Contributing](#code-conventions-contributing)
 - [Continuous Integration (CI)](#continuous-integration-ci)
 - [Continuous Deployment (CD)](#continuous-deployment-cd)
-- [Nightly Deep Checks <!-- TODO -->](#nightly-deep-checks-todo)
+- [Nightly Deep Checks](#nightly-deep-checks)
 - [TODO](#todo)
 
 <!--toc:end-->
@@ -151,7 +151,7 @@ Run `scripts/android-sign.sh` to generate a signed `release-signed.apk` APK.
 - Class-light styling mainly based on HTML semantic hierarchy
 - Same CSS rules for similarly looking components, don’t overcomplicate
 - Never hardcode values (except 0, 1, 100%), use clearly named constants
-- Always ensure that all lints, end-to-end and unit tests pass.
+- Always ensure that all lints, end-to-end and unit tests pass
 
 ## Continuous Integration (CI)
 
@@ -159,60 +159,57 @@ Run `scripts/android-sign.sh` to generate a signed `release-signed.apk` APK.
 pass through a pull-request (PR), and every below check (that runs on pushes on
 PRs) must pass (for some, at a certain level) for it to be merged into `main`.
 
-- Fasts checks, run at every push on PRs
+- Run isolated in Garnix via (`flake.nix`)[./flake.nix], for every push on PR
   - Check if the code is properly **formated** `cargo fmt --all -- --check`
   - **Lint** code
     `cargo clippy --all-targets -- -D warnings -W clippy::all -W clippy::pedantic`
-  - **Unit test** while measuring **coverage** (of unit tested files only)
+  - **Unit test** while measuring **coverage**
     `cargo llvm-cov --bin log-out --lcov --output-path lcov.info`
-  - Fail if coverage is below `90%` with a custom `script` reading `lcov.info`
-- Publish a report with tests durations, clippy warnings, ok/failed tests,
-  coverage table… in a PR message
-- Slower checks, only if above pass, and branch up-to-date (rebased) with `main`
   - Optimized **production build** for Web `dx build --web --release`
-    - **PageSpeed** Lighthouse audit on PWA <!-- TODO -->
-    - Web **end-to-end tests** Maestro `maestro test maestro/web`
   - Optimized **production build** for Android `dx build --android --release`
+  - At each step, cache outputs to avoid redundant work (automatic in Garnix)
+- Run in standard Linux or macOS runners once necessary outputs are available
+  - Check that coverage (of unit testable files) is above `90%`, publish a full
+    coverage table with each file covered functions, lines… as a PR message
+  - Slower checks, only if above pass _and_ branch is up-to-date with `main`
+    - **PageSpeed** Lighthouse audit on PWA, publish report as a PR message
+    - Web **end-to-end tests** Maestro `maestro test maestro/web`
     - Android **end-to-end tests** Maestro `maestro test maestro/android`
-  - Publish a report with build times, Lighthouse scores, screenshots of failed
-    E2E tests… in a PR message
-- Cache compilation outputs, dependencies, artifacts… for future use
-  - Even if some brittle checks like Maestro and PageSpeed ones didn’t pass
+    - Publish a report with screenshots of failed E2E tests as a PR message
 
 ## Continuous Deployment (CD)
 
 [LogOut] stays continuously fresh and up-to-date thanks to its automated
-deployment pipeline runnig at every push on `main` branch (coming only from
-validated PRs).
+deployment pipeline running at every push on `main` branch (coming only from
+validated PRs), on standard Linux runners.
 
-- Build **Progressive Web App** using cache filled by CI to avoid redundant work
-  - Deploy the optimized **PWA** to GitHub Pages
-- Build **Android App** using cache filled by CI to avoid redundant work
-  - Deploy optimized Android **APK** “Rolling” timestamped GitHub (pre-)Release
+- Deploy the _production_ **Progressive Web App** to GitHub Pages
+- Deploy **Android APK** in a “Rolling” timestamped GitHub (pre-)Release
   - Only if the last release is from the previous (UTC) day, to avoid spamming
   - Remove the previous “Rolling” pre-releases older than a week
 
-CD also runs when a **tag** is pushed, publishing a “Stable” GitHub Release with
-a production Android APK buit on this `tag`.
+CD also runs when a [SemVer] `vMAJOR.MINOR.PATCH` **tag** is pushed, publishing
+a “Stable” GitHub Release with a production Android APK buit on this `tag`.
 
-## Nightly Deep Checks <!-- TODO -->
+## Nightly Deep Checks
 
 [LogOut] ensures high quality code while with additional ressource intensive
 checks that run every night at 2:00 AM (UTC) on the `main` branch.
 
 - Test the tests’ comprehensiveness by introducing bugs they should catch
   - **Mutation testing** with `cargo-mutants`
-- Analyze dependencies for vulnerabilities or deprecations `cargo deny`
-  - Automatically open PRs to update dependencies with `dependabot`
-- Publish report(s) of the above checks
+- Analyze dependencies for vulnerabilities or deprecations with `cargo deny`
+  - Automatically open PRs to update dependencies and flake with `renovate`
+    <!-- TODO Move from Dependabot to Renovate -->
+- Publish report(s) of the above checks accessible via the forge
 
 ## TODO
 
 - DRY E2E tests to only one par user story, they can still runFlow others
 - Mock exercise database with public/exercises.json for E2E tests, so they can
   load faster and not rely on external network requests
-- Harmonize Rest timer text color when background when rest is due
 - Make layout harmonious but minimal, efficient, look at spacings, sizes
+  - Harmonize Rest timer text color with background when rest is due
 - Consider using Dioxus Components https://dioxuslabs.com/components
 
 [LogOut]: https://gfauredev.github.io/LogOut
@@ -240,6 +237,7 @@ checks that run every night at 2:00 AM (UTC) on the `main` branch.
 [rustdoc]: https://doc.rust-lang.org/rustdoc
 [rustfmt]: https://github.com/rust-lang/rustfmt
 [VS Code]: https://code.visualstudio.com
+[SemVer]: https://semver.org
 [Serde]: https://serde.rs
 [IndexedDB]: https://developer.mozilla.org/en-US/docs/Web/API/IndexedDB_API
 [Rexie]: https://github.com/wasmerio/rexie
