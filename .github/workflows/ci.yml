@@ -169,9 +169,73 @@ jobs:
           if-no-files-found: ignore
           retention-days: 7
 
+  build-release-web:
+    name: Build Release Web
+    needs: [format, clippy, unit-tests, e2e-web, rebased-check]
+    if: |
+      always() &&
+      needs.format.result == 'success' &&
+      needs.clippy.result == 'success' &&
+      needs.unit-tests.result == 'success' &&
+      needs.e2e-web.result == 'success' &&
+      needs.rebased-check.outputs.is-rebased == 'true'
+    permissions:
+      actions: write
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          lfs: true
+      - name: Download lcov report
+        uses: actions/download-artifact@v4
+        with:
+          name: unit-coverage-lcov
+      - name: Check coverage gate (≥ 90%)
+        run: |
+          if [ ! -f lcov.info ]; then
+            echo "::error::lcov.info not found — coverage gate cannot be evaluated"
+            exit 1
+          fi
+          TESTED_FILES=$(grep -rl '#\[cfg(test)\]' src/ | sort || true)
+          FAIL=0
+          for f in $TESTED_FILES; do
+            LH=0; LF=0; IN_FILE=0
+            while IFS= read -r line; do
+              case "$line" in
+                SF:*"$f") IN_FILE=1 ;;
+                SF:*) IN_FILE=0 ;;
+                LH:*) [ "$IN_FILE" = 1 ] && LH="${line#LH:}" ;;
+                LF:*) [ "$IN_FILE" = 1 ] && LF="${line#LF:}" ;;
+              esac
+            done < lcov.info
+            if [ "$LF" -gt 0 ]; then PCT=$((LH * 100 / LF)); else PCT=0; fi
+            if [ "$PCT" -lt 90 ]; then
+              echo "::error::Coverage below 90% for $f: ${LH}/${LF} lines (${PCT}%)"
+              FAIL=1
+            fi
+          done
+          exit $FAIL
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+      - uses: swatinem/rust-cache@v2
+      - name: Install Dioxus CLI
+        uses: taiki-e/install-action@v2
+        with:
+          tool: dioxus-cli
+      - name: Build web release
+        run: dx build --release --platform web --base-path /LogOut
+      - name: Upload web deployment build
+        uses: actions/upload-artifact@v4
+        with:
+          name: web-deploy-${{ hashFiles('Cargo.lock', 'src/**', 'assets/**', 'index.html', 'Dioxus.toml') }}
+          path: ./target/dx/log-out/release/web/public
+          retention-days: 7
+          overwrite: true
+
   report:
     name: PR Summary Report
-    needs: [format, clippy, unit-tests, e2e-web, rebased-check]
+    needs: [format, clippy, unit-tests, e2e-web, rebased-check, build-release-web]
     if: always()
     runs-on: ubuntu-latest
     permissions:
@@ -236,6 +300,7 @@ jobs:
         env:
           FORMAT_STATUS: ${{ needs.format.outputs.outcome }}
           CLIPPY_STATUS: ${{ needs.clippy.outputs.outcome }}
+          BUILD_STATUS: ${{ needs.build-release-web.result }}
           UNIT_STATUS: ${{ needs.unit-tests.outputs.outcome }}
           UNIT_SUMMARY: ${{ needs.unit-tests.outputs.summary }}
           E2E_STATUS: ${{ needs.e2e-web.outputs.outcome }}
@@ -258,7 +323,9 @@ jobs:
             body += `| Check | Status |\n`;
             body += `|-------|--------|\n`;
             body += `| Formatting | ${getIcon(process.env.FORMAT_STATUS)} |\n`;
-            body += `| Linting | ${getIcon(process.env.CLIPPY_STATUS)} |\n\n`;
+            body += `| Linting | ${getIcon(process.env.CLIPPY_STATUS)} |\n`;
+            const buildIcon = isRebased ? getIcon(process.env.BUILD_STATUS) : '⏭️';
+            body += `| Release Build | ${buildIcon} |\n\n`;
             
             body += `### 🧪 Test Results\n`;
             body += `| Suite | Status | Summary |\n`;
@@ -312,5 +379,6 @@ jobs:
           if [ "${{ needs.clippy.outputs.outcome }}" != "success" ]; then echo "Clippy check failed"; FAIL=1; fi
           if [ "${{ needs.unit-tests.outputs.outcome }}" != "success" ]; then echo "Unit tests failed"; FAIL=1; fi
           if [ "${{ needs.rebased-check.outputs.is-rebased }}" == "true" ] && [ "${{ needs.e2e-web.result }}" != "success" ]; then echo "E2E tests failed"; FAIL=1; fi
+          if [ "${{ needs.rebased-check.outputs.is-rebased }}" == "true" ] && [ "${{ needs.build-release-web.result }}" == "failure" ]; then echo "Release build failed"; FAIL=1; fi
           if [ "${{ steps.cov.outputs.gate_failed }}" == "1" ]; then echo "Coverage gate failed"; FAIL=1; fi
           exit $FAIL
