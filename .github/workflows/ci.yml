@@ -11,11 +11,11 @@ jobs:
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@v4
-      - name: Wait for Garnix
+      - name: Wait for Garnix (Coverage)
         uses: lewagon/wait-on-check-action@v1.5.0
         with:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
-          check-regexp: '.*Garnix.*'
+          check-regexp: 'check coverage.*'
           repo-token: ${{ secrets.GITHUB_TOKEN }}
           wait-interval: 20
       - uses: cachix/install-nix-action@v31.10.0
@@ -79,6 +79,13 @@ jobs:
             extra-substituters = https://cache.garnix.io
             extra-trusted-public-keys = cache.garnix.io:CTFPyKSLcx5RMJKfLo5EEPUObbA78b0YQ2DTCJXqr9g=
       - uses: DeterminateSystems/magic-nix-cache-action@v13
+      - name: Wait for Garnix (Web)
+        uses: lewagon/wait-on-check-action@v1.5.0
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          check-regexp: 'package web.*'
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          wait-interval: 20
       - name: Build Web
         run: nix build .#web -o public-dist
       - name: Lighthouse Audit
@@ -114,6 +121,13 @@ jobs:
             extra-substituters = https://cache.garnix.io
             extra-trusted-public-keys = cache.garnix.io:CTFPyKSLcx5RMJKfLo5EEPUObbA78b0YQ2DTCJXqr9g=
       - uses: DeterminateSystems/magic-nix-cache-action@v13
+      - name: Wait for Garnix (Web)
+        uses: lewagon/wait-on-check-action@v1.5.0
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          check-regexp: 'package web.*'
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          wait-interval: 20
       - name: Build and Serve
         run: |
           nix build .#web -o public-dist
