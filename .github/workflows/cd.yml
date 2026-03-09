@@ -13,8 +13,8 @@ jobs:
     timeout-minutes: 30
     permissions:
       contents: write
-      checks: read
-      statuses: read
+      pages: write
+      id-token: write
     steps:
       - uses: actions/checkout@v4
       - name: Wait for Garnix flake.nix evaluation
@@ -41,12 +41,25 @@ jobs:
       - uses: DeterminateSystems/magic-nix-cache-action@v13
       - name: Build Web
         run: nix build .#web -o public-dist
-      - name: Deploy to GitHub Pages
-        uses: peaceiris/actions-gh-pages@v4
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
         with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./public-dist
-          cname: logout.guilhemfau.re
+          path: ./public-dist
+
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    needs: deploy-pwa
+    if: github.ref == 'refs/heads/main'
+    permissions:
+      pages: write
+      id-token: write
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
 
   release-android:
     name: Release Android
