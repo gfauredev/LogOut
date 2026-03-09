@@ -197,11 +197,11 @@ a “Stable” GitHub Release with a production Android APK buit on this `tag`.
 [LogOut] ensures high quality code while with additional ressource intensive
 checks that run every night at 2:00 AM (UTC) on the `main` branch.
 
-- Test the tests’ comprehensiveness by introducing bugs they should catch
-  - **Mutation testing** with `cargo-mutants`
 - Run Android **end-to-end tests** in emulator `maestro test maestro/android`
 - Analyze dependencies for vulnerabilities or deprecations with `cargo deny`
   - Automatically open PRs to update dependencies and flake with `renovate`
+- Test the tests’ comprehensiveness by introducing bugs they should catch
+  - **Mutation testing** with `cargo-mutants`
 - Publish report(s) of the above checks accessible via the forge
 
 ## TODO
