@@ -1,5 +1,5 @@
 builds:
   branch: main
-  exclude:
-    - "*.aarch64-darwin.*"
-    # - "packages.*.android" # GitHub CI/CD only for now
+  include:
+    - "devShells.*"
+    - "packages.x86_64-linux.*"
