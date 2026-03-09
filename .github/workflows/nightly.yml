@@ -17,6 +17,7 @@ jobs:
           extra_nix_config: |
             extra-substituters = https://cache.garnix.io
             extra-trusted-public-keys = cache.garnix.io:CTFPyKSLcx5RMJKfLo5EEPUObbA78b0YQ2DTCJXqr9g=
+      - uses: DeterminateSystems/magic-nix-cache-action@v13
 
       - name: Run cargo-deny
         run: nix develop -c cargo deny check
@@ -50,6 +51,8 @@ jobs:
           extra_nix_config: |
             extra-substituters = https://cache.garnix.io
             extra-trusted-public-keys = cache.garnix.io:CTFPyKSLcx5RMJKfLo5EEPUObbA78b0YQ2DTCJXqr9g=
+      - if: steps.check_changes.outputs.SKIP != 'true'
+        uses: DeterminateSystems/magic-nix-cache-action@v13
 
       - name: Run cargo-mutants
         if: steps.check_changes.outputs.SKIP != 'true'
@@ -69,6 +72,7 @@ jobs:
           extra_nix_config: |
             extra-substituters = https://cache.garnix.io
             extra-trusted-public-keys = cache.garnix.io:CTFPyKSLcx5RMJKfLo5EEPUObbA78b0YQ2DTCJXqr9g=
+      - uses: DeterminateSystems/magic-nix-cache-action@v13
 
       - name: Build Android APK
         run: nix build .#android -o android-dist

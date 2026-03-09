@@ -23,6 +23,7 @@ jobs:
           extra_nix_config: |
             extra-substituters = https://cache.garnix.io
             extra-trusted-public-keys = cache.garnix.io:CTFPyKSLcx5RMJKfLo5EEPUObbA78b0YQ2DTCJXqr9g=
+      - uses: DeterminateSystems/magic-nix-cache-action@v13
 
       - name: Run Coverage Gate
         run: |
@@ -66,6 +67,7 @@ jobs:
           extra_nix_config: |
             extra-substituters = https://cache.garnix.io
             extra-trusted-public-keys = cache.garnix.io:CTFPyKSLcx5RMJKfLo5EEPUObbA78b0YQ2DTCJXqr9g=
+      - uses: DeterminateSystems/magic-nix-cache-action@v13
 
       - name: Build Web
         run: nix build .#web -o public-dist
@@ -103,6 +105,7 @@ jobs:
           extra_nix_config: |
             extra-substituters = https://cache.garnix.io
             extra-trusted-public-keys = cache.garnix.io:CTFPyKSLcx5RMJKfLo5EEPUObbA78b0YQ2DTCJXqr9g=
+      - uses: DeterminateSystems/magic-nix-cache-action@v13
 
       - name: Build and Serve
         run: |
