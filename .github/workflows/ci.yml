@@ -15,21 +15,21 @@ jobs:
       - uses: determinate-systems/nix-installer-action@v16
       - uses: determinate-systems/magic-nix-cache-action@v11
 
-      - name: Generate Coverage
-        run: nix develop -c cargo llvm-cov --bin log-out --lcov --output-path lcov.info
-
-      - name: Check Coverage Gate
-        run: ./scripts/coverage-gate.sh
+      - name: Run Coverage Gate
+        run: |
+          nix develop -c cargo llvm-cov --bin log-out \
+            --ignore-filename-regex "src/components/" \
+            --fail-under-functions 90 \
+            --fail-under-lines 80 \
+            --show-missing-lines
 
       - name: Post Coverage Report
         if: always()
         run: |
-          # Simple summary of coverage for PR comment
-          echo "### Coverage Report" >> $GITHUB_STEP_SUMMARY
-          echo "| File | Coverage (%) | Lines |" >> $GITHUB_STEP_SUMMARY
-          echo "|------|--------------|-------|" >> $GITHUB_STEP_SUMMARY
-          # Parse lcov.info or just use the output of coverage-gate.sh if it was redirected
-          ./scripts/coverage-gate.sh | grep "✅" | sed 's/✅ //' | awk -F': ' '{print "| " $1 " | " $2 " |"}' >> $GITHUB_STEP_SUMMARY || true
+          echo "### 📊 Coverage Report (Excluding Components)" >> $GITHUB_STEP_SUMMARY
+          echo '```text' >> $GITHUB_STEP_SUMMARY
+          nix develop -c cargo llvm-cov --bin log-out --ignore-filename-regex "src/components/" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
 
   lighthouse:
     name: PageSpeed Lighthouse

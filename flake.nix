@@ -259,23 +259,32 @@
             cargo fmt --all -- --check
             touch $out
           '';
-          clippy = env.pkgs.runCommand "cargo-clippy-check" { nativeBuildInputs = env.commonNativeBuildInputs; } ''
-            cd ${self}
-            export HOME=$TMPDIR
-            cargo clippy --all-targets -- -D warnings -W clippy::all -W clippy::pedantic
-            touch $out
-          '';
-          coverage = env.pkgs.runCommand "cargo-coverage" {
-            nativeBuildInputs = env.commonNativeBuildInputs ++ [ env.pkgs.lcov ];
-          } ''
-            cd ${self}
-            export HOME=$TMPDIR
-            # We need a writable directory for cargo
-            cp -r . /tmp/src
-            cd /tmp/src
-            chmod -R +w .
-            cargo llvm-cov --bin log-out --lcov --output-path $out
-          '';
+          clippy =
+            env.pkgs.runCommand "cargo-clippy-check" { nativeBuildInputs = env.commonNativeBuildInputs; }
+              ''
+                cd ${self}
+                export HOME=$TMPDIR
+                cargo clippy --all-targets -- -D warnings -W clippy::all -W clippy::pedantic
+                touch $out
+              '';
+          coverage =
+            env.pkgs.runCommand "cargo-coverage"
+              {
+                nativeBuildInputs = env.commonNativeBuildInputs ++ [ env.pkgs.lcov ];
+              }
+              ''
+                cd ${self}
+                export HOME=$TMPDIR
+                cp -r . /tmp/src # Writable directory for cargo
+                cd /tmp/src
+                chmod -R +w .
+                cargo llvm-cov --bin log-out \
+                  --ignore-filename-regex "src/components/" \
+                  --fail-under-functions 90 \
+                  --fail-under-lines 80 \
+                  --show-missing-lines
+                touch $out
+              '';
         }
       );
     };

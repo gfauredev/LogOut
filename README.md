@@ -161,10 +161,8 @@ PRs) must pass (for some, at a certain level) for it to be merged into `main`.
 
 - Run isolated in Garnix via (`flake.nix`)[./flake.nix], for every push on PR
   - Check if the code is properly **formated** `cargo fmt --all -- --check`
-  - **Lint** code
-    `cargo clippy --all-targets -- -D warnings -W clippy::all -W clippy::pedantic`
-  - **Unit test** while measuring **coverage**
-    `cargo llvm-cov --bin log-out --lcov --output-path lcov.info`
+  - **Lint** `cargo clippy -- -D warnings -W clippy::all -W clippy::pedantic`
+  - **Unit test** while measuring **coverage** with `cargo llvm-cov`
   - Optimized **production build** for Web `dx build --web --release`
   - Optimized **production build** for Android `dx build --android --release`
   - At each step, cache outputs to avoid redundant work (automatic in Garnix)
