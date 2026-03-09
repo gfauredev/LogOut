@@ -1,7 +1,7 @@
 #!/bin/sh
 set -e
 # OUT=release-signed.apk
-APK_PATH=
+APK_PATH=$1
 KEYSTORE_PATH=${ANDROID_KEYSTORE_PATH:-"android/secrets/logout.jks"}
 KEY_ALIAS=${ANDROID_KEY_ALIAS:-"logout-key"}
 if [ -z "$APK_PATH" ]; then
