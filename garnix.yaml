@@ -1,6 +1,0 @@
-builds:
-  branch: ".*"
-  include:
-    - "devShells.x86_64-linux.*"
-    - "packages.x86_64-linux.*"
-    - "checks.x86_64-linux.*"
