@@ -111,13 +111,6 @@ jobs:
           echo "failures<<EOF" >> "$GITHUB_OUTPUT"
           sed -n '/^failures:$/,/^$/p' unit_test_output.txt | grep "^    " | sed 's/^    //' || true
           echo "EOF" >> "$GITHUB_OUTPUT"
-      - name: Check coverage gate (≥ 90%)
-        run: |
-          if [ -f lcov.info ]; then
-            bash ./scripts/coverage-gate.sh
-          else
-            echo "::warning::lcov.info not found, skipping coverage gate"
-          fi
       - name: Upload lcov report
         if: always()
         uses: actions/upload-artifact@v4
@@ -126,6 +119,20 @@ jobs:
           path: lcov.info
           if-no-files-found: ignore
           retention-days: 7
+
+  coverage-check:
+    name: Coverage Gate
+    needs: [unit-tests]
+    if: always() && needs.unit-tests.result == 'success'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download lcov report
+        uses: actions/download-artifact@v4
+        with:
+          name: unit-coverage-lcov
+      - name: Check coverage gate
+        run: bash ./scripts/coverage-gate.sh
 
   e2e-web:
     name: Web E2E Tests
@@ -397,7 +404,7 @@ jobs:
 
   report-quick:
     name: Quick PR Summary
-    needs: [format, clippy, unit-tests, rebased-check]
+    needs: [format, clippy, unit-tests, rebased-check, coverage-check]
     if: always()
     runs-on: ubuntu-latest
     permissions:
@@ -541,7 +548,7 @@ jobs:
 
   report-slow:
     name: Slow PR Summary
-    needs: [report-quick, format, clippy, unit-tests, e2e-web, e2e-android, build-release-web, rebased-check]
+    needs: [report-quick, format, clippy, unit-tests, e2e-web, e2e-android, build-release-web, rebased-check, coverage-check]
     if: |
       always() &&
       needs.report-quick.result == 'success' &&
@@ -720,6 +727,7 @@ jobs:
           if [ "${{ needs.format.result }}" = "failure" ]; then FAIL=1; fi
           if [ "${{ needs.clippy.result }}" = "failure" ]; then FAIL=1; fi
           if [ "${{ needs.unit-tests.result }}" = "failure" ]; then FAIL=1; fi
+          if [ "${{ needs.coverage-check.result }}" = "failure" ]; then FAIL=1; fi
           if [ "${{ needs.rebased-check.outputs.is-rebased }}" = "true" ]; then
             if [ "${{ needs.e2e-web.result }}" = "failure" ]; then FAIL=1; fi
             if [ "${{ needs.e2e-android.result }}" = "failure" ]; then FAIL=1; fi
