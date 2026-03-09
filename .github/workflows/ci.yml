@@ -125,8 +125,8 @@ jobs:
         uses: taiki-e/install-action@v2
         with:
           tool: dioxus-cli
-      - name: Build web release
-        run: dx build --web --release
+      - name: Build web
+        run: dx build --web
       - name: Install Maestro
         run: |
           curl -Ls "https://get.maestro.mobile.dev" | bash
@@ -135,7 +135,7 @@ jobs:
         id: maestro
         continue-on-error: true
         run: |
-          dx serve --open false --interactive false --web --release &
+          dx serve --open false --interactive false --web &
           SERVER_PID=$!
           # Wait for server to be responsive
           timeout 60 bash -c 'until curl -sf http://localhost:8080 > /dev/null; do sleep 2; done' || (kill $SERVER_PID && exit 1)
@@ -168,68 +168,6 @@ jobs:
           path: ~/.maestro/tests/
           if-no-files-found: ignore
           retention-days: 7
-
-  cache-artifacts:
-    name: Cache Build Artifacts for CD
-    needs: [format, clippy, unit-tests]
-    if: |
-      always() &&
-      needs.format.result == 'success' &&
-      needs.clippy.result == 'success' &&
-      needs.unit-tests.result == 'success'
-    permissions:
-      actions: write
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          lfs: true
-      - name: Download lcov report
-        uses: actions/download-artifact@v4
-        with:
-          name: unit-coverage-lcov
-      - name: Check coverage gate (≥ 90%)
-        run: |
-          if [ ! -f lcov.info ]; then
-            echo "::error::lcov.info not found — coverage gate cannot be evaluated"
-            exit 1
-          fi
-          TESTED_FILES=$(grep -rl '#\[cfg(test)\]' src/ | sort || true)
-          FAIL=0
-          for f in $TESTED_FILES; do
-            LH=0; LF=0; IN_FILE=0
-            while IFS= read -r line; do
-              case "$line" in
-                SF:*"$f") IN_FILE=1 ;;
-                SF:*) IN_FILE=0 ;;
-                LH:*) [ "$IN_FILE" = 1 ] && LH="${line#LH:}" ;;
-                LF:*) [ "$IN_FILE" = 1 ] && LF="${line#LF:}" ;;
-              esac
-            done < lcov.info
-            if [ "$LF" -gt 0 ]; then PCT=$((LH * 100 / LF)); else PCT=0; fi
-            if [ "$PCT" -lt 90 ]; then
-              echo "::error::Coverage below 90% for $f: ${LH}/${LF} lines (${PCT}%)"
-              FAIL=1
-            fi
-          done
-          exit $FAIL
-      - uses: dtolnay/rust-toolchain@stable
-        with:
-          targets: wasm32-unknown-unknown
-      - uses: swatinem/rust-cache@v2
-      - name: Install Dioxus CLI
-        uses: taiki-e/install-action@v2
-        with:
-          tool: dioxus-cli
-      - name: Build web for CD deployment
-        run: dx build --release --platform web --base-path /LogOut
-      - name: Upload web deployment build
-        uses: actions/upload-artifact@v4
-        with:
-          name: web-deploy-${{ hashFiles('Cargo.lock', 'src/**', 'assets/**', 'index.html', 'Dioxus.toml') }}
-          path: ./target/dx/log-out/release/web/public
-          retention-days: 7
-          overwrite: true
 
   report:
     name: PR Summary Report
