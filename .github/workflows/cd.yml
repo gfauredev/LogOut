@@ -50,8 +50,13 @@ jobs:
           # Create keystore from secret
           mkdir -p android/secrets
           echo "$ANDROID_KEYSTORE_BASE64" | base64 -d > android/secrets/logout.jks
+          
+          # Copy APK to writable path before signing
+          APK_SRC=$(find android-dist -name "*.apk" | head -n 1)
+          cp "$APK_SRC" logout.apk
+          
           # Sign it
-          nix develop -c ./scripts/android-sign.sh
+          nix develop -c ./scripts/android-sign.sh logout.apk
 
       - name: Rolling Release
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
@@ -79,7 +84,7 @@ jobs:
             done
             
             # Create new release
-            APK=$(find android-dist -name "*.apk" | head -n 1)
+            APK="logout.apk"
             gh release create "$TAG" "$APK" --title "Rolling $DATE" --notes "Automated rolling release for $DATE" --prerelease
           fi
 
@@ -89,5 +94,5 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           TAG=${GITHUB_REF#refs/tags/}
-          APK=$(find android-dist -name "*.apk" | head -n 1)
+          APK="logout.apk"
           gh release create "$TAG" "$APK" --title "LogOut $TAG" --notes "Release $TAG"

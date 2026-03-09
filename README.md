@@ -201,7 +201,6 @@ checks that run every night at 2:00 AM (UTC) on the `main` branch.
   - **Mutation testing** with `cargo-mutants`
 - Analyze dependencies for vulnerabilities or deprecations with `cargo deny`
   - Automatically open PRs to update dependencies and flake with `renovate`
-    <!-- TODO Move from Dependabot to Renovate -->
 - Publish report(s) of the above checks accessible via the forge
 
 ## TODO
