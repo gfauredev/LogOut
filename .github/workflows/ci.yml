@@ -23,13 +23,25 @@ jobs:
             --fail-under-lines 80 \
             --show-missing-lines
 
-      - name: Post Coverage Report
-        if: always()
+      - name: Get Coverage Output
+        if: always() && github.event_name == 'pull_request'
+        id: coverage_report
         run: |
-          echo "### 📊 Coverage Report (Excluding Components)" >> $GITHUB_STEP_SUMMARY
-          echo '```text' >> $GITHUB_STEP_SUMMARY
-          nix develop -c cargo llvm-cov --bin log-out --ignore-filename-regex "src/components/" >> $GITHUB_STEP_SUMMARY
-          echo '```' >> $GITHUB_STEP_SUMMARY
+          REPORT=$(nix develop -c cargo llvm-cov --bin log-out --ignore-filename-regex "src/components/")
+          echo "REPORT<<EOF" >> $GITHUB_OUTPUT
+          echo "$REPORT" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+      - name: Post Coverage Comment
+        if: always() && github.event_name == 'pull_request'
+        uses: peter-evans/create-or-update-comment@v4
+        with:
+          issue-number: ${{ github.event.pull_request.number }}
+          body: |
+            ### 📊 Coverage Report (Excluding Components)
+            ```text
+            ${{ steps.coverage_report.outputs.REPORT }}
+            ```
 
   lighthouse:
     name: PageSpeed Lighthouse
@@ -44,15 +56,23 @@ jobs:
         run: nix build .#web -o public-dist
 
       - name: Lighthouse Audit
+        id: lighthouse_audit
         uses: treosh/lighthouse-ci-action@v12
         with:
           uploadArtifacts: true
           temporaryPublicStorage: true
-          # Use our built public-dist instead of what's in the config file if necessary
-          # Or we can override it via flags
           configPath: .lighthouserc.json
         env:
           LHCI_COLLECT_STATIC_DIST_DIR: ./public-dist
+
+      - name: Post Lighthouse Comment
+        if: github.event_name == 'pull_request'
+        uses: peter-evans/create-or-update-comment@v4
+        with:
+          issue-number: ${{ github.event.pull_request.number }}
+          body: |
+            ### 🚀 Lighthouse Audit
+            Check out the [full report here](${{ steps.lighthouse_audit.outputs.links }})
 
   e2e-web:
     name: Web End-to-End (Maestro)
@@ -66,14 +86,52 @@ jobs:
       - name: Build and Serve
         run: |
           nix build .#web -o public-dist
-          # Start a simple python server in background
           cd public-dist && python3 -m http.server 8080 &
           sleep 2
 
       - name: Run Maestro Web Tests
         run: |
-          # Install maestro if not available or use from nix
           nix develop -c maestro test maestro/web
+
+      - name: Upload Maestro Screenshots to Cloudinary
+        if: failure() && github.event_name == 'pull_request'
+        id: upload_screenshots
+        env:
+          CLOUDINARY_URL: ${{ secrets.CLOUDINARY_URL }}
+        run: |
+          REPORT_BODY="### ❌ Maestro Web E2E Failures\n"
+          # Find all screenshots in maestro report dir
+          find ~/.maestro/tests/ -name "*.png" | while read -r img; do
+            echo "Uploading $img to Cloudinary..."
+            # Simple curl to Cloudinary API using CLOUDINARY_URL (which contains credentials)
+            # Or use a signed/unsigned upload if CLOUDINARY_URL is not enough.
+            # Assuming CLOUDINARY_URL format: cloudinary://API_KEY:API_SECRET@CLOUD_NAME
+            # Extract parts:
+            CREDS=$(echo "$CLOUDINARY_URL" | cut -d'@' -f1 | cut -d':' -f2-)
+            CLOUD_NAME=$(echo "$CLOUDINARY_URL" | cut -d'@' -f2)
+            
+            UPLOAD_URL="https://api.cloudinary.com/v1_1/${CLOUD_NAME}/image/upload"
+            # Unsigned requires a preset. If the user only has CLOUDINARY_URL, they might want signed.
+            # Let's try to find an upload preset from secrets or use a generic one if allowed.
+            PRESET=${{ secrets.CLOUDINARY_UPLOAD_PRESET || 'ml_default' }}
+            
+            RESULT=$(curl -s -X POST "$UPLOAD_URL" \
+              -F "file=@$img" \
+              -F "upload_preset=$PRESET")
+            
+            IMG_URL=$(echo "$RESULT" | jq -r '.secure_url')
+            REPORT_BODY="${REPORT_BODY}\n- ![Screenshot]($IMG_URL)"
+          done
+          echo "REPORT_BODY<<EOF" >> $GITHUB_OUTPUT
+          echo -e "$REPORT_BODY" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+      - name: Post E2E Failure Comment
+        if: failure() && github.event_name == 'pull_request'
+        uses: peter-evans/create-or-update-comment@v4
+        with:
+          issue-number: ${{ github.event.pull_request.number }}
+          body: ${{ steps.upload_screenshots.outputs.REPORT_BODY }}
 
       - name: Upload Maestro Reports
         if: failure()

@@ -227,6 +227,16 @@
               export WRY_ANDROID_KOTLIN_FILES_OUT_DIR=$CARGO_TARGET_DIR/dx/log-out/release/android/app/app/src/main/kotlin/dev/dioxus/main
               mkdir -p $WRY_ANDROID_KOTLIN_FILES_OUT_DIR
               dx build --android --release --target aarch64-linux-android --verbose
+
+              # Inject icons as per scripts/android-icon.sh logic
+              APP_PROJECT_DIR=$(find target/dx -name "android" -type d | grep "release/android" | head -n 1)/app
+              if [ -d "$APP_PROJECT_DIR" ]; then
+                echo "🎨 Injecting Android icons into $APP_PROJECT_DIR"
+                cp -r android/res "$APP_PROJECT_DIR/app/src/main/"
+                pushd "$APP_PROJECT_DIR"
+                ./gradlew assembleRelease
+                popd
+              fi
             '';
             installPhase = ''
               mkdir -p $out/bin
