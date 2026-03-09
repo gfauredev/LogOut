@@ -10,7 +10,6 @@ on:
 
 permissions:
   contents: read
-  pull-requests: write
 
 jobs:
   rebased-check:
@@ -279,6 +278,7 @@ jobs:
       needs.e2e-android.outputs.outcome == 'success' &&
       needs.rebased-check.outputs.is-rebased == 'true'
     permissions:
+      contents: read
       actions: write
     runs-on: ubuntu-latest
     outputs:
@@ -325,6 +325,7 @@ jobs:
     if: always()
     runs-on: ubuntu-latest
     permissions:
+      contents: read
       pull-requests: write
     steps:
       - uses: actions/checkout@v4
