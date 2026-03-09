@@ -93,12 +93,13 @@
             selenium-manager
             ungoogled-chromium
           ];
-          commonBuildInputs =
-            [ ]
-            ++ pkgs.lib.optionals pkgs.stdenv.isDarwin [
-              pkgs.darwin.apple_sdk.frameworks.Security
-              pkgs.darwin.apple_sdk.frameworks.SystemConfiguration
-            ];
+          commonBuildInputs = [
+            pkgs.openssl
+          ]
+          ++ pkgs.lib.optionals pkgs.stdenv.isDarwin [
+            pkgs.darwin.apple_sdk.frameworks.Security
+            pkgs.darwin.apple_sdk.frameworks.SystemConfiguration
+          ];
         in
         {
           inherit
@@ -129,7 +130,6 @@
               typescript-language-server # TS LSP
               vscode-langservers-extracted # HTML/CSS/JS(ON)
               yaml-language-server # YAML LSP
-
             ];
             nativeBuildInputs =
               env.commonNativeBuildInputs
@@ -201,7 +201,7 @@
             '';
           };
           android = env.rustPlatform.buildRustPackage {
-            pname = "log-out-android";
+            pname = "log-out-android"; # FIXME Use a FOD
             version = "0.1.0";
             src = self;
             cargoLock.lockFile = ./Cargo.lock;
@@ -233,31 +233,26 @@
               export XDG_DATA_HOME=$HOME/.local/share
               export GRADLE_USER_HOME=$HOME/.gradle
               mkdir -p $HOME
-
               # Pre-populate Gradle distribution to avoid network access for the wrapper
               DIST_DIR=$GRADLE_USER_HOME/wrapper/dists/gradle-9.1.0-bin/83615469-820d-4054-9988-823078453c07
               mkdir -p $DIST_DIR
               ln -s $gradle_9_1_0_bin $DIST_DIR/gradle-9.1.0-bin.zip
               touch $DIST_DIR/gradle-9.1.0-bin.zip.ok
-
               # Use absolute paths to avoid canonicalization issues in Nix sandbox
               export CARGO_TARGET_DIR=$PWD/target
               # Pre-create the directory wry expects to avoid canonicalization failure
               export WRY_ANDROID_KOTLIN_FILES_OUT_DIR=$CARGO_TARGET_DIR/dx/log-out/release/android/app/app/src/main/kotlin/dev/dioxus/main
               mkdir -p $WRY_ANDROID_KOTLIN_FILES_OUT_DIR
-
               # dx build --android will still try to fetch dependencies from Maven Central.
               # In a pure Nix build, this will fail unless we use a fixed-output derivation.
               # We try to run it and if it fails due to network, we at least have a better error.
               dx build --android --release --target aarch64-linux-android --verbose
-
               # Inject icons as per scripts/android-icon.sh logic
               APP_PROJECT_DIR=$(find target/dx -name "android" -type d | grep "release/android" | head -n 1)/app
               if [ -d "$APP_PROJECT_DIR" ]; then
                 echo "🎨 Injecting Android icons into $APP_PROJECT_DIR"
                 cp -r android/res "$APP_PROJECT_DIR/app/src/main/"
                 pushd "$APP_PROJECT_DIR"
-
                 # Patch aapt2 if it was downloaded/extracted by Gradle
                 find "$GRADLE_USER_HOME/caches" -name aapt2 -type f -executable 2>/dev/null | while read -r aapt2; do
                   if ! patchelf --print-interpreter "$aapt2" >/dev/null 2>&1 || [[ "$(patchelf --print-interpreter "$aapt2")" == /lib* ]]; then
@@ -272,7 +267,6 @@
                     }" "$aapt2" || true
                   fi
                 done
-
                 ./gradlew assembleRelease
                 popd
               fi

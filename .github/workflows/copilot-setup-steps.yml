@@ -14,22 +14,14 @@ jobs:
       contents: read
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v5
-      - uses: cachix/install-nix-action@v31.10.0 # TODO Consider using only Nix
-      - name: Install System Dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y pkg-config libssl-dev
-      - name: Set up Rust WASM Target
-        run: rustup target add wasm32-unknown-unknown
-      - name: Cache Cargo Registry & Target
-        uses: swatinem/rust-cache@v2
+      - uses: actions/checkout@v5
+      - uses: cachix/install-nix-action@v31.10.0
         with:
-          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
-      - name: Install cargo-binstall
-        run: curl -L --proto '=https' --tlsv1.2 -sSf https://raw.githubusercontent.com/cargo-bins/cargo-binstall/main/install-from-binstall-release.sh | bash
-      - name: Install Dioxus CLI (dx)
-        run: cargo binstall dioxus-cli --secure --force -y
+          github_access_token: ${{ secrets.GITHUB_TOKEN }}
+          extra_nix_config: |
+            extra-substituters = https://cache.garnix.io
+            extra-trusted-public-keys = cache.garnix.io:CTFPyKSLcx5RMJKfLo5EEPUObbA78b0YQ2DTCJXqr9g=
+      - uses: DeterminateSystems/magic-nix-cache-action@v13
       - name: Install Project Dependencies
-        run: cargo check
+        run: nix develop --command cargo check
+        continue-on-error: true
