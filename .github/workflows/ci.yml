@@ -128,6 +128,7 @@ jobs:
       outcome: ${{ steps.maestro.outcome }}
       summary: ${{ steps.summarize.outputs.summary }}
       duration: ${{ steps.summarize.outputs.duration }}
+      screenshots: ${{ steps.cloudinary.outputs.screenshots }}
     steps:
       - uses: actions/checkout@v4
       - name: Set up JDK 17
@@ -183,6 +184,35 @@ jobs:
           echo "summary=$SUMMARY" >> "$GITHUB_OUTPUT"
           echo "duration=$MAESTRO_DURATION" >> "$GITHUB_OUTPUT"
 
+      - name: Upload Screenshots to Cloudinary
+        if: always() && steps.maestro.outcome == 'failure'
+        id: cloudinary
+        env:
+          CLOUDINARY_CLOUD_NAME: ${{ secrets.CLOUDINARY_CLOUD_NAME }}
+          CLOUDINARY_API_KEY: ${{ secrets.CLOUDINARY_API_KEY }}
+          CLOUDINARY_UPLOAD_PRESET: ${{ secrets.CLOUDINARY_UPLOAD_PRESET }}
+        run: |
+          SCREENSHOTS=$(find ~/.maestro/tests/ -name "*.png")
+          REPORT=""
+          if [ -n "$SCREENSHOTS" ]; then
+            REPORT="#### 📸 Web E2E Failure Screenshots\n\n| Test | Screenshot |\n|------|------------|\n"
+            for img in $SCREENSHOTS; do
+              TEST_NAME=$(echo $img | awk -F'/' '{print $(NF-2)}')
+              RES=$(curl -s -X POST "https://api.cloudinary.com/v1_1/$CLOUDINARY_CLOUD_NAME/image/upload" \
+                -F "file=@$img" \
+                -F "api_key=$CLOUDINARY_API_KEY" \
+                -F "upload_preset=$CLOUDINARY_UPLOAD_PRESET" \
+                -F "public_id=maestro_web_${{ github.run_id }}_${TEST_NAME}")
+              URL=$(echo $RES | grep -oE '"secure_url":"[^"]+"' | head -n 1 | cut -d'"' -f4)
+              if [ -n "$URL" ]; then
+                REPORT="${REPORT}| ${TEST_NAME} | ![](${URL}) |\n"
+              fi
+            done
+          fi
+          echo "screenshots<<EOF" >> "$GITHUB_OUTPUT"
+          echo -e "$REPORT" >> "$GITHUB_OUTPUT"
+          echo "EOF" >> "$GITHUB_OUTPUT"
+
       - name: Upload diagnostics
         if: always()
         uses: actions/upload-artifact@v4
@@ -201,6 +231,7 @@ jobs:
       outcome: ${{ steps.maestro.outcome }}
       summary: ${{ steps.summarize.outputs.summary }}
       duration: ${{ steps.summarize.outputs.duration }}
+      screenshots: ${{ steps.cloudinary.outputs.screenshots }}
     steps:
       - uses: actions/checkout@v4
       - name: Set up JDK 17
@@ -261,6 +292,35 @@ jobs:
           fi
           echo "summary=$SUMMARY" >> "$GITHUB_OUTPUT"
           echo "duration=$MAESTRO_DURATION" >> "$GITHUB_OUTPUT"
+
+      - name: Upload Screenshots to Cloudinary
+        if: always() && steps.maestro.outcome == 'failure'
+        id: cloudinary
+        env:
+          CLOUDINARY_CLOUD_NAME: ${{ secrets.CLOUDINARY_CLOUD_NAME }}
+          CLOUDINARY_API_KEY: ${{ secrets.CLOUDINARY_API_KEY }}
+          CLOUDINARY_UPLOAD_PRESET: ${{ secrets.CLOUDINARY_UPLOAD_PRESET }}
+        run: |
+          SCREENSHOTS=$(find ~/.maestro/tests/ -name "*.png")
+          REPORT=""
+          if [ -n "$SCREENSHOTS" ]; then
+            REPORT="#### 📸 Android E2E Failure Screenshots\n\n| Test | Screenshot |\n|------|------------|\n"
+            for img in $SCREENSHOTS; do
+              TEST_NAME=$(echo $img | awk -F'/' '{print $(NF-2)}')
+              RES=$(curl -s -X POST "https://api.cloudinary.com/v1_1/$CLOUDINARY_CLOUD_NAME/image/upload" \
+                -F "file=@$img" \
+                -F "api_key=$CLOUDINARY_API_KEY" \
+                -F "upload_preset=$CLOUDINARY_UPLOAD_PRESET" \
+                -F "public_id=maestro_android_${{ github.run_id }}_${TEST_NAME}")
+              URL=$(echo $RES | grep -oE '"secure_url":"[^"]+"' | head -n 1 | cut -d'"' -f4)
+              if [ -n "$URL" ]; then
+                REPORT="${REPORT}| ${TEST_NAME} | ![](${URL}) |\n"
+              fi
+            done
+          fi
+          echo "screenshots<<EOF" >> "$GITHUB_OUTPUT"
+          echo -e "$REPORT" >> "$GITHUB_OUTPUT"
+          echo "EOF" >> "$GITHUB_OUTPUT"
 
       - name: Upload diagnostics
         if: always()
@@ -324,9 +384,9 @@ jobs:
           retention-days: 7
           overwrite: true
 
-  report:
-    name: PR Summary Report
-    needs: [format, clippy, unit-tests, e2e-web, e2e-android, rebased-check, build-release-web]
+  report-quick:
+    name: Quick PR Summary
+    needs: [format, clippy, unit-tests, rebased-check]
     if: always()
     runs-on: ubuntu-latest
     permissions:
@@ -390,23 +450,13 @@ jobs:
         if: github.event_name == 'pull_request'
         uses: actions/github-script@v7
         env:
-          FORMAT_STATUS: ${{ needs.format.outputs.outcome }}
-          CLIPPY_STATUS: ${{ needs.clippy.outputs.outcome }}
+          FORMAT_STATUS: ${{ needs.format.outputs.outcome || needs.format.result }}
+          CLIPPY_STATUS: ${{ needs.clippy.outputs.outcome || needs.clippy.result }}
           CLIPPY_WARNINGS: ${{ needs.clippy.outputs.warnings }}
-          BUILD_STATUS: ${{ needs.build-release-web.result }}
-          BUILD_DURATION: ${{ needs.build-release-web.outputs.duration }}
-          UNIT_STATUS: ${{ needs.unit-tests.outputs.outcome }}
+          UNIT_STATUS: ${{ needs.unit-tests.outputs.outcome || needs.unit-tests.result }}
           UNIT_SUMMARY: ${{ needs.unit-tests.outputs.summary }}
           UNIT_DURATION: ${{ needs.unit-tests.outputs.duration }}
-          E2E_WEB_STATUS: ${{ needs.e2e-web.outputs.outcome }}
-          E2E_WEB_SUMMARY: ${{ needs.e2e-web.outputs.summary }}
-          E2E_WEB_DURATION: ${{ needs.e2e-web.outputs.duration }}
-          E2E_ANDROID_STATUS: ${{ needs.e2e-android.outputs.outcome }}
-          E2E_ANDROID_SUMMARY: ${{ needs.e2e-android.outputs.summary }}
-          E2E_ANDROID_DURATION: ${{ needs.e2e-android.outputs.duration }}
-          LIGHTHOUSE_RESULTS: ${{ needs.build-release-web.outputs.lighthouse_results }}
           IS_REBASED: ${{ needs.rebased-check.outputs.is-rebased }}
-          BASE_REF: ${{ github.base_ref }}
           COV_SUMMARY: ${{ steps.cov.outputs.summary }}
           COV_GATE_REPORT: ${{ steps.cov.outputs.gate_report }}
           COV_GATE_FAILED: ${{ steps.cov.outputs.gate_failed }}
@@ -419,38 +469,17 @@ jobs:
             
             let body = `${tag}\n## 📊 CI Dashboard\n\n`;
             
-            body += `### 🛠️ Checks\n`;
+            body += `### 🛠️ Checks (Quick)\n`;
             body += `| Check | Status | Details |\n`;
             body += `|-------|--------|---------|\n`;
             body += `| Formatting | ${getIcon(process.env.FORMAT_STATUS)} | |\n`;
             const clippyWarns = process.env.CLIPPY_WARNINGS || '0';
-            body += `| Linting | ${getIcon(process.env.CLIPPY_STATUS)} | ${clippyWarns} warnings |\n`;
-            const buildIcon = isRebased ? getIcon(process.env.BUILD_STATUS) : '⏭️';
-            const buildDetails = isRebased ? `Built in ${process.env.BUILD_DURATION || 'N/A'}` : 'N/A';
-            body += `| Release Build | ${buildIcon} | ${buildDetails} |\n\n`;
+            body += `| Linting | ${getIcon(process.env.CLIPPY_STATUS)} | ${clippyWarns} warnings |\n\n`;
             
             body += `### 🧪 Test Results\n`;
             body += `| Suite | Status | Summary | Duration |\n`;
             body += `|-------|--------|---------|----------|\n`;
-            body += `| Unit Tests | ${getIcon(process.env.UNIT_STATUS)} | ${process.env.UNIT_SUMMARY || 'N/A'} | ${process.env.UNIT_DURATION || 'N/A'} |\n`;
-            
-            const e2eWebIcon = isRebased ? getIcon(process.env.E2E_WEB_STATUS) : '⏭️';
-            const e2eWebSummary = isRebased
-              ? (process.env.E2E_WEB_SUMMARY || 'N/A')
-              : `Skipped: branch not rebased on ${process.env.BASE_REF || 'main'}`;
-            const e2eWebDuration = isRebased ? (process.env.E2E_WEB_DURATION || 'N/A') : 'N/A';
-            body += `| E2E Tests (Web) | ${e2eWebIcon} | ${e2eWebSummary} | ${e2eWebDuration} |\n`;
-            
-            const e2eAndroidIcon = isRebased ? getIcon(process.env.E2E_ANDROID_STATUS) : '⏭️';
-            const e2eAndroidSummary = isRebased
-              ? (process.env.E2E_ANDROID_SUMMARY || 'N/A')
-              : `Skipped: branch not rebased on ${process.env.BASE_REF || 'main'}`;
-            const e2eAndroidDuration = isRebased ? (process.env.E2E_ANDROID_DURATION || 'N/A') : 'N/A';
-            body += `| E2E Tests (Android) | ${e2eAndroidIcon} | ${e2eAndroidSummary} | ${e2eAndroidDuration} |\n\n`;
-            
-            if (isRebased && (process.env.E2E_WEB_STATUS === 'failure' || process.env.E2E_ANDROID_STATUS === 'failure')) {
-              body += `⚠️ **E2E tests failed.** Check the artifacts for diagnostics and screenshots.\n\n`;
-            }
+            body += `| Unit Tests | ${getIcon(process.env.UNIT_STATUS)} | ${process.env.UNIT_SUMMARY || 'N/A'} | ${process.env.UNIT_DURATION || 'N/A'} |\n\n`;
             
             if (process.env.HAS_COV === 'true') {
               const gateStatus = process.env.COV_GATE_FAILED === '1'
@@ -465,27 +494,7 @@ jobs:
               body += `\n</details>\n\n`;
             }
 
-            if (isRebased && process.env.LIGHTHOUSE_RESULTS) {
-              try {
-                const results = JSON.parse(process.env.LIGHTHOUSE_RESULTS);
-                if (results && results.length > 0) {
-                  const r = results[0];
-                  body += `### 🔦 Lighthouse Audit\n`;
-                  body += `| Category | Score |\n`;
-                  body += `|----------|-------|\n`;
-                  body += `| Performance | ${Math.round(r.summary.performance * 100)}% |\n`;
-                  body += `| Accessibility | ${Math.round(r.summary.accessibility * 100)}% |\n`;
-                  body += `| Best Practices | ${Math.round(r.summary['best-practices'] * 100)}% |\n`;
-                  body += `| SEO | ${Math.round(r.summary.seo * 100)}% |\n`;
-                  body += `| PWA | ${Math.round(r.summary.pwa * 100)}% |\n\n`;
-                  if (r.url) {
-                    body += `[View Full Report](${r.url})\n\n`;
-                  }
-                }
-              } catch (e) {
-                console.log("Failed to parse Lighthouse results", e);
-              }
-            }
+            body += `⏳ *Slow checks (E2E, Release Build) are running or pending...*\n`;
             
             const { data: comments } = await github.rest.issues.listComments({
               owner: context.repo.owner,
@@ -509,16 +518,167 @@ jobs:
               });
             }
 
+  report-slow:
+    name: Slow PR Summary
+    needs: [report-quick, format, clippy, unit-tests, e2e-web, e2e-android, build-release-web, rebased-check]
+    if: |
+      always() &&
+      needs.report-quick.result == 'success' &&
+      (needs.format.result == 'success' || needs.format.result == 'skipped') &&
+      (needs.clippy.result == 'success' || needs.clippy.result == 'skipped') &&
+      (needs.unit-tests.result == 'success' || needs.unit-tests.result == 'skipped')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download lcov report
+        continue-on-error: true
+        uses: actions/download-artifact@v4
+        with:
+          name: unit-coverage-lcov
+          
+      - name: Process Coverage (Regenerate)
+        id: cov
+        run: |
+          if [ -f lcov.info ]; then
+            TOTAL_LH=0; TOTAL_LF=0
+            while IFS= read -r line; do
+              case "$line" in
+                LH:*) TOTAL_LH=$((TOTAL_LH + ${line#LH:})) ;;
+                LF:*) TOTAL_LF=$((TOTAL_LF + ${line#LF:})) ;;
+              esac
+            done < lcov.info
+            if [ "$TOTAL_LF" -gt 0 ]; then TOTAL_PCT=$((TOTAL_LH * 100 / TOTAL_LF)); else TOTAL_PCT=0; fi
+            SUMMARY="Total: ${TOTAL_LH}/${TOTAL_LF} lines covered (${TOTAL_PCT}%)"
+            TESTED_FILES=$(grep -rl '#\[cfg(test)\]' src/ | sort)
+            GATE_REPORT=""; FAIL=0
+            for f in $TESTED_FILES; do
+              LH=0; LF=0; IN_FILE=0
+              while IFS= read -r line; do
+                case "$line" in
+                  SF:*"$f") IN_FILE=1 ;;
+                  SF:*) IN_FILE=0 ;;
+                  LH:*) [ "$IN_FILE" = 1 ] && LH="${line#LH:}" ;;
+                  LF:*) [ "$IN_FILE" = 1 ] && LF="${line#LF:}" ;;
+                esac
+              done < lcov.info
+              if [ "$LF" -gt 0 ]; then PCT=$((LH * 100 / LF)); else PCT=0; fi
+              STATUS="✅"; if [ "$PCT" -lt 90 ]; then STATUS="❌"; FAIL=1; fi
+              GATE_REPORT="${GATE_REPORT}| ${f} | ${LH}/${LF} | ${PCT}% | ${STATUS} |\n"
+            done
+            echo "summary=$SUMMARY" >> "$GITHUB_OUTPUT"
+            echo -e "gate_report=$GATE_REPORT" >> "$GITHUB_OUTPUT"
+            echo "gate_failed=$FAIL" >> "$GITHUB_OUTPUT"
+            echo "has_coverage=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "has_coverage=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Update PR Comment with Slow Results
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        env:
+          FORMAT_STATUS: ${{ needs.format.outputs.outcome || needs.format.result }}
+          CLIPPY_STATUS: ${{ needs.clippy.outputs.outcome || needs.clippy.result }}
+          CLIPPY_WARNINGS: ${{ needs.clippy.outputs.warnings }}
+          UNIT_STATUS: ${{ needs.unit-tests.outputs.outcome || needs.unit-tests.result }}
+          UNIT_SUMMARY: ${{ needs.unit-tests.outputs.summary }}
+          UNIT_DURATION: ${{ needs.unit-tests.outputs.duration }}
+          BUILD_STATUS: ${{ needs.build-release-web.result }}
+          BUILD_DURATION: ${{ needs.build-release-web.outputs.duration }}
+          E2E_WEB_STATUS: ${{ needs.e2e-web.outputs.outcome || needs.e2e-web.result }}
+          E2E_WEB_SUMMARY: ${{ needs.e2e-web.outputs.summary }}
+          E2E_WEB_DURATION: ${{ needs.e2e-web.outputs.duration }}
+          E2E_WEB_SCREENSHOTS: ${{ needs.e2e-web.outputs.screenshots }}
+          E2E_ANDROID_STATUS: ${{ needs.e2e-android.outputs.outcome || needs.e2e-android.result }}
+          E2E_ANDROID_SUMMARY: ${{ needs.e2e-android.outputs.summary }}
+          E2E_ANDROID_DURATION: ${{ needs.e2e-android.outputs.duration }}
+          E2E_ANDROID_SCREENSHOTS: ${{ needs.e2e-android.outputs.screenshots }}
+          LIGHTHOUSE_RESULTS: ${{ needs.build-release-web.outputs.lighthouse_results }}
+          IS_REBASED: ${{ needs.rebased-check.outputs.is-rebased }}
+          BASE_REF: ${{ github.base_ref }}
+          COV_SUMMARY: ${{ steps.cov.outputs.summary }}
+          COV_GATE_REPORT: ${{ steps.cov.outputs.gate_report }}
+          COV_GATE_FAILED: ${{ steps.cov.outputs.gate_failed }}
+          HAS_COV: ${{ steps.cov.outputs.has_coverage }}
+        with:
+          script: |
+            const isRebased = process.env.IS_REBASED === 'true';
+            const getIcon = (outcome) => outcome === 'success' ? '✅' : (outcome === 'failure' ? '❌' : (outcome === 'skipped' ? '⏭️' : '⚠️'));
+            const tag = '<!-- ci-dashboard -->';
+            
+            let body = `${tag}\n## 📊 CI Dashboard\n\n`;
+            
+            body += `### 🛠️ Checks\n`;
+            body += `| Check | Status | Details |\n`;
+            body += `|-------|--------|---------|\n`;
+            body += `| Formatting | ${getIcon(process.env.FORMAT_STATUS)} | |\n`;
+            body += `| Linting | ${getIcon(process.env.CLIPPY_STATUS)} | ${process.env.CLIPPY_WARNINGS || '0'} warnings |\n`;
+            const buildIcon = isRebased ? getIcon(process.env.BUILD_STATUS) : '⏭️';
+            const buildDetails = isRebased ? `Built in ${process.env.BUILD_DURATION || 'N/A'}` : 'N/A';
+            body += `| Release Build | ${buildIcon} | ${buildDetails} |\n\n`;
+            
+            body += `### 🧪 Test Results\n`;
+            body += `| Suite | Status | Summary | Duration |\n`;
+            body += `|-------|--------|---------|----------|\n`;
+            body += `| Unit Tests | ${getIcon(process.env.UNIT_STATUS)} | ${process.env.UNIT_SUMMARY || 'N/A'} | ${process.env.UNIT_DURATION || 'N/A'} |\n`;
+            
+            const e2eWebIcon = isRebased ? getIcon(process.env.E2E_WEB_STATUS) : '⏭️';
+            const e2eWebSummary = isRebased ? (process.env.E2E_WEB_SUMMARY || 'N/A') : `Skipped: branch not rebased`;
+            body += `| E2E Tests (Web) | ${e2eWebIcon} | ${e2eWebSummary} | ${process.env.E2E_WEB_DURATION || 'N/A'} |\n`;
+            
+            const e2eAndroidIcon = isRebased ? getIcon(process.env.E2E_ANDROID_STATUS) : '⏭️';
+            const e2eAndroidSummary = isRebased ? (process.env.E2E_ANDROID_SUMMARY || 'N/A') : `Skipped: branch not rebased`;
+            body += `| E2E Tests (Android) | ${e2eAndroidIcon} | ${e2eAndroidSummary} | ${process.env.E2E_ANDROID_DURATION || 'N/A'} |\n\n`;
+            
+            if (process.env.HAS_COV === 'true') {
+              const gateStatus = process.env.COV_GATE_FAILED === '1' ? '❌ **FAILED**' : '✅ **PASSED**';
+              body += `### 📊 Coverage Gate ${gateStatus}\n\`${process.env.COV_SUMMARY}\`\n\n`;
+            }
+
+            if (isRebased && process.env.LIGHTHOUSE_RESULTS) {
+              try {
+                const results = JSON.parse(process.env.LIGHTHOUSE_RESULTS);
+                if (results && results.length > 0) {
+                  const r = results[0];
+                  body += `### 🔦 Lighthouse Audit\n`;
+                  body += `| Category | Score |\n|----------|-------|\n`;
+                  body += `| Performance | ${Math.round(r.summary.performance * 100)}% |\n`;
+                  body += `| Accessibility | ${Math.round(r.summary.accessibility * 100)}% |\n`;
+                  body += `| PWA | ${Math.round(r.summary.pwa * 100)}% |\n\n`;
+                }
+              } catch (e) {}
+            }
+            
+            if (process.env.E2E_WEB_SCREENSHOTS || process.env.E2E_ANDROID_SCREENSHOTS) {
+              body += `### 📸 E2E Failure Screenshots\n\n`;
+              if (process.env.E2E_WEB_SCREENSHOTS) body += process.env.E2E_WEB_SCREENSHOTS + "\n";
+              if (process.env.E2E_ANDROID_SCREENSHOTS) body += process.env.E2E_ANDROID_SCREENSHOTS + "\n";
+            }
+            
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner, repo: context.repo.repo, issue_number: context.issue.number,
+            });
+            const existing = comments.find(c => c.body.includes(tag));
+            if (existing) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner, repo: context.repo.repo, comment_id: existing.id, body,
+              });
+            }
+
       - name: Fail if any check failed
         run: |
           FAIL=0
-          if [ "${{ needs.format.outputs.outcome }}" != "success" ]; then echo "Format check failed"; FAIL=1; fi
-          if [ "${{ needs.clippy.outputs.outcome }}" != "success" ]; then echo "Clippy check failed"; FAIL=1; fi
-          if [ "${{ needs.unit-tests.outputs.outcome }}" != "success" ]; then echo "Unit tests failed"; FAIL=1; fi
-          if [ "${{ needs.rebased-check.outputs.is-rebased }}" == "true" ]; then
-            if [ "${{ needs.e2e-web.outputs.outcome }}" != "success" ]; then echo "Web E2E tests failed"; FAIL=1; fi
-            if [ "${{ needs.e2e-android.outputs.outcome }}" != "success" ]; then echo "Android E2E tests failed"; FAIL=1; fi
-            if [ "${{ needs.build-release-web.result }}" == "failure" ]; then echo "Release build failed"; FAIL=1; fi
+          if [ "${{ needs.format.result }}" = "failure" ]; then FAIL=1; fi
+          if [ "${{ needs.clippy.result }}" = "failure" ]; then FAIL=1; fi
+          if [ "${{ needs.unit-tests.result }}" = "failure" ]; then FAIL=1; fi
+          if [ "${{ needs.rebased-check.outputs.is-rebased }}" = "true" ]; then
+            if [ "${{ needs.e2e-web.result }}" = "failure" ]; then FAIL=1; fi
+            if [ "${{ needs.e2e-android.result }}" = "failure" ]; then FAIL=1; fi
+            if [ "${{ needs.build-release-web.result }}" = "failure" ]; then FAIL=1; fi
           fi
-          if [ "${{ steps.cov.outputs.gate_failed }}" == "1" ]; then echo "Coverage gate failed"; FAIL=1; fi
+          if [ "${{ steps.cov.outputs.gate_failed }}" = "1" ]; then FAIL=1; fi
           exit $FAIL
+
