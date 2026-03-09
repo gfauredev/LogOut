@@ -36,17 +36,19 @@ lang: en
 
 <!--toc:end-->
 
-Comprehensive user stories for [LogOut] that serve as a basis for end-to-end
-tests for all supported platforms.
+Comprehensive user stories for [LogOut] that each corresponds to an independent,
+isolated feature, but some might need preconditions like pre-existing state
+(completed session, custom exercise…). Preconditions may be satisfied by
+executing other user stories or common sub flows before. No global ordering
+between them is assumed nor required, and they don’t care about the state left.
 
-- Web browser PWA test via [Maestro] in `maestro/web/`
-- Android native app via [Maestro] in `maestro/android/`
+User stories serve as a basis for end-to-end test for each supported platform:
 
-Each user story corresponds to an independent, isolated test, but some might
-need preconditions like pre-existing state (e.g. a completed session).
-Preconditions may be satisfied by executing other user stories or common sub
-flows before. No global ordering between tests is assumed nor required, and
-tests don’t need to care about the state left.
+- Web browser PWA via [Maestro] in `maestro/web/`
+- Android native application via [Maestro] in `maestro/android/`
+
+But UI only tests run only on PWA to save time, while features interacting with
+external systems (notifications, database…) must be tested on both platforms.
 
 ## Clean State Home
 
