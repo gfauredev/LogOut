@@ -56,6 +56,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       outcome: ${{ steps.lint.outcome }}
+      warnings: ${{ steps.count.outputs.warnings }}
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
@@ -65,7 +66,14 @@ jobs:
       - name: Run Clippy
         id: lint
         continue-on-error: true
-        run: cargo clippy --all-targets -- -D warnings -W clippy::all -W clippy::pedantic
+        run: |
+          cargo clippy --all-targets -- -D warnings -W clippy::all -W clippy::pedantic 2>&1 | tee clippy_output.txt
+      - name: Count clippy warnings
+        id: count
+        if: always()
+        run: |
+          WARNINGS=$(grep -c "warning:" clippy_output.txt || true)
+          echo "warnings=$WARNINGS" >> "$GITHUB_OUTPUT"
 
   unit-tests:
     name: Unit Tests
@@ -73,6 +81,7 @@ jobs:
     outputs:
       outcome: ${{ steps.tests.outcome }}
       summary: ${{ steps.summarize.outputs.summary }}
+      duration: ${{ steps.summarize.outputs.duration }}
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
@@ -92,7 +101,11 @@ jobs:
           if [ -z "$SUMMARY" ]; then
             SUMMARY="Unit tests failed before summary."
           fi
+          DURATION=$(grep -E "finished in [0-9.]+s" unit_test_output.txt | tail -n 1 | grep -oE "[0-9.]+s" || echo "N/A")
           echo "summary=$SUMMARY" >> "$GITHUB_OUTPUT"
+          echo "duration=$DURATION" >> "$GITHUB_OUTPUT"
+      - name: Check coverage gate (≥ 90%)
+        run: bash ./scripts/coverage-gate.sh
       - name: Upload lcov report
         if: always()
         uses: actions/upload-artifact@v4
@@ -110,6 +123,7 @@ jobs:
     outputs:
       outcome: ${{ steps.maestro.outcome }}
       summary: ${{ steps.summarize.outputs.summary }}
+      duration: ${{ steps.summarize.outputs.duration }}
     steps:
       - uses: actions/checkout@v4
       - name: Set up JDK 17
@@ -139,10 +153,14 @@ jobs:
           SERVER_PID=$!
           # Wait for server to be responsive
           timeout 60 bash -c 'until curl -sf http://localhost:8080 > /dev/null; do sleep 2; done' || (kill $SERVER_PID && exit 1)
+          START_TIME=$(date +%s)
           maestro test --headless maestro/web/ | tee maestro_output.txt
-          TEST_EXIT=$?
+          EXIT_CODE=$?
+          END_TIME=$(date +%s)
+          DURATION=$((END_TIME - START_TIME))
+          echo "MAESTRO_DURATION=${DURATION}s" >> "$GITHUB_ENV"
           kill $SERVER_PID 2>/dev/null || true
-          exit $TEST_EXIT
+          exit $EXIT_CODE
           
       - name: Summarize Maestro tests
         id: summarize
@@ -159,6 +177,7 @@ jobs:
             fi
           fi
           echo "summary=$SUMMARY" >> "$GITHUB_OUTPUT"
+          echo "duration=$MAESTRO_DURATION" >> "$GITHUB_OUTPUT"
 
       - name: Upload diagnostics
         if: always()
@@ -177,6 +196,7 @@ jobs:
     outputs:
       outcome: ${{ steps.maestro.outcome }}
       summary: ${{ steps.summarize.outputs.summary }}
+      duration: ${{ steps.summarize.outputs.duration }}
     steps:
       - uses: actions/checkout@v4
       - name: Set up JDK 17
@@ -213,7 +233,13 @@ jobs:
           script: |
             APK_FILE=$(find target/dx/log-out/release/android/ -name "*.apk" | head -n 1)
             maestro install "$APK_FILE"
+            START_TIME=$(date +%s)
             maestro test maestro/android/ | tee maestro_output.txt
+            EXIT_CODE=${PIPESTATUS[0]}
+            END_TIME=$(date +%s)
+            DURATION=$((END_TIME - START_TIME))
+            echo "MAESTRO_DURATION=${DURATION}s" >> "$GITHUB_ENV"
+            exit $EXIT_CODE
             
       - name: Summarize Maestro tests
         id: summarize
@@ -230,6 +256,7 @@ jobs:
             fi
           fi
           echo "summary=$SUMMARY" >> "$GITHUB_OUTPUT"
+          echo "duration=$MAESTRO_DURATION" >> "$GITHUB_OUTPUT"
 
       - name: Upload diagnostics
         if: always()
@@ -254,39 +281,13 @@ jobs:
     permissions:
       actions: write
     runs-on: ubuntu-latest
+    outputs:
+      duration: ${{ steps.build.outputs.duration }}
+      lighthouse_results: ${{ steps.lighthouse.outputs.manifest }}
     steps:
       - uses: actions/checkout@v4
         with:
           lfs: true
-      - name: Download lcov report
-        uses: actions/download-artifact@v4
-        with:
-          name: unit-coverage-lcov
-      - name: Check coverage gate (≥ 90%)
-        run: |
-          if [ ! -f lcov.info ]; then
-            echo "::error::lcov.info not found — coverage gate cannot be evaluated"
-            exit 1
-          fi
-          TESTED_FILES=$(grep -rl '#\[cfg(test)\]' src/ | sort || true)
-          FAIL=0
-          for f in $TESTED_FILES; do
-            LH=0; LF=0; IN_FILE=0
-            while IFS= read -r line; do
-              case "$line" in
-                SF:*"$f") IN_FILE=1 ;;
-                SF:*) IN_FILE=0 ;;
-                LH:*) [ "$IN_FILE" = 1 ] && LH="${line#LH:}" ;;
-                LF:*) [ "$IN_FILE" = 1 ] && LF="${line#LF:}" ;;
-              esac
-            done < lcov.info
-            if [ "$LF" -gt 0 ]; then PCT=$((LH * 100 / LF)); else PCT=0; fi
-            if [ "$PCT" -lt 90 ]; then
-              echo "::error::Coverage below 90% for $f: ${LH}/${LF} lines (${PCT}%)"
-              FAIL=1
-            fi
-          done
-          exit $FAIL
       - uses: dtolnay/rust-toolchain@stable
         with:
           targets: wasm32-unknown-unknown
@@ -296,7 +297,20 @@ jobs:
         with:
           tool: dioxus-cli
       - name: Build web release
-        run: dx build --release --platform web --base-path /LogOut
+        id: build
+        run: |
+          START_TIME=$(date +%s)
+          dx build --release --platform web --base-path /LogOut
+          END_TIME=$(date +%s)
+          DURATION=$((END_TIME - START_TIME))
+          echo "duration=${DURATION}s" >> "$GITHUB_OUTPUT"
+      - name: Audit with Lighthouse
+        id: lighthouse
+        uses: treosh/lighthouse-ci-action@v12
+        with:
+          uploadArtifacts: true
+          temporaryPublicStorage: true
+          configPath: ./.lighthouserc.json
       - name: Upload web deployment build
         uses: actions/upload-artifact@v4
         with:
@@ -372,13 +386,19 @@ jobs:
         env:
           FORMAT_STATUS: ${{ needs.format.outputs.outcome }}
           CLIPPY_STATUS: ${{ needs.clippy.outputs.outcome }}
+          CLIPPY_WARNINGS: ${{ needs.clippy.outputs.warnings }}
           BUILD_STATUS: ${{ needs.build-release-web.result }}
+          BUILD_DURATION: ${{ needs.build-release-web.outputs.duration }}
           UNIT_STATUS: ${{ needs.unit-tests.outputs.outcome }}
           UNIT_SUMMARY: ${{ needs.unit-tests.outputs.summary }}
+          UNIT_DURATION: ${{ needs.unit-tests.outputs.duration }}
           E2E_WEB_STATUS: ${{ needs.e2e-web.outputs.outcome }}
           E2E_WEB_SUMMARY: ${{ needs.e2e-web.outputs.summary }}
+          E2E_WEB_DURATION: ${{ needs.e2e-web.outputs.duration }}
           E2E_ANDROID_STATUS: ${{ needs.e2e-android.outputs.outcome }}
           E2E_ANDROID_SUMMARY: ${{ needs.e2e-android.outputs.summary }}
+          E2E_ANDROID_DURATION: ${{ needs.e2e-android.outputs.duration }}
+          LIGHTHOUSE_RESULTS: ${{ needs.build-release-web.outputs.lighthouse_results }}
           IS_REBASED: ${{ needs.rebased-check.outputs.is-rebased }}
           BASE_REF: ${{ github.base_ref }}
           COV_SUMMARY: ${{ steps.cov.outputs.summary }}
@@ -394,29 +414,37 @@ jobs:
             let body = `${tag}\n## 📊 CI Dashboard\n\n`;
             
             body += `### 🛠️ Checks\n`;
-            body += `| Check | Status |\n`;
-            body += `|-------|--------|\n`;
-            body += `| Formatting | ${getIcon(process.env.FORMAT_STATUS)} |\n`;
-            body += `| Linting | ${getIcon(process.env.CLIPPY_STATUS)} |\n`;
+            body += `| Check | Status | Details |\n`;
+            body += `|-------|--------|---------|\n`;
+            body += `| Formatting | ${getIcon(process.env.FORMAT_STATUS)} | |\n`;
+            const clippyWarns = process.env.CLIPPY_WARNINGS || '0';
+            body += `| Linting | ${getIcon(process.env.CLIPPY_STATUS)} | ${clippyWarns} warnings |\n`;
             const buildIcon = isRebased ? getIcon(process.env.BUILD_STATUS) : '⏭️';
-            body += `| Release Build | ${buildIcon} |\n\n`;
+            const buildDetails = isRebased ? `Built in ${process.env.BUILD_DURATION || 'N/A'}` : 'N/A';
+            body += `| Release Build | ${buildIcon} | ${buildDetails} |\n\n`;
             
             body += `### 🧪 Test Results\n`;
-            body += `| Suite | Status | Summary |\n`;
-            body += `|-------|--------|---------|\n`;
-            body += `| Unit Tests | ${getIcon(process.env.UNIT_STATUS)} | ${process.env.UNIT_SUMMARY || 'N/A'} |\n`;
+            body += `| Suite | Status | Summary | Duration |\n`;
+            body += `|-------|--------|---------|----------|\n`;
+            body += `| Unit Tests | ${getIcon(process.env.UNIT_STATUS)} | ${process.env.UNIT_SUMMARY || 'N/A'} | ${process.env.UNIT_DURATION || 'N/A'} |\n`;
             
             const e2eWebIcon = isRebased ? getIcon(process.env.E2E_WEB_STATUS) : '⏭️';
             const e2eWebSummary = isRebased
               ? (process.env.E2E_WEB_SUMMARY || 'N/A')
               : `Skipped: branch not rebased on ${process.env.BASE_REF || 'main'}`;
-            body += `| E2E Tests (Web) | ${e2eWebIcon} | ${e2eWebSummary} |\n`;
+            const e2eWebDuration = isRebased ? (process.env.E2E_WEB_DURATION || 'N/A') : 'N/A';
+            body += `| E2E Tests (Web) | ${e2eWebIcon} | ${e2eWebSummary} | ${e2eWebDuration} |\n`;
             
             const e2eAndroidIcon = isRebased ? getIcon(process.env.E2E_ANDROID_STATUS) : '⏭️';
             const e2eAndroidSummary = isRebased
               ? (process.env.E2E_ANDROID_SUMMARY || 'N/A')
               : `Skipped: branch not rebased on ${process.env.BASE_REF || 'main'}`;
-            body += `| E2E Tests (Android) | ${e2eAndroidIcon} | ${e2eAndroidSummary} |\n\n`;
+            const e2eAndroidDuration = isRebased ? (process.env.E2E_ANDROID_DURATION || 'N/A') : 'N/A';
+            body += `| E2E Tests (Android) | ${e2eAndroidIcon} | ${e2eAndroidSummary} | ${e2eAndroidDuration} |\n\n`;
+            
+            if (isRebased && (process.env.E2E_WEB_STATUS === 'failure' || process.env.E2E_ANDROID_STATUS === 'failure')) {
+              body += `⚠️ **E2E tests failed.** Check the artifacts for diagnostics and screenshots.\n\n`;
+            }
             
             if (process.env.HAS_COV === 'true') {
               const gateStatus = process.env.COV_GATE_FAILED === '1'
@@ -429,6 +457,28 @@ jobs:
               body += `|------|-------|----------|--------|\n`;
               body += process.env.COV_GATE_REPORT.replace(/\\n/g, '\n');
               body += `\n</details>\n\n`;
+            }
+
+            if (isRebased && process.env.LIGHTHOUSE_RESULTS) {
+              try {
+                const results = JSON.parse(process.env.LIGHTHOUSE_RESULTS);
+                if (results && results.length > 0) {
+                  const r = results[0];
+                  body += `### 🔦 Lighthouse Audit\n`;
+                  body += `| Category | Score |\n`;
+                  body += `|----------|-------|\n`;
+                  body += `| Performance | ${Math.round(r.summary.performance * 100)}% |\n`;
+                  body += `| Accessibility | ${Math.round(r.summary.accessibility * 100)}% |\n`;
+                  body += `| Best Practices | ${Math.round(r.summary['best-practices'] * 100)}% |\n`;
+                  body += `| SEO | ${Math.round(r.summary.seo * 100)}% |\n`;
+                  body += `| PWA | ${Math.round(r.summary.pwa * 100)}% |\n\n`;
+                  if (r.url) {
+                    body += `[View Full Report](${r.url})\n\n`;
+                  }
+                }
+              } catch (e) {
+                console.log("Failed to parse Lighthouse results", e);
+              }
             }
             
             const { data: comments } = await github.rest.issues.listComments({
