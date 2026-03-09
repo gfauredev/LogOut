@@ -1,5 +1,3 @@
-name: CI
-
 on:
   pull_request:
   push:
@@ -10,17 +8,16 @@ jobs:
   coverage:
     name: Coverage Gate
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
       - uses: actions/checkout@v4
-
       - name: Wait for Garnix
         uses: lewagon/wait-on-check-action@v1.5.0
         with:
           ref: ${{ github.sha }}
-          check-name: 'All Garnix checks'
+          check-name: 'Garnix'
           repo-token: ${{ secrets.GITHUB_TOKEN }}
           wait-interval: 20
-
       - uses: cachix/install-nix-action@v31.10.0
         with:
           github_access_token: ${{ secrets.GITHUB_TOKEN }}
@@ -28,11 +25,9 @@ jobs:
             extra-substituters = https://cache.garnix.io
             extra-trusted-public-keys = cache.garnix.io:CTFPyKSLcx5RMJKfLo5EEPUObbA78b0YQ2DTCJXqr9g=
       - uses: DeterminateSystems/magic-nix-cache-action@v13
-
       - name: Fetch Coverage from Garnix
         run: |
           nix build .#checks.x86_64-linux.coverage -o coverage-result
-
       - name: Process Coverage Report
         id: coverage_report
         run: |
@@ -74,6 +69,7 @@ jobs:
     name: PageSpeed Lighthouse
     needs: coverage
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
       - uses: cachix/install-nix-action@v31.10.0
@@ -83,10 +79,8 @@ jobs:
             extra-substituters = https://cache.garnix.io
             extra-trusted-public-keys = cache.garnix.io:CTFPyKSLcx5RMJKfLo5EEPUObbA78b0YQ2DTCJXqr9g=
       - uses: DeterminateSystems/magic-nix-cache-action@v13
-
       - name: Build Web
         run: nix build .#web -o public-dist
-
       - name: Lighthouse Audit
         id: lighthouse_audit
         uses: treosh/lighthouse-ci-action@v12
@@ -110,6 +104,7 @@ jobs:
     name: Web End-to-End (Maestro)
     needs: coverage
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
       - uses: cachix/install-nix-action@v31.10.0
@@ -119,57 +114,45 @@ jobs:
             extra-substituters = https://cache.garnix.io
             extra-trusted-public-keys = cache.garnix.io:CTFPyKSLcx5RMJKfLo5EEPUObbA78b0YQ2DTCJXqr9g=
       - uses: DeterminateSystems/magic-nix-cache-action@v13
-
       - name: Build and Serve
         run: |
           nix build .#web -o public-dist
           cd public-dist && python3 -m http.server 8080 &
           sleep 2
-
       - name: Run Maestro Web Tests
         run: |
           nix develop -c maestro test maestro/web
-
       - name: Upload Maestro Screenshots to Cloudinary
-        if: failure() && github.event_name == 'pull_request'
+        if: failure() && github.event_name == 'pull_request' && secrets.CLOUDINARY_CLOUD_NAME != '' && secrets.CLOUDINARY_UPLOAD_PRESET != ''
         id: upload_screenshots
         env:
-          CLOUDINARY_URL: ${{ secrets.CLOUDINARY_URL }}
+          CLOUD_NAME: ${{ secrets.CLOUDINARY_CLOUD_NAME }}
+          UPLOAD_PRESET: ${{ secrets.CLOUDINARY_UPLOAD_PRESET }}
         run: |
           REPORT_BODY="### ❌ Maestro Web E2E Failures\n"
           # Find all screenshots in maestro report dir
           find ~/.maestro/tests/ -name "*.png" | while read -r img; do
-            echo "Uploading $img to Cloudinary..."
-            # Simple curl to Cloudinary API using CLOUDINARY_URL (which contains credentials)
-            # Or use a signed/unsigned upload if CLOUDINARY_URL is not enough.
-            # Assuming CLOUDINARY_URL format: cloudinary://API_KEY:API_SECRET@CLOUD_NAME
-            # Extract parts:
-            CREDS=$(echo "$CLOUDINARY_URL" | cut -d'@' -f1 | cut -d':' -f2-)
-            CLOUD_NAME=$(echo "$CLOUDINARY_URL" | cut -d'@' -f2)
-            
+            echo "Uploading $img to Cloudinary (unsigned)..."
             UPLOAD_URL="https://api.cloudinary.com/v1_1/${CLOUD_NAME}/image/upload"
-            # Unsigned requires a preset. If the user only has CLOUDINARY_URL, they might want signed.
-            # Let's try to find an upload preset from secrets or use a generic one if allowed.
-            PRESET=${{ secrets.CLOUDINARY_UPLOAD_PRESET || 'ml_default' }}
-            
             RESULT=$(curl -s -X POST "$UPLOAD_URL" \
               -F "file=@$img" \
-              -F "upload_preset=$PRESET")
-            
+              -F "upload_preset=$UPLOAD_PRESET")
             IMG_URL=$(echo "$RESULT" | jq -r '.secure_url')
-            REPORT_BODY="${REPORT_BODY}\n- ![Screenshot]($IMG_URL)"
+            if [ "$IMG_URL" != "null" ]; then
+              REPORT_BODY="${REPORT_BODY}\n- ![Screenshot]($IMG_URL)"
+            else
+              echo "Failed to upload $img: $RESULT"
+            fi
           done
           echo "REPORT_BODY<<EOF" >> $GITHUB_OUTPUT
           echo -e "$REPORT_BODY" >> $GITHUB_OUTPUT
           echo "EOF" >> $GITHUB_OUTPUT
-
       - name: Post E2E Failure Comment
-        if: failure() && github.event_name == 'pull_request'
+        if: failure() && github.event_name == 'pull_request' && steps.upload_screenshots.outputs.REPORT_BODY != ''
         uses: peter-evans/create-or-update-comment@v4
         with:
           issue-number: ${{ github.event.pull_request.number }}
           body: ${{ steps.upload_screenshots.outputs.REPORT_BODY }}
-
       - name: Upload Maestro Reports
         if: failure()
         uses: actions/upload-artifact@v4
