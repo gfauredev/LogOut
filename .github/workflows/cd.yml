@@ -84,7 +84,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Delete stale nightly releases and tags
-        uses: actions/github-script@v7
+        uses: actions/github-script@v8
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
@@ -145,7 +145,7 @@ jobs:
             lfs: true
       - name: Find CI build artifact for current source
         id: ci-artifact
-        uses: actions/github-script@v7
+        uses: actions/github-script@v8
         env:
           ARTIFACT_NAME: web-deploy-${{ hashFiles('Cargo.lock', 'src/**', 'assets/**', 'index.html', 'Dioxus.toml') }}
         with:
