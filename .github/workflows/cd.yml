@@ -12,9 +12,9 @@ jobs:
     name: Deploy PWA
     if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
-
       - name: Wait for Garnix
         uses: lewagon/wait-on-check-action@v1.5.0
         with:
@@ -22,7 +22,6 @@ jobs:
           check-name: 'All Garnix checks'
           repo-token: ${{ secrets.GITHUB_TOKEN }}
           wait-interval: 20
-
       - uses: cachix/install-nix-action@v31.10.0
         with:
           github_access_token: ${{ secrets.GITHUB_TOKEN }}
@@ -30,10 +29,8 @@ jobs:
             extra-substituters = https://cache.garnix.io
             extra-trusted-public-keys = cache.garnix.io:CTFPyKSLcx5RMJKfLo5EEPUObbA78b0YQ2DTCJXqr9g=
       - uses: DeterminateSystems/magic-nix-cache-action@v13
-
       - name: Build Web
         run: nix build .#web -o public-dist
-
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v4
         with:
@@ -44,11 +41,11 @@ jobs:
   release-android:
     name: Release Android
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     permissions:
       contents: write
     steps:
       - uses: actions/checkout@v4
-
       - name: Wait for Garnix
         uses: lewagon/wait-on-check-action@v1.5.0
         with:
@@ -56,7 +53,6 @@ jobs:
           check-name: 'Garnix'
           repo-token: ${{ secrets.GITHUB_TOKEN }}
           wait-interval: 20
-
       - uses: cachix/install-nix-action@v31.10.0
         with:
           github_access_token: ${{ secrets.GITHUB_TOKEN }}
@@ -64,10 +60,8 @@ jobs:
             extra-substituters = https://cache.garnix.io
             extra-trusted-public-keys = cache.garnix.io:CTFPyKSLcx5RMJKfLo5EEPUObbA78b0YQ2DTCJXqr9g=
       - uses: DeterminateSystems/magic-nix-cache-action@v13
-
       - name: Build Android
         run: nix build .#android -o android-dist
-
       - name: Sign APK
         env:
           ANDROID_KEYSTORE_PASS: ${{ secrets.ANDROID_KEYSTORE_PASS }}
