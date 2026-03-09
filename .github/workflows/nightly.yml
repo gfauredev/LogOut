@@ -46,8 +46,53 @@ jobs:
     needs: [cargo-deny, cargo-mutants]
     if: always()
     runs-on: ubuntu-latest
+    permissions:
+      issues: write
     steps:
+      - uses: actions/checkout@v4
       - name: Summarize Results
-        run: |
-          echo "Nightly Deep Checks completed."
-          # Here we could post an issue if there are failures
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const denyResult = "${{ needs.cargo-deny.result }}";
+            const mutantsResult = "${{ needs.cargo-mutants.result }}";
+            const tag = 'Nightly Deep Checks Report';
+            
+            let body = `## 🌑 ${tag}\n\n`;
+            body += `| Check | Status |\n`;
+            body += `|-------|--------|\n`;
+            body += `| Dependency Audit (cargo-deny) | ${denyResult === 'success' ? '✅' : '❌'} |\n`;
+            body += `| Mutation Testing (cargo-mutants) | ${mutantsResult === 'success' ? '✅' : (mutantsResult === 'skipped' ? '⏭️' : '⚠️')} |\n\n`;
+            
+            if (denyResult !== 'success') {
+              body += `❌ **Dependency Audit failed.** Please check the [workflow run](${process.env.GITHUB_SERVER_URL}/${process.env.GITHUB_REPOSITORY}/actions/runs/${process.env.GITHUB_RUN_ID}) for details.\n\n`;
+            }
+            
+            if (mutantsResult !== 'success' && mutantsResult !== 'skipped') {
+              body += `⚠️ **Mutation testing completed with issues or survived mutants.**\n\n`;
+            }
+            
+            // Create or update a "Nightly Status" issue
+            const { data: issues } = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open',
+              labels: ['nightly-report'],
+            });
+            
+            if (issues.length > 0) {
+              await github.rest.issues.update({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issues[0].number,
+                body,
+              });
+            } else {
+              await github.rest.issues.create({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                title: '🌑 Nightly Deep Checks Report',
+                body,
+                labels: ['nightly-report'],
+              });
+            }
