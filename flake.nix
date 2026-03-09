@@ -43,6 +43,8 @@
               "llvm-tools-preview"
               "rust-src"
               "rust-analyzer"
+              "clippy"
+              "rustfmt"
             ];
             targets = [
               "wasm32-unknown-unknown"
@@ -51,6 +53,10 @@
               # "armv7-linux-androideabi"
               # "i686-linux-android"
             ];
+          };
+          rustPlatform = pkgs.makeRustPlatform {
+            cargo = rustToolchain;
+            rustc = rustToolchain;
           };
           androidComposition = pkgs.androidenv.composeAndroidPackages {
             platformVersions = [
@@ -98,6 +104,7 @@
           inherit
             pkgs
             rustToolchain
+            rustPlatform
             androidComposition
             commonNativeBuildInputs
             commonBuildInputs
@@ -169,7 +176,7 @@
           env = sharedEnvFor system;
         in
         {
-          web = env.pkgs.rustPlatform.buildRustPackage {
+          web = env.rustPlatform.buildRustPackage {
             pname = "log-out-web";
             version = "0.1.0";
             src = self;
@@ -193,7 +200,7 @@
               export XDG_DATA_HOME=$HOME/.local/share
             '';
           };
-          android = env.pkgs.rustPlatform.buildRustPackage {
+          android = env.rustPlatform.buildRustPackage {
             pname = "log-out-android";
             version = "0.1.0";
             src = self;
@@ -269,32 +276,36 @@
             cargo fmt --all -- --check
             touch $out
           '';
-          clippy =
-            env.pkgs.runCommand "cargo-clippy-check" { nativeBuildInputs = env.commonNativeBuildInputs; }
-              ''
-                cd ${self}
-                export HOME=$TMPDIR
-                cargo clippy --all-targets -- -D warnings -W clippy::all -W clippy::pedantic
-                touch $out
-              '';
-          coverage =
-            env.pkgs.runCommand "cargo-coverage"
-              {
-                nativeBuildInputs = env.commonNativeBuildInputs ++ [ env.pkgs.lcov ];
-              }
-              ''
-                cd ${self}
-                export HOME=$TMPDIR
-                cp -r . /tmp/src # Writable directory for cargo
-                cd /tmp/src
-                chmod -R +w .
-                cargo llvm-cov --bin log-out \
-                  --ignore-filename-regex "src/components/" \
-                  --fail-under-functions 90 \
-                  --fail-under-lines 80 \
-                  --show-missing-lines
-                touch $out
-              '';
+          clippy = env.rustPlatform.buildRustPackage {
+            pname = "log-out-clippy";
+            version = "0.1.0";
+            src = self;
+            cargoLock.lockFile = ./Cargo.lock;
+            nativeBuildInputs = env.commonNativeBuildInputs;
+            buildInputs = env.commonBuildInputs;
+            buildPhase = ''
+              export HOME=$TMPDIR
+              cargo clippy --all-targets -- -D warnings -W clippy::all -W clippy::pedantic
+            '';
+            installPhase = "touch $out";
+          };
+          coverage = env.rustPlatform.buildRustPackage {
+            pname = "log-out-coverage";
+            version = "0.1.0";
+            src = self;
+            cargoLock.lockFile = ./Cargo.lock;
+            nativeBuildInputs = env.commonNativeBuildInputs ++ [ env.pkgs.lcov ];
+            buildInputs = env.commonBuildInputs;
+            buildPhase = ''
+              export HOME=$TMPDIR
+              cargo llvm-cov --bin log-out \
+                --ignore-filename-regex "src/components/" \
+                --fail-under-functions 90 \
+                --fail-under-lines 80 \
+                --show-missing-lines
+            '';
+            installPhase = "touch $out";
+          };
         }
       );
     };
