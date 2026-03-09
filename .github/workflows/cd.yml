@@ -117,7 +117,7 @@ jobs:
       - name: Upload APK to Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ github.event_name == 'release' && github.event.release.tag_name || 'latest-android' }}
+          tag_name: ${{ github.event_name == 'release' && github.event.release.tag_name || 'rolling-android' }}
           target_commitish: ${{ github.sha }}
           name: ${{ github.event_name == 'release' && github.event.release.name || format('Rolling Build ({0})', env.SHORT_SHA) }}
           body: ${{ github.event_name == 'release' && github.event.release.body || 'Automated rolling build from the latest main branch.' }}
