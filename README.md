@@ -13,12 +13,11 @@ lang: en
 - [Tooling & Dependencies](#tooling-dependencies)
 - [Building & Running](#building-running)
   - [Building the PWA](#building-the-pwa)
-  - [GitHub Pages deployment](#github-pages-deployment)
-- [Code Quality & Conventions](#code-quality-conventions)
-  - [Unit Testing](#unit-testing)
-  - [End-to-End Testing](#end-to-end-testing)
-  - [Documentation](#documentation)
-  - [Other](#other)
+  - [Building the Android App](#building-the-android-app)
+- [Code Conventions & Contributing](#code-conventions-contributing)
+- [Continuous Integration (CI)](#continuous-integration-ci)
+- [Continuous Deployment (CD)](#continuous-deployment-cd)
+- [Nightly Deep Checks <!-- TODO -->](#nightly-deep-checks-todo)
 - [TODO](#todo)
 
 <!--toc:end-->
@@ -125,11 +124,6 @@ To serve the PWA locally with hot-reload during development, run
 dx serve # Serves at http://localhost:8080
 ```
 
-### GitHub Pages deployment
-
-The PWA is deployed automatically on every push to `main` by
-`.github/workflows/cd.yml` on `https://gfauredev.github.io/LogOut`.
-
 ### Building the Android App
 
 To build for Android as APK, run
@@ -145,99 +139,12 @@ Run `scripts/android-icon.sh` to add `android/res` icons to the app.
 
 Run `scripts/android-sign.sh` to generate a signed `release-signed.apk` APK.
 
-## Code Quality & Conventions
+## Code Conventions & Contributing
 
-Ensure that all lints, end-to-end and unit tests pass before merging a pull
-request, or `.github/workflows/ci.yml` will reject it.
-
-| Job               | Command                         | Requirement                                                 |
-| ----------------- | ------------------------------- | ----------------------------------------------------------- |
-| **Formatting**    | `cargo fmt --check`             | Code must match `rustfmt` style exactly                     |
-| **Linting**       | `cargo clippy -- -D warnings`   | Zero Clippy warnings                                        |
-| **Unit tests**    | `cargo llvm-cov …`              | All unit tests pass, covering more than 90% of the codebase |
-| **E2E (web)**     | `maestro test --platform web …` | All Maestro web tests pass                                  |
-| **E2E (Android)** | `maestro test maestro/android/` | All Maestro Android tests pass                              |
-| **PageSpeed**     | Lighthouse CLI                  | Performance scores posted as PR comment                     |
-
-You can run them locally with the commands
-
-```sh
-cargo fmt --check # Formatting
-cargo clippy -- -D warnings # Linting
-cargo test # Unit tests
-maestro test --platform web maestro/web/ # Web E2E tests (requires built PWA served on localhost:8080)
-maestro test maestro/android/ # Android E2E tests (requires running emulator)
-```
-
-### Unit Testing
-
-Unit tests cover pure-Rust model functions (formatting, parsing, serialization),
-service stubs, and utility helpers. They compile and run on the native target —
-no browser or WASM toolchain required.
-
-```sh
-cargo test
-```
-
-The `main` branch must always pass `100%` of unit tests, covering more than
-`90%` of the codebase.
-
-They can be run with `cargo llvm-cov` (might need to be installed).
-
-```sh
-cargo llvm-cov --bin log-out # Summary inline
-```
-
-```sh
-cargo llvm-cov --bin log-out --lcov --output-path lcov.info # LCOV report
-```
-
-### End-to-End Testing
-
-End-to-end tests exercise the full application using [Maestro]. All
-[user stories](./USER_STORIES.md) are covered with two test flows each: one for
-the PWA and one for native Android. Tests are numbered `01`–`20` matching the
-user story order, so each test can rely on state from the previous ones when run
-as a full suite.
-
-```sh
-# Build and serve the PWA
-dx serve --open false --interactive false --web --release
- # In a second terminal, run all web E2E tests (order-independent)
-maestro test maestro/web/
-# Or run a single test file
-maestro test maestro/web/full_workout_session.yaml
-# Or run the tests headless
-maestro test --headless maestro/web/
-```
-
-> [!NOTE]
-> The first run of tests that touch the exercise browser may take up to 30
-> seconds while the exercise database is downloaded from the remote URL.
-
-Replace `web` by `android` in the above commands to run the Android E2E tests.
-An emulator must be running, or a physical device must be connected via `ADB`.
-
-> [!TIP]
-> Each test is self-contained and independent — no specific run order is
-> required. Tests that need pre-existing state (e.g. a completed session) set it
-> up via reusable subflows in `maestro/web/_flows/`. Use `maestro studio` to
-> debug a failing test interactively.
-
-### Documentation
-
-The project uses `rustdoc` for code documentation. To generate and open the
-documentation in your browser:
-
-```sh
-cargo doc --open
-```
-
-This generates HTML documentation for all internal modules, models, and
-services, providing a detailed view of the codebase's API.
-
-### Other
-
+- Functions, structs… must be documented with `rustdoc`
+  - To generate and open the documentation `cargo doc --open`
+- Every change must pass through a PR
+- PRs must pass [CI checks](#continuous-integration-ci) to be merged
 - Simple, flat structures are always preffered, do not nest if not necessary
   - Especially in HTML, a node with only one child can be replaced by it
 - Keep the HTML structure as simple as possible
@@ -245,6 +152,59 @@ services, providing a detailed view of the codebase's API.
 - Same CSS rules for similarly looking components, don’t overcomplicate
 - Never hardcode values (except 0, 1, 100%), use clearly named constants
 - Always ensure that all lints, end-to-end and unit tests pass.
+
+## Continuous Integration (CI)
+
+[LogOut] keep high standards of code quality and reliability. Every change must
+pass through a pull-request (PR), and every below check (that runs on pushes on
+PRs) must pass (for some, at a certain level) for it to be merged into `main`.
+
+- Fasts checks, run at every push on PRs
+  - Check if the code is properly **formated** `cargo fmt --all -- --check`
+  - **Lint** code
+    `cargo clippy --all-targets -- -D warnings -W clippy::all -W clippy::pedantic`
+  - **Unit test** while measuring **coverage** (of unit tested files only)
+    `cargo llvm-cov --all-features --bin log-out --lcov --output-path lcov.info`
+  - Fail if coverage is below `90%` with a custom `script` reading `lcov.info`
+- Publish a report with tests durations, clippy warnings, ok/failed tests,
+  coverage table… in a PR message
+- Slower checks, only if above pass, and branch up-to-date (rebased) with `main`
+  - Optimized **production build** for Web `dx build --web --release`
+    - **PageSpeed** Lighthouse audit on PWA <!-- TODO -->
+    - Web **end-to-end tests** Maestro `maestro test maestro/web`
+  - Optimized **production build** for Android `dx build --android --release`
+    - Android **end-to-end tests** Maestro `maestro test maestro/android`
+  - Publish a report with build times, Lighthouse scores, screenshots of failed
+    E2E tests… in a PR message
+- Cache compilation outputs, dependencies, artifacts… for future use
+  - Even if brittle E2E tests and PageSpeed audits don’t pass
+
+## Continuous Deployment (CD)
+
+[LogOut] stays continuously fresh and up-to-date thanks to its automated
+deployment pipeline runnig at every push on `main` branch (coming only from
+validated PRs).
+
+- Build **Progressive Web App** using cache filled by CI to avoid redundant work
+  - Deploy the optimized **PWA** to GitHub Pages
+- Build **Android App** using cache filled by CI to avoid redundant work
+  - Deploy optimized Android **APK** “Rolling” timestamped GitHub (pre-)Release
+  - Only if the last release is from the previous (UTC) day, to avoid spamming
+  - Remove the previous “Rolling” pre-releases older than a week
+
+CD also runs when a **tag** is pushed, publishing a “Stable” GitHub Release with
+a production Android APK buit on this `tag`.
+
+## Nightly Deep Checks <!-- TODO -->
+
+[LogOut] ensures high quality code while with additional ressource intensive
+checks that run every night at 2:00 AM (UTC) on the `main` branch.
+
+- Test the tests’ comprehensiveness by introducing bugs they should catch
+  - **Mutation testing** with `cargo-mutants`
+- Analyze dependencies for vulnerabilities or deprecations `cargo deny`
+  - Automatically open PRs to update dependencies with `dependabot`
+- Publish report(s) of the above checks
 
 ## TODO
 
