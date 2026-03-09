@@ -13,13 +13,15 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write
-  pages: write
-  id-token: write
+  contents: read
 
 jobs:
   deploy-web:
     name: Deploy to GitHub Pages
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
     runs-on: ubuntu-latest
     if: github.event_name != 'push' || github.ref == 'refs/heads/main'
     environment:
@@ -54,6 +56,8 @@ jobs:
 
   build-android:
     name: Build Android arm64
+    permissions:
+      contents: write
     runs-on: ubuntu-latest
     if: github.event_name != 'push' || github.ref == 'refs/heads/main'
     steps:
