@@ -3,10 +3,11 @@ name: CI # Code Quality Gates
 on:
   pull_request:
     paths-ignore:
-      - '**.md'
-      - 'LICENSE'
-      - '.gitignore'
-      - '.gitattributes'
+      - "**.md"
+      - .git*
+      - LICENSE
+      - garnix.yml
+      - .envrc
 
 permissions:
   contents: read

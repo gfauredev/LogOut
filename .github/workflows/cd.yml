@@ -6,10 +6,11 @@ on:
     tags:
       - 'v*'
     paths-ignore:
-      - '**.md'
-      - 'LICENSE'
-      - '.gitignore'
-      - '.gitattributes'
+      - "**.md"
+      - .git*
+      - LICENSE
+      - garnix.yml
+      - .envrc
   schedule:
     - cron: '0 0 * * *'
   release:
