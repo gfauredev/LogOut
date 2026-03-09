@@ -22,10 +22,30 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: determinate-systems/nix-installer-action@v16
-      - uses: determinate-systems/magic-nix-cache-action@v11
+        with:
+          fetch-depth: 2 # Needed to check for previous commits
+
+      - name: Check for recent changes
+        id: check_changes
+        run: |
+          if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+            echo "SKIP=false" >> $GITHUB_OUTPUT
+            echo "Manual trigger, forcing run."
+          elif [ -z "$(git log --since='24 hours ago' --oneline)" ]; then
+            echo "SKIP=true" >> $GITHUB_OUTPUT
+            echo "No changes in the last 24 hours, skipping."
+          else
+            echo "SKIP=false" >> $GITHUB_OUTPUT
+            echo "Changes detected, proceeding with mutation testing."
+          fi
+
+      - if: steps.check_changes.outputs.SKIP != 'true'
+        uses: determinate-systems/nix-installer-action@v16
+      - if: steps.check_changes.outputs.SKIP != 'true'
+        uses: determinate-systems/magic-nix-cache-action@v11
 
       - name: Run cargo-mutants
+        if: steps.check_changes.outputs.SKIP != 'true'
         run: |
           # Mutants focus on core logic, excluding UI components
           nix develop -c cargo mutants --no-shuffle -v --timeout 300 \
