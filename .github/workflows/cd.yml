@@ -3,11 +3,15 @@ name: CD
 on:
   push:
     branches: [main]
+    tags:
+      - 'v*'
     paths-ignore:
       - '**.md'
       - 'LICENSE'
       - '.gitignore'
       - '.gitattributes'
+  schedule:
+    - cron: '0 0 * * *'
   release:
     types: [published]
   workflow_dispatch:
@@ -16,14 +20,47 @@ permissions:
   contents: read
 
 jobs:
+  check-changes:
+    name: Check for changes
+    runs-on: ubuntu-latest
+    outputs:
+      changed: ${{ steps.check.outputs.changed }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Check for changes since last nightly
+        id: check
+        run: |
+          if [ "${{ github.event_name }}" != "schedule" ]; then
+            echo "changed=true" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+          LATEST_TAG=$(git tag -l "nightly" || true)
+          if [ -n "$LATEST_TAG" ]; then
+            TAG_SHA=$(git rev-parse nightly)
+            CURRENT_SHA=$(git rev-parse HEAD)
+            if [ "$TAG_SHA" = "$CURRENT_SHA" ]; then
+              echo "No changes since last nightly build. Skipping."
+              echo "changed=false" >> $GITHUB_OUTPUT
+            else
+              echo "Changes detected since last nightly build."
+              echo "changed=true" >> $GITHUB_OUTPUT
+            fi
+          else
+            echo "No nightly tag found. Proceeding with build."
+            echo "changed=true" >> $GITHUB_OUTPUT
+          fi
+
   deploy-web:
     name: Deploy to GitHub Pages
+    needs: check-changes
+    if: needs.check-changes.outputs.changed == 'true' && (github.event_name != 'push' || github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v'))
     permissions:
       contents: read
       pages: write
       id-token: write
     runs-on: ubuntu-latest
-    if: github.event_name != 'push' || github.ref == 'refs/heads/main'
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
@@ -56,10 +93,11 @@ jobs:
 
   build-android:
     name: Build Android arm64
+    needs: check-changes
+    if: needs.check-changes.outputs.changed == 'true' && (github.event_name != 'push' || github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v'))
     permissions:
       contents: write
     runs-on: ubuntu-latest
-    if: github.event_name != 'push' || github.ref == 'refs/heads/main'
     steps:
       - uses: actions/checkout@v4
       - name: Set up JDK 17
@@ -117,11 +155,11 @@ jobs:
       - name: Upload APK to Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ github.event_name == 'release' && github.event.release.tag_name || 'rolling-android' }}
+          tag_name: ${{ (github.event_name == 'release' || startsWith(github.ref, 'refs/tags/v')) && github.ref_name || 'nightly' }}
           target_commitish: ${{ github.sha }}
-          name: ${{ github.event_name == 'release' && github.event.release.name || format('Rolling Build ({0})', env.SHORT_SHA) }}
-          body: ${{ github.event_name == 'release' && github.event.release.body || 'Automated rolling build from the latest main branch.' }}
-          prerelease: true
+          name: ${{ (github.event_name == 'release' || startsWith(github.ref, 'refs/tags/v')) && (github.event.release.name || github.ref_name) || format('Nightly Build ({0})', env.SHORT_SHA) }}
+          body: ${{ (github.event_name == 'release' || startsWith(github.ref, 'refs/tags/v')) && github.event.release.body || 'Automated nightly build from the latest main branch.' }}
+          prerelease: ${{ !(github.event_name == 'release' || startsWith(github.ref, 'refs/tags/v')) }}
           files: logout-android-arm64-*.apk
           generate_release_notes: true
-          make_latest: false
+          make_latest: ${{ github.event_name == 'release' || startsWith(github.ref, 'refs/tags/v') }}
