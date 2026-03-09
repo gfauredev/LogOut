@@ -17,6 +17,9 @@ jobs:
       - uses: determinate-systems/nix-installer-action@v16
       - uses: determinate-systems/magic-nix-cache-action@v11
 
+      - name: Wait for Garnix
+        uses: garnix-io/wait-for-garnix@v1
+
       - name: Build Web
         run: nix build .#web -o public-dist
 
@@ -36,6 +39,9 @@ jobs:
       - uses: actions/checkout@v4
       - uses: determinate-systems/nix-installer-action@v16
       - uses: determinate-systems/magic-nix-cache-action@v11
+
+      - name: Wait for Garnix
+        uses: garnix-io/wait-for-garnix@v1
 
       - name: Build Android
         run: nix build .#android -o android-dist
