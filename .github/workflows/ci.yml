@@ -29,22 +29,27 @@ jobs:
             extra-trusted-public-keys = cache.garnix.io:CTFPyKSLcx5RMJKfLo5EEPUObbA78b0YQ2DTCJXqr9g=
       - uses: DeterminateSystems/magic-nix-cache-action@v13
 
-      - name: Run Coverage Gate
+      - name: Fetch Coverage from Garnix
         run: |
-          nix develop -c cargo llvm-cov --bin log-out \
-            --ignore-filename-regex "src/components/" \
-            --fail-under-functions 90 \
-            --fail-under-lines 80 \
-            --show-missing-lines
+          nix build .#checks.x86_64-linux.coverage -o coverage-result
 
-      - name: Get Coverage Output
-        if: always() && github.event_name == 'pull_request'
+      - name: Process Coverage Report
         id: coverage_report
         run: |
-          REPORT=$(nix develop -c cargo llvm-cov --bin log-out --ignore-filename-regex "src/components/")
+          REPORT=$(cat coverage-result/coverage.txt)
+          PERCENT=$(jq '.data[0].totals.lines.percent' coverage-result/coverage.json)
           echo "REPORT<<EOF" >> $GITHUB_OUTPUT
           echo "$REPORT" >> $GITHUB_OUTPUT
           echo "EOF" >> $GITHUB_OUTPUT
+          echo "PERCENT=$PERCENT" >> $GITHUB_OUTPUT
+          echo "Coverage is $PERCENT%"
+          if (( $(echo "$PERCENT < 80" | bc -l) )); then
+            echo "❌ Coverage below 80%"
+            # Store failure state for step later
+            echo "FAILED=true" >> $GITHUB_OUTPUT
+          else
+            echo "✅ Coverage above 80%"
+          fi
 
       - name: Post Coverage Comment
         if: always() && github.event_name == 'pull_request'
@@ -52,10 +57,18 @@ jobs:
         with:
           issue-number: ${{ github.event.pull_request.number }}
           body: |
-            ### 📊 Coverage Report (Excluding Components)
+            ### 📊 Coverage Report (from Garnix)
+            **Total Line Coverage: ${{ steps.coverage_report.outputs.PERCENT }}%**
+            
             ```text
             ${{ steps.coverage_report.outputs.REPORT }}
             ```
+
+      - name: Check Coverage Threshold
+        run: |
+          if [ "${{ steps.coverage_report.outputs.FAILED }}" == "true" ]; then
+            exit 1
+          fi
 
   lighthouse:
     name: PageSpeed Lighthouse

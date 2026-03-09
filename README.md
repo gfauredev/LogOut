@@ -170,7 +170,7 @@ PRs) must pass (for some, at a certain level) for it to be merged into `main`.
   - Optimized **production build** for Android `dx build --android --release`
   - At each step, cache outputs to avoid redundant work (automatic in Garnix)
 - Run in standard Linux or macOS runners once necessary outputs are available
-  - Check that more than `80%` of code (excluding `model` files) is covered,
+  - Check that more than `80%` of code (excluding `components`) is covered,
     publish the full coverage summary table as a PR comment
   - Slower checks, only if above pass _and_ branch is up-to-date with `main`
     - **PageSpeed** Lighthouse audit on PWA, publish report as a PR comment
