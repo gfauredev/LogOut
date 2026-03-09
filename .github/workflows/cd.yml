@@ -94,7 +94,9 @@ jobs:
             extra-trusted-public-keys = cache.garnix.io:CTFPyKSLcx5RMJKfLo5EEPUObbA78b0YQ2DTCJXqr9g=
       - uses: DeterminateSystems/magic-nix-cache-action@v13
       - name: Build Android
-        run: nix build .#android -o android-dist
+        run: |
+          nix develop -c dx build --android --release --target aarch64-linux-android
+          nix develop -c ./scripts/android-icon.sh
       - name: Sign APK
         env:
           ANDROID_KEYSTORE_PASS: ${{ secrets.ANDROID_KEYSTORE_PASS }}
@@ -104,7 +106,8 @@ jobs:
         run: |
           mkdir -p android/secrets
           echo "$ANDROID_KEYSTORE_BASE64" | base64 -d > android/secrets/logout.jks
-          APK_SRC=$(find android-dist -name "*.apk" | head -n 1)
+          # Find the built APK in the target directory
+          APK_SRC=$(find target/dx/log-out/release/android/ -name "*.apk" | head -n 1)
           cp "$APK_SRC" logout.apk
           nix develop -c ./scripts/android-sign.sh logout.apk
 
