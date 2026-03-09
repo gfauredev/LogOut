@@ -97,7 +97,8 @@ jobs:
       - name: Run unit tests with coverage
         id: tests
         run: |
-          cargo llvm-cov --all-features --bin log-out --lcov --output-path lcov.info --ignore-run-fail 2>&1 | tee unit_test_output.txt
+          set -o pipefail
+          cargo llvm-cov --all-features --lcov --output-path lcov.info 2>&1 | tee unit_test_output.txt
       - name: Summarize unit tests
         id: summarize
         run: |
@@ -117,7 +118,7 @@ jobs:
         with:
           name: unit-coverage-lcov
           path: lcov.info
-          if-no-files-found: ignore
+          if-no-files-found: error
           retention-days: 7
 
   coverage-check:
@@ -274,11 +275,11 @@ jobs:
         id: maestro
         continue-on-error: true
         with:
-          api-level: 31
-          target: google_apis
+          api-level: 30
+          target: aosp_atd
           arch: arm64-v8a
-          force-avd-creation: false
-          emulator-options: -no-window -gpu swiftshader_indirect -no-audio -no-boot-anim -camera-back none -no-snapshot-save
+          force-avd-creation: true
+          emulator-options: -no-window -no-audio -no-boot-anim -camera-back none
           disable-animations: true
           script: |
             APK_FILE=$(find target/dx/log-out/release/android/ -name "*aarch64*.apk" | head -n 1)
