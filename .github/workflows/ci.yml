@@ -151,7 +151,7 @@ jobs:
       - name: Build and Serve
         run: |
           nix build .#web -o public-dist
-          cd public-dist && python3 -m http.server 8080 &
+          python3 -m http.server -d public-dist 8080 &
           sleep 2
       - name: Run Maestro Web Tests
         run: |
