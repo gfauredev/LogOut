@@ -17,4 +17,4 @@ index_on_404 = true
 
 [android]
 theme = "Theme.AppCompat.NoActionBar"
-targets = ["aarch64-linux-android"] #, "x86_64-linux-android"]
+targets = ["aarch64-linux-android", "x86_64-linux-android"]
