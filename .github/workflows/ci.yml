@@ -31,10 +31,13 @@ jobs:
       - name: Process Coverage Report
         id: coverage_report
         run: |
-          REPORT=$(cat coverage-result/coverage.txt)
+          REPORT=$(head -n 200 coverage-result/coverage.txt)
+          if [ $(wc -l < coverage-result/coverage.txt) -gt 200 ]; then
+            REPORT="${REPORT}\n\n... (truncated, see Garnix for full report)"
+          fi
           PERCENT=$(jq '.data[0].totals.lines.percent' coverage-result/coverage.json)
           echo "REPORT<<EOF" >> $GITHUB_OUTPUT
-          echo "$REPORT" >> $GITHUB_OUTPUT
+          echo -e "$REPORT" >> $GITHUB_OUTPUT
           echo "EOF" >> $GITHUB_OUTPUT
           echo "PERCENT=$PERCENT" >> $GITHUB_OUTPUT
           echo "Coverage is $PERCENT%"
