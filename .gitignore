@@ -31,3 +31,4 @@ node_modules/
 android/secrets/
 *.jks
 .env.signing
+gradlew
