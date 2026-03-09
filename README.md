@@ -185,6 +185,7 @@ validated PRs), on standard Linux runners.
 
 - Deploy the _production_ **Progressive Web App** to GitHub Pages
 - Deploy **Android APK** in a “Rolling” timestamped GitHub (pre-)Release
+  - Sign it with GitHub secrets and `scripts/android-sign.sh`
   - Only if the last release is from the previous (UTC) day, to avoid spamming
   - Remove the previous “Rolling” pre-releases older than a week
 
@@ -208,9 +209,9 @@ checks that run every night at 2:00 AM (UTC) on the `main` branch.
 - DRY E2E tests to only one par user story, they can still runFlow others
 - Mock exercise database with public/exercises.json for E2E tests, so they can
   load faster and not rely on external network requests
-- Make layout harmonious but minimal, efficient, look at spacings, sizes
+- Make layout and palette harmonious but minimal, efficient
+  - Equalize spacings, sizes, net but not wasteful
   - Harmonize Rest timer text color with background when rest is due
-- Consider using Dioxus Components https://dioxuslabs.com/components
 
 [LogOut]: https://gfauredev.github.io/LogOut
 [800+ exercises]: https://github.com/yuhonas/free-exercise-db
