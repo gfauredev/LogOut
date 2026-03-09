@@ -4,6 +4,13 @@ on:
     branches:
       - main
 
+permissions:
+  pull-requests: write
+  contents: read
+  issues: write
+  checks: read
+  statuses: read
+
 jobs:
   coverage:
     name: Coverage Gate
