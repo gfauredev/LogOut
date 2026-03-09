@@ -272,11 +272,11 @@ jobs:
     needs: [format, clippy, unit-tests, e2e-web, e2e-android, rebased-check]
     if: |
       always() &&
-      needs.format.result == 'success' &&
-      needs.clippy.result == 'success' &&
+      needs.format.outputs.outcome == 'success' &&
+      needs.clippy.outputs.outcome == 'success' &&
       needs.unit-tests.result == 'success' &&
-      needs.e2e-web.result == 'success' &&
-      needs.e2e-android.result == 'success' &&
+      needs.e2e-web.outputs.outcome == 'success' &&
+      needs.e2e-android.outputs.outcome == 'success' &&
       needs.rebased-check.outputs.is-rebased == 'true'
     permissions:
       actions: write
@@ -510,8 +510,8 @@ jobs:
           if [ "${{ needs.clippy.outputs.outcome }}" != "success" ]; then echo "Clippy check failed"; FAIL=1; fi
           if [ "${{ needs.unit-tests.outputs.outcome }}" != "success" ]; then echo "Unit tests failed"; FAIL=1; fi
           if [ "${{ needs.rebased-check.outputs.is-rebased }}" == "true" ]; then
-            if [ "${{ needs.e2e-web.result }}" != "success" ]; then echo "Web E2E tests failed"; FAIL=1; fi
-            if [ "${{ needs.e2e-android.result }}" != "success" ]; then echo "Android E2E tests failed"; FAIL=1; fi
+            if [ "${{ needs.e2e-web.outputs.outcome }}" != "success" ]; then echo "Web E2E tests failed"; FAIL=1; fi
+            if [ "${{ needs.e2e-android.outputs.outcome }}" != "success" ]; then echo "Android E2E tests failed"; FAIL=1; fi
             if [ "${{ needs.build-release-web.result }}" == "failure" ]; then echo "Release build failed"; FAIL=1; fi
           fi
           if [ "${{ steps.cov.outputs.gate_failed }}" == "1" ]; then echo "Coverage gate failed"; FAIL=1; fi
