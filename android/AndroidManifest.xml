@@ -12,14 +12,14 @@
         android:label="LogOut"
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
-        android:theme="@style/Theme.LogOut">
+        android:theme="@style/AppTheme">
         <activity
             android:name="dev.dioxus.main.MainActivity"
             android:label="LogOut"
             android:exported="true"
             android:windowSoftInputMode="adjustResize"
             android:configChanges="orientation|screenSize|keyboardHidden"
-            android:theme="@style/Theme.LogOut">
+            android:theme="@style/AppTheme">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
