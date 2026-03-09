@@ -57,6 +57,7 @@ jobs:
     outputs:
       outcome: ${{ steps.lint.outcome }}
       warnings: ${{ steps.count.outputs.warnings }}
+      details: ${{ steps.count.outputs.details }}
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
@@ -74,6 +75,9 @@ jobs:
         run: |
           WARNINGS=$(grep -c "warning:" clippy_output.txt || true)
           echo "warnings=$WARNINGS" >> "$GITHUB_OUTPUT"
+          echo "details<<EOF" >> "$GITHUB_OUTPUT"
+          grep -E "^(error|warning):" clippy_output.txt | head -n 50 || true
+          echo "EOF" >> "$GITHUB_OUTPUT"
 
   unit-tests:
     name: Unit Tests
@@ -82,6 +86,7 @@ jobs:
       outcome: ${{ steps.tests.outcome }}
       summary: ${{ steps.summarize.outputs.summary }}
       duration: ${{ steps.summarize.outputs.duration }}
+      failures: ${{ steps.summarize.outputs.failures }}
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
@@ -103,6 +108,9 @@ jobs:
           DURATION=$(grep -E "finished in [0-9.]+s" unit_test_output.txt | tail -n 1 | grep -oE "[0-9.]+s" || echo "N/A")
           echo "summary=$SUMMARY" >> "$GITHUB_OUTPUT"
           echo "duration=$DURATION" >> "$GITHUB_OUTPUT"
+          echo "failures<<EOF" >> "$GITHUB_OUTPUT"
+          sed -n '/^failures:$/,/^$/p' unit_test_output.txt | grep "^    " | sed 's/^    //' || true
+          echo "EOF" >> "$GITHUB_OUTPUT"
       - name: Check coverage gate (≥ 90%)
         run: |
           if [ -f lcov.info ]; then
@@ -404,43 +412,38 @@ jobs:
         id: cov
         run: |
           if [ -f lcov.info ]; then
-            TOTAL_LH=0
-            TOTAL_LF=0
-            while IFS= read -r line; do
-              case "$line" in
-                LH:*) TOTAL_LH=$((TOTAL_LH + ${line#LH:})) ;;
-                LF:*) TOTAL_LF=$((TOTAL_LF + ${line#LF:})) ;;
-              esac
-            done < lcov.info
-            if [ "$TOTAL_LF" -gt 0 ]; then
-              TOTAL_PCT=$((TOTAL_LH * 100 / TOTAL_LF))
-            else
-              TOTAL_PCT=0
-            fi
-            SUMMARY="Total: ${TOTAL_LH}/${TOTAL_LF} lines covered (${TOTAL_PCT}%)"
+            # Process lcov.info using perl for robust per-file extraction
+            perl -ne '
+              if (/^SF:(.+)/) { $sf = $1; $sf =~ s/.*\/src\//src\//; }
+              elsif (/^LH:(\d+)/) { $lh = $1; }
+              elsif (/^LF:(\d+)/) { $lf = $1; }
+              elsif (/^FNH:(\d+)/) { $fnh = $1; }
+              elsif (/^FNF:(\d+)/) { $fnf = $1; }
+              elsif (/^end_of_record/) {
+                $pct = $lf > 0 ? ($lh * 100 / $lf) : 0;
+                $pct_f = sprintf("%.1f%%", $pct);
+                $fpct = $fnf > 0 ? sprintf("%.1f%%", $fnh * 100 / $fnf) : "100%";
+                $status = $pct >= 90 ? "✅" : "❌";
+                print "REPORT:| $sf | $lh/$lf | $fnh/$fnf | $pct_f ($fpct) | $status |\n";
+                $tlh += $lh; $tlf += $lf; $tfnh += $fnh; $tfnf += $fnf; $tfail = 1 if $pct < 90;
+              }
+              END {
+                $tpct = $tlf > 0 ? ($tlh * 100 / $tlf) : 0;
+                print "TOTAL:$tlh/$tlf,$tfnh/$tfnf,$tpct,$tfail\n";
+              }
+            ' lcov.info > cov_data.txt
+
+            GATE_REPORT=$(grep "^REPORT:" cov_data.txt | sed 's/^REPORT://' | sort)
+            TOTAL_DATA=$(grep "^TOTAL:" cov_data.txt | sed 's/^TOTAL://')
+            IFS=',' read -r T_LINES T_FUNCS T_PCT T_FAIL <<< "$TOTAL_DATA"
             
-            # Coverage gate check (≥ 90%)
-            TESTED_FILES=$(grep -rl '#\[cfg(test)\]' src/ | sort)
-            GATE_REPORT=""
-            FAIL=0
-            for f in $TESTED_FILES; do
-              LH=0; LF=0; IN_FILE=0
-              while IFS= read -r line; do
-                case "$line" in
-                  SF:*"$f") IN_FILE=1 ;;
-                  SF:*) IN_FILE=0 ;;
-                  LH:*) [ "$IN_FILE" = 1 ] && LH="${line#LH:}" ;;
-                  LF:*) [ "$IN_FILE" = 1 ] && LF="${line#LF:}" ;;
-                esac
-              done < lcov.info
-              if [ "$LF" -gt 0 ]; then PCT=$((LH * 100 / LF)); else PCT=0; fi
-              STATUS="✅"; if [ "$PCT" -lt 90 ]; then STATUS="❌"; FAIL=1; fi
-              GATE_REPORT="${GATE_REPORT}| ${f} | ${LH}/${LF} | ${PCT}% | ${STATUS} |\n"
-            done
+            SUMMARY="Total: $T_LINES lines covered (${T_PCT}%), functions: $T_FUNCS"
             
             echo "summary=$SUMMARY" >> "$GITHUB_OUTPUT"
-            echo -e "gate_report=$GATE_REPORT" >> "$GITHUB_OUTPUT"
-            echo "gate_failed=$FAIL" >> "$GITHUB_OUTPUT"
+            echo "gate_report<<EOF" >> "$GITHUB_OUTPUT"
+            echo -e "$GATE_REPORT" >> "$GITHUB_OUTPUT"
+            echo "EOF" >> "$GITHUB_OUTPUT"
+            echo "gate_failed=$T_FAIL" >> "$GITHUB_OUTPUT"
             echo "has_coverage=true" >> "$GITHUB_OUTPUT"
           else
             echo "has_coverage=false" >> "$GITHUB_OUTPUT"
@@ -453,9 +456,11 @@ jobs:
           FORMAT_STATUS: ${{ needs.format.outputs.outcome || needs.format.result }}
           CLIPPY_STATUS: ${{ needs.clippy.outputs.outcome || needs.clippy.result }}
           CLIPPY_WARNINGS: ${{ needs.clippy.outputs.warnings }}
+          CLIPPY_DETAILS: ${{ needs.clippy.outputs.details }}
           UNIT_STATUS: ${{ needs.unit-tests.outputs.outcome || needs.unit-tests.result }}
           UNIT_SUMMARY: ${{ needs.unit-tests.outputs.summary }}
           UNIT_DURATION: ${{ needs.unit-tests.outputs.duration }}
+          UNIT_FAILURES: ${{ needs.unit-tests.outputs.failures }}
           IS_REBASED: ${{ needs.rebased-check.outputs.is-rebased }}
           COV_SUMMARY: ${{ steps.cov.outputs.summary }}
           COV_GATE_REPORT: ${{ steps.cov.outputs.gate_report }}
@@ -476,20 +481,33 @@ jobs:
             const clippyWarns = process.env.CLIPPY_WARNINGS || '0';
             body += `| Linting | ${getIcon(process.env.CLIPPY_STATUS)} | ${clippyWarns} warnings |\n\n`;
             
+            if (process.env.CLIPPY_DETAILS) {
+              body += `#### 📝 Linting Issues\n\`\`\`\n${process.env.CLIPPY_DETAILS}\n\`\`\`\n\n`;
+            } else if (process.env.CLIPPY_STATUS === 'success') {
+              body += `✅ **No lint warnings**\n\n`;
+            }
+
             body += `### 🧪 Test Results\n`;
             body += `| Suite | Status | Summary | Duration |\n`;
             body += `|-------|--------|---------|----------|\n`;
             body += `| Unit Tests | ${getIcon(process.env.UNIT_STATUS)} | ${process.env.UNIT_SUMMARY || 'N/A'} | ${process.env.UNIT_DURATION || 'N/A'} |\n\n`;
             
+            if (process.env.UNIT_FAILURES) {
+              body += `#### ❌ Failed Tests\n\`\`\`\n${process.env.UNIT_FAILURES}\n\`\`\`\n\n`;
+            } else if (process.env.UNIT_STATUS === 'success') {
+              body += `✅ **All unit tests passed**\n\n`;
+            }
+
             if (process.env.HAS_COV === 'true') {
               const gateStatus = process.env.COV_GATE_FAILED === '1'
                 ? '❌ **FAILED** (tested files must have ≥ 90% coverage)'
                 : '✅ **PASSED**';
-              body += `### 📊 Coverage Gate ${gateStatus}\n`;
+              body += `### 📊 Full Coverage Report\n`;
+              body += `**Gate: ${gateStatus}**\n`;
               body += `\`${process.env.COV_SUMMARY}\`\n\n`;
-              body += `<details>\n<summary>Per-file Results</summary>\n\n`;
-              body += `| File | Lines | Coverage | Status |\n`;
-              body += `|------|-------|----------|--------|\n`;
+              body += `<details open>\n<summary>Per-file Coverage (Lines & Functions)</summary>\n\n`;
+              body += `| File | Lines | Functions | Coverage (Line/Func) | Status |\n`;
+              body += `|------|-------|-----------|----------------------|--------|\n`;
               body += process.env.COV_GATE_REPORT.replace(/\\n/g, '\n');
               body += `\n</details>\n\n`;
             }
@@ -543,34 +561,36 @@ jobs:
         id: cov
         run: |
           if [ -f lcov.info ]; then
-            TOTAL_LH=0; TOTAL_LF=0
-            while IFS= read -r line; do
-              case "$line" in
-                LH:*) TOTAL_LH=$((TOTAL_LH + ${line#LH:})) ;;
-                LF:*) TOTAL_LF=$((TOTAL_LF + ${line#LF:})) ;;
-              esac
-            done < lcov.info
-            if [ "$TOTAL_LF" -gt 0 ]; then TOTAL_PCT=$((TOTAL_LH * 100 / TOTAL_LF)); else TOTAL_PCT=0; fi
-            SUMMARY="Total: ${TOTAL_LH}/${TOTAL_LF} lines covered (${TOTAL_PCT}%)"
-            TESTED_FILES=$(grep -rl '#\[cfg(test)\]' src/ | sort)
-            GATE_REPORT=""; FAIL=0
-            for f in $TESTED_FILES; do
-              LH=0; LF=0; IN_FILE=0
-              while IFS= read -r line; do
-                case "$line" in
-                  SF:*"$f") IN_FILE=1 ;;
-                  SF:*) IN_FILE=0 ;;
-                  LH:*) [ "$IN_FILE" = 1 ] && LH="${line#LH:}" ;;
-                  LF:*) [ "$IN_FILE" = 1 ] && LF="${line#LF:}" ;;
-                esac
-              done < lcov.info
-              if [ "$LF" -gt 0 ]; then PCT=$((LH * 100 / LF)); else PCT=0; fi
-              STATUS="✅"; if [ "$PCT" -lt 90 ]; then STATUS="❌"; FAIL=1; fi
-              GATE_REPORT="${GATE_REPORT}| ${f} | ${LH}/${LF} | ${PCT}% | ${STATUS} |\n"
-            done
+            perl -ne '
+              if (/^SF:(.+)/) { $sf = $1; $sf =~ s/.*\/src\//src\//; }
+              elsif (/^LH:(\d+)/) { $lh = $1; }
+              elsif (/^LF:(\d+)/) { $lf = $1; }
+              elsif (/^FNH:(\d+)/) { $fnh = $1; }
+              elsif (/^FNF:(\d+)/) { $fnf = $1; }
+              elsif (/^end_of_record/) {
+                $pct = $lf > 0 ? ($lh * 100 / $lf) : 0;
+                $pct_f = sprintf("%.1f%%", $pct);
+                $fpct = $fnf > 0 ? sprintf("%.1f%%", $fnh * 100 / $fnf) : "100%";
+                $status = $pct >= 90 ? "✅" : "❌";
+                print "REPORT:| $sf | $lh/$lf | $fnh/$fnf | $pct_f ($fpct) | $status |\n";
+                $tlh += $lh; $tlf += $lf; $tfnh += $fnh; $tfnf += $fnf; $tfail = 1 if $pct < 90;
+              }
+              END {
+                $tpct = $tlf > 0 ? ($tlh * 100 / $tlf) : 0;
+                print "TOTAL:$tlh/$tlf,$tfnh/$tfnf,$tpct,$tfail\n";
+              }
+            ' lcov.info > cov_data.txt
+
+            GATE_REPORT=$(grep "^REPORT:" cov_data.txt | sed 's/^REPORT://' | sort)
+            TOTAL_DATA=$(grep "^TOTAL:" cov_data.txt | sed 's/^TOTAL://')
+            IFS=',' read -r T_LINES T_FUNCS T_PCT T_FAIL <<< "$TOTAL_DATA"
+            SUMMARY="Total: $T_LINES lines covered (${T_PCT}%), functions: $T_FUNCS"
+            
             echo "summary=$SUMMARY" >> "$GITHUB_OUTPUT"
-            echo -e "gate_report=$GATE_REPORT" >> "$GITHUB_OUTPUT"
-            echo "gate_failed=$FAIL" >> "$GITHUB_OUTPUT"
+            echo "gate_report<<EOF" >> "$GITHUB_OUTPUT"
+            echo -e "$GATE_REPORT" >> "$GITHUB_OUTPUT"
+            echo "EOF" >> "$GITHUB_OUTPUT"
+            echo "gate_failed=$T_FAIL" >> "$GITHUB_OUTPUT"
             echo "has_coverage=true" >> "$GITHUB_OUTPUT"
           else
             echo "has_coverage=false" >> "$GITHUB_OUTPUT"
