@@ -164,7 +164,7 @@ PRs) must pass (for some, at a certain level) for it to be merged into `main`.
   - **Lint** code
     `cargo clippy --all-targets -- -D warnings -W clippy::all -W clippy::pedantic`
   - **Unit test** while measuring **coverage** (of unit tested files only)
-    `cargo llvm-cov --all-features --bin log-out --lcov --output-path lcov.info`
+    `cargo llvm-cov --bin log-out --lcov --output-path lcov.info`
   - Fail if coverage is below `90%` with a custom `script` reading `lcov.info`
 - Publish a report with tests durations, clippy warnings, ok/failed tests,
   coverage table… in a PR message
