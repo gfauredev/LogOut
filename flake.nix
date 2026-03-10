@@ -209,7 +209,7 @@
               mkdir -p $HOME $GRADLE_USER_HOME $CARGO_HOME
               export CARGO_TARGET_DIR=$PWD/target
               # Only target aarch64 for the dependency fetch build
-              sed -i 's/targets = .*/targets = ["aarch64-linux-android"]/' Dioxus.toml
+              # sed -i 's/targets = .*/targets = ["aarch64-linux-android"]/' Dioxus.toml
               # Pre-create the directory wry expects to avoid canonicalization failure
               export WRY_ANDROID_KOTLIN_FILES_OUT_DIR=$CARGO_TARGET_DIR/dx/log-out/release/android/app/app/src/main/kotlin/dev/dioxus/main
               mkdir -p $WRY_ANDROID_KOTLIN_FILES_OUT_DIR
@@ -295,10 +295,9 @@
                 patchelf
               ]);
             buildInputs = env.commonBuildInputs;
-            postPatch = ''
-              # Ensure the targets list is clean and only contains aarch64
-              sed -i 's/targets = .*/targets = ["aarch64-linux-android"]/' Dioxus.toml
-            '';
+            # postPatch = ''
+            #   sed -i 's/targets = .*/targets = ["aarch64-linux-android"]/' Dioxus.toml
+            # '';
             ANDROID_HOME = "${env.androidComposition.androidsdk}/libexec/android-sdk";
             ANDROID_NDK_HOME = "${env.androidComposition.ndk-bundle}/libexec/android-sdk/ndk-bundle";
             buildPhase = ''
@@ -356,7 +355,7 @@
           default = env.pkgs.symlinkJoin {
             name = "log-out-all";
             paths = [
-              self.packages.${system}.pages
+              self.packages.${system}.web
               self.packages.${system}.android
             ];
           };
