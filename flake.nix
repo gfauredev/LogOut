@@ -262,7 +262,7 @@
                 export XDG_DATA_HOME=$HOME/.local/share
                 mkdir -p $HOME
                 export CARGO_TARGET_DIR=target
-                dx build --web --release --base-path ${basePath}
+                dx build --web --release --base-path ${env.pkgs.lib.escapeShellArg basePath}
               '';
               installPhase = ''
                 mkdir -p $out
