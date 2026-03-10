@@ -174,6 +174,77 @@
         system:
         let
           env = sharedEnvFor system;
+          # FOD (Fixed-Output Derivation) for Gradle/Maven dependencies.
+          # Has network access to download all dependencies needed for the Android build.
+          # The outputHash must be updated when Gradle dependencies change (e.g. Dioxus update).
+          # To compute the correct hash, run: nix build .#android
+          # Nix will report the expected vs actual hash on first build.
+          androidGradleDeps = env.pkgs.stdenv.mkDerivation {
+            name = "log-out-gradle-deps";
+            src = self;
+            nativeBuildInputs =
+              env.commonNativeBuildInputs
+              ++ (with env.pkgs; [
+                cargo-ndk
+                android-tools
+                env.androidComposition.androidsdk
+                env.androidComposition.ndk-bundle
+                openjdk
+                patchelf
+              ]);
+            buildInputs = env.commonBuildInputs;
+            ANDROID_HOME = "${env.androidComposition.androidsdk}/libexec/android-sdk";
+            ANDROID_NDK_HOME = "${env.androidComposition.ndk-bundle}/libexec/android-sdk/ndk-bundle";
+            LD_LIBRARY_PATH =
+              with env.pkgs;
+              lib.makeLibraryPath [
+                stdenv.cc.cc.lib
+                zlib
+              ];
+            buildPhase = ''
+              export HOME=$TMPDIR/home
+              export XDG_DATA_HOME=$HOME/.local/share
+              export GRADLE_USER_HOME=$TMPDIR/gradle-home
+              export CARGO_HOME=$TMPDIR/cargo-home
+              mkdir -p $HOME $GRADLE_USER_HOME $CARGO_HOME
+              export CARGO_TARGET_DIR=$PWD/target
+              # Only target aarch64 for the dependency fetch build
+              sed -i 's/targets = .*/targets = ["aarch64-linux-android"]/' Dioxus.toml
+              # Pre-create the directory wry expects to avoid canonicalization failure
+              export WRY_ANDROID_KOTLIN_FILES_OUT_DIR=$CARGO_TARGET_DIR/dx/log-out/release/android/app/app/src/main/kotlin/dev/dioxus/main
+              mkdir -p $WRY_ANDROID_KOTLIN_FILES_OUT_DIR
+              # Build to generate the Gradle project and download all dependencies
+              dx build --android --release --target aarch64-linux-android --verbose || true
+              # Patch aapt2 and ensure all Gradle dependencies are fully resolved
+              APP_DIR=$(find target/dx -path "*/release/android/app" -type d 2>/dev/null | head -n 1)
+              if [ -n "$APP_DIR" ] && [ -d "$APP_DIR" ]; then
+                find "$GRADLE_USER_HOME/caches" -name aapt2 -type f -executable 2>/dev/null | while read -r aapt2; do
+                  patchelf --set-interpreter "$(cat $NIX_CC/nix-support/dynamic-linker)" "$aapt2" 2>/dev/null || true
+                  patchelf --set-rpath "$LD_LIBRARY_PATH" "$aapt2" 2>/dev/null || true
+                done
+                pushd "$APP_DIR"
+                ./gradlew --no-daemon dependencies 2>/dev/null || true
+                ./gradlew --no-daemon assembleRelease 2>/dev/null || true
+                popd
+              fi
+            '';
+            installPhase = ''
+              mkdir -p $out
+              if [ -d "$TMPDIR/gradle-home" ]; then
+                cp -r $TMPDIR/gradle-home/* $out/
+              fi
+              # Remove non-deterministic files for stable output hash
+              find $out -name '*.lock' -delete 2>/dev/null || true
+              find $out -name 'gc.properties' -delete 2>/dev/null || true
+              find $out -name '*.log' -delete 2>/dev/null || true
+              find $out -type d -name 'executionHistory' -exec rm -rf {} + 2>/dev/null || true
+              find $out -type d -name 'buildOutputCleanup' -exec rm -rf {} + 2>/dev/null || true
+              find $out -name 'file-access.properties' -delete 2>/dev/null || true
+            '';
+            outputHashAlgo = "sha256";
+            outputHashMode = "recursive";
+            outputHash = env.pkgs.lib.fakeHash;
+          };
         in
         {
           web = env.rustPlatform.buildRustPackage {
@@ -201,7 +272,7 @@
             '';
           };
           android = env.rustPlatform.buildRustPackage {
-            pname = "log-out-android"; # FIXME Use a FOD
+            pname = "log-out-android";
             version = "0.1.0";
             src = self;
             cargoLock.lockFile = ./Cargo.lock;
@@ -214,7 +285,6 @@
                 env.androidComposition.ndk-bundle
                 openjdk
                 strace
-                gradle_9
                 patchelf
               ]);
             buildInputs = env.commonBuildInputs;
@@ -222,30 +292,24 @@
               # Ensure the targets list is clean and only contains aarch64
               sed -i 's/targets = .*/targets = ["aarch64-linux-android"]/' Dioxus.toml
             '';
-            gradle_9_1_0_bin = env.pkgs.fetchurl {
-              url = "https://services.gradle.org/distributions/gradle-9.1.0-bin.zip";
-              sha256 = "a17ddd85a26b6a7f5ddb71ff8b05fc5104c0202c6e64782429790c933686c806";
-            };
             ANDROID_HOME = "${env.androidComposition.androidsdk}/libexec/android-sdk";
             ANDROID_NDK_HOME = "${env.androidComposition.ndk-bundle}/libexec/android-sdk/ndk-bundle";
             buildPhase = ''
               export HOME=$TMPDIR/fake-home
               export XDG_DATA_HOME=$HOME/.local/share
               export GRADLE_USER_HOME=$HOME/.gradle
-              mkdir -p $HOME
-              # Pre-populate Gradle distribution to avoid network access for the wrapper
-              DIST_DIR=$GRADLE_USER_HOME/wrapper/dists/gradle-9.1.0-bin/83615469-820d-4054-9988-823078453c07
-              mkdir -p $DIST_DIR
-              ln -s $gradle_9_1_0_bin $DIST_DIR/gradle-9.1.0-bin.zip
-              touch $DIST_DIR/gradle-9.1.0-bin.zip.ok
+              mkdir -p $HOME $GRADLE_USER_HOME
+              # Use pre-downloaded Gradle dependencies from FOD
+              cp -r ${androidGradleDeps}/* $GRADLE_USER_HOME/
+              chmod -R u+w $GRADLE_USER_HOME
+              # Set Gradle to offline mode (all deps are in the FOD cache)
+              echo "org.gradle.offline=true" >> $GRADLE_USER_HOME/gradle.properties
               # Use absolute paths to avoid canonicalization issues in Nix sandbox
               export CARGO_TARGET_DIR=$PWD/target
               # Pre-create the directory wry expects to avoid canonicalization failure
               export WRY_ANDROID_KOTLIN_FILES_OUT_DIR=$CARGO_TARGET_DIR/dx/log-out/release/android/app/app/src/main/kotlin/dev/dioxus/main
               mkdir -p $WRY_ANDROID_KOTLIN_FILES_OUT_DIR
-              # dx build --android will still try to fetch dependencies from Maven Central.
-              # In a pure Nix build, this will fail unless we use a fixed-output derivation.
-              # We try to run it and if it fails due to network, we at least have a better error.
+              # Build Android (Gradle uses offline cached dependencies from FOD)
               dx build --android --release --target aarch64-linux-android --verbose
               # Inject icons as per scripts/android-icon.sh logic
               APP_PROJECT_DIR=$(find target/dx -name "android" -type d | grep "release/android" | head -n 1)/app
@@ -267,7 +331,7 @@
                     }" "$aapt2" || true
                   fi
                 done
-                ./gradlew assembleRelease
+                ./gradlew --offline assembleRelease
                 popd
               fi
             '';

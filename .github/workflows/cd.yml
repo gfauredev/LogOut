@@ -24,11 +24,11 @@ jobs:
           check-regexp: 'Evaluate flake.nix'
           repo-token: ${{ secrets.GITHUB_TOKEN }}
           wait-interval: 40
-      - name: Wait for Garnix Web package
+      - name: Wait for Garnix devShell
         uses: lewagon/wait-on-check-action@v1.5.0
         with:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
-          check-regexp: 'package web.*'
+          check-regexp: 'devShell.*'
           repo-token: ${{ secrets.GITHUB_TOKEN }}
           wait-interval: 20
           fail-on-no-checks: false
@@ -39,8 +39,13 @@ jobs:
             extra-substituters = https://cache.garnix.io
             extra-trusted-public-keys = cache.garnix.io:CTFPyKSLcx5RMJKfLo5EEPUObbA78b0YQ2DTCJXqr9g=
       - uses: DeterminateSystems/magic-nix-cache-action@v13
-      - name: Build Web
-        run: nix build .#web -o public-dist
+      - name: Build Web for GitHub Pages
+        run: |
+          # Set base path for GitHub Pages deployment at /LogOut/
+          sed -i '/\[web\.app\]/a base_path = "LogOut"' Dioxus.toml
+          nix develop -c dx build --web --release
+          mkdir -p public-dist
+          cp -r target/dx/log-out/release/web/public/* public-dist/
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
@@ -78,7 +83,7 @@ jobs:
           check-regexp: 'Evaluate flake.nix'
           repo-token: ${{ secrets.GITHUB_TOKEN }}
           wait-interval: 40
-      - name: Wait for Garnix Web package
+      - name: Wait for Garnix devShell
         uses: lewagon/wait-on-check-action@v1.5.0
         with:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
