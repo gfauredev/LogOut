@@ -104,11 +104,15 @@ jobs:
           repo-token: ${{ secrets.GITHUB_TOKEN }}
           wait-interval: 20
       - name: Build Web
-        run: nix build .#pages -o public-dist
+        run: |
+          nix build .#pages -o pages-result
+          mkdir -p public-dist/LogOut
+          cp -rL pages-result/* public-dist/LogOut/
       - name: Lighthouse Audit
         id: lighthouse_audit
         uses: treosh/lighthouse-ci-action@v12
         with:
+          urls: http://localhost/LogOut/
           uploadArtifacts: true
           temporaryPublicStorage: true
           configPath: .lighthouserc.json
@@ -138,19 +142,25 @@ jobs:
             extra-substituters = https://cache.garnix.io
             extra-trusted-public-keys = cache.garnix.io:CTFPyKSLcx5RMJKfLo5EEPUObbA78b0YQ2DTCJXqr9g=
       - uses: DeterminateSystems/magic-nix-cache-action@v13
-      - name: Wait for Garnix pages package
+      - name: Wait for Garnix web package
         uses: lewagon/wait-on-check-action@v1.5.0
         continue-on-error: true
         with:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
-          check-regexp: 'package pages.*'
+          check-regexp: 'package web.*'
           repo-token: ${{ secrets.GITHUB_TOKEN }}
           wait-interval: 20
       - name: Build and Serve
         run: |
-          nix build .#pages -o public-dist
+          nix build .#web -o public-dist
           python3 -m http.server -d public-dist 8080 &
           sleep 2
+      - name: Setup Chrome for Maestro
+        run: |
+          CHROMIUM=$(nix develop -c which chromium)
+          CHROMEDRIVER=$(nix develop -c which chromedriver)
+          sudo ln -sf "$CHROMIUM" /usr/bin/google-chrome
+          sudo ln -sf "$CHROMEDRIVER" /usr/bin/chromedriver
       - name: Run Maestro Web Tests
         run: |
           set -o pipefail
