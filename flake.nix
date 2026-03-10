@@ -208,25 +208,37 @@
               export CARGO_HOME=$TMPDIR/cargo-home
               mkdir -p $HOME $GRADLE_USER_HOME $CARGO_HOME
               export CARGO_TARGET_DIR=$PWD/target
-              # Only target aarch64 for the dependency fetch build
-              # sed -i 's/targets = .*/targets = ["aarch64-linux-android"]/' Dioxus.toml
               # Pre-create the directory wry expects to avoid canonicalization failure
               export WRY_ANDROID_KOTLIN_FILES_OUT_DIR=$CARGO_TARGET_DIR/dx/log-out/release/android/app/app/src/main/kotlin/dev/dioxus/main
               mkdir -p $WRY_ANDROID_KOTLIN_FILES_OUT_DIR
-              # Build to generate the Gradle project and download all dependencies
-              dx build --android --release --target aarch64-linux-android --verbose
-              # Patch aapt2 and ensure all Gradle dependencies are fully resolved
+              
+              # First pass: Build to generate the Gradle project and download initial dependencies.
+              # This is expected to fail when it reaches the first task requiring aapt2.
+              echo "🚀 Starting initial dx build to fetch dependencies (expected to fail during aapt2 tasks)"
+              dx build --android --release --target aarch64-linux-android --verbose || true
+              
+              # Patch aapt2 if it was downloaded/extracted
+              echo "🔧 Patching any downloaded aapt2 binaries"
+              find "$GRADLE_USER_HOME/caches" -name aapt2 -type f -executable 2>/dev/null | while read -r aapt2; do
+                if ! patchelf --print-interpreter "$aapt2" >/dev/null 2>&1 || [[ "$(patchelf --print-interpreter "$aapt2")" == /lib* ]]; then
+                  echo "  - Patching $aapt2"
+                  chmod +x "$aapt2"
+                  patchelf --set-interpreter "$(cat $NIX_CC/nix-support/dynamic-linker)" "$aapt2" || true
+                  patchelf --set-rpath "$LD_LIBRARY_PATH" "$aapt2" || true
+                fi
+              done
+
+              # Second pass: Ensure all Gradle dependencies are fully resolved and cached.
               APP_DIR=$(find target/dx -path "*/release/android/app" -type d 2>/dev/null | head -n 1)
               if [ -n "$APP_DIR" ] && [ -d "$APP_DIR" ]; then
-                find "$GRADLE_USER_HOME/caches" -name aapt2 -type f -executable 2>/dev/null | while read -r aapt2; do
-                  patchelf --set-interpreter "$(cat $NIX_CC/nix-support/dynamic-linker)" "$aapt2" 2>/dev/null || true
-                  patchelf --set-rpath "$LD_LIBRARY_PATH" "$aapt2" 2>/dev/null || true
-                done
+                echo "✅ Android project found at $APP_DIR. Running gradlew to complete dependency fetch."
                 pushd "$APP_DIR"
-                # Supplementary Gradle invocations to ensure full dependency tree is cached
                 ./gradlew --no-daemon dependencies || true
                 ./gradlew --no-daemon assembleRelease || true
                 popd
+              else
+                echo "⚠️ Android project directory not found! Retrying dx build."
+                dx build --android --release --target aarch64-linux-android --verbose || true
               fi
             '';
             installPhase = ''
@@ -300,6 +312,12 @@
             # '';
             ANDROID_HOME = "${env.androidComposition.androidsdk}/libexec/android-sdk";
             ANDROID_NDK_HOME = "${env.androidComposition.ndk-bundle}/libexec/android-sdk/ndk-bundle";
+            LD_LIBRARY_PATH =
+              with env.pkgs;
+              lib.makeLibraryPath [
+                stdenv.cc.cc.lib
+                zlib
+              ];
             buildPhase = ''
               export HOME=$TMPDIR/fake-home
               export XDG_DATA_HOME=$HOME/.local/share
@@ -308,6 +326,18 @@
               # Use pre-downloaded Gradle dependencies from FOD
               cp -r ${androidGradleDeps}/* $GRADLE_USER_HOME/
               chmod -R u+w $GRADLE_USER_HOME
+              
+              # Patch aapt2 BEFORE running dx build since it's already in the cache from FOD
+              echo "🔧 Pre-patching aapt2 binaries from cache"
+              find "$GRADLE_USER_HOME/caches" -name aapt2 -type f -executable 2>/dev/null | while read -r aapt2; do
+                if ! patchelf --print-interpreter "$aapt2" >/dev/null 2>&1 || [[ "$(patchelf --print-interpreter "$aapt2")" == /lib* ]]; then
+                  echo "  - Patching $aapt2"
+                  chmod +x "$aapt2"
+                  patchelf --set-interpreter "$(cat $NIX_CC/nix-support/dynamic-linker)" "$aapt2" || true
+                  patchelf --set-rpath "$LD_LIBRARY_PATH" "$aapt2" || true
+                fi
+              done
+
               # Set Gradle to offline mode (all deps are in the FOD cache)
               echo "org.gradle.offline=true" >> $GRADLE_USER_HOME/gradle.properties
               # Use absolute paths to avoid canonicalization issues in Nix sandbox
@@ -315,26 +345,24 @@
               # Pre-create the directory wry expects to avoid canonicalization failure
               export WRY_ANDROID_KOTLIN_FILES_OUT_DIR=$CARGO_TARGET_DIR/dx/log-out/release/android/app/app/src/main/kotlin/dev/dioxus/main
               mkdir -p $WRY_ANDROID_KOTLIN_FILES_OUT_DIR
+              
               # Build Android (Gradle uses offline cached dependencies from FOD)
+              echo "🚀 Running dx build --android"
               dx build --android --release --target aarch64-linux-android --verbose
+              
               # Inject icons as per scripts/android-icon.sh logic
               APP_PROJECT_DIR=$(find target/dx -name "android" -type d | grep "release/android" | head -n 1)/app
               if [ -d "$APP_PROJECT_DIR" ]; then
                 echo "🎨 Injecting Android icons into $APP_PROJECT_DIR"
                 cp -r android/res "$APP_PROJECT_DIR/app/src/main/"
                 pushd "$APP_PROJECT_DIR"
-                # Patch aapt2 if it was downloaded/extracted by Gradle
+                # Final check/patch of any newly extracted aapt2
                 find "$GRADLE_USER_HOME/caches" -name aapt2 -type f -executable 2>/dev/null | while read -r aapt2; do
                   if ! patchelf --print-interpreter "$aapt2" >/dev/null 2>&1 || [[ "$(patchelf --print-interpreter "$aapt2")" == /lib* ]]; then
-                    echo "🔧 Patching aapt2 at $aapt2"
+                    echo "🔧 Final patching of aapt2 at $aapt2"
                     chmod +x "$aapt2"
                     patchelf --set-interpreter "$(cat $NIX_CC/nix-support/dynamic-linker)" "$aapt2" || true
-                    patchelf --set-rpath "${
-                      env.pkgs.lib.makeLibraryPath [
-                        env.pkgs.stdenv.cc.cc.lib
-                        env.pkgs.zlib
-                      ]
-                    }" "$aapt2" || true
+                    patchelf --set-rpath "$LD_LIBRARY_PATH" "$aapt2" || true
                   fi
                 done
                 ./gradlew --offline assembleRelease
