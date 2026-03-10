@@ -246,10 +246,10 @@
                 cp -r $TMPDIR/gradle-home/caches/modules-2 $out/caches/
               fi
               if [ -d "$TMPDIR/gradle-home/wrapper/dists" ]; then
-                echo "  - Copying wrapper dists (zip files only)"
+                echo "  - Copying wrapper dists (zip and metadata only)"
                 cp -r $TMPDIR/gradle-home/wrapper/dists $out/wrapper/
-                # Critical: Remove extracted distributions, only keep the zip files
-                find $out/wrapper/dists -type f ! -name "*.zip" -delete
+                # Keep zip files and gradle wrapper metadata, remove extracted distributions
+                find $out/wrapper/dists -type f ! \( -name "*.zip" -o -name "*.ok" -o -name "*.lck" \) -delete
                 find $out/wrapper/dists -type d -empty -delete
               fi
               
