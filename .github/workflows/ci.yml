@@ -122,14 +122,14 @@ jobs:
             echo "" >> "$TMPFILE"
             echo "| URL | Performance | Accessibility | Best Practices | SEO |" >> "$TMPFILE"
             echo "| --- | --- | --- | --- | --- |" >> "$TMPFILE"
-            jq -c '.[]' .lighthouseci/manifest.json | while IFS= read -r row; do
-              URL=$(echo "$row" | jq -r '.url' | sed 's|http://localhost:[0-9]*/||')
-              PERF=$(echo "$row" | jq -r '.summary.performance // 0 | . * 100 | floor')
-              A11Y=$(echo "$row" | jq -r '.summary.accessibility // 0 | . * 100 | floor')
-              BP=$(echo "$row" | jq -r '.summary["best-practices"] // 0 | . * 100 | floor')
-              SEO=$(echo "$row" | jq -r '.summary.seo // 0 | . * 100 | floor')
-              echo "| \`$URL\` | $PERF | $A11Y | $BP | $SEO |" >> "$TMPFILE"
-            done
+            jq -r '.[] |
+              (.url | sub("http://localhost:[0-9]*/"; "")) as $url |
+              (.summary.performance // 0 | . * 100 | floor) as $perf |
+              (.summary.accessibility // 0 | . * 100 | floor) as $a11y |
+              (.summary["best-practices"] // 0 | . * 100 | floor) as $bp |
+              (.summary.seo // 0 | . * 100 | floor) as $seo |
+              "| `\($url)` | \($perf) | \($a11y) | \($bp) | \($seo) |"
+            ' .lighthouseci/manifest.json >> "$TMPFILE"
           fi
           LINKS='${{ steps.lighthouse_audit.outputs.links }}'
           if [ -n "$LINKS" ] && echo "$LINKS" | jq empty 2>/dev/null; then
