@@ -92,6 +92,7 @@
             rustToolchain
             selenium-manager
             ungoogled-chromium
+            unzip
           ];
           commonBuildInputs = [
             pkgs.openssl
@@ -211,7 +212,7 @@
               # Pre-create the directory wry expects to avoid canonicalization failure
               export WRY_ANDROID_KOTLIN_FILES_OUT_DIR=$CARGO_TARGET_DIR/dx/log-out/release/android/app/app/src/main/kotlin/dev/dioxus/main
               mkdir -p $WRY_ANDROID_KOTLIN_FILES_OUT_DIR
-              
+
               # Find Nix-provided aapt2 and use environment variables to override Gradle's default
               AAPT2_NIX=$(find ${env.androidComposition.androidsdk} -name aapt2 -executable -type f | head -n 1)
               if [ -n "$AAPT2_NIX" ]; then
@@ -223,27 +224,27 @@
 
               # Build to generate the Gradle project and download all dependencies
               echo "🚀 Running dx build to fetch dependencies"
-              dx build --android --release --target aarch64-linux-android --verbose || true
-              
+              dx build --android --release --target aarch64-linux-android --verbose
+
               # Ensure all Gradle dependencies are fully resolved and cached
               APP_DIR=$(find target/dx -path "*/release/android/app" -type d 2>/dev/null | head -n 1)
               if [ -n "$APP_DIR" ] && [ -d "$APP_DIR" ]; then
                 echo "✅ Android project found at $APP_DIR. Running gradlew to complete dependency fetch."
                 pushd "$APP_DIR"
                 # Only run dependencies task to avoid executing aapt2 during FOD fetch
-                ./gradlew --no-daemon dependencies || true
+                ./gradlew --no-daemon dependencies
                 popd
               else
-                echo "⚠️ Android project directory not found! Retrying dx build."
-                dx build --android --release --target aarch64-linux-android --verbose || true
+                echo "❌ Android project directory not found!"
+                exit 1
               fi
 
               echo "🔍 Final check of GRADLE_USER_HOME wrapper dists:"
-              find $GRADLE_USER_HOME/wrapper/dists -ls || echo "⚠️ wrapper/dists not found"
+              find $GRADLE_USER_HOME/wrapper/dists -ls || { echo "❌ wrapper/dists not found"; exit 1; }
             '';
             installPhase = ''
               mkdir -p $out/caches $out/wrapper
-              
+
               echo "📦 Copying Gradle cache to output"
               if [ -d "$TMPDIR/gradle-home/caches/modules-2" ]; then
                 cp -r $TMPDIR/gradle-home/caches/modules-2 $out/caches/
@@ -254,15 +255,9 @@
                 # The zip files and .ok/.lck files are at depth 3
                 find $out/wrapper/dists -mindepth 3 -maxdepth 3 -type d -exec rm -rf {} +
               fi
-              
+
               # Remove known non-deterministic files
               find $out -name "*.lock" -delete 2>/dev/null || true
-              # Final check for store paths
-              echo "🔍 Checking for accidental store path references"
-              find $out -type f -exec grep -l "/nix/store/" {} + 2>/dev/null | while read -r file; do
-                echo "  - Removing $file (contains store reference)"
-                rm "$file"
-              done || true
             '';
             outputHashAlgo = "sha256";
             outputHashMode = "recursive";
@@ -334,21 +329,31 @@
               export XDG_DATA_HOME=$HOME/.local/share
               export GRADLE_USER_HOME=$HOME/.gradle
               mkdir -p $HOME $GRADLE_USER_HOME
+
               # Use pre-downloaded Gradle dependencies from FOD
               echo "📦 Copying Gradle dependencies from FOD..."
               cp -r ${androidGradleDeps}/* $GRADLE_USER_HOME/
               chmod -R u+w $GRADLE_USER_HOME
-              
-              echo "🔍 Checking GRADLE_USER_HOME structure:"
+
+              echo "🔍 Checking GRADLE_USER_HOME structure after copy:"
               ls -R $GRADLE_USER_HOME/wrapper || echo "⚠️ wrapper dir not found"
-              
+
               # Manually extract the Gradle distribution from the wrapper cache
               echo "📦 Manually extracting Gradle distribution"
-              find $GRADLE_USER_HOME -name "gradle-*.zip" | while read -r zip; do
+              ZIP_COUNT=0
+              while read -r zip; do
                 dist_dir=$(dirname "$zip")
                 echo "  - Unzipping $zip into $dist_dir"
                 unzip -o -q "$zip" -d "$dist_dir"
-              done
+                ZIP_COUNT=$((ZIP_COUNT + 1))
+              done < <(find $GRADLE_USER_HOME -name "gradle-*.zip")
+
+              if [ "$ZIP_COUNT" -eq 0 ]; then
+                echo "❌ No Gradle distribution zip found in FOD! Build will likely fail."
+                # Don't exit yet, let dx try and fail with a clear message
+              else
+                echo "✅ Extracted $ZIP_COUNT Gradle distributions."
+              fi
 
               # Find Nix-provided aapt2 and use environment variables to override Gradle's default
               AAPT2_NIX=$(find ${env.androidComposition.androidsdk} -name aapt2 -executable -type f | head -n 1)
@@ -376,11 +381,11 @@
               # Pre-create the directory wry expects to avoid canonicalization failure
               export WRY_ANDROID_KOTLIN_FILES_OUT_DIR=$CARGO_TARGET_DIR/dx/log-out/release/android/app/app/src/main/kotlin/dev/dioxus/main
               mkdir -p $WRY_ANDROID_KOTLIN_FILES_OUT_DIR
-              
+
               # Build Android (Gradle uses offline cached dependencies from FOD)
               echo "🚀 Running dx build --android"
               dx build --android --release --target aarch64-linux-android --verbose
-              
+
               # Inject icons as per scripts/android-icon.sh logic
               APP_PROJECT_DIR=$(find target/dx -name "android" -type d | grep "release/android" | head -n 1)/app
               if [ -d "$APP_PROJECT_DIR" ]; then
