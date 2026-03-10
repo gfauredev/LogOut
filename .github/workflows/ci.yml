@@ -45,9 +45,6 @@ jobs:
         id: coverage_report
         run: |
           REPORT=$(grep -o "<table>.*</table>" coverage-result/html/index.html)
-          if [ $(wc -l < coverage-result/coverage.txt) -gt 200 ]; then
-            REPORT="${REPORT}\n\n... (truncated, see Garnix for full report)"
-          fi
           PERCENT=$(jq '.data[0].totals.lines.percent' coverage-result/coverage.json)
           echo "REPORT<<EOF" >> $GITHUB_OUTPUT
           echo -e "$REPORT" >> $GITHUB_OUTPUT
@@ -56,8 +53,7 @@ jobs:
           echo "Coverage is $PERCENT%"
           if (( $(echo "$PERCENT < 80" | bc -l) )); then
             echo "❌ Coverage below 80%"
-            # Store failure state for step later
-            echo "FAILED=true" >> $GITHUB_OUTPUT
+            echo "FAILED=true" >> $GITHUB_OUTPUT # Store failure for next step
           else
             echo "✅ Coverage above 80%"
           fi
@@ -68,12 +64,9 @@ jobs:
         with:
           issue-number: ${{ github.event.pull_request.number }}
           body: |
-            ### 📊 Coverage Report (from Garnix cache)
-            **Total Line Coverage: ${{ steps.coverage_report.outputs.PERCENT }}%**
+            ### 📊 Coverage Report
             
-            ```text
             ${{ steps.coverage_report.outputs.REPORT }}
-            ```
 
       - name: Check Coverage Threshold
         run: |
