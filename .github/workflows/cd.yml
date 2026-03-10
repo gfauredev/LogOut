@@ -40,11 +40,11 @@ jobs:
             extra-trusted-public-keys = cache.garnix.io:CTFPyKSLcx5RMJKfLo5EEPUObbA78b0YQ2DTCJXqr9g=
       - uses: DeterminateSystems/magic-nix-cache-action@v13
       - name: Build Web for GitHub Pages
-        run: nix build .#pages -o public-dist
+        run: nix build .#pages -o dist
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: ./public-dist
+          path: ./dist
 
   deploy:
     environment:
