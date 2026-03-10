@@ -2,3 +2,4 @@ builds:
   exclude:
     - packages.*.android
     - packages.*.default
+    - packages.*.web

@@ -161,7 +161,7 @@ jobs:
         continue-on-error: true
         with:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
-          check-regexp: 'package web.*'
+          check-regexp: 'package pages.*'
           repo-token: ${{ secrets.GITHUB_TOKEN }}
       - name: Build and Serve
         run: ./scripts/web-test.sh
