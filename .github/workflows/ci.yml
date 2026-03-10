@@ -39,12 +39,12 @@ jobs:
             extra-trusted-public-keys = cache.garnix.io:CTFPyKSLcx5RMJKfLo5EEPUObbA78b0YQ2DTCJXqr9g=
       - uses: DeterminateSystems/magic-nix-cache-action@v13
       - name: Fetch Coverage from Garnix
-        run: nix build .#checks.x86_64-linux.coverage -o coverage-result
+        run: nix build .#checks.x86_64-linux.coverage -o coverage
       - name: Process Coverage Report
         id: coverage_report
         run: |
-          REPORT=$(grep -o "<table>.*</table>" coverage-result/html/index.html)
-          PERCENT=$(jq '.data[0].totals.lines.percent' coverage-result/coverage.json)
+          REPORT=$(grep -o "<table>.*</table>" coverage/html/index.html)
+          PERCENT=$(jq '.data[0].totals.lines.percent' coverage/coverage.json)
           echo "REPORT<<EOF" >> $GITHUB_OUTPUT
           echo -e "$REPORT" >> $GITHUB_OUTPUT
           echo "EOF" >> $GITHUB_OUTPUT
@@ -167,21 +167,10 @@ jobs:
           wait-interval: 20
       - name: Build and Serve
         run: ./scripts/web-test.sh
-      - name: Setup Chrome for Maestro
-        run: |
-          CHROMIUM=$(nix develop -c which chromium)
-          CHROMEDRIVER=$(nix develop -c which chromedriver)
-          # Wrapper adds --no-sandbox needed for CI (Chrome crashes without it)
-          WRAPPER_DIR=/tmp/chromium-ci-wrapper
-          mkdir -p "$WRAPPER_DIR"
-          printf '#!/bin/sh\nexec %s --no-sandbox --disable-dev-shm-usage "$@"\n' "$CHROMIUM" > "$WRAPPER_DIR/chromium"
-          chmod +x "$WRAPPER_DIR/chromium"
-          cp "$WRAPPER_DIR/chromium" "$WRAPPER_DIR/google-chrome"
-          ln -sf "$CHROMEDRIVER" "$WRAPPER_DIR/chromedriver"
       - name: Run Maestro Web Tests
         run: |
           set -o pipefail
-          nix develop -c bash -c 'export PATH="/tmp/chromium-ci-wrapper:$PATH"; maestro test maestro/web' |& tee maestro_console.log
+          nix develop -c maestro test maestro/web |& tee maestro_console.log
       - name: Upload Maestro Screenshots to Cloudinary
         if: failure() && github.event_name == 'pull_request'
         id: upload_screenshots
