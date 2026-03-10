@@ -237,6 +237,9 @@
                 echo "⚠️ Android project directory not found! Retrying dx build."
                 dx build --android --release --target aarch64-linux-android --verbose || true
               fi
+
+              echo "🔍 Final check of GRADLE_USER_HOME wrapper dists:"
+              find $GRADLE_USER_HOME/wrapper/dists -ls || echo "⚠️ wrapper/dists not found"
             '';
             installPhase = ''
               mkdir -p $out/caches $out/wrapper
@@ -254,10 +257,6 @@
               
               # Remove known non-deterministic files
               find $out -name "*.lock" -delete 2>/dev/null || true
-              find $out -name "*.lck" -delete 2>/dev/null || true # But keep .zip.lck
-              # Wait, I should be more precise
-              find $out -name "gc.properties" -delete 2>/dev/null || true
-              
               # Final check for store paths
               echo "🔍 Checking for accidental store path references"
               find $out -type f -exec grep -l "/nix/store/" {} + 2>/dev/null | while read -r file; do
@@ -267,7 +266,7 @@
             '';
             outputHashAlgo = "sha256";
             outputHashMode = "recursive";
-            outputHash = "sha256-T3Hgu5jSmyPSxMs7rr3YUgVX3cV7K55RrBaRSbRD5Aw=";
+            outputHash = "sha256-tQild8F1umLH0qnC9yktBai+6+qdmg6cYKXOLDFLRpo=";
           };
           mkWebPackage =
             {
