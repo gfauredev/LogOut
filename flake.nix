@@ -214,7 +214,7 @@
               export WRY_ANDROID_KOTLIN_FILES_OUT_DIR=$CARGO_TARGET_DIR/dx/log-out/release/android/app/app/src/main/kotlin/dev/dioxus/main
               mkdir -p $WRY_ANDROID_KOTLIN_FILES_OUT_DIR
               # Build to generate the Gradle project and download all dependencies
-              dx build --android --release --target aarch64-linux-android --verbose || true
+              dx build --android --release --target aarch64-linux-android --verbose
               # Patch aapt2 and ensure all Gradle dependencies are fully resolved
               APP_DIR=$(find target/dx -path "*/release/android/app" -type d 2>/dev/null | head -n 1)
               if [ -n "$APP_DIR" ] && [ -d "$APP_DIR" ]; then
@@ -223,8 +223,9 @@
                   patchelf --set-rpath "$LD_LIBRARY_PATH" "$aapt2" 2>/dev/null || true
                 done
                 pushd "$APP_DIR"
-                ./gradlew --no-daemon dependencies 2>/dev/null || true
-                ./gradlew --no-daemon assembleRelease 2>/dev/null || true
+                # Supplementary Gradle invocations to ensure full dependency tree is cached
+                ./gradlew --no-daemon dependencies || true
+                ./gradlew --no-daemon assembleRelease || true
                 popd
               fi
             '';

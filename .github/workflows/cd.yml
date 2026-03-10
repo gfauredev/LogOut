@@ -41,7 +41,10 @@ jobs:
       - uses: DeterminateSystems/magic-nix-cache-action@v13
       - name: Build Web for GitHub Pages
         run: |
-          # Set base path for GitHub Pages deployment at /LogOut/
+          # Inject GitHub Pages base path into Dioxus config so all generated
+          # asset paths (JS, WASM, CSS) are prefixed with /LogOut/.
+          # This is only needed for the GitHub Pages deployment (project page),
+          # not for local dev or CI testing which use the root path.
           sed -i '/\[web\.app\]/a base_path = "LogOut"' Dioxus.toml
           nix develop -c dx build --web --release
           mkdir -p public-dist
