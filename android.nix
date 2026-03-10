@@ -1,14 +1,3 @@
-# Pure Nix build for the Android APK
-# Usage: nix build .#android
-#
-# Uses a Fixed-Output Derivation (FOD) to pre-fetch Gradle/Maven
-# dependencies, then builds the APK in offline mode.
-#
-# When Gradle dependencies change (e.g. Dioxus or Android SDK update),
-# update gradleDeps.outputHash:
-#   1. Set it to lib.fakeHash
-#   2. Run: nix build .#android
-#   3. Copy the hash from the error message
 {
   pkgs,
   lib,
@@ -52,9 +41,6 @@ let
       fi
     done
   '';
-  # Fixed-Output Derivation to pre-fetch Gradle and Maven dependencies.
-  # FODs get network access during build, producing a fixed output hash.
-  # Update outputHash when Gradle dependencies change.
   gradleDeps = pkgs.stdenv.mkDerivation {
     name = "logout-android-gradle-deps";
     src = self;
@@ -64,6 +50,7 @@ let
     outputHashAlgo = "sha256";
     outputHashMode = "recursive";
     outputHash = "sha256-zkSmUpOmnp35/FAPqNpA0w9VAeniOCnlUFct39tRd0k=";
+    # outputHash = lib.fakeHash; # Use if dependencies change
     ANDROID_HOME = androidHome;
     ANDROID_NDK_HOME = androidNdkHome;
     LD_LIBRARY_PATH = ldLibraryPath;
