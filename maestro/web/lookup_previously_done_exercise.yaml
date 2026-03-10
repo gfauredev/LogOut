@@ -1,6 +1,6 @@
 # User Story – Lookup a Previously Done Exercise (Web PWA)
 # Click an exercise tag on a session card to pre-fill the Exercise List search
-url: http://localhost:8080/?dl_session=Wide-Grip_Barbell_Bench_Press:80:10,Wide-Grip_Barbell_Bench_Press:77.5:10,Barbell_Full_Squat:60:6
+url: http://localhost:8080/LogOut/?dl_session=Wide-Grip_Barbell_Bench_Press:80:10,Wide-Grip_Barbell_Bench_Press:77.5:10,Barbell_Full_Squat:60:6
 ---
 - launchApp
 # Wait for the session created by the deep link to appear

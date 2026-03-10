@@ -1,6 +1,6 @@
 # User Story – Learn About an Exercise (Web PWA)
 # Clicking an exercise heading reveals its details: instructions, image, and tags.
-url: http://localhost:8080
+url: http://localhost:8080/LogOut
 ---
 - launchApp
 - runFlow: ../subflows/nav_exercises.yaml

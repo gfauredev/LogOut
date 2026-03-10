@@ -1,6 +1,6 @@
 # User Story – Start Workout Session (Web PWA)
 # Start a new workout session from the home screen and verify the active session.
-url: http://localhost:8080
+url: http://localhost:8080/LogOut
 ---
 - launchApp
 - runFlow: ../subflows/start_session.yaml

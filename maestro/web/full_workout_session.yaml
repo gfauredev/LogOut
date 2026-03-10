@@ -1,7 +1,7 @@
 # User Story – Full Workout Session (Web PWA)
 # Complete a full workout with two different exercises, replay sets, remove one
 # completed exercise, and finish the session
-url: http://localhost:8080
+url: http://localhost:8080/LogOut
 ---
 - launchApp
 # Go home and start a new session

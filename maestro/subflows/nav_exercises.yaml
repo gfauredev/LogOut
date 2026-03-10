@@ -1,5 +1,5 @@
 # Navigate to the Exercise List via the bottom navigation bar
-url: http://localhost:8080
+url: http://localhost:8080/LogOut
 ---
 - tapOn:
     css: "nav > .exercises"

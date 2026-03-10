@@ -1,6 +1,6 @@
 # Record two sets of Wide-Grip Barbell Bench Press in the current active session
 # Precondition: an active session is open with the exercise search visible
-url: http://localhost:8080
+url: http://localhost:8080/LogOut
 ---
 # ── Search Exercise ───────────────────────────────────────────────────────────
 # Token-based search: "wide grip bench" finds "Wide-Grip Barbell Bench Press"

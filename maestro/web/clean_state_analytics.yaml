@@ -2,7 +2,7 @@
 # In the analytics page, selecting a metric shows no exercises can be selected
 # because no workout sessions have been completed yet.
 # Precondition: no workout sessions have been completed.
-url: http://localhost:8080
+url: http://localhost:8080/LogOut
 ---
 - launchApp
 - runFlow: ../subflows/nav_analytics.yaml
