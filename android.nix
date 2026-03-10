@@ -67,7 +67,7 @@ let
     # FOD: allows network access, output verified by hash
     outputHashAlgo = "sha256";
     outputHashMode = "recursive";
-    outputHash = "sha256-TpoZk+NOcVkIz228SbUUNOUPULZ0Y/4vWjokQyrT9ZE=";
+    outputHash = "sha256-zkSmUpOmnp35/FAPqNpA0w9VAeniOCnlUFct39tRd0k=";
 
     ANDROID_HOME = androidHome;
     ANDROID_NDK_HOME = androidNdkHome;
@@ -98,14 +98,43 @@ let
     installPhase = ''
       mkdir -p $out
 
-      # Copy essential Gradle cache contents
-      cp -r $GRADLE_USER_HOME/* $out/
+      # Copy only the downloaded artifact caches and Gradle wrapper,
+      # skip daemon logs, build outputs, and other non-deterministic data.
+      if [ -d "$GRADLE_USER_HOME/caches" ]; then
+        cp -r "$GRADLE_USER_HOME/caches" "$out/caches"
+      fi
+      if [ -d "$GRADLE_USER_HOME/wrapper" ]; then
+        cp -r "$GRADLE_USER_HOME/wrapper" "$out/wrapper"
+      fi
+      if [ -d "$GRADLE_USER_HOME/notifications" ]; then
+        cp -r "$GRADLE_USER_HOME/notifications" "$out/notifications"
+      fi
 
       # Normalize for deterministic output:
-      # Remove Gradle lock files and non-deterministic metadata
-      find $out -name "*.lock" -delete
-      find $out -name "gc.properties" -delete
-      find $out -name "file-access.properties" -delete
+      # Remove Gradle lock files, journals, and non-deterministic metadata
+      find $out -name "*.lock" -type f -delete
+      find $out -name "gc.properties" -type f -delete
+      find $out -name "file-access.properties" -type f -delete
+      find $out -name "resource-usage.json" -type f -delete
+      find $out -name "last-build.bin" -type f -delete
+
+      # Remove non-deterministic directories
+      find $out -type d -name "journal-*" -exec rm -rf {} + 2>/dev/null || true
+      find $out -type d -name "build-scan-data" -exec rm -rf {} + 2>/dev/null || true
+      find $out -type d -name "daemon" -exec rm -rf {} + 2>/dev/null || true
+      find $out -type d -name "build-cache-*" -exec rm -rf {} + 2>/dev/null || true
+      find $out -type d -name "file-changes" -exec rm -rf {} + 2>/dev/null || true
+
+      # Remove non-deterministic Gradle transform metadata
+      find $out -name "*.bin" -path "*/transforms-*/*" -type f -delete 2>/dev/null || true
+
+      # Remove Gradle version-specific non-deterministic data
+      find $out -type d -name "executionHistory" -exec rm -rf {} + 2>/dev/null || true
+      find $out -type d -name "fileChanges" -exec rm -rf {} + 2>/dev/null || true
+      find $out -type d -name "fileHashes" -exec rm -rf {} + 2>/dev/null || true
+
+      # Remove empty directories
+      find $out -type d -empty -delete 2>/dev/null || true
 
       # Set all timestamps to epoch for reproducibility
       find $out -exec touch -h -d @0 {} +
