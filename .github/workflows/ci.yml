@@ -112,14 +112,40 @@ jobs:
         env:
           LHCI_COLLECT_STATIC_DIST_DIR: ./public-dist
 
+      - name: Parse Lighthouse Results
+        if: always() && github.event_name == 'pull_request'
+        id: lighthouse_results
+        run: |
+          TMPFILE=$(mktemp)
+          echo "### 🚀 Lighthouse Audit" > "$TMPFILE"
+          if [ -f .lighthouseci/manifest.json ]; then
+            echo "" >> "$TMPFILE"
+            echo "| URL | Performance | Accessibility | Best Practices | SEO |" >> "$TMPFILE"
+            echo "| --- | --- | --- | --- | --- |" >> "$TMPFILE"
+            jq -c '.[]' .lighthouseci/manifest.json | while IFS= read -r row; do
+              URL=$(echo "$row" | jq -r '.url' | sed 's|http://localhost:[0-9]*/||')
+              PERF=$(echo "$row" | jq -r '.summary.performance // 0 | . * 100 | floor')
+              A11Y=$(echo "$row" | jq -r '.summary.accessibility // 0 | . * 100 | floor')
+              BP=$(echo "$row" | jq -r '.summary["best-practices"] // 0 | . * 100 | floor')
+              SEO=$(echo "$row" | jq -r '.summary.seo // 0 | . * 100 | floor')
+              echo "| \`$URL\` | $PERF | $A11Y | $BP | $SEO |" >> "$TMPFILE"
+            done
+          fi
+          LINKS='${{ steps.lighthouse_audit.outputs.links }}'
+          if [ -n "$LINKS" ] && echo "$LINKS" | jq empty 2>/dev/null; then
+            echo "" >> "$TMPFILE"
+            echo "**Full reports:**" >> "$TMPFILE"
+            echo "$LINKS" | jq -r 'to_entries[] | "- [\(.key | sub("http://localhost:[0-9]*/"; ""))](\(.value))"' >> "$TMPFILE"
+          fi
+          echo "BODY<<EOF" >> $GITHUB_OUTPUT
+          cat "$TMPFILE" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
       - name: Post Lighthouse Comment
-        if: github.event_name == 'pull_request'
+        if: always() && github.event_name == 'pull_request'
         uses: peter-evans/create-or-update-comment@v4
         with:
           issue-number: ${{ github.event.pull_request.number }}
-          body: |
-            ### 🚀 Lighthouse Audit
-            Check out the [full report here](${{ steps.lighthouse_audit.outputs.links }})
+          body: ${{ steps.lighthouse_results.outputs.BODY }}
 
   e2e-web:
     name: Web End-to-End (Maestro)
@@ -152,12 +178,17 @@ jobs:
         run: |
           CHROMIUM=$(nix develop -c which chromium)
           CHROMEDRIVER=$(nix develop -c which chromedriver)
-          sudo ln -sf "$CHROMIUM" /usr/bin/google-chrome
-          sudo ln -sf "$CHROMEDRIVER" /usr/bin/chromedriver
+          # Wrapper adds --no-sandbox needed for CI (Chrome crashes without it)
+          WRAPPER_DIR=/tmp/chromium-ci-wrapper
+          mkdir -p "$WRAPPER_DIR"
+          printf '#!/bin/sh\nexec %s --no-sandbox --disable-dev-shm-usage "$@"\n' "$CHROMIUM" > "$WRAPPER_DIR/chromium"
+          chmod +x "$WRAPPER_DIR/chromium"
+          cp "$WRAPPER_DIR/chromium" "$WRAPPER_DIR/google-chrome"
+          ln -sf "$CHROMEDRIVER" "$WRAPPER_DIR/chromedriver"
       - name: Run Maestro Web Tests
         run: |
           set -o pipefail
-          nix develop -c maestro test maestro/web |& tee maestro_console.log
+          nix develop -c bash -c 'export PATH="/tmp/chromium-ci-wrapper:$PATH"; maestro test maestro/web' |& tee maestro_console.log
       - name: Upload Maestro Screenshots to Cloudinary
         if: failure() && github.event_name == 'pull_request'
         id: upload_screenshots
