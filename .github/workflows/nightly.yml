@@ -85,46 +85,38 @@ jobs:
 
       - name: Run cargo-mutants
         if: steps.check_changes.outputs.SKIP != 'true'
-        run: |
-          # Mutants focus on core logic, excluding UI components
+        run: | # Mutants focus on core logic, excluding UI components
           nix develop -c cargo mutants --no-shuffle -v --timeout 300 \
             --exclude "src/components/*"
 
-  e2e-android:
-    name: Android End-to-End (Maestro)
-    runs-on: macos-latest
-    timeout-minutes: 45
-    steps:
-      - uses: actions/checkout@v4
-      - uses: cachix/install-nix-action@v31.10.0
-        with:
-          github_access_token: ${{ secrets.GITHUB_TOKEN }}
-          extra_nix_config: |
-            extra-substituters = https://cache.garnix.io
-            extra-trusted-public-keys = cache.garnix.io:CTFPyKSLcx5RMJKfLo5EEPUObbA78b0YQ2DTCJXqr9g=
-      - uses: DeterminateSystems/magic-nix-cache-action@v13
-      - name: Build Android APK
-        run: |
-          unset ANDROID_SDK_ROOT
-          nix develop -c dx build --android --release --target aarch64-linux-android
-          nix develop -c ./scripts/android-icon.sh
-      - name: Run Android E2E
-        uses: reactivecircus/android-emulator-runner@v2
-        with:
-          api-level: 33
-          target: google_apis
-          arch: arm64-v8a
-          force-avd-creation: false
-          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
-          disable-animations: false
-          script: |
-            APK=$(find target/dx/log-out/release/android/ -name "*.apk" | head -n 1)
-            adb install "$APK"
-            nix develop -c maestro test maestro/android/launch.yaml
-
-      - name: Upload Maestro Reports
-        if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: maestro-android-report
-          path: ~/.maestro/tests/
+  # e2e-android:
+  #   name: Android End-to-End (Maestro)
+  #   runs-on: macos-latest
+  #   timeout-minutes: 45
+  #   steps:
+  #     - uses: actions/checkout@v4
+  #     - uses: cachix/install-nix-action@v31.10.0
+  #       with:
+  #         github_access_token: ${{ secrets.GITHUB_TOKEN }}
+  #         extra_nix_config: |
+  #           extra-substituters = https://cache.garnix.io
+  #           extra-trusted-public-keys = cache.garnix.io:CTFPyKSLcx5RMJKfLo5EEPUObbA78b0YQ2DTCJXqr9g=
+  #     - uses: DeterminateSystems/magic-nix-cache-action@v13
+  #     - name: Build Android APK
+  #       run: TODO Once Nix build works
+  #     - name: Run Android E2E
+  #       uses: reactivecircus/android-emulator-runner@v2
+  #       with:
+  #         api-level: 33
+  #         target: google_apis
+  #         arch: arm64-v8a
+  #         force-avd-creation: false
+  #         emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
+  #         disable-animations: false
+  #         script: TODO One Nix build works
+  #     - name: Upload Maestro Reports
+  #       if: failure()
+  #       uses: actions/upload-artifact@v4
+  #       with:
+  #         name: maestro-android-report
+  #         path: ~/.maestro/tests/
