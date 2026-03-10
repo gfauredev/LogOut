@@ -151,6 +151,14 @@ jobs:
           nix build .#web -o public-dist
           python3 -m http.server -d public-dist 8080 &
           sleep 2
+      - name: Setup Chrome for Maestro
+        run: |
+          # Maestro's Selenium expects Chrome at /usr/bin/google-chrome
+          # Symlink Nix-provided chromium and chromedriver to standard paths
+          CHROME_PATH=$(nix develop -c which chromium)
+          CHROMEDRIVER_PATH=$(nix develop -c which chromedriver)
+          sudo ln -sf "$CHROME_PATH" /usr/bin/google-chrome
+          sudo ln -sf "$CHROMEDRIVER_PATH" /usr/bin/chromedriver
       - name: Run Maestro Web Tests
         run: |
           set -o pipefail
