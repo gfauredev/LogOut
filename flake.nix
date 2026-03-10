@@ -275,7 +275,7 @@
             '';
             outputHashAlgo = "sha256";
             outputHashMode = "recursive";
-            outputHash = env.pkgs.lib.fakeHash;
+            outputHash = "sha256-/j0JYD11LqxwEn9y+muivR1sYo0b3FfEfD2RxCyKwRY=";
           };
           mkWebPackage =
             {
@@ -324,6 +324,7 @@
                 openjdk
                 strace
                 patchelf
+                unzip
               ]);
             buildInputs = env.commonBuildInputs;
             # postPatch = ''
@@ -343,9 +344,21 @@
               export GRADLE_USER_HOME=$HOME/.gradle
               mkdir -p $HOME $GRADLE_USER_HOME
               # Use pre-downloaded Gradle dependencies from FOD
+              echo "📦 Copying Gradle dependencies from FOD..."
               cp -r ${androidGradleDeps}/* $GRADLE_USER_HOME/
               chmod -R u+w $GRADLE_USER_HOME
               
+              echo "🔍 Checking GRADLE_USER_HOME structure:"
+              ls -R $GRADLE_USER_HOME/wrapper || echo "⚠️ wrapper dir not found"
+              
+              # Manually extract the Gradle distribution from the wrapper cache
+              echo "📦 Manually extracting Gradle distribution"
+              find $GRADLE_USER_HOME -name "gradle-*.zip" | while read -r zip; do
+                dist_dir=$(dirname "$zip")
+                echo "  - Unzipping $zip into $dist_dir"
+                unzip -o -q "$zip" -d "$dist_dir"
+              done
+
               # Find Nix-provided aapt2 and use environment variables to override Gradle's default
               AAPT2_NIX=$(find ${env.androidComposition.androidsdk} -name aapt2 -executable -type f | head -n 1)
               if [ -n "$AAPT2_NIX" ]; then
