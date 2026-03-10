@@ -44,7 +44,7 @@ jobs:
       - name: Process Coverage Report
         id: coverage_report
         run: |
-          REPORT=$(head -n 200 coverage-result/coverage.txt)
+          REPORT=$(grep -o "<table>.*</table>" coverage-result/html/index.html)
           if [ $(wc -l < coverage-result/coverage.txt) -gt 200 ]; then
             REPORT="${REPORT}\n\n... (truncated, see Garnix for full report)"
           fi

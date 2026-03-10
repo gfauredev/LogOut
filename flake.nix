@@ -396,9 +396,12 @@
             buildPhase = ''
               export HOME=$TMPDIR
               mkdir -p $out
+              # cargo llvm-cov --bin log-out \ Uncovered lines
+              #   --ignore-filename-regex "src/components/" \
+              #   --text > $out/coverage.txt
               cargo llvm-cov --bin log-out \
                 --ignore-filename-regex "src/components/" \
-                --text > $out/coverage.txt
+                --html --output-dir $out/html
               cargo llvm-cov --bin log-out \
                 --ignore-filename-regex "src/components/" \
                 --json > $out/coverage.json
