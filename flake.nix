@@ -401,7 +401,7 @@
               #   --text > $out/coverage.txt
               cargo llvm-cov --bin log-out \
                 --ignore-filename-regex "src/components/" \
-                --html --output-dir $out/html
+                --html --output-dir $out # /html auto added
               cargo llvm-cov --bin log-out \
                 --ignore-filename-regex "src/components/" \
                 --json > $out/coverage.json
