@@ -241,42 +241,37 @@
             installPhase = ''
               mkdir -p $out/caches $out/wrapper
               
-              echo "📦 Selective copy of Gradle cache to output"
+              echo "📦 Copying essential Gradle cache to output"
               if [ -d "$TMPDIR/gradle-home/caches/modules-2" ]; then
-                echo "  - Copying modules-2"
                 cp -r $TMPDIR/gradle-home/caches/modules-2 $out/caches/
               fi
               if [ -d "$TMPDIR/gradle-home/wrapper/dists" ]; then
-                echo "  - Copying wrapper dists"
-                mkdir -p $out/wrapper
+                echo "  - Copying wrapper dists (zip files only)"
                 cp -r $TMPDIR/gradle-home/wrapper/dists $out/wrapper/
+                # Critical: Remove extracted distributions, only keep the zip files
+                find $out/wrapper/dists -type f ! -name "*.zip" -delete
+                find $out/wrapper/dists -type d -empty -delete
               fi
               
-              # Copy transforms but be careful about store references
-              if [ -d "$TMPDIR/gradle-home/caches/transforms-4" ]; then
-                echo "  - Copying transforms-4"
-                cp -r $TMPDIR/gradle-home/caches/transforms-4 $out/caches/
-              fi
-              if [ -d "$TMPDIR/gradle-home/caches/transforms-3" ]; then
-                echo "  - Copying transforms-3"
-                cp -r $TMPDIR/gradle-home/caches/transforms-3 $out/caches/
-              fi
-
-              # Remove non-deterministic or path-containing files
+              # Remove known problematic files
               echo "🧹 Cleaning up non-deterministic files"
               find $out -name '*.lock' -delete 2>/dev/null || true
               find $out -name 'gc.properties' -delete 2>/dev/null || true
               find $out -name '*.log' -delete 2>/dev/null || true
               find $out -name 'file-access.properties' -delete 2>/dev/null || true
-              find $out -type d -name 'executionHistory' -exec rm -rf {} + 2>/dev/null || true
-              find $out -type d -name 'buildOutputCleanup' -exec rm -rf {} + 2>/dev/null || true
+              find $out -name 'results.bin' -delete 2>/dev/null || true
               
-              # Final check for store paths in the output
-              echo "🔍 Checking for accidental store path references in output"
+              # Final check for store paths in the output.
+              # We delete ANY file containing a store path to be absolutely sure.
+              echo "🔍 Purging any file with accidental store path references"
               find $out -type f -exec grep -l "/nix/store/" {} + 2>/dev/null | while read -r file; do
-                echo "  - WARNING: Removing $file as it contains store references"
+                echo "  - Removing $file (contains store reference)"
                 rm "$file"
               done || true
+
+              # Also remove any dangling symlinks and empty dirs
+              find $out -type l -delete
+              find $out -type d -empty -delete
             '';
             outputHashAlgo = "sha256";
             outputHashMode = "recursive";
