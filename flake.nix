@@ -212,23 +212,20 @@
               export WRY_ANDROID_KOTLIN_FILES_OUT_DIR=$CARGO_TARGET_DIR/dx/log-out/release/android/app/app/src/main/kotlin/dev/dioxus/main
               mkdir -p $WRY_ANDROID_KOTLIN_FILES_OUT_DIR
               
-              # First pass: Build to generate the Gradle project and download initial dependencies.
-              # This is expected to fail when it reaches the first task requiring aapt2.
-              echo "🚀 Starting initial dx build to fetch dependencies (expected to fail during aapt2 tasks)"
+              # Find Nix-provided aapt2 to override the one from Maven
+              AAPT2_NIX=$(find ${env.androidComposition.androidsdk} -name aapt2 -executable -type f | head -n 1)
+              if [ -n "$AAPT2_NIX" ]; then
+                echo "🔍 Using Nix aapt2: $AAPT2_NIX"
+                export GRADLE_OPTS="-Dorg.gradle.project.android.aapt2FromMavenOverride=$AAPT2_NIX"
+              else
+                echo "⚠️ Nix aapt2 not found in SDK!"
+              fi
+
+              # Build to generate the Gradle project and download all dependencies
+              echo "🚀 Running dx build to fetch dependencies"
               dx build --android --release --target aarch64-linux-android --verbose || true
               
-              # Patch aapt2 if it was downloaded/extracted
-              echo "🔧 Patching any downloaded aapt2 binaries"
-              find "$GRADLE_USER_HOME/caches" -name aapt2 -type f -executable 2>/dev/null | while read -r aapt2; do
-                if ! patchelf --print-interpreter "$aapt2" >/dev/null 2>&1 || [[ "$(patchelf --print-interpreter "$aapt2")" == /lib* ]]; then
-                  echo "  - Patching $aapt2"
-                  chmod +x "$aapt2"
-                  patchelf --set-interpreter "$(cat $NIX_CC/nix-support/dynamic-linker)" "$aapt2" || true
-                  patchelf --set-rpath "$LD_LIBRARY_PATH" "$aapt2" || true
-                fi
-              done
-
-              # Second pass: Ensure all Gradle dependencies are fully resolved and cached.
+              # Ensure all Gradle dependencies are fully resolved and cached
               APP_DIR=$(find target/dx -path "*/release/android/app" -type d 2>/dev/null | head -n 1)
               if [ -n "$APP_DIR" ] && [ -d "$APP_DIR" ]; then
                 echo "✅ Android project found at $APP_DIR. Running gradlew to complete dependency fetch."
@@ -242,17 +239,44 @@
               fi
             '';
             installPhase = ''
-              mkdir -p $out
-              if [ -d "$TMPDIR/gradle-home" ]; then
-                cp -r $TMPDIR/gradle-home/* $out/
+              mkdir -p $out/caches $out/wrapper
+              
+              echo "📦 Selective copy of Gradle cache to output"
+              if [ -d "$TMPDIR/gradle-home/caches/modules-2" ]; then
+                echo "  - Copying modules-2"
+                cp -r $TMPDIR/gradle-home/caches/modules-2 $out/caches/
               fi
-              # Remove non-deterministic files for stable output hash
+              if [ -d "$TMPDIR/gradle-home/wrapper/dists" ]; then
+                echo "  - Copying wrapper dists"
+                mkdir -p $out/wrapper
+                cp -r $TMPDIR/gradle-home/wrapper/dists $out/wrapper/
+              fi
+              
+              # Copy transforms but be careful about store references
+              if [ -d "$TMPDIR/gradle-home/caches/transforms-4" ]; then
+                echo "  - Copying transforms-4"
+                cp -r $TMPDIR/gradle-home/caches/transforms-4 $out/caches/
+              fi
+              if [ -d "$TMPDIR/gradle-home/caches/transforms-3" ]; then
+                echo "  - Copying transforms-3"
+                cp -r $TMPDIR/gradle-home/caches/transforms-3 $out/caches/
+              fi
+
+              # Remove non-deterministic or path-containing files
+              echo "🧹 Cleaning up non-deterministic files"
               find $out -name '*.lock' -delete 2>/dev/null || true
               find $out -name 'gc.properties' -delete 2>/dev/null || true
               find $out -name '*.log' -delete 2>/dev/null || true
+              find $out -name 'file-access.properties' -delete 2>/dev/null || true
               find $out -type d -name 'executionHistory' -exec rm -rf {} + 2>/dev/null || true
               find $out -type d -name 'buildOutputCleanup' -exec rm -rf {} + 2>/dev/null || true
-              find $out -name 'file-access.properties' -delete 2>/dev/null || true
+              
+              # Final check for store paths in the output
+              echo "🔍 Checking for accidental store path references in output"
+              find $out -type f -exec grep -l "/nix/store/" {} + | while read -r file; do
+                echo "  - WARNING: Removing $file as it contains store references"
+                rm "$file"
+              done
             '';
             outputHashAlgo = "sha256";
             outputHashMode = "recursive";
@@ -327,16 +351,14 @@
               cp -r ${androidGradleDeps}/* $GRADLE_USER_HOME/
               chmod -R u+w $GRADLE_USER_HOME
               
-              # Patch aapt2 BEFORE running dx build since it's already in the cache from FOD
-              echo "🔧 Pre-patching aapt2 binaries from cache"
-              find "$GRADLE_USER_HOME/caches" -name aapt2 -type f -executable 2>/dev/null | while read -r aapt2; do
-                if ! patchelf --print-interpreter "$aapt2" >/dev/null 2>&1 || [[ "$(patchelf --print-interpreter "$aapt2")" == /lib* ]]; then
-                  echo "  - Patching $aapt2"
-                  chmod +x "$aapt2"
-                  patchelf --set-interpreter "$(cat $NIX_CC/nix-support/dynamic-linker)" "$aapt2" || true
-                  patchelf --set-rpath "$LD_LIBRARY_PATH" "$aapt2" || true
-                fi
-              done
+              # Use Nix-provided aapt2 via system property instead of patching cache
+              AAPT2_NIX=$(find ${env.androidComposition.androidsdk} -name aapt2 -executable -type f | head -n 1)
+              if [ -n "$AAPT2_NIX" ]; then
+                echo "🔍 Using Nix aapt2: $AAPT2_NIX"
+                export GRADLE_OPTS="-Dorg.gradle.project.android.aapt2FromMavenOverride=$AAPT2_NIX"
+              else
+                echo "⚠️ Nix aapt2 not found in SDK!"
+              fi
 
               # Set Gradle to offline mode (all deps are in the FOD cache)
               echo "org.gradle.offline=true" >> $GRADLE_USER_HOME/gradle.properties
@@ -356,15 +378,6 @@
                 echo "🎨 Injecting Android icons into $APP_PROJECT_DIR"
                 cp -r android/res "$APP_PROJECT_DIR/app/src/main/"
                 pushd "$APP_PROJECT_DIR"
-                # Final check/patch of any newly extracted aapt2
-                find "$GRADLE_USER_HOME/caches" -name aapt2 -type f -executable 2>/dev/null | while read -r aapt2; do
-                  if ! patchelf --print-interpreter "$aapt2" >/dev/null 2>&1 || [[ "$(patchelf --print-interpreter "$aapt2")" == /lib* ]]; then
-                    echo "🔧 Final patching of aapt2 at $aapt2"
-                    chmod +x "$aapt2"
-                    patchelf --set-interpreter "$(cat $NIX_CC/nix-support/dynamic-linker)" "$aapt2" || true
-                    patchelf --set-rpath "$LD_LIBRARY_PATH" "$aapt2" || true
-                  fi
-                done
                 ./gradlew --offline assembleRelease
                 popd
               fi
