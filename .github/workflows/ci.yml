@@ -22,7 +22,7 @@ jobs:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
           check-regexp: 'Evaluate flake.nix'
           repo-token: ${{ secrets.GITHUB_TOKEN }}
-          wait-interval: 10
+          wait-interval: 40
       - name: Wait for Garnix coverage check
         uses: lewagon/wait-on-check-action@v1.5.0
         continue-on-error: true
