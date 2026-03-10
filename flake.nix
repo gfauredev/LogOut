@@ -206,6 +206,17 @@
         {
           web = mkWebPackage { };
           pages = mkWebPackage { basePath = "LogOut"; };
+          android = import ./android.nix {
+            inherit (env)
+              pkgs
+              rustPlatform
+              commonNativeBuildInputs
+              commonBuildInputs
+              androidComposition
+              ;
+            inherit (env.pkgs) lib;
+            inherit self;
+          };
           default = env.pkgs.symlinkJoin {
             name = "log-out-all";
             paths = [
