@@ -24,11 +24,11 @@ jobs:
           check-regexp: 'Evaluate flake.nix'
           repo-token: ${{ secrets.GITHUB_TOKEN }}
           wait-interval: 40
-      - name: Wait for Garnix devShell
+      - name: Wait for Garnix pages package
         uses: lewagon/wait-on-check-action@v1.5.0
         with:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
-          check-regexp: 'devShell.*'
+          check-regexp: 'package pages.*'
           repo-token: ${{ secrets.GITHUB_TOKEN }}
           wait-interval: 20
           fail-on-no-checks: false
@@ -40,15 +40,7 @@ jobs:
             extra-trusted-public-keys = cache.garnix.io:CTFPyKSLcx5RMJKfLo5EEPUObbA78b0YQ2DTCJXqr9g=
       - uses: DeterminateSystems/magic-nix-cache-action@v13
       - name: Build Web for GitHub Pages
-        run: |
-          # Inject GitHub Pages base path into Dioxus config so all generated
-          # asset paths (JS, WASM, CSS) are prefixed with /LogOut/.
-          # This is only needed for the GitHub Pages deployment (project page),
-          # not for local dev or CI testing which use the root path.
-          sed -i '/\[web\.app\]/a base_path = "LogOut"' Dioxus.toml
-          nix develop -c dx build --web --release
-          mkdir -p public-dist
-          cp -r target/dx/log-out/release/web/public/* public-dist/
+        run: nix build .#pages -o public-dist
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:

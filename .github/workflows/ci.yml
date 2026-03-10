@@ -95,16 +95,16 @@ jobs:
             extra-substituters = https://cache.garnix.io
             extra-trusted-public-keys = cache.garnix.io:CTFPyKSLcx5RMJKfLo5EEPUObbA78b0YQ2DTCJXqr9g=
       - uses: DeterminateSystems/magic-nix-cache-action@v13
-      - name: Wait for Garnix Web package
+      - name: Wait for Garnix pages package
         uses: lewagon/wait-on-check-action@v1.5.0
         continue-on-error: true
         with:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
-          check-regexp: 'package web.*'
+          check-regexp: 'package pages.*'
           repo-token: ${{ secrets.GITHUB_TOKEN }}
           wait-interval: 20
       - name: Build Web
-        run: nix build .#web -o public-dist
+        run: nix build .#pages -o public-dist
       - name: Lighthouse Audit
         id: lighthouse_audit
         uses: treosh/lighthouse-ci-action@v12
@@ -138,27 +138,19 @@ jobs:
             extra-substituters = https://cache.garnix.io
             extra-trusted-public-keys = cache.garnix.io:CTFPyKSLcx5RMJKfLo5EEPUObbA78b0YQ2DTCJXqr9g=
       - uses: DeterminateSystems/magic-nix-cache-action@v13
-      - name: Wait for Garnix Web package
+      - name: Wait for Garnix pages package
         uses: lewagon/wait-on-check-action@v1.5.0
         continue-on-error: true
         with:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
-          check-regexp: 'package web.*'
+          check-regexp: 'package pages.*'
           repo-token: ${{ secrets.GITHUB_TOKEN }}
           wait-interval: 20
       - name: Build and Serve
         run: |
-          nix build .#web -o public-dist
+          nix build .#pages -o public-dist
           python3 -m http.server -d public-dist 8080 &
           sleep 2
-      - name: Setup Chrome for Maestro
-        run: |
-          # Maestro's Selenium expects Chrome at /usr/bin/google-chrome
-          # Symlink Nix-provided chromium and chromedriver to standard paths
-          CHROME_PATH=$(nix develop -c which chromium)
-          CHROMEDRIVER_PATH=$(nix develop -c which chromedriver)
-          sudo ln -sf "$CHROME_PATH" /usr/bin/google-chrome
-          sudo ln -sf "$CHROMEDRIVER_PATH" /usr/bin/chromedriver
       - name: Run Maestro Web Tests
         run: |
           set -o pipefail
