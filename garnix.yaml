@@ -1,5 +1,12 @@
 builds:
-  exclude:
-    - packages.*.android
-    - packages.*.default
-    - packages.*.web
+  - include:
+    - checks.x86_64-linux.*
+    - devShells.x86_64-linux.*
+    - packages.x86_64-linux.pages
+    # exclude:
+    # - packages.*.android
+    # - packages.*.default
+    # - packages.*.web
+
+  - exclude: ["*.*.*"]
+    branch: fix-android-build
