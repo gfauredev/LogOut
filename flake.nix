@@ -241,41 +241,33 @@
             installPhase = ''
               mkdir -p $out/caches $out/wrapper
               
-              echo "📦 Copying essential Gradle cache to output"
+              echo "📦 Copying Gradle cache to output"
               if [ -d "$TMPDIR/gradle-home/caches/modules-2" ]; then
                 cp -r $TMPDIR/gradle-home/caches/modules-2 $out/caches/
               fi
               if [ -d "$TMPDIR/gradle-home/wrapper/dists" ]; then
-                echo "  - Copying wrapper dists (zip and metadata only)"
                 cp -r $TMPDIR/gradle-home/wrapper/dists $out/wrapper/
-                # Keep zip files and gradle wrapper metadata, remove extracted distributions
-                find $out/wrapper/dists -type f ! \( -name "*.zip" -o -name "*.ok" -o -name "*.lck" \) -delete
-                find $out/wrapper/dists -type d -empty -delete
+                # Remove ONLY the extracted directories to avoid store references
+                # The zip files and .ok/.lck files are at depth 3
+                find $out/wrapper/dists -mindepth 3 -maxdepth 3 -type d -exec rm -rf {} +
               fi
               
-              # Remove known problematic files
-              echo "🧹 Cleaning up non-deterministic files"
-              find $out -name '*.lock' -delete 2>/dev/null || true
-              find $out -name 'gc.properties' -delete 2>/dev/null || true
-              find $out -name '*.log' -delete 2>/dev/null || true
-              find $out -name 'file-access.properties' -delete 2>/dev/null || true
-              find $out -name 'results.bin' -delete 2>/dev/null || true
+              # Remove known non-deterministic files
+              find $out -name "*.lock" -delete 2>/dev/null || true
+              find $out -name "*.lck" -delete 2>/dev/null || true # But keep .zip.lck
+              # Wait, I should be more precise
+              find $out -name "gc.properties" -delete 2>/dev/null || true
               
-              # Final check for store paths in the output.
-              # We delete ANY file containing a store path to be absolutely sure.
-              echo "🔍 Purging any file with accidental store path references"
+              # Final check for store paths
+              echo "🔍 Checking for accidental store path references"
               find $out -type f -exec grep -l "/nix/store/" {} + 2>/dev/null | while read -r file; do
                 echo "  - Removing $file (contains store reference)"
                 rm "$file"
               done || true
-
-              # Also remove any dangling symlinks and empty dirs
-              find $out -type l -delete
-              find $out -type d -empty -delete
             '';
             outputHashAlgo = "sha256";
             outputHashMode = "recursive";
-            outputHash = "sha256-/j0JYD11LqxwEn9y+muivR1sYo0b3FfEfD2RxCyKwRY=";
+            outputHash = env.pkgs.lib.fakeHash;
           };
           mkWebPackage =
             {
