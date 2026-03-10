@@ -49,7 +49,7 @@ let
     # FOD: allows network access, output verified by hash
     outputHashAlgo = "sha256";
     outputHashMode = "recursive";
-    outputHash = "sha256-zkSmUpOmnp35/FAPqNpA0w9VAeniOCnlUFct39tRd0k=";
+    outputHash = lib.fakeHash;
     # outputHash = lib.fakeHash; # Use if dependencies change
     ANDROID_HOME = androidHome;
     ANDROID_NDK_HOME = androidNdkHome;
@@ -94,7 +94,18 @@ let
       find $out -type d -name "daemon" -exec rm -rf {} + 2>/dev/null || true
       find $out -type d -name "build-cache-*" -exec rm -rf {} + 2>/dev/null || true
       find $out -type d -name "file-changes" -exec rm -rf {} + 2>/dev/null || true
+      find $out -type d -path "*/caches/*/groovy-dsl" -exec rm -rf {} + 2>/dev/null || true
+      find $out -type d -path "*/caches/*/kotlin-dsl" -exec rm -rf {} + 2>/dev/null || true
+      find $out -type d -path "*/caches/*/javaCompile" -exec rm -rf {} + 2>/dev/null || true
+      find $out -path "*/caches/modules-2/metadata-*/*.bin" -type f -delete 2>/dev/null || true
       # Remove non-deterministic Gradle transform metadata
+      find $out -path "*/caches/*/transforms/*/metadata.bin" -type f -delete 2>/dev/null || true
+      find $out -type d -path "*/caches/*/transforms/*" | while read -r transform_dir; do
+        transform_name=$(basename "$transform_dir")
+        if [[ "$transform_name" =~ ^[0-9a-f]+-[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$ ]]; then
+          rm -rf "$transform_dir"
+        fi
+      done
       find $out -name "*.bin" -path "*/transforms-*/*" -type f -delete 2>/dev/null || true
       # Remove Gradle version-specific non-deterministic data
       find $out -type d -name "executionHistory" -exec rm -rf {} + 2>/dev/null || true
@@ -105,6 +116,7 @@ let
       # Set all timestamps to epoch for reproducibility
       find $out -exec touch -h -d @0 {} +
     '';
+    dontFixup = true;
   };
 
 in
