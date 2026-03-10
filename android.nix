@@ -48,8 +48,11 @@ let
          [[ "$(patchelf --print-interpreter "$aapt2")" == /lib* ]]; then
         echo "Patching aapt2: $aapt2"
         chmod +x "$aapt2"
-        patchelf --set-interpreter "$(cat $NIX_CC/nix-support/dynamic-linker)" "$aapt2" || true
-        patchelf --set-rpath "${ldLibraryPath}" "$aapt2" || true
+        if ! patchelf --set-interpreter "$(cat $NIX_CC/nix-support/dynamic-linker)" "$aapt2" || \
+           ! patchelf --set-rpath "${ldLibraryPath}" "$aapt2"; then
+          echo "Error: failed to patch aapt2 binary: $aapt2" >&2
+          exit 1
+        fi
       fi
     done
   '';
