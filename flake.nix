@@ -212,13 +212,13 @@
               export WRY_ANDROID_KOTLIN_FILES_OUT_DIR=$CARGO_TARGET_DIR/dx/log-out/release/android/app/app/src/main/kotlin/dev/dioxus/main
               mkdir -p $WRY_ANDROID_KOTLIN_FILES_OUT_DIR
               
-              # Find Nix-provided aapt2 to override the one from Maven
+              # Find Nix-provided aapt2 and use environment variables to override Gradle's default
               AAPT2_NIX=$(find ${env.androidComposition.androidsdk} -name aapt2 -executable -type f | head -n 1)
               if [ -n "$AAPT2_NIX" ]; then
-                echo "🔍 Using Nix aapt2: $AAPT2_NIX"
-                export GRADLE_OPTS="-Dorg.gradle.project.android.aapt2FromMavenOverride=$AAPT2_NIX"
-              else
-                echo "⚠️ Nix aapt2 not found in SDK!"
+                echo "🔍 Using Nix aapt2 override: $AAPT2_NIX"
+                export ORG_GRADLE_PROJECT_android_aapt2FromMavenOverride="$AAPT2_NIX"
+                # Also try this variant just in case
+                export GRADLE_OPTS="-Dorg.gradle.project.android.aapt2FromMavenOverride=$AAPT2_NIX -Dandroid.aapt2FromMavenOverride=$AAPT2_NIX"
               fi
 
               # Build to generate the Gradle project and download all dependencies
@@ -351,13 +351,12 @@
               cp -r ${androidGradleDeps}/* $GRADLE_USER_HOME/
               chmod -R u+w $GRADLE_USER_HOME
               
-              # Use Nix-provided aapt2 via system property instead of patching cache
+              # Find Nix-provided aapt2 and use environment variables to override Gradle's default
               AAPT2_NIX=$(find ${env.androidComposition.androidsdk} -name aapt2 -executable -type f | head -n 1)
               if [ -n "$AAPT2_NIX" ]; then
-                echo "🔍 Using Nix aapt2: $AAPT2_NIX"
-                export GRADLE_OPTS="-Dorg.gradle.project.android.aapt2FromMavenOverride=$AAPT2_NIX"
-              else
-                echo "⚠️ Nix aapt2 not found in SDK!"
+                echo "🔍 Using Nix aapt2 override: $AAPT2_NIX"
+                export ORG_GRADLE_PROJECT_android_aapt2FromMavenOverride="$AAPT2_NIX"
+                export GRADLE_OPTS="-Dorg.gradle.project.android.aapt2FromMavenOverride=$AAPT2_NIX -Dandroid.aapt2FromMavenOverride=$AAPT2_NIX"
               fi
 
               # Set Gradle to offline mode (all deps are in the FOD cache)
