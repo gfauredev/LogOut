@@ -246,32 +246,38 @@
             outputHashMode = "recursive";
             outputHash = env.pkgs.lib.fakeHash;
           };
+          mkWebPackage =
+            {
+              basePath ? "/",
+            }:
+            env.rustPlatform.buildRustPackage {
+              pname = "log-out-web";
+              version = "0.1.0";
+              src = self;
+              cargoLock.lockFile = ./Cargo.lock;
+              nativeBuildInputs = env.commonNativeBuildInputs;
+              buildInputs = env.commonBuildInputs;
+              buildPhase = ''
+                export HOME=$TMPDIR/fake-home
+                export XDG_DATA_HOME=$HOME/.local/share
+                mkdir -p $HOME
+                export CARGO_TARGET_DIR=target
+                dx build --web --release --base-path ${basePath}
+              '';
+              installPhase = ''
+                mkdir -p $out
+                cp -r target/dx/log-out/release/web/public/* $out/
+              '';
+              doCheck = true;
+              preCheck = ''
+                export HOME=$TMPDIR/fake-home
+                export XDG_DATA_HOME=$HOME/.local/share
+              '';
+            };
         in
         {
-          web = env.rustPlatform.buildRustPackage {
-            pname = "log-out-web";
-            version = "0.1.0";
-            src = self;
-            cargoLock.lockFile = ./Cargo.lock;
-            nativeBuildInputs = env.commonNativeBuildInputs;
-            buildInputs = env.commonBuildInputs;
-            buildPhase = ''
-              export HOME=$TMPDIR/fake-home
-              export XDG_DATA_HOME=$HOME/.local/share
-              mkdir -p $HOME
-              export CARGO_TARGET_DIR=target
-              dx build --web --release
-            '';
-            installPhase = ''
-              mkdir -p $out
-              cp -r target/dx/log-out/release/web/public/* $out/
-            '';
-            doCheck = true;
-            preCheck = ''
-              export HOME=$TMPDIR/fake-home
-              export XDG_DATA_HOME=$HOME/.local/share
-            '';
-          };
+          web = mkWebPackage { };
+          pages = mkWebPackage { basePath = "LogOut"; };
           android = env.rustPlatform.buildRustPackage {
             pname = "log-out-android";
             version = "0.1.0";
@@ -350,7 +356,7 @@
           default = env.pkgs.symlinkJoin {
             name = "log-out-all";
             paths = [
-              self.packages.${system}.web
+              self.packages.${system}.pages
               self.packages.${system}.android
             ];
           };
