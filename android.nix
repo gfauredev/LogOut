@@ -67,7 +67,7 @@ let
     # FOD: allows network access, output verified by hash
     outputHashAlgo = "sha256";
     outputHashMode = "recursive";
-    outputHash = lib.fakeHash;
+    outputHash = "sha256-TpoZk+NOcVkIz228SbUUNOUPULZ0Y/4vWjokQyrT9ZE=";
 
     ANDROID_HOME = androidHome;
     ANDROID_NDK_HOME = androidNdkHome;
@@ -97,7 +97,18 @@ let
 
     installPhase = ''
       mkdir -p $out
+
+      # Copy essential Gradle cache contents
       cp -r $GRADLE_USER_HOME/* $out/
+
+      # Normalize for deterministic output:
+      # Remove Gradle lock files and non-deterministic metadata
+      find $out -name "*.lock" -delete
+      find $out -name "gc.properties" -delete
+      find $out -name "file-access.properties" -delete
+
+      # Set all timestamps to epoch for reproducibility
+      find $out -exec touch -h -d @0 {} +
     '';
   };
 
