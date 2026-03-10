@@ -1,6 +1,6 @@
 # User Story – Navigate Back to Home (Web PWA)
 # After navigating away, the "💪" button returns to the Home page.
-url: http://localhost:8080
+url: http://localhost:8080/LogOut
 ---
 - launchApp
 # Start from the exercise browser

@@ -1,6 +1,6 @@
 # User Story – Edit a Cloned Exercise (Web PWA)
 # Clone a built-in exercise and edit its name.
-url: http://localhost:8080
+url: http://localhost:8080/LogOut
 ---
 - launchApp
 - runFlow: ../subflows/nav_exercises.yaml

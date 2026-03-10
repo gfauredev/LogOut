@@ -1,6 +1,6 @@
 # Create a complete workout session with bench press (2 sets) and squat (1 set),
 # then finish it, for tests that need prior session data
-url: http://localhost:8080
+url: http://localhost:8080/LogOut
 ---
 # Go home and start a new session
 - runFlow: ./nav_home.yaml

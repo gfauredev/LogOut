@@ -1,7 +1,7 @@
 # User Story – Clean State Credits (Web PWA)
 # The Credits page shows the default exercise database URL.
 # Precondition: the exercise database URL has not been changed from the default.
-url: http://localhost:8080
+url: http://localhost:8080/LogOut
 ---
 - launchApp
 - runFlow: ../subflows/nav_credits.yaml

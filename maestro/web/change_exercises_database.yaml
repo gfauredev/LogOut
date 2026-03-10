@@ -1,6 +1,6 @@
 # User Story – Change Exercises Database (Web PWA)
 # Change the database URL to the local test server via the Credits page.
-url: http://localhost:8080
+url: http://localhost:8080/LogOut
 ---
 - launchApp
 - runFlow: ../subflows/nav_credits.yaml
@@ -8,8 +8,8 @@ url: http://localhost:8080
 - tapOn:
     css: "input[type=url]"
 - eraseText
-- inputText: "http://localhost:8080"
+- inputText: "http://localhost:8080/LogOut"
 - tapOn:
     css: "button[type=submit]"
 # The URL input should now show the newly saved value
-- assertVisible: "http://localhost:8080"
+- assertVisible: "http://localhost:8080/LogOut"

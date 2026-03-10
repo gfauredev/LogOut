@@ -1,6 +1,6 @@
 # Record one set of Barbell Full Squat in the current active session
 # Precondition: an active session is open with the exercise search visible
-url: http://localhost:8080
+url: http://localhost:8080/LogOut
 ---
 # ── Repeat For Another Exercise (Barbell Full Squat) ──────────────────────────
 - tapOn: "Search for an exercise..."

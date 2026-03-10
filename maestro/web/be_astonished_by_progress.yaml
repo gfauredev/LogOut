@@ -1,6 +1,6 @@
 # User Story – Be Astonished by Your Incredible Progress (Web PWA)
 # Select an exercise in Analytics and see a chart of progress over time
-url: http://localhost:8080/?dl_session=Wide-Grip_Barbell_Bench_Press:80:10,Wide-Grip_Barbell_Bench_Press:77.5:10,Barbell_Full_Squat:60:6
+url: http://localhost:8080/LogOut/?dl_session=Wide-Grip_Barbell_Bench_Press:80:10,Wide-Grip_Barbell_Bench_Press:77.5:10,Barbell_Full_Squat:60:6
 ---
 - launchApp
 # Wait for the session created by the deep link to appear

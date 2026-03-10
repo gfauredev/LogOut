@@ -1,6 +1,6 @@
 # User Story – Navigate to Analytics (Web PWA)
 # Navigate to the Analytics page via the bottom navigation bar.
-url: http://localhost:8080
+url: http://localhost:8080/LogOut
 ---
 - launchApp
 - runFlow: ../subflows/nav_analytics.yaml
