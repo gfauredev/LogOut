@@ -273,10 +273,10 @@
               
               # Final check for store paths in the output
               echo "🔍 Checking for accidental store path references in output"
-              find $out -type f -exec grep -l "/nix/store/" {} + | while read -r file; do
+              find $out -type f -exec grep -l "/nix/store/" {} + 2>/dev/null | while read -r file; do
                 echo "  - WARNING: Removing $file as it contains store references"
                 rm "$file"
-              done
+              done || true
             '';
             outputHashAlgo = "sha256";
             outputHashMode = "recursive";
