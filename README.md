@@ -209,12 +209,16 @@ checks that run every night at 2:00 AM (UTC) on the `main` branch.
 - Android pure Nix build (beware Gradle)
 - Fix Nightly checks
 - Fix favicon downloading but not showing, marked 0x0 image in dev tools
-- DRY E2E tests to only one par user story, they can still runFlow others
-- Mock exercise database with public/exercises.json for E2E tests, so they can
-  load faster and not rely on external network requests
+- Add pause button in Active Session
+- Fix Lighthouse Audit
+- Remove any non project files from coverage
+- Display last line of maestro output outside `<details>`
 - Make layout and palette harmonious but minimal, efficient
   - Equalize spacings, sizes, net but not wasteful
   - Harmonize Rest timer text color with background when rest is due
+- DRY E2E tests to only one par user story, they can still runFlow others
+- Mock exercise database with public/exercises.json for E2E tests, so they can
+  load faster and not rely on external network requests
 
 [LogOut]: https://gfauredev.github.io/LogOut
 [800+ exercises]: https://github.com/yuhonas/free-exercise-db
