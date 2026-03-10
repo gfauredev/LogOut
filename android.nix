@@ -179,8 +179,22 @@ rustPlatform.buildRustPackage {
   '';
 
   installPhase = ''
-    mkdir -p $out
-    find target/dx/log-out/release/android -name "*.apk" -exec cp {} $out/ \;
+    mkdir -p "$out"
+
+    # Collect all APKs produced by the build in a deterministic order
+    mapfile -t apks < <(find target/dx/log-out/release/android -name "*.apk" | sort)
+
+    if [ "${#apks[@]}" -ne 1 ]; then
+      echo "Expected exactly one release APK in target/dx/log-out/release/android," >&2
+      echo "but found ${#apks[@]}:" >&2
+      for apk in "''${apks[@]}"; do
+        echo "  $apk" >&2
+      done
+      exit 1
+    fi
+
+    # Install the single APK with a stable filename
+    cp "''${apks[0]}" "$out/logout-android.apk"
   '';
 
   doCheck = false;
