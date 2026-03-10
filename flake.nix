@@ -267,7 +267,7 @@
             '';
             outputHashAlgo = "sha256";
             outputHashMode = "recursive";
-            outputHash = env.pkgs.lib.fakeHash;
+            outputHash = "sha256-T3Hgu5jSmyPSxMs7rr3YUgVX3cV7K55RrBaRSbRD5Aw=";
           };
           mkWebPackage =
             {
