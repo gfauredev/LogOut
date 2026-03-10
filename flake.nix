@@ -217,8 +217,8 @@
               if [ -n "$AAPT2_NIX" ]; then
                 echo "🔍 Using Nix aapt2 override: $AAPT2_NIX"
                 export ORG_GRADLE_PROJECT_android_aapt2FromMavenOverride="$AAPT2_NIX"
-                # Also try this variant just in case
-                export GRADLE_OPTS="-Dorg.gradle.project.android.aapt2FromMavenOverride=$AAPT2_NIX -Dandroid.aapt2FromMavenOverride=$AAPT2_NIX"
+                # Disable immutable workspace check and set aapt2 override
+                export GRADLE_OPTS="-Dorg.gradle.project.android.aapt2FromMavenOverride=$AAPT2_NIX -Dandroid.aapt2FromMavenOverride=$AAPT2_NIX -Dorg.gradle.internal.workspace.immutable.check=false"
               fi
 
               # Build to generate the Gradle project and download all dependencies
@@ -230,8 +230,8 @@
               if [ -n "$APP_DIR" ] && [ -d "$APP_DIR" ]; then
                 echo "✅ Android project found at $APP_DIR. Running gradlew to complete dependency fetch."
                 pushd "$APP_DIR"
+                # Only run dependencies task to avoid executing aapt2 during FOD fetch
                 ./gradlew --no-daemon dependencies || true
-                ./gradlew --no-daemon assembleRelease || true
                 popd
               else
                 echo "⚠️ Android project directory not found! Retrying dx build."
@@ -356,8 +356,19 @@
               if [ -n "$AAPT2_NIX" ]; then
                 echo "🔍 Using Nix aapt2 override: $AAPT2_NIX"
                 export ORG_GRADLE_PROJECT_android_aapt2FromMavenOverride="$AAPT2_NIX"
-                export GRADLE_OPTS="-Dorg.gradle.project.android.aapt2FromMavenOverride=$AAPT2_NIX -Dandroid.aapt2FromMavenOverride=$AAPT2_NIX"
+                export GRADLE_OPTS="-Dorg.gradle.project.android.aapt2FromMavenOverride=$AAPT2_NIX -Dandroid.aapt2FromMavenOverride=$AAPT2_NIX -Dorg.gradle.internal.workspace.immutable.check=false"
               fi
+
+              # Patch aapt2 in the cache as a fallback
+              echo "🔧 Patching aapt2 binaries in cache as fallback"
+              find "$GRADLE_USER_HOME/caches" -name aapt2 -type f -executable 2>/dev/null | while read -r aapt2; do
+                if ! patchelf --print-interpreter "$aapt2" >/dev/null 2>&1 || [[ "$(patchelf --print-interpreter "$aapt2")" == /lib* ]]; then
+                  echo "  - Patching $aapt2"
+                  chmod +x "$aapt2"
+                  patchelf --set-interpreter "$(cat $NIX_CC/nix-support/dynamic-linker)" "$aapt2" || true
+                  patchelf --set-rpath "$LD_LIBRARY_PATH" "$aapt2" || true
+                fi
+              done
 
               # Set Gradle to offline mode (all deps are in the FOD cache)
               echo "org.gradle.offline=true" >> $GRADLE_USER_HOME/gradle.properties
