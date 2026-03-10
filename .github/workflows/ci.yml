@@ -16,13 +16,14 @@ jobs:
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@v4
+      - name: Sleep hoping Garnix evaluation will start after
+        run: sleep 30
       - name: Wait for Garnix flake.nix evaluation
         uses: lewagon/wait-on-check-action@v1.5.0
         with:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
           check-regexp: 'Evaluate flake.nix'
           repo-token: ${{ secrets.GITHUB_TOKEN }}
-          wait-interval: 40
       - name: Wait for Garnix coverage check
         uses: lewagon/wait-on-check-action@v1.5.0
         continue-on-error: true
@@ -30,7 +31,6 @@ jobs:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
           check-regexp: 'check coverage.*'
           repo-token: ${{ secrets.GITHUB_TOKEN }}
-          wait-interval: 20
       - uses: cachix/install-nix-action@v31.10.0
         with:
           github_access_token: ${{ secrets.GITHUB_TOKEN }}
@@ -94,7 +94,6 @@ jobs:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
           check-regexp: 'package pages.*'
           repo-token: ${{ secrets.GITHUB_TOKEN }}
-          wait-interval: 20
       - name: Build Web
         run: nix build .#pages -o dist/LogOut/
       - name: Lighthouse Audit
@@ -164,13 +163,12 @@ jobs:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
           check-regexp: 'package web.*'
           repo-token: ${{ secrets.GITHUB_TOKEN }}
-          wait-interval: 20
       - name: Build and Serve
         run: ./scripts/web-test.sh
       - name: Run Maestro Web Tests
         run: |
           set -o pipefail
-          nix develop -c maestro test maestro/web |& tee maestro_console.log
+          nix develop -c maestro test --headless maestro/web |& tee maestro_console.log
       - name: Upload Maestro Screenshots to Cloudinary
         if: failure() && github.event_name == 'pull_request'
         id: upload_screenshots

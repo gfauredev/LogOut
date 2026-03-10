@@ -17,20 +17,20 @@ jobs:
       id-token: write
     steps:
       - uses: actions/checkout@v4
+      - name: Sleep hoping Garnix evaluation will start after
+        run: sleep 30
       - name: Wait for Garnix flake.nix evaluation
         uses: lewagon/wait-on-check-action@v1.5.0
         with:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
           check-regexp: 'Evaluate flake.nix'
           repo-token: ${{ secrets.GITHUB_TOKEN }}
-          wait-interval: 40
       - name: Wait for Garnix pages package
         uses: lewagon/wait-on-check-action@v1.5.0
         with:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
           check-regexp: 'package pages.*'
           repo-token: ${{ secrets.GITHUB_TOKEN }}
-          wait-interval: 20
           fail-on-no-checks: false
       - uses: cachix/install-nix-action@v31.10.0
         with:
@@ -77,14 +77,12 @@ jobs:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
           check-regexp: 'Evaluate flake.nix'
           repo-token: ${{ secrets.GITHUB_TOKEN }}
-          wait-interval: 40
       - name: Wait for Garnix devShell
         uses: lewagon/wait-on-check-action@v1.5.0
         with:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
           check-regexp: 'devShell.*'
           repo-token: ${{ secrets.GITHUB_TOKEN }}
-          wait-interval: 20
           fail-on-no-checks: false
       - uses: cachix/install-nix-action@v31.10.0
         with:
