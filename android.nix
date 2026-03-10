@@ -109,9 +109,6 @@ let
       if [ -d "$GRADLE_USER_HOME/wrapper" ]; then
         cp -r "$GRADLE_USER_HOME/wrapper" "$out/wrapper"
       fi
-      if [ -d "$GRADLE_USER_HOME/notifications" ]; then
-        cp -r "$GRADLE_USER_HOME/notifications" "$out/notifications"
-      fi
 
       # Normalize for deterministic output:
       # Remove Gradle lock files, journals, and non-deterministic metadata
