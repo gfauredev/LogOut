@@ -100,6 +100,9 @@ let
       find $out -path "*/caches/modules-2/metadata-*/*.bin" -type f -delete 2>/dev/null || true
       # Remove non-deterministic Gradle transform metadata
       find $out -path "*/caches/*/transforms/*/metadata.bin" -type f -delete 2>/dev/null || true
+      find $out -type d -path "*/caches/*/transforms/*/transformed/aapt2-*-linux" | while read -r aapt2_dir; do
+        rm -rf "$(dirname "$aapt2_dir")"
+      done
       find $out -type d -path "*/caches/*/transforms/*" | while read -r transform_dir; do
         transform_name=$(basename "$transform_dir")
         if [[ "$transform_name" =~ ^[0-9a-f]+-[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$ ]]; then
@@ -143,6 +146,8 @@ rustPlatform.buildRustPackage {
     mkdir -p $GRADLE_USER_HOME
     cp -r ${gradleDeps}/* $GRADLE_USER_HOME/
     chmod -R u+w $GRADLE_USER_HOME
+    # First offline attempt may recreate aapt2 transforms from cached artifacts
+    dx build --android --release --offline || true
     # Patch aapt2 for NixOS
     ${patchAapt2}
     # Build APK with offline Gradle (deps already cached)
