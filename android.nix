@@ -97,7 +97,6 @@ let
       find $out -type d -path "*/caches/*/groovy-dsl" -exec rm -rf {} + 2>/dev/null || true
       find $out -type d -path "*/caches/*/kotlin-dsl" -exec rm -rf {} + 2>/dev/null || true
       find $out -type d -path "*/caches/*/javaCompile" -exec rm -rf {} + 2>/dev/null || true
-      find $out -path "*/caches/modules-2/metadata-*/*.bin" -type f -delete 2>/dev/null || true
       # Remove non-deterministic Gradle transform metadata
       find $out -path "*/caches/*/transforms/*/metadata.bin" -type f -delete 2>/dev/null || true
       find $out -type d -path "*/caches/*/transforms/*/transformed/aapt2-*-linux" | while read -r aapt2_dir; do
