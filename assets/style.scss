@@ -1,3 +1,4 @@
+// CSS entry point, Colors, Dimensions, Layout
 :root {
   // Structure Colors
   --article: #121212;
@@ -6,10 +7,11 @@
   --primary: white;
   --secondary: #a0a0a0;
   // Actions Colors
-  --add: #2e7dff; // Add / Create ➕
-  --edit: #e0e0e0; // Edit ✏️ and Save 💾 and Replay 🔄
-  --yes: #00ff94; // Confirm ✅ and Complete ☑️
-  --no: #ff3b30; // Delete 🗑️ and Cancel ❌✖️
+  --more: #2e7dff; // Increment +, Add +, Create ➕, New ➕ …
+  --less: #ff3b30; // Decrement -, Delete (permanently) 🗑️ …
+  --edit: #e0e0e0; // Edit ✏️, Repeat 🔁, Again 🔄 …
+  --save: #00ff94; // Save 💾, Complete ✅, Done ☑️, Ok ✔️ …
+  --no: #ff3b30; // Cancel ❌/✖️ … TODO Differentiate from Delete
   // Data Type Tag Colors
   --tag-category: #e67e22; // orange
   --tag-force: #3498db; // blue
@@ -48,9 +50,10 @@ body {
   min-height: 100vh;
 }
 
-@import "generic"; // Rules targetting an arbitrary number of elements
-@import "specific"; // Rules targetting one or a few precise elements page-wide
-@import "unique"; // Rules targetting one or a few precise elements site-wide
+@import "structure"; // Semantic nodes among the semantic hiearchical structure
+@import "component"; // Self-contained individual reusable components
+@import "unique"; // Self-contained unique non reusable components
+@import "context"; // Components altered by their (hierarchical) context
 // @media screen and (prefers-color-scheme: light) { @import "light" }
 // @media (pointer: fine) { @import "fine-pointer" } // Controls needing mouse
 // @media (pointer: none) { @import "no-pointer" } // Keyboard only control

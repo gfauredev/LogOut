@@ -1,4 +1,7 @@
-// Rules targetting an arbitrary number of elements per page or globally
+// Semantic hiearchical structure styles
+// Selector: HTML Types only, with eventual structural Operators like >, + …
+// TODO Reorg among component.scss, context.scss, structure.scss, unique.scss
+
 h2 {
   margin: 0 0 var(--spacing) 0;
   color: var(--primary);
@@ -14,7 +17,7 @@ p {
 }
 
 a {
-  color: var(--add);
+  color: var(--more);
   text-decoration: none;
 }
 
@@ -35,7 +38,7 @@ a.add {
   font-weight: bold;
   background: none;
   font-size: 1.1em;
-  border: 1px solid var(--add);
+  border: 1px solid var(--more);
 
   &:hover {
     opacity: 1;
@@ -134,7 +137,7 @@ label {
 
   >div {
     padding: 6px var(--spacing);
-    background: var(--add);
+    background: var(--more);
     color: white;
     border-radius: var(--radius);
     display: flex;
@@ -160,7 +163,7 @@ label {
 
 button.add,
 a.add {
-  background: var(--add); // Add / Create ➕
+  background: var(--more); // Add / Create ➕
   font-size: 2em; // Bare + sign
 }
 
@@ -170,7 +173,7 @@ a.edit {
 }
 
 button.yes {
-  border-color: var(--yes); // Confirm ✅ / Complete ✔️
+  border-color: var(--save); // Confirm ✅ / Complete ✔️
 }
 
 button.no {
@@ -227,15 +230,50 @@ article>header>ul {
     background: var(--separation);
     border-radius: var(--radius);
 
-    &.category { background: var(--tag-category); color: var(--primary); }
-    &.force { background: var(--tag-force); color: var(--primary); }
-    &.equipment { background: var(--tag-equipment); color: var(--primary); }
-    &.level { background: var(--tag-level); color: var(--on-light); }
-    &.primary-muscle { background: var(--tag-primary-muscle); color: var(--primary); }
-    &.secondary-muscle { background: var(--tag-secondary-muscle); color: var(--on-light); }
-    &.tag-strength { background: var(--tag-strength); color: var(--primary); }
-    &.tag-cardio { background: var(--tag-cardio); color: var(--primary); }
-    &.tag-static { background: var(--tag-static); color: var(--primary); }
+    &.category {
+      background: var(--tag-category);
+      color: var(--primary);
+    }
+
+    &.force {
+      background: var(--tag-force);
+      color: var(--primary);
+    }
+
+    &.equipment {
+      background: var(--tag-equipment);
+      color: var(--primary);
+    }
+
+    &.level {
+      background: var(--tag-level);
+      color: var(--on-light);
+    }
+
+    &.primary-muscle {
+      background: var(--tag-primary-muscle);
+      color: var(--primary);
+    }
+
+    &.secondary-muscle {
+      background: var(--tag-secondary-muscle);
+      color: var(--on-light);
+    }
+
+    &.tag-strength {
+      background: var(--tag-strength);
+      color: var(--primary);
+    }
+
+    &.tag-cardio {
+      background: var(--tag-cardio);
+      color: var(--primary);
+    }
+
+    &.tag-static {
+      background: var(--tag-static);
+      color: var(--primary);
+    }
   }
 }
 

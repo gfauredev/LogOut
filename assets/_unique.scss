@@ -1,4 +1,7 @@
-// Rules targetting one or a few precise elements on the whole site
+// Self-contained non reusable unique components
+// Selector: #ID or main.class
+// TODO Reorg among component.scss, context.scss, structure.scss, unique.scss
+
 #main>nav {
   position: sticky;
   bottom: 0;

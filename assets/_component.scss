@@ -1,4 +1,7 @@
-// Rules targetting one or a few precise elements per page
+// Self-contained reusable individual components
+// Selector: Class, eventually preceded by a Type, eventual pseudo-element(s)
+// TODO Reorg among component.scss, context.scss, structure.scss, unique.scss
+
 #main {
   display: flex;
   flex-direction: column;
@@ -158,8 +161,8 @@ ul.results {
   padding: var(--spacing) var(--spacing);
   font-size: 1.2em;
   font-weight: bold;
-  background: color-mix(in srgb, var(--yes) 15%, transparent);
-  color: var(--yes);
+  background: color-mix(in srgb, var(--save) 15%, transparent);
+  color: var(--save);
   border-bottom: 1px solid var(--separation);
 
   &.exceeded {
@@ -177,7 +180,7 @@ ul.results {
   margin-bottom: var(--spacing);
 
   &.reached {
-    color: var(--yes);
+    color: var(--save);
   }
 }
 
@@ -233,7 +236,7 @@ main.edit>div {
   position: fixed;
   bottom: 10%;
   right: var(--spacing);
-  background: color-mix(in srgb, var(--yes) 70%, transparent);
+  background: color-mix(in srgb, var(--save) 70%, transparent);
   padding: var(--spacing);
   border-radius: var(--radius);
   font-weight: bold;
