@@ -7,7 +7,6 @@ KEY_ALIAS=${ANDROID_KEY_ALIAS:-"logout-key"}
 if [ -z "$APK_PATH" ]; then
   APK_PATH=$(find target/dx/log-out/release/android/ -name "*.apk" | head -n 1)
 fi
-
 if [ ! -f "$APK_PATH" ]; then
   echo "Error: File $APK_PATH not found."
   exit 1
