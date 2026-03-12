@@ -49,7 +49,7 @@ let
     # FOD: allows network access, output verified by hash
     outputHashAlgo = "sha256";
     outputHashMode = "recursive";
-    outputHash = lib.fakeHash;
+    outputHash = "sha256-Y421yD8GDa+sb/M3sJZ/KMs7r7adifBX0LJzrEDDyDU=";
     # outputHash = lib.fakeHash; # Use if dependencies change
     ANDROID_HOME = androidHome;
     ANDROID_NDK_HOME = androidNdkHome;
@@ -121,7 +121,6 @@ let
     '';
     dontFixup = true;
   };
-
 in
 rustPlatform.buildRustPackage {
   pname = "logout-android";
@@ -151,7 +150,7 @@ rustPlatform.buildRustPackage {
     # Patch aapt2 for NixOS
     ${patchAapt2}
     # Build APK with offline Gradle (deps already cached)
-    dx build --android --release --offline
+    dx build --android --release --offline # --locked
   '';
   installPhase = ''
     mkdir -p "$out"
@@ -168,5 +167,4 @@ rustPlatform.buildRustPackage {
     # Install the single APK with a stable filename
     cp "''${apks[0]}" "$out/logout-android.apk"
   '';
-  doCheck = false;
 }
