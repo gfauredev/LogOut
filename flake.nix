@@ -19,8 +19,7 @@
     }:
     let
       forAllSystems = nixpkgs.lib.genAttrs [
-        "x86_64-linux"
-        # "aarch64-linux"
+        "x86_64-linux" # "aarch64-linux"
         "aarch64-darwin"
       ];
       nixpkgsFor = forAllSystems (
@@ -50,7 +49,6 @@
               "wasm32-unknown-unknown"
               "aarch64-linux-android"
               "x86_64-linux-android"
-              # "armv7-linux-androideabi"
             ];
           };
           rustPlatform = pkgs.makeRustPlatform {
@@ -94,6 +92,13 @@
             ungoogled-chromium
             unzip
           ];
+          androidNativeBuildInputs = with pkgs; [
+            cargo-ndk
+            android-tools
+            androidComposition.androidsdk
+            androidComposition.ndk-bundle
+            openjdk
+          ];
           commonBuildInputs = [
             pkgs.openssl
           ]
@@ -109,6 +114,7 @@
             rustPlatform
             androidComposition
             commonNativeBuildInputs
+            androidNativeBuildInputs
             commonBuildInputs
             ;
         };
@@ -131,16 +137,9 @@
               vscode-langservers-extracted # HTML/CSS/JS(ON)
               yaml-language-server # YAML LSP
             ];
-            nativeBuildInputs =
-              env.commonNativeBuildInputs
-              ++ (with env.pkgs; [
-                cargo-ndk
-                android-tools
-                env.androidComposition.androidsdk
-                env.androidComposition.ndk-bundle
-                openjdk
-              ]);
+            nativeBuildInputs = env.commonNativeBuildInputs ++ env.androidNativeBuildInputs;
             buildInputs = env.commonBuildInputs;
+            # TODO Consider merging with Android package
             ANDROID_HOME = "${env.androidComposition.androidsdk}/libexec/android-sdk";
             ANDROID_NDK_HOME = "${env.androidComposition.ndk-bundle}/libexec/android-sdk/ndk-bundle";
             GRADLE_USER_HOME = "$PWD/.gradle";
@@ -196,7 +195,6 @@
                 mkdir -p $out
                 cp -r target/dx/log-out/release/web/public/* $out/
               '';
-              doCheck = true;
               preCheck = ''
                 export HOME=$TMPDIR/fake-home
                 export XDG_DATA_HOME=$HOME/.local/share
@@ -218,7 +216,7 @@
             inherit self;
           };
           default = env.pkgs.symlinkJoin {
-            name = "log-out-all";
+            name = "logout-all";
             paths = [
               self.packages.${system}.web
               self.packages.${system}.pages
@@ -249,7 +247,6 @@
               cargo clippy --all-targets -- -D warnings -W clippy::all -W clippy::pedantic
             '';
             installPhase = "touch $out";
-            doCheck = false;
           };
           coverage = env.rustPlatform.buildRustPackage {
             pname = "logout-coverage";
@@ -269,7 +266,6 @@
                 --json > $out/coverage.json
             '';
             installPhase = "true";
-            doCheck = false;
           };
         }
       );
