@@ -1289,9 +1289,18 @@ mod tests {
         }"#;
         let lang: DbI18nLang = serde_json::from_str(json).unwrap();
         assert_eq!(lang.force.get("push").map(String::as_str), Some("poussée"));
-        assert_eq!(lang.level.get("beginner").map(String::as_str), Some("débutant"));
-        assert_eq!(lang.category.get("strength").map(String::as_str), Some("musculation"));
-        assert_eq!(lang.muscles.get("chest").map(String::as_str), Some("pectoraux"));
+        assert_eq!(
+            lang.level.get("beginner").map(String::as_str),
+            Some("débutant")
+        );
+        assert_eq!(
+            lang.category.get("strength").map(String::as_str),
+            Some("musculation")
+        );
+        assert_eq!(
+            lang.muscles.get("chest").map(String::as_str),
+            Some("pectoraux")
+        );
     }
 
     #[test]
@@ -1313,7 +1322,10 @@ mod tests {
         let entry: ExerciseLangEntry = serde_json::from_str(json).unwrap();
         assert_eq!(entry.id, "bench_press");
         assert_eq!(entry.name.as_deref(), Some("Développé Couché"));
-        assert!(entry.instructions.is_none(), "instructions should be None when absent");
+        assert!(
+            entry.instructions.is_none(),
+            "instructions should be None when absent"
+        );
     }
 
     #[test]
@@ -1322,7 +1334,10 @@ mod tests {
         let json = r#"{"id":"squat","name":"Squat","instructions":["Étape 1","Étape 2"]}"#;
         let entry: ExerciseLangEntry = serde_json::from_str(json).unwrap();
         assert_eq!(entry.id, "squat");
-        assert_eq!(entry.instructions.as_deref(), Some(&["Étape 1".to_owned(), "Étape 2".to_owned()][..]));
+        assert_eq!(
+            entry.instructions.as_deref(),
+            Some(&["Étape 1".to_owned(), "Étape 2".to_owned()][..])
+        );
     }
 
     #[test]
