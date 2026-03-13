@@ -1,6 +1,5 @@
 on:
   pull_request:
-  # push: {branches: [main]}
 
 permissions:
   pull-requests: write
@@ -15,132 +14,123 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - uses: actions/checkout@v6
-      - name: Sleep hoping Garnix evaluation will start after
-        run: sleep 30
-      - name: Wait for Garnix flake.nix evaluation
-        uses: lewagon/wait-on-check-action@v1
-        with:
-          ref: ${{ github.event.pull_request.head.sha || github.sha }}
-          check-regexp: 'Evaluate flake.nix'
-          repo-token: ${{ secrets.GITHUB_TOKEN }}
-      - name: Wait for Garnix coverage check
-        uses: lewagon/wait-on-check-action@v1
-        continue-on-error: true
-        with:
-          ref: ${{ github.event.pull_request.head.sha || github.sha }}
-          check-regexp: 'check coverage.*'
-          repo-token: ${{ secrets.GITHUB_TOKEN }}
-      - uses: cachix/install-nix-action@v31
-        with:
-          github_access_token: ${{ secrets.GITHUB_TOKEN }}
-          extra_nix_config: |
-            extra-substituters = https://cache.garnix.io
-            extra-trusted-public-keys = cache.garnix.io:CTFPyKSLcx5RMJKfLo5EEPUObbA78b0YQ2DTCJXqr9g=
-      - uses: DeterminateSystems/magic-nix-cache-action@v13
-      - name: Fetch Coverage from Garnix
-        run: nix build .#checks.x86_64-linux.coverage -o coverage
-      - name: Process Coverage Report
-        id: coverage_report
-        run: |
-          REPORT=$(grep -o "<table>.*</table>" coverage/html/index.html)
-          PERCENT=$(jq '.data[0].totals.lines.percent' coverage/coverage.json)
-          echo "REPORT<<EOF" >> $GITHUB_OUTPUT
-          echo -e "$REPORT" >> $GITHUB_OUTPUT
-          echo "EOF" >> $GITHUB_OUTPUT
-          echo "PERCENT=$PERCENT" >> $GITHUB_OUTPUT
-          echo "Coverage is $PERCENT%"
-          if (( $(echo "$PERCENT < 80" | bc -l) )); then
-            echo "❌ Coverage below 80%"
-            echo "FAILED=true" >> $GITHUB_OUTPUT # Store failure for next step
-          else
-            echo "✅ Coverage above 80%"
-          fi
-
-      - name: Post Coverage Comment
-        if: always() && github.event_name == 'pull_request'
-        uses: peter-evans/create-or-update-comment@v4
-        with:
-          issue-number: ${{ github.event.pull_request.number }}
-          body: |
-            ### 📊 Coverage Report
-            
-            ${{ steps.coverage_report.outputs.REPORT }}
-
-      - name: Check Coverage Threshold
-        run: |
-          if [ "${{ steps.coverage_report.outputs.FAILED }}" == "true" ]; then
-            exit 1
-          fi
+    - uses: actions/checkout@v6
+    - run: sleep 30 #  Sleep hoping Garnix evaluation will start after
+    - uses: lewagon/wait-on-check-action@v1
+      with:
+        ref: ${{ github.event.pull_request.head.sha || github.sha }}
+        check-regexp: 'Evaluate flake.nix'
+        repo-token: ${{ secrets.GITHUB_TOKEN }}
+    - uses: lewagon/wait-on-check-action@v1
+      with:
+        ref: ${{ github.event.pull_request.head.sha || github.sha }}
+        check-regexp: 'check coverage.*'
+        repo-token: ${{ secrets.GITHUB_TOKEN }}
+        fail-on-no-checks: false
+    - uses: cachix/install-nix-action@v31
+      with:
+        github_access_token: ${{ secrets.GITHUB_TOKEN }}
+        extra_nix_config: |
+          extra-substituters = https://cache.garnix.io
+          extra-trusted-public-keys = cache.garnix.io:CTFPyKSLcx5RMJKfLo5EEPUObbA78b0YQ2DTCJXqr9g=
+    - uses: DeterminateSystems/magic-nix-cache-action@v13
+    - run: nix build .#checks.x86_64-linux.coverage -o coverage # From Garnix
+    - run: | # Process Coverage
+        REPORT=$(grep -o "<table>.*</table>" coverage/html/index.html)
+        PERCENT=$(jq '.data[0].totals.lines.percent' coverage/coverage.json)
+        echo "REPORT<<EOF" >> $GITHUB_OUTPUT
+        echo -e "$REPORT" >> $GITHUB_OUTPUT
+        echo "EOF" >> $GITHUB_OUTPUT
+        echo "PERCENT=$PERCENT" >> $GITHUB_OUTPUT
+        echo "Coverage is $PERCENT%"
+        if (( $(echo "$PERCENT < 80" | bc -l) )); then
+          echo "❌ Coverage below 80%"
+          echo "FAILED=true" >> $GITHUB_OUTPUT # Store failure for next step
+        else
+          echo "✅ Coverage above 80%"
+        fi
+      id: coverage_report
+    - if: always() && github.event_name == 'pull_request'
+      uses: peter-evans/create-or-update-comment@v4
+      with:
+        issue-number: ${{ github.event.pull_request.number }}
+        body: |
+          ### 📊 Coverage Report
+          
+          ${{ steps.coverage_report.outputs.REPORT }}
+    - run: |
+        if [ "${{ steps.coverage_report.outputs.FAILED }}" == "true" ]; then
+          exit 1
+        fi
 
   lighthouse:
-    name: PageSpeed Lighthouse
+    name: Lighthouse PageSpeed
     needs: coverage
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v6
-      - uses: cachix/install-nix-action@v31
-        with:
-          github_access_token: ${{ secrets.GITHUB_TOKEN }}
-          extra_nix_config: |
-            extra-substituters = https://cache.garnix.io
-            extra-trusted-public-keys = cache.garnix.io:CTFPyKSLcx5RMJKfLo5EEPUObbA78b0YQ2DTCJXqr9g=
-      - uses: DeterminateSystems/magic-nix-cache-action@v13
-      - name: Wait for Garnix pages package
-        uses: lewagon/wait-on-check-action@v1
-        continue-on-error: true
-        with:
-          ref: ${{ github.event.pull_request.head.sha || github.sha }}
-          check-regexp: 'package pages.*'
-          repo-token: ${{ secrets.GITHUB_TOKEN }}
-      - name: Build Web
-        run: nix build .#pages -o dist/LogOut/
-      - name: Lighthouse Audit
-        id: lighthouse_audit
-        uses: treosh/lighthouse-ci-action@v12
-        with:
-          urls: http://localhost/LogOut/
-          uploadArtifacts: true
-          temporaryPublicStorage: true
-          configPath: .lighthouserc.json
-        env:
-          LHCI_COLLECT_STATIC_DIST_DIR: ./dist
-
-      - name: Parse Lighthouse Results
-        if: always() && github.event_name == 'pull_request'
-        id: lighthouse_results
-        run: |
-          TMPFILE=$(mktemp)
-          echo "### 🚀 Lighthouse Audit" > "$TMPFILE"
-          if [ -f .lighthouseci/manifest.json ]; then
-            echo "" >> "$TMPFILE"
-            echo "| URL | Performance | Accessibility | Best Practices | SEO |" >> "$TMPFILE"
-            echo "| --- | --- | --- | --- | --- |" >> "$TMPFILE"
-            jq -r '.[] |
-              (.url | sub("http://localhost:[0-9]*/"; "")) as $url |
-              (.summary.performance // 0 | . * 100 | floor) as $perf |
-              (.summary.accessibility // 0 | . * 100 | floor) as $a11y |
-              (.summary["best-practices"] // 0 | . * 100 | floor) as $bp |
-              (.summary.seo // 0 | . * 100 | floor) as $seo |
-              "| `\($url)` | \($perf) | \($a11y) | \($bp) | \($seo) |"
-            ' .lighthouseci/manifest.json >> "$TMPFILE"
-          fi
-          LINKS='${{ steps.lighthouse_audit.outputs.links }}'
-          if [ -n "$LINKS" ] && echo "$LINKS" | jq empty 2>/dev/null; then
-            echo "" >> "$TMPFILE"
-            echo "**Full reports:**" >> "$TMPFILE"
-            echo "$LINKS" | jq -r 'to_entries[] | "- [\(.key | sub("http://localhost:[0-9]*/"; ""))](\(.value))"' >> "$TMPFILE"
-          fi
-          echo "BODY<<EOF" >> $GITHUB_OUTPUT
-          cat "$TMPFILE" >> $GITHUB_OUTPUT
-          echo "EOF" >> $GITHUB_OUTPUT
-      - name: Post Lighthouse Comment
-        if: always() && github.event_name == 'pull_request'
-        uses: peter-evans/create-or-update-comment@v4
-        with:
-          issue-number: ${{ github.event.pull_request.number }}
-          body: ${{ steps.lighthouse_results.outputs.BODY }}
+    - uses: actions/checkout@v6
+    - run: sleep 30 #  Sleep hoping Garnix evaluation will start after
+    - uses: lewagon/wait-on-check-action@v1
+      with:
+        ref: ${{ github.event.pull_request.head.sha || github.sha }}
+        check-regexp: 'Evaluate flake.nix'
+        repo-token: ${{ secrets.GITHUB_TOKEN }}
+    - uses: lewagon/wait-on-check-action@v1
+      with:
+        ref: ${{ github.event.pull_request.head.sha || github.sha }}
+        check-regexp: 'package pages.*'
+        repo-token: ${{ secrets.GITHUB_TOKEN }}
+        fail-on-no-checks: false
+    - uses: cachix/install-nix-action@v31
+      with:
+        github_access_token: ${{ secrets.GITHUB_TOKEN }}
+        extra_nix_config: |
+          extra-substituters = https://cache.garnix.io
+          extra-trusted-public-keys = cache.garnix.io:CTFPyKSLcx5RMJKfLo5EEPUObbA78b0YQ2DTCJXqr9g=
+    - uses: DeterminateSystems/magic-nix-cache-action@v13
+    - run: nix build .#pages -o dist/LogOut/
+    - uses: treosh/lighthouse-ci-action@v12
+      with:
+        urls: http://localhost/LogOut/
+        uploadArtifacts: true
+        temporaryPublicStorage: true
+        configPath: .lighthouserc.json
+      env:
+        LHCI_COLLECT_STATIC_DIST_DIR: ./dist
+      id: lighthouse_audit
+    - if: always() && github.event_name == 'pull_request'
+      run: |
+        TMPFILE=$(mktemp)
+        echo "### 🚀 Lighthouse Audit" > "$TMPFILE"
+        if [ -f .lighthouseci/manifest.json ]; then
+          echo "" >> "$TMPFILE"
+          echo "| URL | Performance | Accessibility | Best Practices | SEO |" >> "$TMPFILE"
+          echo "| --- | --- | --- | --- | --- |" >> "$TMPFILE"
+          jq -r '.[] |
+            (.url | sub("http://localhost:[0-9]*/"; "")) as $url |
+            (.summary.performance // 0 | . * 100 | floor) as $perf |
+            (.summary.accessibility // 0 | . * 100 | floor) as $a11y |
+            (.summary["best-practices"] // 0 | . * 100 | floor) as $bp |
+            (.summary.seo // 0 | . * 100 | floor) as $seo |
+            "| `\($url)` | \($perf) | \($a11y) | \($bp) | \($seo) |"
+          ' .lighthouseci/manifest.json >> "$TMPFILE"
+        fi
+        LINKS='${{ steps.lighthouse_audit.outputs.links }}'
+        if [ -n "$LINKS" ] && echo "$LINKS" | jq empty 2>/dev/null; then
+          echo "" >> "$TMPFILE"
+          echo "**Full reports:**" >> "$TMPFILE"
+          echo "$LINKS" | jq -r 'to_entries[] | "- [\(.key | sub("http://localhost:[0-9]*/"; ""))](\(.value))"' >> "$TMPFILE"
+        fi
+        echo "BODY<<EOF" >> $GITHUB_OUTPUT
+        cat "$TMPFILE" >> $GITHUB_OUTPUT
+        echo "EOF" >> $GITHUB_OUTPUT
+      id: lighthouse_results
+    - if: always() && github.event_name == 'pull_request'
+      uses: peter-evans/create-or-update-comment@v4
+      with:
+        issue-number: ${{ github.event.pull_request.number }}
+        body: ${{ steps.lighthouse_results.outputs.BODY }}
 
   e2e-web:
     name: Web End-to-End (Maestro)
