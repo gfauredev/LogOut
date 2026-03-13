@@ -859,6 +859,7 @@ mod tests {
             instructions: vec![],
             category: Category::Strength,
             images: vec![],
+            i18n: None,
         }
     }
 

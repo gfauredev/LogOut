@@ -61,6 +61,7 @@ pub fn EditExercise(id: String) -> Element {
             secondary_muscles: secondary_muscles_list.read().clone(),
             instructions: instructions_list.read().clone(),
             images: images_list.read().clone(),
+            i18n: None,
         };
 
         storage::update_custom_exercise(updated);

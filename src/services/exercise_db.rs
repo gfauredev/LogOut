@@ -211,12 +211,29 @@ pub fn search_exercises<'a>(exercises: &'a [Exercise], query: &str) -> Vec<&'a E
                 || exercise
                     .force
                     .is_some_and(|f| f.as_ref().contains(&query_lower))
-                || exercise
-                    .equipment
-                    .is_some_and(|e| e.as_ref().contains(&query_lower))
+                || {
+                    // Schema2: no-equipment means body-only.  Treat `None`
+                    // equipment as "body only" so searches for "body only" or
+                    // "bodyweight" still find these exercises.
+                    let equipment_str = match exercise.equipment {
+                        Some(e) => e.as_ref().to_owned(),
+                        None => "body only".to_owned(),
+                    };
+                    equipment_str.contains(&query_lower)
+                }
                 || exercise
                     .level
                     .is_some_and(|l| l.as_ref().contains(&query_lower))
+                || {
+                    // Schema2 normalised IDs (lowercase, underscores) work as
+                    // additional search tokens.  Underscores and hyphens are
+                    // treated as word separators so "pistol squat" finds
+                    // "kettlebell_pistol_squat".
+                    let id_words = exercise.id.to_lowercase().replace(['_', '-'], " ");
+                    id_words.contains(&query_lower)
+                        || (!tokens.is_empty()
+                            && tokens.iter().all(|t| id_words.contains(t.as_str())))
+                }
         })
         .collect()
 }
@@ -275,6 +292,7 @@ mod tests {
                 instructions: vec![],
                 category: Category::Strength,
                 images: vec![],
+                i18n: None,
             }
             .with_lowercase(),
             Exercise {
@@ -290,6 +308,7 @@ mod tests {
                 instructions: vec![],
                 category: Category::Strength,
                 images: vec![],
+                i18n: None,
             }
             .with_lowercase(),
             Exercise {
@@ -305,6 +324,7 @@ mod tests {
                 instructions: vec![],
                 category: Category::Cardio,
                 images: vec![],
+                i18n: None,
             }
             .with_lowercase(),
         ]
@@ -418,6 +438,7 @@ mod tests {
             instructions: vec![],
             category: Category::Strength,
             images: vec![],
+            i18n: None,
         }
         .with_lowercase()];
         let results = search_exercises(&exercises, "wide grip bench");
@@ -446,6 +467,7 @@ mod tests {
             instructions: vec![],
             category: Category::Strength,
             images: vec![],
+            i18n: None,
         }
         .with_lowercase()];
         let results = search_exercises(&exercises, "… pushups");
@@ -508,6 +530,7 @@ mod tests {
             instructions: vec![],
             category: crate::models::Category::Strength,
             images: vec![],
+            i18n: None,
         }];
         let found = resolve_exercise(&db, &custom, "custom_1");
         assert!(found.is_some());
@@ -531,6 +554,7 @@ mod tests {
             instructions: vec![],
             category: crate::models::Category::Strength,
             images: vec![],
+            i18n: None,
         }];
         let found = resolve_exercise(&db, &custom, "pull_up");
         assert_eq!(found.unwrap().name, "Pull-Up"); // DB entry wins
@@ -571,11 +595,45 @@ mod tests {
     }
 
     #[test]
-    fn search_with_none_equipment_does_not_match_equipment_query() {
+    fn search_with_body_only_equipment_matches_both_explicit_and_none() {
+        // Schema2: no-equipment (None) means body-only.  A "body only" search
+        // must therefore find both exercises with Equipment::BodyOnly AND those
+        // with equipment: None (i.e. all three sample exercises).
         let exercises = sample_exercises();
         let results = search_exercises(&exercises, "body only");
-        assert_eq!(results.len(), 1);
-        assert_eq!(results[0].id, "pull_up");
+        // pull_up has Equipment::BodyOnly, running has None equipment
+        let ids: Vec<&str> = results.iter().map(|e| e.id.as_str()).collect();
+        assert!(ids.contains(&"pull_up"), "BodyOnly exercise should match");
+        assert!(ids.contains(&"running"), "None-equipment exercise should match 'body only'");
+    }
+
+    #[test]
+    fn search_by_normalized_id() {
+        // ID-based search: an exercise with id "kettlebell_pistol_squat" should
+        // be found by the query "kettlebell" even when the name is abbreviated.
+        let exercises = vec![Exercise {
+            id: "kettlebell_pistol_squat".into(),
+            name: "KB Pistol Squat".into(),
+            name_lower: String::new(),
+            force: Some(Force::Push),
+            level: Some(Level::Intermediate),
+            mechanic: None,
+            equipment: Some(Equipment::Kettlebells),
+            primary_muscles: vec![Muscle::Quadriceps],
+            secondary_muscles: vec![],
+            instructions: vec![],
+            category: Category::Strength,
+            images: vec![],
+            i18n: None,
+        }
+        .with_lowercase()];
+        let results = search_exercises(&exercises, "kettlebell");
+        assert_eq!(
+            results.len(),
+            1,
+            "should find exercise by normalized ID token"
+        );
+        assert_eq!(results[0].id, "kettlebell_pistol_squat");
     }
 
     #[test]
@@ -662,6 +720,7 @@ mod tests {
             instructions: vec![],
             category: Category::Strength,
             images: vec![],
+            i18n: None,
         }];
         let results = search_exercises(&exercises, "quadriceps");
         assert_eq!(results.len(), 1);
@@ -683,6 +742,7 @@ mod tests {
             instructions: vec![],
             category: Category::Strength,
             images: vec![],
+            i18n: None,
         }];
         let results = search_exercises(&exercises, "glutes");
         assert_eq!(results.len(), 1);
@@ -704,6 +764,7 @@ mod tests {
             instructions: vec![],
             category: Category::Cardio,
             images: vec![],
+            i18n: None,
         }];
         // Search by category should match custom exercises too
         let results = search_exercises(&exercises, "cardio");

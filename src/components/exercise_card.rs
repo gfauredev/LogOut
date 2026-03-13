@@ -2,6 +2,7 @@ use crate::models::{get_current_timestamp, Exercise};
 use crate::services::storage;
 use crate::Route;
 use dioxus::prelude::*;
+use dioxus_i18n::{prelude::i18n, t};
 
 #[component]
 pub fn ExerciseCard(
@@ -14,6 +15,12 @@ pub fn ExerciseCard(
     let mut img_index = use_signal(|| 0usize);
     let image_count = exercise.images.len();
 
+    let lang = i18n().language();
+    let lang_str = lang.to_string();
+    let display_name = exercise.name_for_lang(&lang_str).to_owned();
+    let display_instructions: Vec<String> =
+        exercise.instructions_for_lang(&lang_str).to_vec();
+
     rsx! {
         article { key: "{exercise.id}",
             header {
@@ -22,12 +29,12 @@ pub fn ExerciseCard(
                         let current = *show_instructions.read();
                         show_instructions.set(!current);
                     },
-                    "{exercise.name}"
+                    "{display_name}"
                 }
                 if is_custom {
                     Link { class: "edit",
                         to: Route::EditExercise { id: exercise.id.clone() },
-                        title: "Edit",
+                        title: t!("exercise-edit"),
                         "✏️"
                     }
                 } else {
@@ -49,6 +56,7 @@ pub fn ExerciseCard(
                                     secondary_muscles: exercise.secondary_muscles.clone(),
                                     instructions: exercise.instructions.clone(),
                                     images: exercise.images.clone(),
+                                    i18n: None,
                                 };
                                 let clone_id = clone.id.clone();
                                 storage::add_custom_exercise(clone);
@@ -56,14 +64,14 @@ pub fn ExerciseCard(
                                     .push(Route::EditExercise { id: clone_id });
                             }
                         },
-                        title: "Clone then edit",
+                        title: t!("exercise-clone"),
                         "+"
                     }
                 }
             }
-            if *show_instructions.read() && !exercise.instructions.is_empty() {
+            if *show_instructions.read() && !display_instructions.is_empty() {
                 ol {
-                    for instruction in &exercise.instructions {
+                    for instruction in &display_instructions {
                         li { "{instruction}" }
                     }
                 }
@@ -71,7 +79,7 @@ pub fn ExerciseCard(
             if let Some(image_url) = exercise.get_image_url(*img_index.read()) {
                 img {
                     src: "{image_url}",
-                    alt: "{exercise.name}",
+                    alt: "{display_name}",
                     loading: "lazy",
                     onclick: move |_| {
                         if image_count > 1 {
