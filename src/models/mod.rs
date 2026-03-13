@@ -305,6 +305,48 @@ pub struct ExerciseI18n {
     pub instructions: Option<Vec<String>>,
 }
 
+/// Translations for enum display values for a single language, as loaded from
+/// `i18n.json` in the exercise database release assets.
+///
+/// Each field maps English enum values (lowercased) to their translation.
+/// For example, `category["strength"]` → `"musculation"` in French.
+#[derive(Debug, Clone, Serialize, Deserialize, Default, PartialEq)]
+pub struct DbI18nLang {
+    #[serde(default)]
+    pub force: HashMap<String, String>,
+    #[serde(default)]
+    pub level: HashMap<String, String>,
+    #[serde(default)]
+    pub mechanic: HashMap<String, String>,
+    #[serde(default)]
+    pub equipment: HashMap<String, String>,
+    #[serde(default)]
+    pub category: HashMap<String, String>,
+    #[serde(default)]
+    pub muscles: HashMap<String, String>,
+}
+
+/// Full enum-translation map keyed by BCP-47 language tag (e.g. `"fr"`, `"es"`).
+///
+/// Loaded once from `i18n.json` and stored in the Dioxus context as
+/// [`DbI18nSignal`].
+pub type DbI18n = HashMap<String, DbI18nLang>;
+
+/// One entry from a per-language exercise translation file (e.g.
+/// `exercises.fr.json`).  Only `id` is required; `name` and `instructions` are
+/// optional so partial translations are handled gracefully.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct ExerciseLangEntry {
+    /// Must match [`Exercise::id`] to locate the exercise to update.
+    pub id: String,
+    /// Translated exercise name.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub name: Option<String>,
+    /// Translated step-by-step instructions.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub instructions: Option<Vec<String>>,
+}
+
 /// An exercise definition from the exercise database or created by the user.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct Exercise {
@@ -403,7 +445,7 @@ impl Exercise {
             if img.starts_with("http://") || img.starts_with("https://") {
                 img.clone()
             } else {
-                let base_url = crate::utils::get_exercise_db_url();
+                let base_url = crate::utils::get_exercise_images_base_url();
                 format!("{base_url}{EXERCISES_IMAGE_SUB_PATH}{img}")
             }
         })
@@ -1232,6 +1274,55 @@ mod tests {
             !json.contains("\"i18n\""),
             "i18n should be absent when None"
         );
+    }
+
+    #[test]
+    fn db_i18n_lang_round_trip() {
+        use crate::models::DbI18nLang;
+        let json = r#"{
+            "force": {"push": "poussée", "pull": "traction"},
+            "level": {"beginner": "débutant"},
+            "mechanic": {},
+            "equipment": {"barbell": "barre"},
+            "category": {"strength": "musculation"},
+            "muscles": {"chest": "pectoraux"}
+        }"#;
+        let lang: DbI18nLang = serde_json::from_str(json).unwrap();
+        assert_eq!(lang.force.get("push").map(String::as_str), Some("poussée"));
+        assert_eq!(lang.level.get("beginner").map(String::as_str), Some("débutant"));
+        assert_eq!(lang.category.get("strength").map(String::as_str), Some("musculation"));
+        assert_eq!(lang.muscles.get("chest").map(String::as_str), Some("pectoraux"));
+    }
+
+    #[test]
+    fn db_i18n_lang_defaults_to_empty_maps() {
+        use crate::models::DbI18nLang;
+        let lang: DbI18nLang = serde_json::from_str("{}").unwrap();
+        assert!(lang.force.is_empty());
+        assert!(lang.level.is_empty());
+        assert!(lang.mechanic.is_empty());
+        assert!(lang.equipment.is_empty());
+        assert!(lang.category.is_empty());
+        assert!(lang.muscles.is_empty());
+    }
+
+    #[test]
+    fn exercise_lang_entry_deserialize_partial() {
+        use crate::models::ExerciseLangEntry;
+        let json = r#"{"id": "bench_press", "name": "Développé Couché"}"#;
+        let entry: ExerciseLangEntry = serde_json::from_str(json).unwrap();
+        assert_eq!(entry.id, "bench_press");
+        assert_eq!(entry.name.as_deref(), Some("Développé Couché"));
+        assert!(entry.instructions.is_none(), "instructions should be None when absent");
+    }
+
+    #[test]
+    fn exercise_lang_entry_deserialize_full() {
+        use crate::models::ExerciseLangEntry;
+        let json = r#"{"id":"squat","name":"Squat","instructions":["Étape 1","Étape 2"]}"#;
+        let entry: ExerciseLangEntry = serde_json::from_str(json).unwrap();
+        assert_eq!(entry.id, "squat");
+        assert_eq!(entry.instructions.as_deref(), Some(&["Étape 1".to_owned(), "Étape 2".to_owned()][..]));
     }
 
     #[test]

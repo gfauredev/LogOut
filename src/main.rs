@@ -54,6 +54,12 @@ pub struct ExerciseSearchSignal(pub Signal<Option<String>>);
 #[derive(Clone, Copy)]
 pub struct PendingDeepLinkSignal(pub Signal<Option<utils::DeepLinkAction>>);
 
+/// Global context signal for enum-value translations loaded from `i18n.json`.
+/// Provides translated labels for category, force, equipment, level and muscle
+/// names in the user's preferred language.
+#[derive(Clone, Copy)]
+pub struct DbI18nSignal(pub Signal<models::DbI18n>);
+
 #[derive(Clone, Routable, Debug, PartialEq)]
 #[rustfmt::skip]
 enum Route {
@@ -131,6 +137,7 @@ fn App() -> Element {
     // Provide shared state signals via context
     services::storage::provide_app_state();
     services::exercise_db::provide_exercises();
+    use_context_provider(|| DbI18nSignal(Signal::new(models::DbI18n::default())));
     use_context_provider(|| CongratulationsSignal(Signal::new(false)));
     use_context_provider(|| ToastSignal(Signal::new(None)));
     use_context_provider(|| NotificationPermissionToastSignal(Signal::new(false)));
