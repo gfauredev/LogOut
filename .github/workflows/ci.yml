@@ -15,7 +15,14 @@ jobs:
     timeout-minutes: 5
     steps:
     - uses: actions/checkout@v6
-    - run: sleep 30 #  Sleep hoping Garnix evaluation will start after
+    - uses: cachix/install-nix-action@v31
+      with:
+        github_access_token: ${{ secrets.GITHUB_TOKEN }}
+        extra_nix_config: |
+          extra-substituters = https://cache.garnix.io
+          extra-trusted-public-keys = cache.garnix.io:CTFPyKSLcx5RMJKfLo5EEPUObbA78b0YQ2DTCJXqr9g=
+    - uses: DeterminateSystems/magic-nix-cache-action@v13
+    - run: sleep 15 #  Sleep hoping Garnix evaluation will start after
     - uses: lewagon/wait-on-check-action@v1
       with:
         ref: ${{ github.event.pull_request.head.sha || github.sha }}
@@ -27,13 +34,6 @@ jobs:
         check-regexp: 'check coverage.*'
         repo-token: ${{ secrets.GITHUB_TOKEN }}
         fail-on-no-checks: false
-    - uses: cachix/install-nix-action@v31
-      with:
-        github_access_token: ${{ secrets.GITHUB_TOKEN }}
-        extra_nix_config: |
-          extra-substituters = https://cache.garnix.io
-          extra-trusted-public-keys = cache.garnix.io:CTFPyKSLcx5RMJKfLo5EEPUObbA78b0YQ2DTCJXqr9g=
-    - uses: DeterminateSystems/magic-nix-cache-action@v13
     - run: nix build .#checks.x86_64-linux.coverage -o coverage # From Garnix
     - run: | # Process Coverage
         REPORT=$(grep -o "<table>.*</table>" coverage/html/index.html)
@@ -70,7 +70,14 @@ jobs:
     timeout-minutes: 20
     steps:
     - uses: actions/checkout@v6
-    - run: sleep 30 #  Sleep hoping Garnix evaluation will start after
+    - uses: cachix/install-nix-action@v31
+      with:
+        github_access_token: ${{ secrets.GITHUB_TOKEN }}
+        extra_nix_config: |
+          extra-substituters = https://cache.garnix.io
+          extra-trusted-public-keys = cache.garnix.io:CTFPyKSLcx5RMJKfLo5EEPUObbA78b0YQ2DTCJXqr9g=
+    - uses: DeterminateSystems/magic-nix-cache-action@v13
+    - run: sleep 15 #  Sleep hoping Garnix evaluation will start after
     - uses: lewagon/wait-on-check-action@v1
       with:
         ref: ${{ github.event.pull_request.head.sha || github.sha }}
@@ -82,13 +89,6 @@ jobs:
         check-regexp: 'package pages.*'
         repo-token: ${{ secrets.GITHUB_TOKEN }}
         fail-on-no-checks: false
-    - uses: cachix/install-nix-action@v31
-      with:
-        github_access_token: ${{ secrets.GITHUB_TOKEN }}
-        extra_nix_config: |
-          extra-substituters = https://cache.garnix.io
-          extra-trusted-public-keys = cache.garnix.io:CTFPyKSLcx5RMJKfLo5EEPUObbA78b0YQ2DTCJXqr9g=
-    - uses: DeterminateSystems/magic-nix-cache-action@v13
     - run: nix build .#pages -o dist/LogOut/
     - uses: treosh/lighthouse-ci-action@v12
       with:
@@ -139,7 +139,14 @@ jobs:
     timeout-minutes: 20
     steps:
     - uses: actions/checkout@v6
-    - run: sleep 30 #  Sleep hoping Garnix evaluation will start after
+    - uses: cachix/install-nix-action@v31
+      with:
+        github_access_token: ${{ secrets.GITHUB_TOKEN }}
+        extra_nix_config: |
+          extra-substituters = https://cache.garnix.io
+          extra-trusted-public-keys = cache.garnix.io:CTFPyKSLcx5RMJKfLo5EEPUObbA78b0YQ2DTCJXqr9g=
+    - uses: DeterminateSystems/magic-nix-cache-action@v13
+    - run: sleep 15 #  Sleep hoping Garnix evaluation will start after
     - uses: lewagon/wait-on-check-action@v1
       with:
         ref: ${{ github.event.pull_request.head.sha || github.sha }}
@@ -151,13 +158,6 @@ jobs:
         check-regexp: 'package pages.*'
         repo-token: ${{ secrets.GITHUB_TOKEN }}
         fail-on-no-checks: false
-    - uses: cachix/install-nix-action@v31
-      with:
-        github_access_token: ${{ secrets.GITHUB_TOKEN }}
-        extra_nix_config: |
-          extra-substituters = https://cache.garnix.io
-          extra-trusted-public-keys = cache.garnix.io:CTFPyKSLcx5RMJKfLo5EEPUObbA78b0YQ2DTCJXqr9g=
-    - uses: DeterminateSystems/magic-nix-cache-action@v13
     - run: ./scripts/web-test.sh # Build & Serve
     - run: |
         set -o pipefail
