@@ -6,60 +6,45 @@ on:
       - 'v*'
 
 jobs:
-  deploy-pwa:
-    name: Deploy PWA
+  pwa:
+    name: Build & Deploy PWA
     if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     timeout-minutes: 30
-    permissions:
-      contents: write
-      pages: write
-      id-token: write
-    steps:
-      - uses: actions/checkout@v6
-      - name: Sleep hoping Garnix evaluation will start after
-        run: sleep 30
-      - name: Wait for Garnix flake.nix evaluation
-        uses: lewagon/wait-on-check-action@v1
-        with:
-          ref: ${{ github.event.pull_request.head.sha || github.sha }}
-          check-regexp: 'Evaluate flake.nix'
-          repo-token: ${{ secrets.GITHUB_TOKEN }}
-      - name: Wait for Garnix pages package
-        uses: lewagon/wait-on-check-action@v1
-        with:
-          ref: ${{ github.event.pull_request.head.sha || github.sha }}
-          check-regexp: 'package pages.*'
-          repo-token: ${{ secrets.GITHUB_TOKEN }}
-          fail-on-no-checks: false
-      - uses: cachix/install-nix-action@v31
-        with:
-          github_access_token: ${{ secrets.GITHUB_TOKEN }}
-          extra_nix_config: |
-            extra-substituters = https://cache.garnix.io
-            extra-trusted-public-keys = cache.garnix.io:CTFPyKSLcx5RMJKfLo5EEPUObbA78b0YQ2DTCJXqr9g=
-      - uses: DeterminateSystems/magic-nix-cache-action@v13
-      - name: Build Web for GitHub Pages
-        run: nix build .#pages -o dist
-      - name: Upload artifact
-        uses: actions/upload-pages-artifact@v3
-        with:
-          path: ./dist
-
-  deploy:
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
-    runs-on: ubuntu-latest
-    needs: deploy-pwa
-    if: github.ref == 'refs/heads/main'
     permissions:
+      contents: read
       pages: write
       id-token: write
     steps:
-      - name: Deploy to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v4
+    - uses: actions/checkout@v6
+    - run: sleep 30 #  Sleep hoping Garnix evaluation will start after
+    - uses: lewagon/wait-on-check-action@v1
+      with:
+        ref: ${{ github.event.pull_request.head.sha || github.sha }}
+        check-regexp: 'Evaluate flake.nix'
+        repo-token: ${{ secrets.GITHUB_TOKEN }}
+    - uses: lewagon/wait-on-check-action@v1
+      with:
+        ref: ${{ github.event.pull_request.head.sha || github.sha }}
+        check-regexp: 'package pages.*'
+        repo-token: ${{ secrets.GITHUB_TOKEN }}
+        fail-on-no-checks: false
+    - uses: cachix/install-nix-action@v31
+      with:
+        github_access_token: ${{ secrets.GITHUB_TOKEN }}
+        extra_nix_config: |
+          extra-substituters = https://cache.garnix.io
+          extra-trusted-public-keys = cache.garnix.io:CTFPyKSLcx5RMJKfLo5EEPUObbA78b0YQ2DTCJXqr9g=
+    - uses: DeterminateSystems/magic-nix-cache-action@v13
+    - run: nix build .#pages -o dist
+    - uses: actions/upload-pages-artifact@v4
+      with:
+        path: ./dist
+    - uses: actions/deploy-pages@v4
+      id: deployment
 
   release-android:
     name: Release Android
