@@ -1202,7 +1202,10 @@ mod tests {
         // Verify that the i18n field serialises and deserialises correctly.
         let ex = make_i18n_exercise();
         let json = serde_json::to_string(&ex).unwrap();
-        assert!(json.contains("\"i18n\""), "i18n should be present when Some");
+        assert!(
+            json.contains("\"i18n\""),
+            "i18n should be present when Some"
+        );
         let back: Exercise = serde_json::from_str(&json).unwrap();
         assert_eq!(back.i18n, ex.i18n);
     }

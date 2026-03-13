@@ -604,7 +604,10 @@ mod tests {
         // pull_up has Equipment::BodyOnly, running has None equipment
         let ids: Vec<&str> = results.iter().map(|e| e.id.as_str()).collect();
         assert!(ids.contains(&"pull_up"), "BodyOnly exercise should match");
-        assert!(ids.contains(&"running"), "None-equipment exercise should match 'body only'");
+        assert!(
+            ids.contains(&"running"),
+            "None-equipment exercise should match 'body only'"
+        );
     }
 
     #[test]
