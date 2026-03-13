@@ -51,7 +51,7 @@ jobs:
         fi
       id: coverage_report
     - if: always() && github.event_name == 'pull_request'
-      uses: peter-evans/create-or-update-comment@v4
+      uses: peter-evans/create-or-update-comment@v5
       with:
         issue-number: ${{ github.event.pull_request.number }}
         body: |
@@ -127,7 +127,7 @@ jobs:
         echo "EOF" >> $GITHUB_OUTPUT
       id: lighthouse_results
     - if: always() && github.event_name == 'pull_request'
-      uses: peter-evans/create-or-update-comment@v4
+      uses: peter-evans/create-or-update-comment@v5
       with:
         issue-number: ${{ github.event.pull_request.number }}
         body: ${{ steps.lighthouse_results.outputs.BODY }}
@@ -138,64 +138,64 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v6
-      - uses: cachix/install-nix-action@v31
-        with:
-          github_access_token: ${{ secrets.GITHUB_TOKEN }}
-          extra_nix_config: |
-            extra-substituters = https://cache.garnix.io
-            extra-trusted-public-keys = cache.garnix.io:CTFPyKSLcx5RMJKfLo5EEPUObbA78b0YQ2DTCJXqr9g=
-      - uses: DeterminateSystems/magic-nix-cache-action@v13
-      - name: Wait for Garnix web package
-        uses: lewagon/wait-on-check-action@v1
-        continue-on-error: true
-        with:
-          ref: ${{ github.event.pull_request.head.sha || github.sha }}
-          check-regexp: 'package pages.*'
-          repo-token: ${{ secrets.GITHUB_TOKEN }}
-      - name: Build and Serve
-        run: ./scripts/web-test.sh
-      - name: Run Maestro Web Tests
-        run: |
-          set -o pipefail
-          nix develop -c maestro test --headless maestro/web |& tee maestro_console.log
-      - name: Upload Maestro Screenshots to Cloudinary
-        if: failure() && github.event_name == 'pull_request'
-        id: upload_screenshots
-        env:
-          CLOUD_NAME: ${{ secrets.CLOUDINARY_CLOUD_NAME }}
-          UPLOAD_PRESET: ${{ secrets.CLOUDINARY_UPLOAD_PRESET }}
-        run: |
-          REPORT_BODY="### ❌ Maestro Web E2E Failures\n"
-          if [ -f maestro_console.log ]; then
-            # Use sed to strip ANSI escape codes for cleaner markdown
-            CLEAN_LOG=$(sed 's/\x1b\[[0-9;]*[mG]//g' maestro_console.log | tail -n 100)
-            REPORT_BODY="${REPORT_BODY}\n<details>\n<summary>📜 Maestro Console Output (Last 100 lines)</summary>\n\n\`\`\`text\n${CLEAN_LOG}\n\`\`\`\n</details>\n"
-          fi
-          if [ -n "$CLOUD_NAME" ] && [ -n "$UPLOAD_PRESET" ]; then
-            REPORT_BODY="${REPORT_BODY}\n#### 📸 Screenshots\n"
-            find ~/.maestro/tests/ -name "*.png" | while read -r img; do
-              echo "Uploading $img to Cloudinary (unsigned)..."
-              UPLOAD_URL="https://api.cloudinary.com/v1_1/${CLOUD_NAME}/image/upload"
-              RESULT=$(curl -s -X POST "$UPLOAD_URL" -F "file=@$img" -F "upload_preset=$UPLOAD_PRESET")
-              IMG_URL=$(echo "$RESULT" | jq -r '.secure_url')
-              if [ "$IMG_URL" != "null" ]; then
-                REPORT_BODY="${REPORT_BODY}\n- ![Screenshot]($IMG_URL)"
-              fi
-            done
-          fi
-          echo "REPORT_BODY<<EOF" >> $GITHUB_OUTPUT
-          echo -e "$REPORT_BODY" >> $GITHUB_OUTPUT
-          echo "EOF" >> $GITHUB_OUTPUT
-      - name: Post E2E Failure Comment
-        if: failure() && github.event_name == 'pull_request' && steps.upload_screenshots.outputs.REPORT_BODY != ''
-        uses: peter-evans/create-or-update-comment@v4
-        with:
-          issue-number: ${{ github.event.pull_request.number }}
-          body: ${{ steps.upload_screenshots.outputs.REPORT_BODY }}
-      - name: Upload Maestro Reports
-        if: failure()
-        uses: actions/upload-artifact@v7
-        with:
-          name: maestro-web-report
-          path: ~/.maestro/tests/
+    - uses: actions/checkout@v6
+    - run: sleep 30 #  Sleep hoping Garnix evaluation will start after
+    - uses: lewagon/wait-on-check-action@v1
+      with:
+        ref: ${{ github.event.pull_request.head.sha || github.sha }}
+        check-regexp: 'Evaluate flake.nix'
+        repo-token: ${{ secrets.GITHUB_TOKEN }}
+    - uses: lewagon/wait-on-check-action@v1
+      with:
+        ref: ${{ github.event.pull_request.head.sha || github.sha }}
+        check-regexp: 'package pages.*'
+        repo-token: ${{ secrets.GITHUB_TOKEN }}
+        fail-on-no-checks: false
+    - uses: cachix/install-nix-action@v31
+      with:
+        github_access_token: ${{ secrets.GITHUB_TOKEN }}
+        extra_nix_config: |
+          extra-substituters = https://cache.garnix.io
+          extra-trusted-public-keys = cache.garnix.io:CTFPyKSLcx5RMJKfLo5EEPUObbA78b0YQ2DTCJXqr9g=
+    - uses: DeterminateSystems/magic-nix-cache-action@v13
+    - run: ./scripts/web-test.sh # Build & Serve
+    - run: |
+        set -o pipefail
+        nix develop -c maestro test --headless maestro/web |& tee maestro_console.log
+    - if: failure() && github.event_name == 'pull_request'
+      env:
+        CLOUD_NAME: ${{ secrets.CLOUDINARY_CLOUD_NAME }}
+        UPLOAD_PRESET: ${{ secrets.CLOUDINARY_UPLOAD_PRESET }}
+      run: |
+        REPORT_BODY="### ❌ Maestro Web E2E Failures\n"
+        if [ -f maestro_console.log ]; then
+          # Use sed to strip ANSI escape codes for cleaner markdown
+          CLEAN_LOG=$(sed 's/\x1b\[[0-9;]*[mG]//g' maestro_console.log | tail -n 100)
+          REPORT_BODY="${REPORT_BODY}\n<details>\n<summary>📜 Maestro Console Output (Last 100 lines)</summary>\n\n\`\`\`text\n${CLEAN_LOG}\n\`\`\`\n</details>\n"
+        fi
+        if [ -n "$CLOUD_NAME" ] && [ -n "$UPLOAD_PRESET" ]; then
+          REPORT_BODY="${REPORT_BODY}\n#### 📸 Screenshots\n"
+          find ~/.maestro/tests/ -name "*.png" | while read -r img; do
+            echo "Uploading $img to Cloudinary (unsigned)..."
+            UPLOAD_URL="https://api.cloudinary.com/v1_1/${CLOUD_NAME}/image/upload"
+            RESULT=$(curl -s -X POST "$UPLOAD_URL" -F "file=@$img" -F "upload_preset=$UPLOAD_PRESET")
+            IMG_URL=$(echo "$RESULT" | jq -r '.secure_url')
+            if [ "$IMG_URL" != "null" ]; then
+              REPORT_BODY="${REPORT_BODY}\n- ![Screenshot]($IMG_URL)"
+            fi
+          done
+        fi
+        echo "REPORT_BODY<<EOF" >> $GITHUB_OUTPUT
+        echo -e "$REPORT_BODY" >> $GITHUB_OUTPUT
+        echo "EOF" >> $GITHUB_OUTPUT
+      id: upload_screenshots
+    - if: failure() && github.event_name == 'pull_request' && steps.upload_screenshots.outputs.REPORT_BODY != ''
+      uses: peter-evans/create-or-update-comment@v5
+      with:
+        issue-number: ${{ github.event.pull_request.number }}
+        body: ${{ steps.upload_screenshots.outputs.REPORT_BODY }}
+    - if: failure()
+      uses: actions/upload-artifact@v7
+      with:
+        name: maestro-web-report
+        path: ~/.maestro/tests/
