@@ -16,23 +16,23 @@ jobs:
       pages: write
       id-token: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: Sleep hoping Garnix evaluation will start after
         run: sleep 30
       - name: Wait for Garnix flake.nix evaluation
-        uses: lewagon/wait-on-check-action@v1.5.0
+        uses: lewagon/wait-on-check-action@v1
         with:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
           check-regexp: 'Evaluate flake.nix'
           repo-token: ${{ secrets.GITHUB_TOKEN }}
       - name: Wait for Garnix pages package
-        uses: lewagon/wait-on-check-action@v1.5.0
+        uses: lewagon/wait-on-check-action@v1
         with:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
           check-regexp: 'package pages.*'
           repo-token: ${{ secrets.GITHUB_TOKEN }}
           fail-on-no-checks: false
-      - uses: cachix/install-nix-action@v31.10.0
+      - uses: cachix/install-nix-action@v31
         with:
           github_access_token: ${{ secrets.GITHUB_TOKEN }}
           extra_nix_config: |
@@ -70,21 +70,21 @@ jobs:
       checks: read
       statuses: read
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: Wait for Garnix flake.nix evaluation
-        uses: lewagon/wait-on-check-action@v1.5.0
+        uses: lewagon/wait-on-check-action@v1
         with:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
           check-regexp: 'Evaluate flake.nix'
           repo-token: ${{ secrets.GITHUB_TOKEN }}
       - name: Wait for Garnix devShell
-        uses: lewagon/wait-on-check-action@v1.5.0
+        uses: lewagon/wait-on-check-action@v1
         with:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
           check-regexp: 'package android.*'
           repo-token: ${{ secrets.GITHUB_TOKEN }}
           fail-on-no-checks: false
-      - uses: cachix/install-nix-action@v31.10.0
+      - uses: cachix/install-nix-action@v31
         with:
           github_access_token: ${{ secrets.GITHUB_TOKEN }}
           extra_nix_config: |
