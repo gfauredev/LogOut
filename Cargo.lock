@@ -2679,6 +2679,7 @@ dependencies = [
  "strum",
  "time",
  "tokio",
+ "unic-langid",
  "wasm-bindgen",
  "wasm-bindgen-futures",
  "web-sys",

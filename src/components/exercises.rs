@@ -2,6 +2,7 @@ use crate::components::{ActiveTab, BottomNav, ExerciseCard};
 use crate::services::{exercise_db, storage};
 use crate::{ExerciseSearchSignal, Route};
 use dioxus::prelude::*;
+use dioxus_i18n::t;
 
 /// Number of exercises loaded per scroll increment.
 const PAGE_SIZE: usize = 20;
@@ -196,10 +197,10 @@ pub fn Exercises() -> Element {
     rsx! {
         header {
             h1 { tabindex: 0, "📚 Exercises" }
-            p { "Browse {total} exercises" }
+            p { {t!("browse-exercises", count: { total.to_string() })} }
             div { class: "inputs",
                 input { r#type: "text",
-                    placeholder: "Search exercises, muscles, or categories...",
+                    placeholder: t!("search-placeholder"),
                     value: "{search_query}",
                     oninput: move |evt| {
                         search_query.set(evt.value());
@@ -208,7 +209,7 @@ pub fn Exercises() -> Element {
                 }
                 Link { class: "add",
                     to: Route::AddExercise {},
-                    title: "Add Custom Exercise",
+                    title: t!("add-exercise"),
                     "+"
                 }
             }

@@ -42,6 +42,7 @@ pub fn AddExercise() -> Element {
             secondary_muscles: secondary_muscles_list.read().clone(),
             instructions: instructions_list.read().clone(),
             images: images_list.read().clone(),
+            i18n: None,
         };
 
         let exercise_id = exercise.id.clone();

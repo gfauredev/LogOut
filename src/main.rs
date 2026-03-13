@@ -7,6 +7,8 @@
 //! [Dioxus]: https://dioxuslabs.com
 
 use dioxus::prelude::*;
+use dioxus_i18n::prelude::*;
+use unic_langid::langid;
 
 mod components;
 mod models;
@@ -70,6 +72,25 @@ enum Route {
     EditExercise { id: String },
 }
 
+/// Detects the user's preferred language from the browser/system, returning a
+/// `LanguageIdentifier`.  Falls back to English (`"en"`) when the language
+/// cannot be determined or is not one the app supports.
+fn detect_preferred_language() -> unic_langid::LanguageIdentifier {
+    #[cfg(target_arch = "wasm32")]
+    if let Some(lang_str) = web_sys::window().and_then(|w| w.navigator().language()) {
+        // Try the full tag (e.g. "fr-FR"), then the base language (e.g. "fr").
+        if let Ok(id) = lang_str.parse() {
+            return id;
+        }
+        if let Some(base) = lang_str.split('-').next() {
+            if let Ok(id) = base.parse() {
+                return id;
+            }
+        }
+    }
+    langid!("en")
+}
+
 fn main() {
     // Initialize logger
     dioxus_logger::init(dioxus_logger::tracing::Level::INFO).expect("failed to init logger");
@@ -98,6 +119,15 @@ fn main() {
 
 #[component]
 fn App() -> Element {
+    // Initialise i18n with the user's preferred language, falling back to English.
+    use_init_i18n(|| {
+        let preferred_lang = detect_preferred_language();
+        I18nConfig::new(preferred_lang)
+            .with_locale((langid!("en"), include_str!("../assets/en.ftl")))
+            .with_locale((langid!("fr"), include_str!("../assets/fr.ftl")))
+            .with_fallback(langid!("en"))
+    });
+
     // Provide shared state signals via context
     services::storage::provide_app_state();
     services::exercise_db::provide_exercises();
@@ -461,6 +491,7 @@ mod tests {
                 instructions: vec![],
                 category: Category::Strength,
                 images: vec![],
+                i18n: None,
             },
             Exercise {
                 id: "Barbell_Full_Squat".into(),
@@ -475,6 +506,7 @@ mod tests {
                 instructions: vec![],
                 category: Category::Strength,
                 images: vec![],
+                i18n: None,
             },
             Exercise {
                 id: "Running".into(),
@@ -489,6 +521,7 @@ mod tests {
                 instructions: vec![],
                 category: Category::Cardio,
                 images: vec![],
+                i18n: None,
             },
         ]
     }
