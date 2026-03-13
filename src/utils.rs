@@ -1,6 +1,12 @@
-/// Base URL for the exercise database fork (single source of truth).
-/// All exercise data (JSON catalog, images) is served from this origin.
+/// Default base URL for exercise database release assets (JSON data files).
+/// Exercises, i18n and per-language translation bundles are distributed via
+/// GitHub Release Assets.
 pub(crate) const EXERCISE_DB_BASE_URL: &str =
+    "https://github.com/gfauredev/free-exercise-db/releases/download/v2.0.0/";
+
+/// Base URL for exercise images, which are served from raw GitHub content
+/// (not included in release assets).
+pub(crate) const EXERCISE_IMAGES_BASE_URL: &str =
     "https://raw.githubusercontent.com/gfauredev/free-exercise-db/main/";
 
 /// localStorage / config-file key used to store a user-configured exercise database URL.
@@ -61,6 +67,38 @@ pub fn get_exercise_db_url() -> String {
         }
     }
     EXERCISE_DB_BASE_URL.to_string()
+}
+
+/// Returns the base URL used for exercise images.
+///
+/// When the user has configured a custom database URL the same origin is used
+/// for images (for self-hosted setups).  Otherwise the images are fetched from
+/// the raw GitHub source repository, because images are **not** included in
+/// the release assets.
+#[must_use]
+pub fn get_exercise_images_base_url() -> String {
+    #[cfg(target_arch = "wasm32")]
+    {
+        if let Some(window) = web_sys::window() {
+            if let Ok(Some(storage)) = window.local_storage() {
+                if let Ok(Some(url)) = storage.get_item(EXERCISE_DB_URL_STORAGE_KEY) {
+                    if !url.is_empty() {
+                        return url;
+                    }
+                }
+            }
+        }
+    }
+    #[cfg(not(target_arch = "wasm32"))]
+    {
+        use crate::services::storage::native_storage;
+        if let Some(url) = native_storage::get_config_value(EXERCISE_DB_URL_STORAGE_KEY) {
+            if !url.is_empty() {
+                return url;
+            }
+        }
+    }
+    EXERCISE_IMAGES_BASE_URL.to_string()
 }
 
 // ── Deep link parsing ─────────────────────────────────────────────────────────
@@ -403,6 +441,36 @@ mod tests {
     fn exercise_db_url_storage_key_is_stable() {
         // The localStorage key should not change accidentally.
         assert_eq!(super::EXERCISE_DB_URL_STORAGE_KEY, "exercise_db_url");
+    }
+
+    #[test]
+    fn exercise_db_base_url_is_release_url() {
+        // Default URL must point to release assets (not raw GitHub content).
+        assert!(
+            super::EXERCISE_DB_BASE_URL.contains("releases/download"),
+            "EXERCISE_DB_BASE_URL should be a GitHub release URL, got: {}",
+            super::EXERCISE_DB_BASE_URL
+        );
+    }
+
+    #[test]
+    fn exercise_images_base_url_is_raw_github() {
+        // Images come from the raw GitHub source, not from release assets.
+        assert!(
+            super::EXERCISE_IMAGES_BASE_URL.contains("raw.githubusercontent.com"),
+            "EXERCISE_IMAGES_BASE_URL should be a raw.githubusercontent.com URL, got: {}",
+            super::EXERCISE_IMAGES_BASE_URL
+        );
+    }
+
+    #[test]
+    fn get_exercise_images_base_url_returns_images_url_by_default() {
+        #[cfg(not(target_arch = "wasm32"))]
+        {
+            let _g = crate::services::storage::native_storage::test_lock();
+            let url = super::get_exercise_images_base_url();
+            assert_eq!(url, super::EXERCISE_IMAGES_BASE_URL);
+        }
     }
 
     // ── Deep link parsing ─────────────────────────────────────────────────────

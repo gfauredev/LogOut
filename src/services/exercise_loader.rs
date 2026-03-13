@@ -6,6 +6,7 @@
 /// Dioxus virtual-DOM.
 use crate::models::Exercise;
 use crate::services::exercise_db;
+use crate::DbI18nSignal;
 use dioxus::prelude::*;
 
 /// Provides the exercises signal and kicks off the background load.
@@ -13,8 +14,14 @@ use dioxus::prelude::*;
 pub fn provide_exercises() {
     let wrapper = use_context_provider(|| exercise_db::AllExercisesSignal(Signal::new(Vec::new())));
     let sig = wrapper.0;
+    let mut i18n_sig = use_context::<DbI18nSignal>().0;
 
     spawn(async move {
+        // Fetch enum-value translations (i18n.json) and populate the context signal.
+        let i18n_data = exercise_db::download_db_i18n().await;
+        if !i18n_data.is_empty() {
+            i18n_sig.set(i18n_data);
+        }
         load_exercises(sig).await;
     });
 }
