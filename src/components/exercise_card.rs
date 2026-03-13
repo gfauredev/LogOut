@@ -27,7 +27,7 @@ fn translate_enum<'a>(db_i18n: &'a DbI18n, lang: &str, field: &str, value: &'a s
         map.get(value).map(String::as_str)
     };
     lookup(lang)
-        .or_else(|| lang.split('-').next().and_then(|base| lookup(base)))
+        .or_else(|| lang.split('-').next().and_then(lookup))
         .unwrap_or(value)
 }
 
@@ -69,10 +69,17 @@ pub fn ExerciseCard(
         use_memo(move || {
             let lang = i18n().language().to_string();
             let db_i18n = db_i18n_sig.read();
-            let category = translate_enum(&db_i18n, &lang, "category", ex.category.as_ref()).to_owned();
-            let force = ex.force.map(|f| translate_enum(&db_i18n, &lang, "force", f.as_ref()).to_owned());
-            let equipment = ex.equipment.map(|e| translate_enum(&db_i18n, &lang, "equipment", e.as_ref()).to_owned());
-            let level = ex.level.map(|l| translate_enum(&db_i18n, &lang, "level", l.as_ref()).to_owned());
+            let category =
+                translate_enum(&db_i18n, &lang, "category", ex.category.as_ref()).to_owned();
+            let force = ex
+                .force
+                .map(|f| translate_enum(&db_i18n, &lang, "force", f.as_ref()).to_owned());
+            let equipment = ex
+                .equipment
+                .map(|e| translate_enum(&db_i18n, &lang, "equipment", e.as_ref()).to_owned());
+            let level = ex
+                .level
+                .map(|l| translate_enum(&db_i18n, &lang, "level", l.as_ref()).to_owned());
             let primary_muscles: Vec<String> = ex
                 .primary_muscles
                 .iter()
@@ -83,7 +90,14 @@ pub fn ExerciseCard(
                 .iter()
                 .map(|m| translate_enum(&db_i18n, &lang, "muscles", m.as_ref()).to_owned())
                 .collect();
-            (category, force, equipment, level, primary_muscles, secondary_muscles)
+            (
+                category,
+                force,
+                equipment,
+                level,
+                primary_muscles,
+                secondary_muscles,
+            )
         })
     };
 
@@ -196,7 +210,8 @@ mod tests {
 
     fn sample_db_i18n() -> DbI18n {
         let mut lang = DbI18nLang::default();
-        lang.category.insert("strength".into(), "musculation".into());
+        lang.category
+            .insert("strength".into(), "musculation".into());
         lang.force.insert("push".into(), "poussée".into());
         lang.equipment.insert("barbell".into(), "barre".into());
         lang.level.insert("beginner".into(), "débutant".into());
@@ -209,36 +224,60 @@ mod tests {
     #[test]
     fn translate_enum_exact_match() {
         let db_i18n = sample_db_i18n();
-        assert_eq!(translate_enum(&db_i18n, "fr", "category", "strength"), "musculation");
+        assert_eq!(
+            translate_enum(&db_i18n, "fr", "category", "strength"),
+            "musculation"
+        );
         assert_eq!(translate_enum(&db_i18n, "fr", "force", "push"), "poussée");
-        assert_eq!(translate_enum(&db_i18n, "fr", "equipment", "barbell"), "barre");
-        assert_eq!(translate_enum(&db_i18n, "fr", "level", "beginner"), "débutant");
-        assert_eq!(translate_enum(&db_i18n, "fr", "muscles", "chest"), "pectoraux");
+        assert_eq!(
+            translate_enum(&db_i18n, "fr", "equipment", "barbell"),
+            "barre"
+        );
+        assert_eq!(
+            translate_enum(&db_i18n, "fr", "level", "beginner"),
+            "débutant"
+        );
+        assert_eq!(
+            translate_enum(&db_i18n, "fr", "muscles", "chest"),
+            "pectoraux"
+        );
     }
 
     #[test]
     fn translate_enum_prefix_match() {
         let db_i18n = sample_db_i18n();
         // "fr-FR" should fall back to "fr" key
-        assert_eq!(translate_enum(&db_i18n, "fr-FR", "category", "strength"), "musculation");
+        assert_eq!(
+            translate_enum(&db_i18n, "fr-FR", "category", "strength"),
+            "musculation"
+        );
     }
 
     #[test]
     fn translate_enum_missing_lang_returns_original() {
         let db_i18n = sample_db_i18n();
-        assert_eq!(translate_enum(&db_i18n, "de", "category", "strength"), "strength");
+        assert_eq!(
+            translate_enum(&db_i18n, "de", "category", "strength"),
+            "strength"
+        );
     }
 
     #[test]
     fn translate_enum_missing_key_returns_original() {
         let db_i18n = sample_db_i18n();
         // "cardio" is not in the sample French map
-        assert_eq!(translate_enum(&db_i18n, "fr", "category", "cardio"), "cardio");
+        assert_eq!(
+            translate_enum(&db_i18n, "fr", "category", "cardio"),
+            "cardio"
+        );
     }
 
     #[test]
     fn translate_enum_unknown_field_returns_original() {
         let db_i18n = sample_db_i18n();
-        assert_eq!(translate_enum(&db_i18n, "fr", "unknown_field", "strength"), "strength");
+        assert_eq!(
+            translate_enum(&db_i18n, "fr", "unknown_field", "strength"),
+            "strength"
+        );
     }
 }

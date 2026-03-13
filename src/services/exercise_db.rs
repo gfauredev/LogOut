@@ -1,4 +1,4 @@
-use crate::models::{DbI18n, Exercise, ExerciseLangEntry, ExerciseI18n};
+use crate::models::{DbI18n, Exercise, ExerciseI18n, ExerciseLangEntry};
 #[cfg(test)]
 use crate::models::{Equipment, Muscle};
 use dioxus::prelude::*;
@@ -187,7 +187,10 @@ async fn download_exercise_lang(lang: &str) -> Result<Vec<ExerciseLangEntry>, St
         return Ok(Vec::new());
     }
     if !response.status().is_success() {
-        return Err(format!("HTTP {} fetching {lang} lang file", response.status()));
+        return Err(format!(
+            "HTTP {} fetching {lang} lang file",
+            response.status()
+        ));
     }
 
     response
@@ -1123,7 +1126,10 @@ mod tests {
         let i18n = exercises[0].i18n.as_ref().expect("i18n map should be set");
         let fr = i18n.get("fr").expect("'fr' entry should exist");
         assert_eq!(fr.name.as_deref(), Some("Développé Couché"));
-        assert_eq!(fr.instructions.as_deref(), Some(&["Étape 1".to_owned()][..]));
+        assert_eq!(
+            fr.instructions.as_deref(),
+            Some(&["Étape 1".to_owned()][..])
+        );
     }
 
     #[test]
