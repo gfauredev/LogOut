@@ -166,7 +166,7 @@ pub(crate) async fn download_exercises() -> Result<Vec<Exercise>, String> {
     // Merge per-language translation files into each exercise's `i18n` map.
     for lang in SUPPORTED_TRANSLATION_LANGS {
         if let Ok(entries) = download_exercise_lang(lang).await {
-            merge_lang_entries(&mut exercises, lang, entries);
+            merge_lang_entries(&mut exercises, lang, &entries);
         }
     }
 
@@ -202,7 +202,7 @@ async fn download_exercise_lang(lang: &str) -> Result<Vec<ExerciseLangEntry>, St
 /// Merges a slice of [`ExerciseLangEntry`] values into the in-memory exercise
 /// list by matching on `id`.  Each entry's `name` and `instructions` are
 /// inserted into the exercise's `i18n` map under the given language code.
-fn merge_lang_entries(exercises: &mut [Exercise], lang: &str, entries: Vec<ExerciseLangEntry>) {
+fn merge_lang_entries(exercises: &mut [Exercise], lang: &str, entries: &[ExerciseLangEntry]) {
     use std::collections::HashMap;
     // Build a quick lookup map from ID → entry to keep the merge O(n).
     let entry_map: HashMap<&str, &ExerciseLangEntry> =
@@ -1121,7 +1121,7 @@ mod tests {
             name: Some("Développé Couché".into()),
             instructions: Some(vec!["Étape 1".into()]),
         }];
-        merge_lang_entries(&mut exercises, "fr", entries);
+        merge_lang_entries(&mut exercises, "fr", &entries);
 
         let i18n = exercises[0].i18n.as_ref().expect("i18n map should be set");
         let fr = i18n.get("fr").expect("'fr' entry should exist");
@@ -1154,7 +1154,7 @@ mod tests {
             name: Some("Développé Couché".into()),
             instructions: None,
         }];
-        merge_lang_entries(&mut exercises, "fr", entries);
+        merge_lang_entries(&mut exercises, "fr", &entries);
 
         assert!(
             exercises[0].i18n.is_none(),
@@ -1193,7 +1193,7 @@ mod tests {
             name: Some("Développé Couché".into()),
             instructions: None,
         }];
-        merge_lang_entries(&mut exercises, "fr", entries);
+        merge_lang_entries(&mut exercises, "fr", &entries);
 
         let i18n = exercises[0].i18n.as_ref().unwrap();
         assert!(i18n.contains_key("es"), "'es' entry should be preserved");
