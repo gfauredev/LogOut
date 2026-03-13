@@ -1231,8 +1231,6 @@ mod tests {
         );
     }
 
-
-
     #[test]
     fn workout_session_new_has_empty_pending_ids() {
         let session = WorkoutSession::new();

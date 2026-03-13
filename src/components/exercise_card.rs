@@ -15,11 +15,22 @@ pub fn ExerciseCard(
     let mut img_index = use_signal(|| 0usize);
     let image_count = exercise.images.len();
 
-    let lang = i18n().language();
-    let lang_str = lang.to_string();
-    let display_name = exercise.name_for_lang(&lang_str).to_owned();
-    let display_instructions: Vec<String> =
-        exercise.instructions_for_lang(&lang_str).to_vec();
+    // Memoize translated name and instructions so they are only recomputed when
+    // the i18n language context changes (rare) rather than on every render.
+    let display_name = {
+        let ex = exercise.clone();
+        use_memo(move || {
+            let lang = i18n().language();
+            ex.name_for_lang(&lang.to_string()).to_owned()
+        })
+    };
+    let display_instructions = {
+        let ex = exercise.clone();
+        use_memo(move || {
+            let lang = i18n().language();
+            ex.instructions_for_lang(&lang.to_string()).to_vec()
+        })
+    };
 
     rsx! {
         article { key: "{exercise.id}",
@@ -69,9 +80,9 @@ pub fn ExerciseCard(
                     }
                 }
             }
-            if *show_instructions.read() && !display_instructions.is_empty() {
+            if *show_instructions.read() && !display_instructions.read().is_empty() {
                 ol {
-                    for instruction in &display_instructions {
+                    for instruction in display_instructions.read().iter() {
                         li { "{instruction}" }
                     }
                 }
