@@ -12,16 +12,26 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
-
     steps:
-      - uses: actions/checkout@v5
-      - uses: cachix/install-nix-action@v31
-        with:
-          github_access_token: ${{ secrets.GITHUB_TOKEN }}
-          extra_nix_config: |
-            extra-substituters = https://cache.garnix.io
-            extra-trusted-public-keys = cache.garnix.io:CTFPyKSLcx5RMJKfLo5EEPUObbA78b0YQ2DTCJXqr9g=
-      - uses: DeterminateSystems/magic-nix-cache-action@v13
-      - name: Install Project Dependencies
-        run: nix develop --command cargo check
-        continue-on-error: true
+    - uses: actions/checkout@v6
+    - uses: cachix/install-nix-action@v31
+      with:
+        github_access_token: ${{ secrets.GITHUB_TOKEN }}
+        extra_nix_config: |
+          extra-substituters = https://cache.garnix.io
+          extra-trusted-public-keys = cache.garnix.io:CTFPyKSLcx5RMJKfLo5EEPUObbA78b0YQ2DTCJXqr9g=
+    - uses: DeterminateSystems/magic-nix-cache-action@v13
+    - uses: lewagon/wait-on-check-action@v1
+      with:
+        ref: ${{ github.event.pull_request.head.sha || github.sha }}
+        check-regexp: 'Evaluate flake.nix'
+        repo-token: ${{ secrets.GITHUB_TOKEN }}
+        fail-on-no-checks: false
+    - uses: lewagon/wait-on-check-action@v1
+      with:
+        ref: ${{ github.event.pull_request.head.sha || github.sha }}
+        check-regexp: 'devShell.*'
+        repo-token: ${{ secrets.GITHUB_TOKEN }}
+        fail-on-no-checks: false
+    - run: nix develop --command cargo check # Install dependencies
+      continue-on-error: true
