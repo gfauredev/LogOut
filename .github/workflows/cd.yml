@@ -7,7 +7,7 @@ on:
 
 jobs:
   pwa:
-    name: Build & Deploy PWA
+    name: Progressive Web App Deployment
     if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     timeout-minutes: 30
@@ -46,65 +46,70 @@ jobs:
     - uses: actions/deploy-pages@v4
       id: deployment
 
-  release-android:
-    name: Release Android
+  android:
+    name: Android Releases
     runs-on: ubuntu-latest
     timeout-minutes: 30
     permissions:
-      contents: write
-      checks: read
-      statuses: read
+      contents: write # Required by 'gh release'
+      checks: read    # Required by wait-on-check-action
+      statuses: read  # Required by wait-on-check-action
     steps:
-      - uses: actions/checkout@v6
-      - name: Wait for Garnix flake.nix evaluation
-        uses: lewagon/wait-on-check-action@v1
-        with:
-          ref: ${{ github.event.pull_request.head.sha || github.sha }}
-          check-regexp: 'Evaluate flake.nix'
-          repo-token: ${{ secrets.GITHUB_TOKEN }}
-      - name: Wait for Garnix devShell
-        uses: lewagon/wait-on-check-action@v1
-        with:
-          ref: ${{ github.event.pull_request.head.sha || github.sha }}
-          check-regexp: 'package android.*'
-          repo-token: ${{ secrets.GITHUB_TOKEN }}
-          fail-on-no-checks: false
-      - uses: cachix/install-nix-action@v31
-        with:
-          github_access_token: ${{ secrets.GITHUB_TOKEN }}
-          extra_nix_config: |
-            extra-substituters = https://cache.garnix.io
-            extra-trusted-public-keys = cache.garnix.io:CTFPyKSLcx5RMJKfLo5EEPUObbA78b0YQ2DTCJXqr9g=
-      - uses: DeterminateSystems/magic-nix-cache-action@v13
-      - name: Build Android
-        run: |
-          nix develop -c dx build --android --release --frozen
-          # TODO Fix App’s icons
-          mv --verbose target/dx/log-workout/release/android/app/app/build/outputs/apk/debug/app-debug.apk LogOut.aarch64.apk
-          scripts/android-sign.sh LogOut.aarch64.apk
-      - name: Rolling Release
-        if: github.ref == 'refs/heads/main'
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          DATE=$(date -u +%Y-%m-%d)
-          TAG="rolling-$DATE"
-          if gh release view "$TAG" >/dev/null 2>&1; then
-            echo "Rolling release for $DATE already exists. Skipping."
-          else
-            gh release list --limit 100 | grep "rolling-" | while read -r line; do
-              OLD_TAG=$(echo "$line" | awk '{print $1}')
-              OLD_DATE=${OLD_TAG#rolling-}
-              if [ "$(date -d "$OLD_DATE" +%s)" -lt "$(date -d "7 days ago" +%s)" ]; then
-                 gh release delete "$OLD_TAG" --yes --cleanup-tag
-              fi
-            done
-            gh release create "$TAG" "LogOut.aarch64.apk" --title "Rolling $DATE" --notes "Automated rolling release for $DATE" --prerelease
-          fi
-      - name: Stable Release
-        if: startsWith(github.ref, 'refs/tags/v')
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          TAG=${GITHUB_REF#refs/tags/}
-          gh release create "$TAG" "LogOut.aarch64.apk" --title "LogOut $TAG" --notes "Release $TAG"
+    - uses: actions/checkout@v6
+    - run: sleep 30 #  Sleep hoping Garnix evaluation will start after
+    - uses: lewagon/wait-on-check-action@v1
+      with:
+        ref: ${{ github.event.pull_request.head.sha || github.sha }}
+        check-regexp: 'Evaluate flake.nix'
+        repo-token: ${{ secrets.GITHUB_TOKEN }}
+    - uses: lewagon/wait-on-check-action@v1
+      with:
+        ref: ${{ github.event.pull_request.head.sha || github.sha }}
+        check-regexp: 'devShell.*'
+        repo-token: ${{ secrets.GITHUB_TOKEN }}
+        fail-on-no-checks: false
+    - uses: cachix/install-nix-action@v31
+      with:
+        github_access_token: ${{ secrets.GITHUB_TOKEN }}
+        extra_nix_config: |
+          extra-substituters = https://cache.garnix.io
+          extra-trusted-public-keys = cache.garnix.io:CTFPyKSLcx5RMJKfLo5EEPUObbA78b0YQ2DTCJXqr9g=
+    - uses: DeterminateSystems/magic-nix-cache-action@v13
+    - run: |
+        nix develop -c dx build --android --release --frozen
+        # TODO Fix App’s icons
+        mv --verbose target/dx/log-workout/release/android/app/app/build/outputs/apk/debug/app-debug.apk LogOut.aarch64.apk
+        scripts/android-sign.sh LogOut.aarch64.apk # Sign APK
+    - name: Rolling Release
+      if: github.ref == 'refs/heads/main'
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: |
+        DATE=$(date -u +%Y-%m-%d)
+        TAG="rolling-$DATE"
+        if gh release view "$TAG" >/dev/null 2>&1; then
+          echo "Rolling release for $DATE already exists. Skipping."
+        else
+          # Find and delete rolling releases older than 7 days
+          gh release list --limit 100 | awk '/^rolling-/ {print $1}' | while read -r OLD_TAG; do
+            OLD_DATE=${OLD_TAG#rolling-}
+            if [ "$(date -d "$OLD_DATE" +%s)" -lt "$(date -d "7 days ago" +%s)" ]; then
+               echo "Deleting old release: $OLD_TAG"
+               gh release delete "$OLD_TAG" --yes --cleanup-tag
+            fi
+          done
+          # Create the new rolling release
+          gh release create "$TAG" "LogOut.aarch64.apk" \
+            --title "Rolling $DATE" \
+            --notes "Automated rolling release for $DATE" \
+            --prerelease
+        fi
+    - name: Stable Release
+      if: startsWith(github.ref, 'refs/tags/v')
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: |
+        TAG=${GITHUB_REF#refs/tags/}
+        gh release create "$TAG" "LogOut.aarch64.apk" \
+          --title "LogOut $TAG" \
+          --notes "Release $TAG"
