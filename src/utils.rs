@@ -1,9 +1,7 @@
-/// Fallback base URL for exercise database files used on native platforms and
-/// as a last resort on web.  The web app normally serves these files from its
-/// own origin (see [`get_exercise_db_url`]) to avoid the CORS restrictions that
-/// apply to direct GitHub Release Asset download URLs.
+/// Default base URL for the exercise database, served as a static website with
+/// proper CORS headers (`Access-Control-Allow-Origin: *`).
 pub(crate) const EXERCISE_DB_BASE_URL: &str =
-    "https://github.com/gfauredev/free-exercise-db/releases/download/v2.0.0/";
+    "https://gfauredev.github.io/free-exercise-db/";
 
 /// Base URL for exercise images, which are served from raw GitHub content
 /// (not included in release assets).
@@ -41,12 +39,9 @@ pub fn normalize_db_url(url: &str) -> String {
 }
 
 /// Returns the effective exercise database base URL.
-/// On WASM, checks localStorage for a user-configured URL first, then falls
-/// back to the document's base URI so exercises are served from the same origin
-/// as the web app (bundled in `public/`).  This avoids the CORS restrictions
-/// that apply to direct GitHub Release Asset download URLs.
+/// On WASM, checks localStorage for a user-configured URL first.
 /// On native, checks the app config file.
-/// Falls back to [`EXERCISE_DB_BASE_URL`] if no other source is available.
+/// Falls back to [`EXERCISE_DB_BASE_URL`] if not set.
 #[must_use]
 pub fn get_exercise_db_url() -> String {
     #[cfg(target_arch = "wasm32")]
@@ -56,15 +51,6 @@ pub fn get_exercise_db_url() -> String {
                 if let Ok(Some(url)) = storage.get_item(EXERCISE_DB_URL_STORAGE_KEY) {
                     if !url.is_empty() {
                         return url;
-                    }
-                }
-            }
-            // No custom URL set: use the app's base URI so exercises are served
-            // from the same origin, avoiding GitHub Releases CORS restrictions.
-            if let Some(doc) = window.document() {
-                if let Ok(Some(base_uri)) = doc.base_uri() {
-                    if !base_uri.is_empty() {
-                        return base_uri;
                     }
                 }
             }
@@ -457,11 +443,11 @@ mod tests {
     }
 
     #[test]
-    fn exercise_db_base_url_is_release_url() {
-        // Default URL must point to release assets (not raw GitHub content).
+    fn exercise_db_base_url_is_github_pages() {
+        // Default URL must point to the GitHub Pages static website (CORS-friendly).
         assert!(
-            super::EXERCISE_DB_BASE_URL.contains("releases/download"),
-            "EXERCISE_DB_BASE_URL should be a GitHub release URL, got: {}",
+            super::EXERCISE_DB_BASE_URL.contains("github.io"),
+            "EXERCISE_DB_BASE_URL should be a GitHub Pages URL, got: {}",
             super::EXERCISE_DB_BASE_URL
         );
     }
