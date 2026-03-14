@@ -1,6 +1,7 @@
-/// Default base URL for exercise database release assets (JSON data files).
-/// Exercises, i18n and per-language translation bundles are distributed via
-/// GitHub Release Assets.
+/// Fallback base URL for exercise database files used on native platforms and
+/// as a last resort on web.  The web app normally serves these files from its
+/// own origin (see [`get_exercise_db_url`]) to avoid the CORS restrictions that
+/// apply to direct GitHub Release Asset download URLs.
 pub(crate) const EXERCISE_DB_BASE_URL: &str =
     "https://github.com/gfauredev/free-exercise-db/releases/download/v2.0.0/";
 
@@ -40,9 +41,12 @@ pub fn normalize_db_url(url: &str) -> String {
 }
 
 /// Returns the effective exercise database base URL.
-/// On WASM, checks localStorage for a user-configured URL first.
+/// On WASM, checks localStorage for a user-configured URL first, then falls
+/// back to the document's base URI so exercises are served from the same origin
+/// as the web app (bundled in `public/`).  This avoids the CORS restrictions
+/// that apply to direct GitHub Release Asset download URLs.
 /// On native, checks the app config file.
-/// Falls back to [`EXERCISE_DB_BASE_URL`] if not set.
+/// Falls back to [`EXERCISE_DB_BASE_URL`] if no other source is available.
 #[must_use]
 pub fn get_exercise_db_url() -> String {
     #[cfg(target_arch = "wasm32")]
@@ -52,6 +56,15 @@ pub fn get_exercise_db_url() -> String {
                 if let Ok(Some(url)) = storage.get_item(EXERCISE_DB_URL_STORAGE_KEY) {
                     if !url.is_empty() {
                         return url;
+                    }
+                }
+            }
+            // No custom URL set: use the app's base URI so exercises are served
+            // from the same origin, avoiding GitHub Releases CORS restrictions.
+            if let Some(doc) = window.document() {
+                if let Ok(Some(base_uri)) = doc.base_uri() {
+                    if !base_uri.is_empty() {
+                        return base_uri;
                     }
                 }
             }

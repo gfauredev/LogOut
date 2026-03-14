@@ -756,8 +756,9 @@ mod tests {
 
     #[test]
     fn exercises_json_url_uses_fork() {
-        // The JSON endpoint must reference the gfauredev fork (SSOT).
-        // exercises_json_url() is now cross-platform; test it on all targets.
+        // On native, the default endpoint references the gfauredev fork.
+        // On WASM, exercises are served from the app's own origin (bundled in
+        // public/); this test validates the native path only.
         #[cfg(not(target_arch = "wasm32"))]
         let _g = crate::services::storage::native_storage::test_lock();
         let url = exercises_json_url();
