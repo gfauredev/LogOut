@@ -11,7 +11,6 @@ permissions:
 
 jobs:
   coverage:
-    name: Coverage Gate
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
@@ -65,7 +64,6 @@ jobs:
         fi
 
   lighthouse:
-    name: Lighthouse PageSpeed
     needs: coverage
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -134,7 +132,6 @@ jobs:
         body: ${{ steps.lighthouse_results.outputs.BODY }}
 
   e2e-web:
-    name: Web End-to-End (Maestro)
     needs: coverage
     runs-on: ubuntu-latest
     timeout-minutes: 20
