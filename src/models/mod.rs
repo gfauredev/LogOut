@@ -6,6 +6,7 @@
 //! [`ExerciseLog`], and [`WorkoutSession`].
 
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 use std::fmt;
 
 /// Sub-path for exercise images within the exercise database repository.
@@ -290,6 +291,62 @@ pub fn parse_distance_km(input: &str) -> Option<Distance> {
 
 // ── Data structures ─────────────────────────────────────────────────────────
 
+/// Per-language overrides for an exercise's display text, as defined in schema2.
+///
+/// Stored as a map from language code (e.g. `"fr"`) to this struct inside the
+/// [`Exercise::i18n`] field.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct ExerciseI18n {
+    /// Translated exercise name; falls back to [`Exercise::name`] when absent.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub name: Option<String>,
+    /// Translated step-by-step instructions; falls back to [`Exercise::instructions`].
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub instructions: Option<Vec<String>>,
+}
+
+/// Translations for enum display values for a single language, as loaded from
+/// `i18n.json` in the exercise database release assets.
+///
+/// Each field maps English enum values (lowercased) to their translation.
+/// For example, `category["strength"]` → `"musculation"` in French.
+#[derive(Debug, Clone, Serialize, Deserialize, Default, PartialEq)]
+pub struct DbI18nLang {
+    #[serde(default)]
+    pub force: HashMap<String, String>,
+    #[serde(default)]
+    pub level: HashMap<String, String>,
+    #[serde(default)]
+    pub mechanic: HashMap<String, String>,
+    #[serde(default)]
+    pub equipment: HashMap<String, String>,
+    #[serde(default)]
+    pub category: HashMap<String, String>,
+    #[serde(default)]
+    pub muscles: HashMap<String, String>,
+}
+
+/// Full enum-translation map keyed by BCP-47 language tag (e.g. `"fr"`, `"es"`).
+///
+/// Loaded once from `i18n.json` and stored in the Dioxus context as
+/// [`DbI18nSignal`].
+pub type DbI18n = HashMap<String, DbI18nLang>;
+
+/// One entry from a per-language exercise translation file (e.g.
+/// `exercises.fr.json`).  Only `id` is required; `name` and `instructions` are
+/// optional so partial translations are handled gracefully.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct ExerciseLangEntry {
+    /// Must match [`Exercise::id`] to locate the exercise to update.
+    pub id: String,
+    /// Translated exercise name.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub name: Option<String>,
+    /// Translated step-by-step instructions.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub instructions: Option<Vec<String>>,
+}
+
 /// An exercise definition from the exercise database or created by the user.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct Exercise {
@@ -327,6 +384,9 @@ pub struct Exercise {
     #[serde(default)]
     /// Relative or absolute image paths / URLs.
     pub images: Vec<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    /// Per-language translations of [`name`] and [`instructions`] (schema2 `i18n` field).
+    pub i18n: Option<HashMap<String, ExerciseI18n>>,
 }
 
 impl Exercise {
@@ -338,6 +398,44 @@ impl Exercise {
         self
     }
 
+    /// Return the exercise name for the given BCP-47 language tag, falling back
+    /// to the default English name.  Checks the `i18n` map for an exact match,
+    /// then for a prefix match (e.g. `"fr"` from `"fr-FR"`).
+    pub fn name_for_lang<'a>(&'a self, lang: &str) -> &'a str {
+        if let Some(map) = &self.i18n {
+            if let Some(t) = map.get(lang).and_then(|t| t.name.as_deref()) {
+                return t;
+            }
+            if let Some(base) = lang.split('-').next() {
+                if base != lang {
+                    if let Some(t) = map.get(base).and_then(|t| t.name.as_deref()) {
+                        return t;
+                    }
+                }
+            }
+        }
+        &self.name
+    }
+
+    /// Return the exercise instructions for the given BCP-47 language tag,
+    /// falling back to the default instructions.  Same prefix-matching logic as
+    /// [`name_for_lang`].
+    pub fn instructions_for_lang<'a>(&'a self, lang: &str) -> &'a [String] {
+        if let Some(map) = &self.i18n {
+            if let Some(t) = map.get(lang).and_then(|t| t.instructions.as_deref()) {
+                return t;
+            }
+            if let Some(base) = lang.split('-').next() {
+                if base != lang {
+                    if let Some(t) = map.get(base).and_then(|t| t.instructions.as_deref()) {
+                        return t;
+                    }
+                }
+            }
+        }
+        &self.instructions
+    }
+
     /// Get the URL for a specific image by index.
     /// Images that are already full URLs (start with http:// or https://) are
     /// returned as-is.  Relative paths from the exercise-db are prefixed with
@@ -347,7 +445,7 @@ impl Exercise {
             if img.starts_with("http://") || img.starts_with("https://") {
                 img.clone()
             } else {
-                let base_url = crate::utils::get_exercise_db_url();
+                let base_url = crate::utils::get_exercise_images_base_url();
                 format!("{base_url}{EXERCISES_IMAGE_SUB_PATH}{img}")
             }
         })
@@ -901,6 +999,7 @@ mod tests {
             instructions: vec![],
             category: Category::Strength,
             images: vec!["Squat/0.jpg".into()],
+            i18n: None,
         };
         assert_eq!(
             ex.get_first_image_url(),
@@ -923,6 +1022,7 @@ mod tests {
             instructions: vec![],
             category: Category::Strength,
             images: vec![],
+            i18n: None,
         };
         assert_eq!(ex.get_first_image_url(), None);
     }
@@ -995,6 +1095,7 @@ mod tests {
             secondary_muscles: vec![Muscle::Triceps, Muscle::Shoulders],
             instructions: vec!["Step 1".into(), "Step 2".into()],
             images: vec!["https://example.com/img.jpg".into()],
+            i18n: None,
         };
         let json = serde_json::to_string(&exercise).unwrap();
         let deserialized: Exercise = serde_json::from_str(&json).unwrap();
@@ -1021,6 +1122,7 @@ mod tests {
             instructions: vec![],
             category: Category::Strength,
             images: vec![],
+            i18n: None,
         }
         .with_lowercase();
         // with_lowercase() must populate name_lower
@@ -1048,9 +1150,195 @@ mod tests {
         assert_eq!(exercise.instructions, Vec::<String>::new());
         assert_eq!(exercise.images, Vec::<String>::new());
         assert_eq!(exercise.level, None);
+        assert_eq!(exercise.i18n, None);
     }
 
-    // ── WorkoutSession pending_exercise_ids ───────────────────────────────────
+    // ── Exercise::name_for_lang / instructions_for_lang ───────────────────────
+
+    fn make_i18n_exercise() -> Exercise {
+        let mut map = HashMap::new();
+        map.insert(
+            "fr".into(),
+            ExerciseI18n {
+                name: Some("Traction".into()),
+                instructions: Some(vec!["Saisissez la barre.".into()]),
+            },
+        );
+        Exercise {
+            id: "pull_up".into(),
+            name: "Pull-Up".into(),
+            name_lower: "pull-up".into(),
+            force: Some(Force::Pull),
+            level: Some(Level::Beginner),
+            mechanic: None,
+            equipment: None,
+            primary_muscles: vec![],
+            secondary_muscles: vec![],
+            instructions: vec!["Grab the bar.".into()],
+            category: Category::Strength,
+            images: vec![],
+            i18n: Some(map),
+        }
+    }
+
+    #[test]
+    fn name_for_lang_returns_translation() {
+        let ex = make_i18n_exercise();
+        assert_eq!(ex.name_for_lang("fr"), "Traction");
+    }
+
+    #[test]
+    fn name_for_lang_prefix_match() {
+        let ex = make_i18n_exercise();
+        // "fr-FR" should match the "fr" key via prefix stripping.
+        assert_eq!(ex.name_for_lang("fr-FR"), "Traction");
+    }
+
+    #[test]
+    fn name_for_lang_fallback_to_default() {
+        let ex = make_i18n_exercise();
+        assert_eq!(ex.name_for_lang("de"), "Pull-Up");
+        assert_eq!(ex.name_for_lang("en"), "Pull-Up");
+    }
+
+    #[test]
+    fn name_for_lang_no_i18n_returns_name() {
+        let ex = Exercise {
+            id: "bench".into(),
+            name: "Bench Press".into(),
+            name_lower: String::new(),
+            force: None,
+            level: None,
+            mechanic: None,
+            equipment: None,
+            primary_muscles: vec![],
+            secondary_muscles: vec![],
+            instructions: vec![],
+            category: Category::Strength,
+            images: vec![],
+            i18n: None,
+        };
+        assert_eq!(ex.name_for_lang("fr"), "Bench Press");
+    }
+
+    #[test]
+    fn instructions_for_lang_returns_translation() {
+        let ex = make_i18n_exercise();
+        assert_eq!(
+            ex.instructions_for_lang("fr"),
+            &["Saisissez la barre.".to_string()]
+        );
+    }
+
+    #[test]
+    fn instructions_for_lang_fallback_to_default() {
+        let ex = make_i18n_exercise();
+        assert_eq!(
+            ex.instructions_for_lang("en"),
+            &["Grab the bar.".to_string()]
+        );
+    }
+
+    #[test]
+    fn exercise_i18n_round_trip() {
+        // Verify that the i18n field serialises and deserialises correctly.
+        let ex = make_i18n_exercise();
+        let json = serde_json::to_string(&ex).unwrap();
+        assert!(
+            json.contains("\"i18n\""),
+            "i18n should be present when Some"
+        );
+        let back: Exercise = serde_json::from_str(&json).unwrap();
+        assert_eq!(back.i18n, ex.i18n);
+    }
+
+    #[test]
+    fn exercise_i18n_absent_from_json_when_none() {
+        let ex = Exercise {
+            id: "bench".into(),
+            name: "Bench Press".into(),
+            name_lower: String::new(),
+            force: None,
+            level: None,
+            mechanic: None,
+            equipment: None,
+            primary_muscles: vec![],
+            secondary_muscles: vec![],
+            instructions: vec![],
+            category: Category::Strength,
+            images: vec![],
+            i18n: None,
+        };
+        let json = serde_json::to_string(&ex).unwrap();
+        assert!(
+            !json.contains("\"i18n\""),
+            "i18n should be absent when None"
+        );
+    }
+
+    #[test]
+    fn db_i18n_lang_round_trip() {
+        use crate::models::DbI18nLang;
+        let json = r#"{
+            "force": {"push": "poussée", "pull": "traction"},
+            "level": {"beginner": "débutant"},
+            "mechanic": {},
+            "equipment": {"barbell": "barre"},
+            "category": {"strength": "musculation"},
+            "muscles": {"chest": "pectoraux"}
+        }"#;
+        let lang: DbI18nLang = serde_json::from_str(json).unwrap();
+        assert_eq!(lang.force.get("push").map(String::as_str), Some("poussée"));
+        assert_eq!(
+            lang.level.get("beginner").map(String::as_str),
+            Some("débutant")
+        );
+        assert_eq!(
+            lang.category.get("strength").map(String::as_str),
+            Some("musculation")
+        );
+        assert_eq!(
+            lang.muscles.get("chest").map(String::as_str),
+            Some("pectoraux")
+        );
+    }
+
+    #[test]
+    fn db_i18n_lang_defaults_to_empty_maps() {
+        use crate::models::DbI18nLang;
+        let lang: DbI18nLang = serde_json::from_str("{}").unwrap();
+        assert!(lang.force.is_empty());
+        assert!(lang.level.is_empty());
+        assert!(lang.mechanic.is_empty());
+        assert!(lang.equipment.is_empty());
+        assert!(lang.category.is_empty());
+        assert!(lang.muscles.is_empty());
+    }
+
+    #[test]
+    fn exercise_lang_entry_deserialize_partial() {
+        use crate::models::ExerciseLangEntry;
+        let json = r#"{"id": "bench_press", "name": "Développé Couché"}"#;
+        let entry: ExerciseLangEntry = serde_json::from_str(json).unwrap();
+        assert_eq!(entry.id, "bench_press");
+        assert_eq!(entry.name.as_deref(), Some("Développé Couché"));
+        assert!(
+            entry.instructions.is_none(),
+            "instructions should be None when absent"
+        );
+    }
+
+    #[test]
+    fn exercise_lang_entry_deserialize_full() {
+        use crate::models::ExerciseLangEntry;
+        let json = r#"{"id":"squat","name":"Squat","instructions":["Étape 1","Étape 2"]}"#;
+        let entry: ExerciseLangEntry = serde_json::from_str(json).unwrap();
+        assert_eq!(entry.id, "squat");
+        assert_eq!(
+            entry.instructions.as_deref(),
+            Some(&["Étape 1".to_owned(), "Étape 2".to_owned()][..])
+        );
+    }
 
     #[test]
     fn workout_session_new_has_empty_pending_ids() {
@@ -1358,6 +1646,7 @@ mod tests {
             instructions: vec![],
             category: Category::Strength,
             images: vec!["Squat/0.jpg".into(), "Squat/1.jpg".into()],
+            i18n: None,
         };
         assert_eq!(
             ex.get_image_url(0),
@@ -1391,6 +1680,7 @@ mod tests {
             instructions: vec![],
             category: Category::Strength,
             images: vec!["https://example.com/image.jpg".into()],
+            i18n: None,
         };
         // Full URLs should be returned as-is (no prefix)
         assert_eq!(
@@ -1568,6 +1858,7 @@ mod tests {
             secondary_muscles: vec![],
             instructions: vec![],
             images: vec![],
+            i18n: None,
         };
         let json = serde_json::to_string(&ex).unwrap();
         let back: Exercise = serde_json::from_str(&json).unwrap();
@@ -1635,6 +1926,7 @@ mod tests {
             instructions: vec![],
             category: Category::Strength,
             images: vec!["http://example.com/image.jpg".into()],
+            i18n: None,
         };
         assert_eq!(
             ex.get_image_url(0),
@@ -1714,6 +2006,7 @@ mod tests {
             secondary_muscles: vec![],
             instructions: vec![],
             images: vec![],
+            i18n: None,
         };
         assert_eq!(ex.type_tag(), ("tag-cardio", "🏃"));
     }
@@ -1733,6 +2026,7 @@ mod tests {
             secondary_muscles: vec![],
             instructions: vec![],
             images: vec![],
+            i18n: None,
         };
         assert_eq!(ex.type_tag(), ("tag-strength", "💪"));
     }
@@ -1752,6 +2046,7 @@ mod tests {
             secondary_muscles: vec![],
             instructions: vec![],
             images: vec![],
+            i18n: None,
         };
         assert_eq!(ex.type_tag(), ("tag-static", "⏱️"));
     }

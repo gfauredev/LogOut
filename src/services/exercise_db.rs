@@ -1,4 +1,4 @@
-use crate::models::Exercise;
+use crate::models::{DbI18n, Exercise, ExerciseI18n, ExerciseLangEntry};
 #[cfg(test)]
 use crate::models::{Equipment, Muscle};
 use dioxus::prelude::*;
@@ -19,11 +19,28 @@ const EXERCISE_DB_REFRESH_INTERVAL_SECS: u64 = 7 * 24 * 60 * 60;
 /// (localStorage on WASM, config file on native).
 const LAST_FETCH_KEY: &str = "exercise_db_last_fetch";
 
+/// Language codes for which per-exercise translation files are fetched and
+/// merged into the exercise database on download.
+const SUPPORTED_TRANSLATION_LANGS: &[&str] = &["fr"];
+
 /// Returns the URL for the exercises JSON file.
 /// Available on all platforms; `get_exercise_db_url()` handles per-platform config.
 fn exercises_json_url() -> String {
     let base_url = crate::utils::get_exercise_db_url();
     format!("{base_url}exercises.json")
+}
+
+/// Returns the URL for a per-language exercise translation file.
+/// For example, `exercises_lang_json_url("fr")` returns the URL for `exercises.fr.json`.
+fn exercises_lang_json_url(lang: &str) -> String {
+    let base_url = crate::utils::get_exercise_db_url();
+    format!("{base_url}exercises.{lang}.json")
+}
+
+/// Returns the URL for the enum-translation file (`i18n.json`).
+fn db_i18n_url() -> String {
+    let base_url = crate::utils::get_exercise_db_url();
+    format!("{base_url}i18n.json")
 }
 
 /// Provide the exercises signal in the Dioxus context.
@@ -124,7 +141,11 @@ pub fn clear_fetch_cache() {
     let _ = native_storage::remove_config_value(LAST_FETCH_KEY);
 }
 
-/// Downloads the exercises JSON from the configured URL using `reqwest`.
+/// Downloads the exercises JSON from the configured URL using `reqwest`, then
+/// fetches and merges all available per-language translation files
+/// (e.g. `exercises.fr.json`) so that each [`Exercise::i18n`] field is
+/// populated with translated name / instructions where available.
+///
 /// Works on all platforms: reqwest uses the browser's `fetch` on WASM and
 /// native TLS on Android / desktop.
 pub(crate) async fn download_exercises() -> Result<Vec<Exercise>, String> {
@@ -137,10 +158,86 @@ pub(crate) async fn download_exercises() -> Result<Vec<Exercise>, String> {
         return Err(format!("HTTP {}", response.status()));
     }
 
-    response
-        .json::<Vec<Exercise>>()
+    let mut exercises: Vec<Exercise> = response
+        .json()
         .await
-        .map_err(|e| format!("JSON parse error: {e}"))
+        .map_err(|e| format!("JSON parse error: {e}"))?;
+
+    // Merge per-language translation files into each exercise's `i18n` map.
+    for lang in SUPPORTED_TRANSLATION_LANGS {
+        if let Ok(entries) = download_exercise_lang(lang).await {
+            merge_lang_entries(&mut exercises, lang, &entries);
+        }
+    }
+
+    Ok(exercises)
+}
+
+/// Downloads a per-language exercise translation file (e.g. `exercises.fr.json`)
+/// and returns the parsed entries.  Returns `Ok(vec![])` on HTTP 404 so the
+/// caller can safely ignore missing languages.
+async fn download_exercise_lang(lang: &str) -> Result<Vec<ExerciseLangEntry>, String> {
+    let url = exercises_lang_json_url(lang);
+    let response = reqwest::get(&url)
+        .await
+        .map_err(|e| format!("HTTP error fetching {lang} lang file: {e}"))?;
+
+    // 404 means the language file simply does not exist yet – not an error.
+    if response.status().as_u16() == 404 {
+        return Ok(Vec::new());
+    }
+    if !response.status().is_success() {
+        return Err(format!(
+            "HTTP {} fetching {lang} lang file",
+            response.status()
+        ));
+    }
+
+    response
+        .json()
+        .await
+        .map_err(|e| format!("JSON parse error in {lang} lang file: {e}"))
+}
+
+/// Merges a slice of [`ExerciseLangEntry`] values into the in-memory exercise
+/// list by matching on `id`.  Each entry's `name` and `instructions` are
+/// inserted into the exercise's `i18n` map under the given language code.
+fn merge_lang_entries(exercises: &mut [Exercise], lang: &str, entries: &[ExerciseLangEntry]) {
+    use std::collections::HashMap;
+    // Build a quick lookup map from ID → entry; O(m) to build, then O(1) per
+    // exercise lookup, giving O(n+m) overall instead of O(n·m) for a naïve scan.
+    let entry_map: HashMap<&str, &ExerciseLangEntry> =
+        entries.iter().map(|e| (e.id.as_str(), e)).collect();
+
+    for exercise in exercises.iter_mut() {
+        if let Some(entry) = entry_map.get(exercise.id.as_str()) {
+            // Only create the i18n map if there is something to add.
+            if entry.name.is_some() || entry.instructions.is_some() {
+                let map = exercise.i18n.get_or_insert_with(HashMap::new);
+                map.insert(
+                    lang.to_owned(),
+                    ExerciseI18n {
+                        name: entry.name.clone(),
+                        instructions: entry.instructions.clone(),
+                    },
+                );
+            }
+        }
+    }
+}
+
+/// Downloads the enum-translation file (`i18n.json`) from the configured URL.
+/// Returns an empty [`DbI18n`] map on any HTTP or parse error so the app
+/// degrades gracefully to English labels.
+pub(crate) async fn download_db_i18n() -> DbI18n {
+    let url = db_i18n_url();
+    let Ok(response) = reqwest::get(&url).await else {
+        return DbI18n::default();
+    };
+    if !response.status().is_success() {
+        return DbI18n::default();
+    }
+    response.json().await.unwrap_or_default()
 }
 
 // ─── Synchronous accessors for use in components ───
@@ -211,12 +308,29 @@ pub fn search_exercises<'a>(exercises: &'a [Exercise], query: &str) -> Vec<&'a E
                 || exercise
                     .force
                     .is_some_and(|f| f.as_ref().contains(&query_lower))
-                || exercise
-                    .equipment
-                    .is_some_and(|e| e.as_ref().contains(&query_lower))
+                || {
+                    // Schema2: no-equipment means body-only.  Treat `None`
+                    // equipment as "body only" so searches for "body only" or
+                    // "bodyweight" still find these exercises.
+                    let equipment_str = match exercise.equipment {
+                        Some(e) => e.as_ref().to_owned(),
+                        None => "body only".to_owned(),
+                    };
+                    equipment_str.contains(&query_lower)
+                }
                 || exercise
                     .level
                     .is_some_and(|l| l.as_ref().contains(&query_lower))
+                || {
+                    // Schema2 normalised IDs (lowercase, underscores) work as
+                    // additional search tokens.  Underscores and hyphens are
+                    // treated as word separators so "pistol squat" finds
+                    // "kettlebell_pistol_squat".
+                    let id_words = exercise.id.to_lowercase().replace(['_', '-'], " ");
+                    id_words.contains(&query_lower)
+                        || (!tokens.is_empty()
+                            && tokens.iter().all(|t| id_words.contains(t.as_str())))
+                }
         })
         .collect()
 }
@@ -275,6 +389,7 @@ mod tests {
                 instructions: vec![],
                 category: Category::Strength,
                 images: vec![],
+                i18n: None,
             }
             .with_lowercase(),
             Exercise {
@@ -290,6 +405,7 @@ mod tests {
                 instructions: vec![],
                 category: Category::Strength,
                 images: vec![],
+                i18n: None,
             }
             .with_lowercase(),
             Exercise {
@@ -305,6 +421,7 @@ mod tests {
                 instructions: vec![],
                 category: Category::Cardio,
                 images: vec![],
+                i18n: None,
             }
             .with_lowercase(),
         ]
@@ -418,6 +535,7 @@ mod tests {
             instructions: vec![],
             category: Category::Strength,
             images: vec![],
+            i18n: None,
         }
         .with_lowercase()];
         let results = search_exercises(&exercises, "wide grip bench");
@@ -446,6 +564,7 @@ mod tests {
             instructions: vec![],
             category: Category::Strength,
             images: vec![],
+            i18n: None,
         }
         .with_lowercase()];
         let results = search_exercises(&exercises, "… pushups");
@@ -508,6 +627,7 @@ mod tests {
             instructions: vec![],
             category: crate::models::Category::Strength,
             images: vec![],
+            i18n: None,
         }];
         let found = resolve_exercise(&db, &custom, "custom_1");
         assert!(found.is_some());
@@ -531,6 +651,7 @@ mod tests {
             instructions: vec![],
             category: crate::models::Category::Strength,
             images: vec![],
+            i18n: None,
         }];
         let found = resolve_exercise(&db, &custom, "pull_up");
         assert_eq!(found.unwrap().name, "Pull-Up"); // DB entry wins
@@ -571,11 +692,48 @@ mod tests {
     }
 
     #[test]
-    fn search_with_none_equipment_does_not_match_equipment_query() {
+    fn search_with_body_only_equipment_matches_both_explicit_and_none() {
+        // Schema2: no-equipment (None) means body-only.  A "body only" search
+        // must therefore find both exercises with Equipment::BodyOnly AND those
+        // with equipment: None (i.e. all three sample exercises).
         let exercises = sample_exercises();
         let results = search_exercises(&exercises, "body only");
-        assert_eq!(results.len(), 1);
-        assert_eq!(results[0].id, "pull_up");
+        // pull_up has Equipment::BodyOnly, running has None equipment
+        let ids: Vec<&str> = results.iter().map(|e| e.id.as_str()).collect();
+        assert!(ids.contains(&"pull_up"), "BodyOnly exercise should match");
+        assert!(
+            ids.contains(&"running"),
+            "None-equipment exercise should match 'body only'"
+        );
+    }
+
+    #[test]
+    fn search_by_normalized_id() {
+        // ID-based search: an exercise with id "kettlebell_pistol_squat" should
+        // be found by the query "kettlebell" even when the name is abbreviated.
+        let exercises = vec![Exercise {
+            id: "kettlebell_pistol_squat".into(),
+            name: "KB Pistol Squat".into(),
+            name_lower: String::new(),
+            force: Some(Force::Push),
+            level: Some(Level::Intermediate),
+            mechanic: None,
+            equipment: Some(Equipment::Kettlebells),
+            primary_muscles: vec![Muscle::Quadriceps],
+            secondary_muscles: vec![],
+            instructions: vec![],
+            category: Category::Strength,
+            images: vec![],
+            i18n: None,
+        }
+        .with_lowercase()];
+        let results = search_exercises(&exercises, "kettlebell");
+        assert_eq!(
+            results.len(),
+            1,
+            "should find exercise by normalized ID token"
+        );
+        assert_eq!(results[0].id, "kettlebell_pistol_squat");
     }
 
     #[test]
@@ -598,8 +756,9 @@ mod tests {
 
     #[test]
     fn exercises_json_url_uses_fork() {
-        // The JSON endpoint must reference the gfauredev fork (SSOT).
-        // exercises_json_url() is now cross-platform; test it on all targets.
+        // On native, the default endpoint references the gfauredev fork.
+        // On WASM, exercises are served from the app's own origin (bundled in
+        // public/); this test validates the native path only.
         #[cfg(not(target_arch = "wasm32"))]
         let _g = crate::services::storage::native_storage::test_lock();
         let url = exercises_json_url();
@@ -662,6 +821,7 @@ mod tests {
             instructions: vec![],
             category: Category::Strength,
             images: vec![],
+            i18n: None,
         }];
         let results = search_exercises(&exercises, "quadriceps");
         assert_eq!(results.len(), 1);
@@ -683,6 +843,7 @@ mod tests {
             instructions: vec![],
             category: Category::Strength,
             images: vec![],
+            i18n: None,
         }];
         let results = search_exercises(&exercises, "glutes");
         assert_eq!(results.len(), 1);
@@ -704,6 +865,7 @@ mod tests {
             instructions: vec![],
             category: Category::Cardio,
             images: vec![],
+            i18n: None,
         }];
         // Search by category should match custom exercises too
         let results = search_exercises(&exercises, "cardio");
@@ -910,5 +1072,157 @@ mod tests {
             assert!(result.is_ok(), "expected Ok([]), got: {result:?}");
             assert!(result.unwrap().is_empty());
         }
+
+        #[test]
+        fn download_db_i18n_returns_default_on_connection_refused() {
+            let _g = cfg_lock();
+            let port = {
+                let l = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+                l.local_addr().unwrap().port()
+            };
+            let _url = ConfigKeyGuard(crate::utils::EXERCISE_DB_URL_STORAGE_KEY);
+            let _ = native_storage::set_config_value(
+                crate::utils::EXERCISE_DB_URL_STORAGE_KEY,
+                &format!("http://127.0.0.1:{port}/"),
+            );
+
+            let rt = tokio::runtime::Builder::new_current_thread()
+                .enable_all()
+                .build()
+                .unwrap();
+            let result = rt.block_on(download_db_i18n());
+
+            assert!(
+                result.is_empty(),
+                "download_db_i18n should return empty map on connection error"
+            );
+        }
+    }
+
+    // ── merge_lang_entries unit tests ────────────────────────────────────────
+
+    #[test]
+    fn merge_lang_entries_inserts_translation_for_matching_id() {
+        let mut exercises = vec![Exercise {
+            id: "bench_press".into(),
+            name: "Bench Press".into(),
+            name_lower: String::new(),
+            force: None,
+            level: None,
+            mechanic: None,
+            equipment: None,
+            primary_muscles: vec![],
+            secondary_muscles: vec![],
+            instructions: vec!["Step 1".into()],
+            category: Category::Strength,
+            images: vec![],
+            i18n: None,
+        }];
+        let entries = vec![ExerciseLangEntry {
+            id: "bench_press".into(),
+            name: Some("Développé Couché".into()),
+            instructions: Some(vec!["Étape 1".into()]),
+        }];
+        merge_lang_entries(&mut exercises, "fr", &entries);
+
+        let i18n = exercises[0].i18n.as_ref().expect("i18n map should be set");
+        let fr = i18n.get("fr").expect("'fr' entry should exist");
+        assert_eq!(fr.name.as_deref(), Some("Développé Couché"));
+        assert_eq!(
+            fr.instructions.as_deref(),
+            Some(&["Étape 1".to_owned()][..])
+        );
+    }
+
+    #[test]
+    fn merge_lang_entries_skips_unmatched_ids() {
+        let mut exercises = vec![Exercise {
+            id: "squat".into(),
+            name: "Squat".into(),
+            name_lower: String::new(),
+            force: None,
+            level: None,
+            mechanic: None,
+            equipment: None,
+            primary_muscles: vec![],
+            secondary_muscles: vec![],
+            instructions: vec![],
+            category: Category::Strength,
+            images: vec![],
+            i18n: None,
+        }];
+        let entries = vec![ExerciseLangEntry {
+            id: "bench_press".into(),
+            name: Some("Développé Couché".into()),
+            instructions: None,
+        }];
+        merge_lang_entries(&mut exercises, "fr", &entries);
+
+        assert!(
+            exercises[0].i18n.is_none(),
+            "unmatched entry should not create an i18n map"
+        );
+    }
+
+    #[test]
+    fn merge_lang_entries_preserves_existing_i18n_for_other_langs() {
+        use std::collections::HashMap;
+        let mut existing_i18n = HashMap::new();
+        existing_i18n.insert(
+            "es".to_owned(),
+            ExerciseI18n {
+                name: Some("Press de Banca".into()),
+                instructions: None,
+            },
+        );
+        let mut exercises = vec![Exercise {
+            id: "bench_press".into(),
+            name: "Bench Press".into(),
+            name_lower: String::new(),
+            force: None,
+            level: None,
+            mechanic: None,
+            equipment: None,
+            primary_muscles: vec![],
+            secondary_muscles: vec![],
+            instructions: vec![],
+            category: Category::Strength,
+            images: vec![],
+            i18n: Some(existing_i18n),
+        }];
+        let entries = vec![ExerciseLangEntry {
+            id: "bench_press".into(),
+            name: Some("Développé Couché".into()),
+            instructions: None,
+        }];
+        merge_lang_entries(&mut exercises, "fr", &entries);
+
+        let i18n = exercises[0].i18n.as_ref().unwrap();
+        assert!(i18n.contains_key("es"), "'es' entry should be preserved");
+        assert!(i18n.contains_key("fr"), "'fr' entry should be added");
+    }
+
+    #[test]
+    fn exercises_lang_json_url_returns_correct_format() {
+        #[cfg(not(target_arch = "wasm32"))]
+        let _g = crate::services::storage::native_storage::test_lock();
+        let url = exercises_lang_json_url("fr");
+        assert!(url.contains("gfauredev"), "URL should reference gfauredev");
+        assert!(
+            url.ends_with("exercises.fr.json"),
+            "URL should end with exercises.fr.json, got: {url}"
+        );
+    }
+
+    #[test]
+    fn db_i18n_url_returns_correct_format() {
+        #[cfg(not(target_arch = "wasm32"))]
+        let _g = crate::services::storage::native_storage::test_lock();
+        let url = db_i18n_url();
+        assert!(url.contains("gfauredev"), "URL should reference gfauredev");
+        assert!(
+            url.ends_with("i18n.json"),
+            "URL should end with i18n.json, got: {url}"
+        );
     }
 }

@@ -1,0 +1,116 @@
+{
+  "fr": {
+    "force": {
+      "pull": "traction",
+      "push": "poussée",
+      "static": "statique"
+    },
+    "level": {
+      "beginner": "débutant",
+      "intermediate": "intermédiaire",
+      "expert": "expert"
+    },
+    "mechanic": {
+      "compound": "polyarticulaire",
+      "isolation": "isolation"
+    },
+    "equipment": {
+      "bands": "bandes élastiques",
+      "barbell": "barre",
+      "cable": "poulie câble",
+      "dumbbell": "haltère",
+      "e-z curl bar": "barre EZ",
+      "exercise ball": "ballon de gym",
+      "foam roll": "rouleau en mousse",
+      "kettlebells": "kettlebells",
+      "machine": "machine",
+      "medicine ball": "ballon lesté",
+      "other": "autre"
+    },
+    "category": {
+      "cardio": "cardio",
+      "olympic weightlifting": "haltérophilie olympique",
+      "plyometrics": "pliométrie",
+      "powerlifting": "force athlétique",
+      "strength": "musculation",
+      "stretching": "étirement",
+      "strongman": "homme fort"
+    },
+    "muscles": {
+      "abdominals": "abdominaux",
+      "abductors": "abducteurs",
+      "adductors": "adducteurs",
+      "biceps": "biceps",
+      "calves": "mollets",
+      "chest": "pectoraux",
+      "forearms": "avant-bras",
+      "glutes": "fessiers",
+      "hamstrings": "ischio-jambiers",
+      "lats": "grand dorsal",
+      "lower back": "bas du dos",
+      "middle back": "milieu du dos",
+      "neck": "cou",
+      "quadriceps": "quadriceps",
+      "shoulders": "épaules",
+      "traps": "trapèzes",
+      "triceps": "triceps"
+    }
+  },
+  "es": {
+    "force": {
+      "pull": "tracción",
+      "push": "empuje",
+      "static": "estático"
+    },
+    "level": {
+      "beginner": "principiante",
+      "intermediate": "intermedio",
+      "expert": "experto"
+    },
+    "mechanic": {
+      "compound": "compuesto",
+      "isolation": "aislamiento"
+    },
+    "equipment": {
+      "bands": "bandas elásticas",
+      "barbell": "barra",
+      "cable": "cable",
+      "dumbbell": "mancuerna",
+      "e-z curl bar": "barra EZ",
+      "exercise ball": "balón de ejercicio",
+      "foam roll": "rodillo de espuma",
+      "kettlebells": "pesas rusas",
+      "machine": "máquina",
+      "medicine ball": "balón medicinal",
+      "other": "otro"
+    },
+    "category": {
+      "cardio": "cardio",
+      "olympic weightlifting": "halterofilia olímpica",
+      "plyometrics": "pliometría",
+      "powerlifting": "powerlifting",
+      "strength": "fuerza",
+      "stretching": "estiramiento",
+      "strongman": "hombre fuerte"
+    },
+    "muscles": {
+      "abdominals": "abdominales",
+      "abductors": "abductores",
+      "adductors": "aductores",
+      "biceps": "bíceps",
+      "calves": "gemelos",
+      "chest": "pecho",
+      "forearms": "antebrazos",
+      "glutes": "glúteos",
+      "hamstrings": "isquiotibiales",
+      "lats": "dorsal ancho",
+      "lower back": "zona lumbar",
+      "middle back": "espalda media",
+      "neck": "cuello",
+      "quadriceps": "cuádriceps",
+      "shoulders": "hombros",
+      "traps": "trapecios",
+      "triceps": "tríceps"
+    }
+  }
+}

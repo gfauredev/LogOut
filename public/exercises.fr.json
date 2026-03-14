@@ -1,0 +1,135 @@
+[
+  {
+    "id": "barbell_bench_press_medium_grip",
+    "name": "Développé Couché à la Barre Prise Medium",
+    "instructions": [
+      "Allongez-vous sur un banc plat. Avec une prise médium (une prise qui crée un angle de 90 degrés en milieu de mouvement entre les avant-bras et les bras), dérackez la barre et tenez-la directement au-dessus de vous, bras verrouillés. Ce sera votre position de départ.",
+      "Depuis la position de départ, inspirez et descendez lentement jusqu'à ce que la barre touche le milieu de la poitrine.",
+      "Après une brève pause, repoussez la barre vers la position de départ en expirant. Concentrez-vous sur la poussée avec les pectoraux. Verrouillez les bras et contractez les pectoraux en position haute, maintenez une seconde puis redescendez lentement. Conseil : idéalement, la descente doit durer environ deux fois plus longtemps que la montée.",
+      "Répétez le mouvement pour le nombre de répétitions prescrit.",
+      "Une fois terminé, rerackez la barre."
+    ]
+  },
+  {
+    "id": "barbell_full_squat",
+    "name": "Squat Complet à la Barre",
+    "instructions": [
+      "Cet exercice se pratique de préférence dans un rack pour des raisons de sécurité. Commencez par régler la barre légèrement au-dessus du niveau des épaules. Une fois la hauteur correcte choisie et la barre chargée, passez sous la barre et placez le haut du dos (légèrement sous la nuque) dessus.",
+      "Tenez la barre des deux mains de chaque côté, puis déposez-la du rack en poussant avec les jambes tout en redressant le torse.",
+      "Reculez du rack et adoptez une position médium, pieds à la largeur des épaules avec les orteils légèrement tournés vers l'extérieur. Gardez la tête haute en permanence et le dos droit. Ce sera votre position de départ.",
+      "Commencez à descendre lentement en fléchissant les genoux et en reculant les hanches tout en maintenant une posture droite, la tête haute. Continuez jusqu'à ce que les ischio-jambiers reposent sur les mollets. Inspirez lors de cette phase.",
+      "Remontez la barre en expirant en poussant dans le sol avec le talon ou le milieu du pied, en tendant les jambes et en étendant les hanches pour revenir à la position de départ.",
+      "Répétez pour le nombre de répétitions recommandé."
+    ]
+  },
+  {
+    "id": "chest_dip",
+    "name": "Dip Pectoraux",
+    "instructions": [
+      "Pour cet exercice, vous avez besoin de barres parallèles. Pour adopter la position de départ, soutenez votre corps à bout de bras (coudes verrouillés) au-dessus des barres.",
+      "En inspirant, descendez lentement avec le torse incliné vers l'avant d'une trentaine de degrés et les coudes légèrement évasés vers l'extérieur, jusqu'à ressentir un léger étirement dans les pectoraux.",
+      "Dès que vous ressentez l'étirement, utilisez les pectoraux pour repousser votre corps vers la position de départ en expirant. Conseil : pensez à contracter les pectoraux en haut du mouvement pendant une seconde.",
+      "Répétez le mouvement pour le nombre de répétitions prescrit."
+    ]
+  },
+  {
+    "id": "chin_up",
+    "name": "Traction en Supination",
+    "instructions": [
+      "Saisissez la barre de traction avec les paumes tournées vers vous et une prise plus serrée que la largeur des épaules.",
+      "Les deux bras tendus tenant la barre à la largeur choisie, gardez le torse aussi droit que possible en creusant légèrement le bas du dos et en sortant la poitrine. Ce sera votre position de départ. Conseil : maintenir le torse droit maximise le travail des biceps tout en limitant l'implication du dos.",
+      "En expirant, tirez le torse vers le haut jusqu'à ce que la tête arrive au niveau de la barre. Concentrez-vous sur la contraction des biceps. Gardez les coudes près du corps. Conseil : le torse doit rester stable dans l'espace, seuls les bras bougent. Les avant-bras ne servent qu'à tenir la barre.",
+      "Après une seconde de contraction des biceps en position haute, redescendez lentement le torse jusqu'à la position de départ, bras complètement tendus. Inspirez lors de cette phase.",
+      "Répétez ce mouvement pour le nombre de répétitions prescrit."
+    ]
+  },
+  {
+    "id": "clean_deadlift",
+    "name": "Soulevé de Terre pour l'Épaulé",
+    "instructions": [
+      "Placez-vous debout, la barre proche des tibias. Les pieds doivent être directement sous les hanches, légèrement tournés vers l'extérieur. Saisissez la barre en prise double pronation ou en crochet, à la largeur des épaules environ. Accroupissez-vous jusqu'à la barre. La colonne vertébrale doit être en complète extension, les épaules en avant de la barre et le dos aussi vertical que possible.",
+      "Initiez le mouvement en poussant dans le sol à travers l'avant des talons. Lorsque la barre remonte, conservez un angle de dos constant. Écartez les genoux vers les côtés pour qu'ils ne gênent pas le passage de la barre.",
+      "Une fois la barre passée les genoux, terminez le mouvement en propulsant les hanches vers la barre jusqu'à ce que hanches et genoux soient en extension complète."
+    ]
+  },
+  {
+    "id": "hanging_leg_raise",
+    "name": "Relevé de Jambes Suspendu",
+    "instructions": [
+      "Suspendez-vous à une barre de traction, les deux bras complètement tendus, avec une prise large ou médium. Les jambes doivent être droites vers le bas et le bassin légèrement basculé vers l'arrière. Ce sera votre position de départ.",
+      "Relevez les jambes jusqu'à ce que le torse forme un angle de 90 degrés avec les jambes. Expirez lors de ce mouvement et maintenez la contraction une seconde environ.",
+      "Redescendez lentement vers la position de départ en inspirant.",
+      "Répétez pour le nombre de répétitions recommandé."
+    ]
+  },
+  {
+    "id": "pistol_squat",
+    "name": "Squat à une Jambe (Pistol)",
+    "instructions": [
+      "Tenez-vous en équilibre sur une jambe, l'autre tendue devant vous. Tendez les bras devant vous pour vous aider à garder l'équilibre. Ce sera votre position de départ.",
+      "En gardant le dos droit et le pied d'appui à plat sur le sol, descendez lentement en fléchissant le genou et la hanche de la jambe d'appui. Gardez la jambe tendue soulevée du sol pendant tout le mouvement.",
+      "Descendez jusqu'à ce que l'ischio-jambier touche le mollet ou aussi bas que votre mobilité le permet. Gardez le genou aligné avec le pied et évitez qu'il parte vers l'intérieur.",
+      "Marquez une légère pause en bas, puis poussez sur le talon pour revenir à la position de départ.",
+      "Effectuez toutes les répétitions d'un côté avant de changer de jambe."
+    ]
+  },
+  {
+    "id": "plank",
+    "name": "Gainage",
+    "instructions": [
+      "Adoptez une position de gainage ventral, en appui sur les orteils et les avant-bras. Les bras sont fléchis directement sous les épaules.",
+      "Maintenez le corps bien aligné en permanence et conservez cette position aussi longtemps que possible. Pour augmenter la difficulté, vous pouvez lever un bras ou une jambe."
+    ]
+  },
+  {
+    "id": "pull_up",
+    "name": "Traction",
+    "instructions": [
+      "Saisissez la barre de traction avec les paumes tournées vers l'avant selon la prise choisie. Note sur les prises : pour une prise large, les mains doivent être écartées au-delà de la largeur des épaules ; pour une prise médium, à la largeur des épaules ; pour une prise serrée, moins large que les épaules.",
+      "Les deux bras tendus, la barre saisie à la largeur choisie, inclinez légèrement le torse vers l'arrière d'une trentaine de degrés en creusant le bas du dos et en sortant la poitrine. Ce sera votre position de départ.",
+      "Tirez le torse vers le haut jusqu'à ce que la barre touche le haut de la poitrine en abaissant les épaules et les bras vers le bas et l'arrière. Expirez lors de cette phase. Conseil : concentrez-vous sur la contraction des dorsaux en position haute. Le torse doit rester stable dans l'espace, seuls les bras se déplacent. Les avant-bras ne servent qu'à tenir la barre.",
+      "Après une seconde en position contractée, inspirez et redescendez lentement le torse vers la position de départ, bras complètement tendus et dorsaux étirés.",
+      "Répétez ce mouvement pour le nombre de répétitions prescrit."
+    ]
+  },
+  {
+    "id": "push_up",
+    "name": "Pompe",
+    "instructions": [
+      "Allongez-vous face contre terre et placez les mains à environ 90 cm l'une de l'autre en maintenant le torse à bout de bras.",
+      "Ensuite, descendez jusqu'à ce que la poitrine effleure presque le sol en inspirant.",
+      "Expirez et repoussez le haut du corps vers la position de départ en contractant les pectoraux.",
+      "Après une brève pause en position haute contractée, recommencez à descendre pour autant de répétitions que nécessaire."
+    ]
+  },
+  {
+    "id": "ring_dip",
+    "name": "Dip aux Anneaux",
+    "instructions": [
+      "Saisissez un anneau dans chaque main, puis prenez un léger élan pour vous hisser en position de départ, les bras verrouillés.",
+      "Fléchissez les coudes pour descendre jusqu'à ce que les bras forment un angle d'au moins 90 degrés. Évitez tout balancement et maintenez une bonne posture tout au long de la descente.",
+      "Remontez en extension des coudes pour revenir à la position de départ.",
+      "Répétez pour le nombre de répétitions désiré."
+    ]
+  },
+  {
+    "id": "standing_calf_raise",
+    "name": "Élévation des Talons Debout",
+    "instructions": [
+      "Tenez-vous debout, les pieds à plat sur le sol, écartés à la largeur des hanches. Vous pouvez vous appuyer légèrement contre un mur ou une surface stable pour l'équilibre si besoin. Ce sera votre position de départ.",
+      "Soulevez les talons aussi haut que possible en poussant sur la plante des pieds, en contractant les mollets en haut du mouvement.",
+      "Maintenez la contraction un instant, puis redescendez lentement les talons vers la position de départ.",
+      "Répétez pour le nombre de répétitions recommandé. Pour augmenter l'amplitude, effectuez l'exercice avec la plante des pieds sur le bord d'une marche."
+    ]
+  },
+  {
+    "id": "triceps_dip",
+    "name": "Dip Triceps",
+    "instructions": [
+      "Pour adopter la position de départ, soutenez votre corps à bout de bras, les coudes presque verrouillés, au-dessus des barres.",
+      "Inspirez et descendez lentement. Le torse doit rester droit et les coudes près du corps, ce qui cible davantage les triceps. Descendez jusqu'à former un angle de 90 degrés entre le bras et l'avant-bras.",
+      "Expirez et poussez sur les triceps pour remonter le torse à la position de départ.",
+      "Répétez le mouvement pour le nombre de répétitions prescrit."
+    ]
+  }
+]

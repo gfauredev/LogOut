@@ -4,6 +4,7 @@ use crate::services::storage;
 use crate::utils::format_session_date;
 use crate::{ExerciseSearchSignal, Route};
 use dioxus::prelude::*;
+use dioxus_i18n::t;
 
 /// Number of sessions loaded per scroll increment
 const PAGE_SIZE: usize = 20;
@@ -75,12 +76,12 @@ pub fn Home() -> Element {
     rsx! {
         if *has_active.read() { SessionView {} } else {
             header {
-                h1 { tabindex: 0, "💪 LogOut" }
-                p { tabindex: 0, "Turn off your computer, Log your workOut" }
+                h1 { tabindex: 0, {t!("app-title")} }
+                p { tabindex: 0, {t!("app-subtitle")} }
             }
             if completed_sessions().is_empty() {
-                p { "No past sessions yet" }
-                p { "Tap + to start your first workout" }
+                p { {t!("no-sessions")} }
+                p { {t!("start-first-workout")} }
             } else {
                 main { class: "sessions",
                     for session in completed_sessions().into_iter().take(*visible_count.read()) {
@@ -90,7 +91,7 @@ pub fn Home() -> Element {
             }
             button { class: "icon add",
                 onclick: start_new_session,
-                title: "Start New Workout",
+                title: t!("start-new-workout"),
                 "+"
             }
         }
