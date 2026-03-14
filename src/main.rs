@@ -136,8 +136,8 @@ fn App() -> Element {
 
     // Provide shared state signals via context
     services::storage::provide_app_state();
-    services::exercise_db::provide_exercises();
     use_context_provider(|| DbI18nSignal(Signal::new(models::DbI18n::default())));
+    services::exercise_db::provide_exercises();
     use_context_provider(|| CongratulationsSignal(Signal::new(false)));
     use_context_provider(|| ToastSignal(Signal::new(None)));
     use_context_provider(|| NotificationPermissionToastSignal(Signal::new(false)));

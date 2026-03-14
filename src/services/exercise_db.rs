@@ -204,7 +204,8 @@ async fn download_exercise_lang(lang: &str) -> Result<Vec<ExerciseLangEntry>, St
 /// inserted into the exercise's `i18n` map under the given language code.
 fn merge_lang_entries(exercises: &mut [Exercise], lang: &str, entries: &[ExerciseLangEntry]) {
     use std::collections::HashMap;
-    // Build a quick lookup map from ID → entry to keep the merge O(n).
+    // Build a quick lookup map from ID → entry; O(m) to build, then O(1) per
+    // exercise lookup, giving O(n+m) overall instead of O(n·m) for a naïve scan.
     let entry_map: HashMap<&str, &ExerciseLangEntry> =
         entries.iter().map(|e| (e.id.as_str(), e)).collect();
 
