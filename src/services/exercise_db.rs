@@ -756,9 +756,8 @@ mod tests {
 
     #[test]
     fn exercises_json_url_uses_fork() {
-        // On native, the default endpoint references the gfauredev fork.
-        // On WASM, exercises are served from the app's own origin (bundled in
-        // public/); this test validates the native path only.
+        // The default JSON endpoint references the gfauredev GitHub Pages
+        // static website, which serves files with CORS headers.
         #[cfg(not(target_arch = "wasm32"))]
         let _g = crate::services::storage::native_storage::test_lock();
         let url = exercises_json_url();
