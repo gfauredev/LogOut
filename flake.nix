@@ -84,6 +84,7 @@
             cargo-mutants
             chromedriver
             dioxus-cli
+            wasm-bindgen-cli_0_2_114
             maestro
             patchelf
             pkg-config
