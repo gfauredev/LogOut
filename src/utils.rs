@@ -1,7 +1,6 @@
 /// Default base URL for the exercise database, served as a static website with
 /// proper CORS headers (`Access-Control-Allow-Origin: *`).
-pub(crate) const EXERCISE_DB_BASE_URL: &str =
-    "https://gfauredev.github.io/free-exercise-db/";
+pub(crate) const EXERCISE_DB_BASE_URL: &str = "https://gfauredev.github.io/free-exercise-db/";
 
 /// Base URL for exercise images, which are served from raw GitHub content
 /// (not included in release assets).
