@@ -87,6 +87,7 @@
             maestro
             patchelf
             pkg-config
+            python3 # for web-test.sh HTTP server (required in pure Nix CI)
             rustToolchain
             selenium-manager
             ungoogled-chromium
@@ -163,6 +164,8 @@
                   > "$_chrome_wrap_dir/google-chrome"
                 chmod +x "$_chrome_wrap_dir/google-chrome"
                 export PATH="$_chrome_wrap_dir:$PATH"
+                # Clean up the temp wrapper dir when the shell exits
+                trap 'rm -rf "'"$_chrome_wrap_dir"'"' EXIT
               fi
               unset _nix_chromium _chrome_wrap_dir
               # Patch aapt2 if in gradle cache or target dir (Android on Nix)
