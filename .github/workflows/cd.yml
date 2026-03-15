@@ -84,12 +84,12 @@ jobs:
       env:
         ANDROID_KEYSTORE_PATH: ${{ steps.keystore.outputs.filePath }}
         ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
-    - name: Publish Timestamped Pre-Release
+    - name: Publish Timestamped Pre-release
       if: github.ref == 'refs/heads/main'
       run: |
         NOW=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
         gh release create "pre-$(date -u +%Y-%m-%dT%H-%M-%S)" *.apk \
-          --prerelease --title "$NOW" --notes "Automated Pre-Release for $NOW"
+          --prerelease --title "$NOW" --notes "Automated pre-release for $NOW"
       env:
         GH_TOKEN: ${{ github.token }}
     - name: Publish Semantically Versionned Release

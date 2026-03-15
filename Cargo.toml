@@ -1,12 +1,12 @@
 [package]
 name = "logout"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2021"
 
 [features]
 default = ["web-platform"]
-web-platform = ["dioxus/web"]  # Enable web renderer (WASM / browser)
-mobile-platform = ["dioxus/mobile"]  # Enable mobile renderer (Android / iOS)
+web-platform = ["dioxus/web"]  # Web renderer (WASM / browser)
+mobile-platform = ["dioxus/mobile"]  # Mobile renderer (Android / iOS)
 
 [dependencies]
 dioxus = { version = "0.7", features = ["router"] }
