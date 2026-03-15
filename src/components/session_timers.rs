@@ -73,6 +73,14 @@ pub(super) fn SessionDurationDisplay(
 ) -> Element {
     let mut now_tick = use_signal(get_current_timestamp);
     use_coroutine(move |_: UnboundedReceiver<()>| async move {
+        // Avoid running the periodic tick loop when the session is not active
+        // or when it is currently paused. In those states, the displayed time
+        // is frozen or zeroed, so updating `now_tick` would not change the UI
+        // but would still wake the task every second.
+        if !session_is_active || paused_at.is_some() {
+            return;
+        }
+
         loop {
             #[cfg(target_arch = "wasm32")]
             gloo_timers::future::TimeoutFuture::new(TIMER_TICK_MS).await;
