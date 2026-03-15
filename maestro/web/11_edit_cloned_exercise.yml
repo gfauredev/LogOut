@@ -13,7 +13,7 @@ url: http://localhost:8080/LogOut/?dl_db_url=http%3A%2F%2Flocalhost%3A8080%2FLog
 - assertVisible: "Edit Exercise"
 # Change the exercise name
 - tapOn: "Exercise Name *"
-- clearText
+- eraseText
 - inputText: "My Ring Dip Variation"
 # Save the changes
 - tapOn: "💾 Save Changes"

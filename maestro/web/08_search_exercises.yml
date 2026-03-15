@@ -12,5 +12,5 @@ url: http://localhost:8080/LogOut/?dl_db_url=http%3A%2F%2Flocalhost%3A8080%2FLog
 - assertVisible: "Ring Dip"
 - assertNotVisible: "Romanian Deadlift"
 # Clear search to restore full list
-- clearText
+- eraseText
 - assertVisible: "Romanian Deadlift"

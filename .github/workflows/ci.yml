@@ -92,15 +92,13 @@ jobs:
         check-regexp: 'package pages.*'
         repo-token: ${{ secrets.GITHUB_TOKEN }}
         fail-on-no-checks: false
-    - run: nix build .#pages -o dist/LogOut/
+    - run: ./scripts/web-test.sh # Build & Serve on http://localhost:8080
     - uses: treosh/lighthouse-ci-action@v12
       with:
-        urls: http://localhost/LogOut/
+        urls: http://localhost:8080/LogOut/
         uploadArtifacts: true
         temporaryPublicStorage: true
         configPath: .lighthouserc.json
-      env:
-        LHCI_COLLECT_STATIC_DIST_DIR: ./dist
       id: lighthouse_audit
     - if: always() && github.event_name == 'pull_request'
       run: |
