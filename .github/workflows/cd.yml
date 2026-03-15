@@ -95,8 +95,23 @@ jobs:
       env:
         GH_TOKEN: ${{ github.token }}
 
+  check-tag:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    outputs:
+      is_tagged: ${{ steps.check.outputs.is_tagged }}
+    steps:
+    - uses: actions/checkout@v6
+    - id: check
+      run: |
+        if git describe --tags --exact-match HEAD >/dev/null 2>&1; then
+          echo "is_tagged=true" >> $GITHUB_OUTPUT
+        else
+          echo "is_tagged=false" >> $GITHUB_OUTPUT
+        fi
   android-prerelease:
-    if: github.ref == 'refs/heads/main' && !startsWith(github.ref, 'refs/tags/v')
+    needs: check-tag
+    if: github.ref == 'refs/heads/main' && needs.check-tag.outputs.is_tagged == 'false'
     runs-on: ubuntu-latest
     timeout-minutes: 30
     permissions:

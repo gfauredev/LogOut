@@ -4,6 +4,7 @@ NAME=LogOut
 APK_PATH=$1
 KEYSTORE_PATH=${ANDROID_KEYSTORE_PATH:-"android/secrets/logout.jks"}
 KEY_ALIAS=${ANDROID_KEY_ALIAS:-"logout-key"}
+APK_ARCH=arm64-v8a
 if [ -z "$APK_PATH" ]; then
   APK_PATH=$(find target/dx/log-out/release/android/ -name "*.apk" | head -n 1)
 fi
@@ -11,7 +12,11 @@ if [ ! -f "$APK_PATH" ]; then
   echo "Error: File $APK_PATH not found."
   exit 1
 fi
-APK_ARCH=$(aapt2 dump badging "$APK_PATH" | awk -F"'" '/native-code:/{print $2}')
+if which aapt; then
+  APK_ARCH=$(aapt dump badging "$APK_PATH" | awk -F"'" '/native-code:/{print $2}')
+elif which aapt2; then
+  APK_ARCH=$(aapt2 dump badging "$APK_PATH" | awk -F"'" '/native-code:/{print $2}')
+fi
 # Ensure required environment variables are set
 if [ -z "$ANDROID_KEYSTORE_PASS" ]; then
   if [ -z "$ANDROID_KEY_PASSWORD" ]; then
