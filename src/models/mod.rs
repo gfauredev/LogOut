@@ -612,13 +612,20 @@ impl WorkoutSession {
         if let Some(paused) = self.paused_at.take() {
             let now = get_current_timestamp();
             let pause_duration = now.saturating_sub(paused);
-            self.start_time = self.start_time.saturating_add(pause_duration);
-            if let Some(rst) = self.rest_start_time {
-                self.rest_start_time = Some(rst.saturating_add(pause_duration));
-            }
-            if let Some(ces) = self.current_exercise_start {
-                self.current_exercise_start = Some(ces.saturating_add(pause_duration));
-            }
+            self.apply_pause_duration(pause_duration);
+        }
+    }
+
+    /// Apply a pause duration (in seconds) to all timestamps that participate in
+    /// elapsed-time calculations.  This is extracted so it can be tested
+    /// deterministically without depending on the wall clock.
+    fn apply_pause_duration(&mut self, pause_duration: u64) {
+        self.start_time = self.start_time.saturating_add(pause_duration);
+        if let Some(rst) = self.rest_start_time {
+            self.rest_start_time = Some(rst.saturating_add(pause_duration));
+        }
+        if let Some(ces) = self.current_exercise_start {
+            self.current_exercise_start = Some(ces.saturating_add(pause_duration));
         }
     }
 }
@@ -642,6 +649,135 @@ pub fn format_time(seconds: u64) -> String {
         format!("{hours:02}:{minutes:02}:{secs:02}")
     } else {
         format!("{minutes:02}:{secs:02}")
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn pause_sets_paused_at_for_active_session() {
+        let mut session = WorkoutSession::new();
+        assert!(!session.is_paused());
+        assert!(session.is_active());
+
+        session.pause();
+
+        assert!(session.is_paused());
+        assert!(session.paused_at.is_some());
+    }
+
+    #[test]
+    fn pause_does_not_modify_finished_session() {
+        let mut session = WorkoutSession::new();
+        // Mark the session as finished.
+        session.end_time = Some(session.start_time + 10);
+        assert!(!session.is_active());
+
+        session.pause();
+
+        // `paused_at` must remain unset for finished sessions.
+        assert!(session.paused_at.is_none());
+    }
+
+    #[test]
+    fn apply_pause_duration_shifts_all_relevant_timestamps() {
+        let mut session = WorkoutSession {
+            id: "test".to_string(),
+            start_time: 100,
+            end_time: None,
+            exercise_logs: Vec::new(),
+            version: DATA_VERSION,
+            pending_exercise_ids: Vec::new(),
+            rest_start_time: Some(110),
+            current_exercise_id: Some("exercise".to_string()),
+            current_exercise_start: Some(120),
+            paused_at: None,
+        };
+
+        session.apply_pause_duration(30);
+
+        assert_eq!(session.start_time, 130);
+        assert_eq!(session.rest_start_time, Some(140));
+        assert_eq!(session.current_exercise_start, Some(150));
+    }
+
+    #[test]
+    fn apply_pause_duration_handles_absent_optional_timestamps() {
+        let mut session = WorkoutSession {
+            id: "test".to_string(),
+            start_time: 200,
+            end_time: None,
+            exercise_logs: Vec::new(),
+            version: DATA_VERSION,
+            pending_exercise_ids: Vec::new(),
+            rest_start_time: None,
+            current_exercise_id: None,
+            current_exercise_start: None,
+            paused_at: None,
+        };
+
+        session.apply_pause_duration(50);
+
+        // Only `start_time` is affected.
+        assert_eq!(session.start_time, 250);
+        assert!(session.rest_start_time.is_none());
+        assert!(session.current_exercise_start.is_none());
+    }
+
+    #[test]
+    fn apply_pause_duration_uses_saturating_arithmetic() {
+        let mut session = WorkoutSession {
+            id: "test".to_string(),
+            start_time: u64::MAX - 1,
+            end_time: None,
+            exercise_logs: Vec::new(),
+            version: DATA_VERSION,
+            pending_exercise_ids: Vec::new(),
+            rest_start_time: Some(u64::MAX - 1),
+            current_exercise_id: Some("exercise".to_string()),
+            current_exercise_start: Some(u64::MAX - 1),
+            paused_at: None,
+        };
+
+        // Adding 10 would overflow without saturation.
+        session.apply_pause_duration(10);
+
+        assert_eq!(session.start_time, u64::MAX);
+        assert_eq!(session.rest_start_time, Some(u64::MAX));
+        assert_eq!(session.current_exercise_start, Some(u64::MAX));
+    }
+
+    #[test]
+    fn resume_clears_paused_at_when_called_on_paused_session() {
+        // We cannot control wall-clock time here, but we can still assert that
+        // `paused_at` is cleared by `resume`.
+        let mut session = WorkoutSession::new();
+        session.paused_at = Some(session.start_time);
+
+        session.resume();
+
+        assert!(!session.is_paused());
+        assert!(session.paused_at.is_none());
+    }
+
+    #[test]
+    fn resume_is_noop_when_not_paused() {
+        let mut session = WorkoutSession::new();
+        assert!(!session.is_paused());
+
+        // Capture state we care about.
+        let start_time_before = session.start_time;
+        let rest_start_before = session.rest_start_time;
+        let current_exercise_start_before = session.current_exercise_start;
+
+        session.resume();
+
+        assert_eq!(session.start_time, start_time_before);
+        assert_eq!(session.rest_start_time, rest_start_before);
+        assert_eq!(session.current_exercise_start, current_exercise_start_before);
+        assert!(session.paused_at.is_none());
     }
 }
 
