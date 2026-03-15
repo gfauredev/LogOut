@@ -214,16 +214,20 @@ checks that run every Sunday at midnight on the `main` branch.
 - Coverage: exclude any non-project file, print number of passed/total in PR
 - Fix Lighthouse Audit, make it pass, print a pretty summary table in PR comment
 - Display last line of maestro output outside `<details>`
-- DRY E2E tests to only one par user story, they can still runFlow others
+- Make one clean Maestro Web E2E test per User Story
+  - Run another test if its final state is needed with
+    [runFlow](https://docs.maestro.dev/reference/commands-available/runflow)
+  - Use deep links to quickly setup the app for the test with
+    [openLink](https://docs.maestro.dev/reference/commands-available/openlink)
   - Ensure all Web Maestro E2E tests pass, including in GitHub CI
-  - Android Maestro E2E tests for features that interact with outside
-  - Weekly Android E2E tests
+  - Consider mocking exercise database with public/exercises.json for E2E tests,
+    so they can load faster and not rely on external network requests
+- Add Android Maestro E2E tests for features that interact with outside
+  - Run Android E2E tests automatically every week, ensure they run properly
 - Fix ICO favicon
 - Make layout and palette harmonious but minimal, efficient
   - Equalize spacings, sizes, net but not wasteful
   - Harmonize Rest timer text color with background when rest is due
-- Mock exercise database with public/exercises.json for E2E tests, so they can
-  load faster and not rely on external network requests
 - Weekly dependencies updates
 
 [LogOut]: https://gfauredev.github.io/LogOut
