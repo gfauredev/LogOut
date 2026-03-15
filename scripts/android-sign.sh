@@ -41,9 +41,8 @@ if ! command -v apksigner >/dev/null 2>&1; then
   fi
 fi
 echo "🖋️ Signing $APK_PATH..."
-apksigner sign --ks "$KEYSTORE_PATH" \
-  --ks-key-alias "$KEY_ALIAS" \
-  --ks-pass "env:ANDROID_KEYSTORE_PASS" \
-  --key-pass "env:ANDROID_KEY_PASSWORD" "$APK_PATH" --out "$NAME.$APK_ARCH.apk"
+apksigner sign --ks "$KEYSTORE_PATH" --ks-key-alias "$KEY_ALIAS" \
+  --ks-pass "env:ANDROID_KEYSTORE_PASS" --key-pass "env:ANDROID_KEY_PASSWORD" \
+  --out "$NAME.$APK_ARCH.apk" "$APK_PATH"
 echo "✅ Successfully signed $APK_PATH to $NAME.$APK_ARCH.apk"
 echo "To install on device, use: adb install -r $APK_PATH"
