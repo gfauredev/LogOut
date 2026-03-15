@@ -206,19 +206,22 @@ checks that run every Sunday at midnight on the `main` branch.
 
 ## TODO
 
-- Allow search with localized exercises names and tags (in addition to english)
-- Fix favicon downloading but not showing (x-unknown-content-type)
-- Add pause button in Active Session that pauses timers
-- Reorganize CSS in structure, component, context, unique files
+- ~~Allow search with localized exercises names and tags (in addition to
+  english)~~
+- ~~Fix favicon downloading but not showing (x-unknown-content-type)~~
+- ~~Add pause button in Active Session that pauses timers~~
+- ~~Reorganize CSS in structure, component, context, unique files~~
+- Coverage: exclude any non-project file, print number of passed/total in PR
+- Fix Lighthouse Audit, make it pass, print a pretty summary table in PR comment
+- Display last line of maestro output outside `<details>`
+- DRY E2E tests to only one par user story, they can still runFlow others
+  - Ensure all Web Maestro E2E tests pass, including in GitHub CI
+  - Android Maestro E2E tests for features that interact with outside
+  - Weekly Android E2E tests
+- Fix ICO favicon
 - Make layout and palette harmonious but minimal, efficient
   - Equalize spacings, sizes, net but not wasteful
   - Harmonize Rest timer text color with background when rest is due
-- Remove any non project files from coverage
-- Fix Lighthouse Audit
-- Display last line of maestro output outside `<details>`
-- DRY E2E tests to only one par user story, they can still runFlow others
-  - Android Maestro E2E tests for features that interact with outside
-  - Weekly Android E2E tests
 - Mock exercise database with public/exercises.json for E2E tests, so they can
   load faster and not rely on external network requests
 - Weekly dependencies updates
