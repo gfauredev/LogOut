@@ -10,7 +10,7 @@ on:
 
 jobs:
   pwa:
-    if: github.ref == 'refs/heads/main'
+    if: github.ref == 'refs/heads/main' && !startsWith(github.ref, 'refs/tags/v')
     timeout-minutes: 15
     runs-on: ubuntu-latest
     environment:
@@ -48,7 +48,8 @@ jobs:
     - uses: actions/deploy-pages@v4
       id: deployment
 
-  android:
+  android-release:
+    if: startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
     timeout-minutes: 30
     permissions:
@@ -87,31 +88,63 @@ jobs:
       env:
         ANDROID_KEYSTORE_PATH: ${{ steps.keystore.outputs.filePath }}
         ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
-    - name: Check for SemVer Tag
-      id: check-tag
-      if: github.ref == 'refs/heads/main'
-      run: |
-        if git ls-remote --tags origin | grep "^${GITHUB_SHA}.*refs/tags/v" > /dev/null; then
-          echo "has_tag=true" >> $GITHUB_OUTPUT
-        fi
-    - name: Publish Timestamped Pre-release # If no SemVer tag on last commit
-      if: github.ref == 'refs/heads/main' && steps.check-tag.outputs.has_tag != 'true'
-      run: |
-        NOW=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
-        gh release create "pre-$(date -u +%Y-%m-%dT%H-%M-%S)" *.apk \
-          --prerelease --title "$NOW" --notes "Automated pre-release for $NOW"
-      env:
-        GH_TOKEN: ${{ github.token }}
     - name: Publish Semantically Versionned Release
-      if: startsWith(github.ref, 'refs/tags/v')
       run: |
         TAG=${GITHUB_REF#refs/tags/}
         gh release create "$TAG" *.apk --title "$TAG" --notes "Release $TAG"
       env:
         GH_TOKEN: ${{ github.token }}
 
+  android-prerelease:
+    if: github.ref == 'refs/heads/main' && !startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: write # Required by 'gh release'
+      checks: read    # Required by wait-on-check-action
+      statuses: read  # Required by wait-on-check-action
+    steps:
+    - uses: actions/checkout@v6
+    - uses: cachix/install-nix-action@v31
+      with:
+        github_access_token: ${{ secrets.GITHUB_TOKEN }}
+        extra_nix_config: |
+          extra-substituters = https://cache.garnix.io
+          extra-trusted-public-keys = cache.garnix.io:CTFPyKSLcx5RMJKfLo5EEPUObbA78b0YQ2DTCJXqr9g=
+    - uses: DeterminateSystems/magic-nix-cache-action@v13
+    - run: sleep 15 #  Sleep hoping Garnix evaluation will start after
+    - uses: lewagon/wait-on-check-action@v1.5.0
+      with:
+        ref: ${{ github.event.pull_request.head.sha || github.sha }}
+        check-regexp: 'Evaluate flake.nix'
+        repo-token: ${{ secrets.GITHUB_TOKEN }}
+    - uses: lewagon/wait-on-check-action@v1.5.0
+      with:
+        ref: ${{ github.event.pull_request.head.sha || github.sha }}
+        check-regexp: 'devShell.*'
+        repo-token: ${{ secrets.GITHUB_TOKEN }}
+        fail-on-no-checks: false
+    - uses: timheuer/base64-to-file@v1.2.4
+      with:
+        fileName: 'logout.jks'
+        encodedString: ${{ secrets.ANDROID_KEYSTORE_B64 }}
+      id: keystore
+    - run: |
+        nix develop -c dx build --android --release --target aarch64-linux-android # --locked --offline
+        scripts/android-sign.sh # Sign APK(s) and copy here, with architecture
+      env:
+        ANDROID_KEYSTORE_PATH: ${{ steps.keystore.outputs.filePath }}
+        ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+    - name: Publish Timestamped Pre-release # If no SemVer tag on last commit
+      run: |
+        NOW=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+        gh release create "pre-$(date -u +%Y-%m-%dT%H-%M-%S)" *.apk \
+          --prerelease --title "$NOW" --notes "Automated pre-release for $NOW"
+      env:
+        GH_TOKEN: ${{ github.token }}
+
   cleanup:
-    if: github.ref == 'refs/heads/main'
+    if: github.ref == 'refs/heads/main' && !startsWith(github.ref, 'refs/tags/v')
     timeout-minutes: 5
     runs-on: ubuntu-latest
     permissions:
