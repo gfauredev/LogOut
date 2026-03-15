@@ -1,5 +1,0 @@
-# Basic launch test for Android
-appId: com.gfaure.logout
----
-- launchApp
-- assertVisible: "+"

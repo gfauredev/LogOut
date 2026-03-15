@@ -1,0 +1,4 @@
+url: http://localhost:8080/LogOut # Open the App
+---
+- launchApp
+- assertVisible: Turn off your computer, Log your workOut

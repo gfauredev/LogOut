@@ -219,7 +219,7 @@ checks that run every Sunday at midnight on the `main` branch.
     [runFlow](https://docs.maestro.dev/reference/commands-available/runflow)
   - Use deep links to quickly setup the app for the test with
     [openLink](https://docs.maestro.dev/reference/commands-available/openlink)
-  - Ensure all Web Maestro E2E tests pass, including in GitHub CI
+  - Ensure all Web Maestro E2E tests pass, including in GitHub CI, try them
   - Consider mocking exercise database with public/exercises.json for E2E tests,
     so they can load faster and not rely on external network requests
 - Add Android Maestro E2E tests for features that interact with outside

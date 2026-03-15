@@ -1,6 +1,0 @@
-# Cancel the current active session (empty sessions only — header shows ❌)
-url: http://localhost:8080/LogOut
----
-- tapOn:
-    css: header.session button.no
-- assertVisible: .*LogOut

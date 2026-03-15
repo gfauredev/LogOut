@@ -1,6 +1,0 @@
-# Navigate to the Credits page via the bottom navigation bar
-url: http://localhost:8080/LogOut
----
-- tapOn:
-    css: "nav > .credits"
-- assertVisible: "ℹ️ Credits"

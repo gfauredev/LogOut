@@ -1,6 +1,0 @@
-# Navigate to the Analytics page via the bottom navigation bar
-url: http://localhost:8080/LogOut
----
-- tapOn:
-    css: "nav > .analytics"
-- assertVisible: "📊 Analytics"

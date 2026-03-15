@@ -1,6 +1,0 @@
-# Finish the current active session (non-empty sessions — header shows ✅)
-url: http://localhost:8080/LogOut
----
-- tapOn:
-    css: header.session button.yes
-- assertVisible: .*LogOut
