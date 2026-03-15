@@ -971,7 +971,7 @@ mod tests {
     fn search_by_translated_tag() {
         // "musculation" is the French translation of category "strength".
         // With db_i18n provided, searching "musculation" should find strength exercises.
-        use crate::models::{DbI18nLang, DbI18n};
+        use crate::models::{DbI18n, DbI18nLang};
         let mut lang = DbI18nLang::default();
         lang.category
             .insert("strength".to_string(), "musculation".to_string());
