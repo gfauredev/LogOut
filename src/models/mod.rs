@@ -776,7 +776,10 @@ mod tests {
 
         assert_eq!(session.start_time, start_time_before);
         assert_eq!(session.rest_start_time, rest_start_before);
-        assert_eq!(session.current_exercise_start, current_exercise_start_before);
+        assert_eq!(
+            session.current_exercise_start,
+            current_exercise_start_before
+        );
         assert!(session.paused_at.is_none());
     }
 }
