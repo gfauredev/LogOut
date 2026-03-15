@@ -152,19 +152,6 @@
             shellHook = ''
               unset ANDROID_SDK_ROOT # Set in GitHub Runners conflict with Home
               export SE_CACHE_PATH="$PWD/.selenium"
-              # Point Maestro/Selenium/selenium-manager to the Nix-provided Chromium
-              # _nix_chromium="$(type -P chromium 2>/dev/null || true)"
-              # if [ -n "$_nix_chromium" ]; then
-              #   export CHROME_BIN="$_nix_chromium"
-              #   _chrome_wrap_dir="$(mktemp -d /tmp/nix-chrome-wrap-XXXXXX)"
-              #   printf '#!/bin/sh\nexec "%s" "$@"\n' "$_nix_chromium" \
-              #     > "$_chrome_wrap_dir/google-chrome"
-              #   chmod +x "$_chrome_wrap_dir/google-chrome"
-              #   export PATH="$_chrome_wrap_dir:$PATH"
-              #   # Clean up the temp wrapper dir when the shell exits
-              #   trap 'rm -rf "'"$_chrome_wrap_dir"'"' EXIT
-              # fi
-              # unset _nix_chromium _chrome_wrap_dir
               # Patch aapt2 if in gradle cache or target dir (Android on Nix)
               find "$GRADLE_USER_HOME/caches" "$PWD/target" -name aapt2 -type f -executable 2>/dev/null | while read -r aapt2; do
                 if ! patchelf --print-interpreter "$aapt2" >/dev/null 2>&1 || [[ "$(patchelf --print-interpreter "$aapt2")" == /lib* ]]; then
