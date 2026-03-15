@@ -179,7 +179,7 @@
             }:
             env.rustPlatform.buildRustPackage {
               pname = "logout-web";
-              version = "0.2.0";
+              version = "0.2.2";
               src = self;
               cargoLock.lockFile = ./Cargo.lock;
               nativeBuildInputs = env.commonNativeBuildInputs;
@@ -227,7 +227,7 @@
           '';
           clippy = env.rustPlatform.buildRustPackage {
             pname = "logout-clippy";
-            version = "0.2.0";
+            version = "0.2.2";
             src = self;
             cargoLock.lockFile = ./Cargo.lock;
             nativeBuildInputs = env.commonNativeBuildInputs;
@@ -240,7 +240,7 @@
           };
           coverage = env.rustPlatform.buildRustPackage {
             pname = "logout-coverage";
-            version = "0.2.0";
+            version = "0.2.2";
             src = self;
             cargoLock.lockFile = ./Cargo.lock;
             nativeBuildInputs = env.commonNativeBuildInputs ++ [ env.pkgs.lcov ];
