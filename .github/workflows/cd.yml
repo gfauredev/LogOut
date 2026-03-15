@@ -72,7 +72,7 @@ jobs:
         check-regexp: 'devShell.*'
         repo-token: ${{ secrets.GITHUB_TOKEN }}
         fail-on-no-checks: false
-    - uses: imheuer/base64-to-file@v1.2.4
+    - uses: timheuer/base64-to-file@v1.2.4
       with:
         fileName: 'release_key.jks'
         encodedString: ${{ secrets.ANDROID_KEYSTORE_B64 }}
