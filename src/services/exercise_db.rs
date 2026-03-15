@@ -252,7 +252,31 @@ fn normalize_for_search(s: &str) -> String {
         .collect()
 }
 
-pub fn search_exercises<'a>(exercises: &'a [Exercise], query: &str) -> Vec<&'a Exercise> {
+/// Returns true if an already-lowercased `name_lc` matches the given
+/// pre-computed search components (all lowercase / normalised).
+fn name_lc_matches(name_lc: &str, query_lower: &str, query_norm: &str, tokens: &[String]) -> bool {
+    name_lc.contains(query_lower)
+        || (!tokens.is_empty() && {
+            let name_norm = normalize_for_search(name_lc);
+            tokens.iter().all(|t| name_norm.contains(t.as_str()))
+        })
+        || (!query_norm.is_empty() && {
+            let name_norm = normalize_for_search(name_lc);
+            query_norm.contains(&name_norm)
+        })
+}
+
+/// Search exercises by name (English and all available localized names), muscle
+/// groups, category, force, equipment, level, and ID tokens.
+///
+/// When `db_i18n` is provided translated tag values (category, force,
+/// equipment, level, muscles) in every available language are also searched,
+/// enabling queries like "musculation" to find strength exercises.
+pub fn search_exercises<'a>(
+    exercises: &'a [Exercise],
+    query: &str,
+    db_i18n: Option<&crate::models::DbI18n>,
+) -> Vec<&'a Exercise> {
     let query_lower = query.to_lowercase();
     let query_norm = normalize_for_search(query);
     // Split query into individual tokens for multi-word search: each token must
@@ -287,14 +311,15 @@ pub fn search_exercises<'a>(exercises: &'a [Exercise], query: &str) -> Vec<&'a E
             //    normalised query, to tolerate over-specified queries
             //    (e.g. "bench presses" → query_norm "benchpresses" ⊇ name_norm
             //    "benchpress", so "Bench Press" is still found).
-            name_lc.contains(&query_lower)
-                || (!tokens.is_empty() && {
-                    let name_norm = normalize_for_search(name_lc);
-                    tokens.iter().all(|t| name_norm.contains(t.as_str()))
-                })
-                || (!query_norm.is_empty() && {
-                    let name_norm = normalize_for_search(name_lc);
-                    query_norm.contains(&name_norm)
+            name_lc_matches(name_lc, &query_lower, &query_norm, &tokens)
+                // Localized name search: check all translated names in exercise.i18n
+                || exercise.i18n.as_ref().is_some_and(|map| {
+                    map.values().any(|i18n| {
+                        i18n.name.as_deref().is_some_and(|n| {
+                            let n_lc = n.to_lowercase();
+                            name_lc_matches(&n_lc, &query_lower, &query_norm, &tokens)
+                        })
+                    })
                 })
                 || exercise
                     .primary_muscles
@@ -331,6 +356,41 @@ pub fn search_exercises<'a>(exercises: &'a [Exercise], query: &str) -> Vec<&'a E
                         || (!tokens.is_empty()
                             && tokens.iter().all(|t| id_words.contains(t.as_str())))
                 }
+                // Translated tag search: if DbI18n is provided, check whether any
+                // translated category, force, equipment, level, or muscle name matches.
+                || db_i18n.is_some_and(|i18n| {
+                    let check_tag = |field: &str, english_val: &str| -> bool {
+                        i18n.values().any(|lang| {
+                            let translated = match field {
+                                "category" => lang.category.get(english_val),
+                                "force" => lang.force.get(english_val),
+                                "equipment" => lang.equipment.get(english_val),
+                                "level" => lang.level.get(english_val),
+                                "muscles" => lang.muscles.get(english_val),
+                                _ => None,
+                            };
+                            translated.is_some_and(|v| v.to_lowercase().contains(&query_lower))
+                        })
+                    };
+                    check_tag("category", exercise.category.as_ref())
+                        || exercise
+                            .force
+                            .is_some_and(|f| check_tag("force", f.as_ref()))
+                        || exercise
+                            .equipment
+                            .is_some_and(|e| check_tag("equipment", e.as_ref()))
+                        || exercise
+                            .level
+                            .is_some_and(|l| check_tag("level", l.as_ref()))
+                        || exercise
+                            .primary_muscles
+                            .iter()
+                            .any(|m| check_tag("muscles", m.as_ref()))
+                        || exercise
+                            .secondary_muscles
+                            .iter()
+                            .any(|m| check_tag("muscles", m.as_ref()))
+                })
         })
         .collect()
 }
@@ -430,7 +490,7 @@ mod tests {
     #[test]
     fn search_by_name() {
         let exercises = sample_exercises();
-        let results = search_exercises(&exercises, "bench");
+        let results = search_exercises(&exercises, "bench", None);
         assert_eq!(results.len(), 1);
         assert_eq!(results[0].id, "bench_press");
     }
@@ -438,7 +498,7 @@ mod tests {
     #[test]
     fn search_by_muscle() {
         let exercises = sample_exercises();
-        let results = search_exercises(&exercises, "lats");
+        let results = search_exercises(&exercises, "lats", None);
         assert_eq!(results.len(), 1);
         assert_eq!(results[0].id, "pull_up");
     }
@@ -446,7 +506,7 @@ mod tests {
     #[test]
     fn search_by_category() {
         let exercises = sample_exercises();
-        let results = search_exercises(&exercises, "cardio");
+        let results = search_exercises(&exercises, "cardio", None);
         assert_eq!(results.len(), 1);
         assert_eq!(results[0].id, "running");
     }
@@ -454,7 +514,7 @@ mod tests {
     #[test]
     fn search_by_force() {
         let exercises = sample_exercises();
-        let results = search_exercises(&exercises, "push");
+        let results = search_exercises(&exercises, "push", None);
         assert_eq!(results.len(), 1);
         assert_eq!(results[0].id, "bench_press");
     }
@@ -462,7 +522,7 @@ mod tests {
     #[test]
     fn search_by_equipment() {
         let exercises = sample_exercises();
-        let results = search_exercises(&exercises, "barbell");
+        let results = search_exercises(&exercises, "barbell", None);
         assert_eq!(results.len(), 1);
         assert_eq!(results[0].id, "bench_press");
     }
@@ -470,21 +530,21 @@ mod tests {
     #[test]
     fn search_by_level() {
         let exercises = sample_exercises();
-        let results = search_exercises(&exercises, "beginner");
+        let results = search_exercises(&exercises, "beginner", None);
         assert_eq!(results.len(), 2);
     }
 
     #[test]
     fn search_case_insensitive() {
         let exercises = sample_exercises();
-        let results = search_exercises(&exercises, "BENCH");
+        let results = search_exercises(&exercises, "BENCH", None);
         assert_eq!(results.len(), 1);
     }
 
     #[test]
     fn search_no_match() {
         let exercises = sample_exercises();
-        let results = search_exercises(&exercises, "zzz_no_match");
+        let results = search_exercises(&exercises, "zzz_no_match", None);
         assert!(results.is_empty());
     }
 
@@ -494,7 +554,7 @@ mod tests {
     fn search_hyphenated_query_finds_unhyphenated_name() {
         // "pull-up" (with hyphen) should find the exercise named "Pull-Up"
         let exercises = sample_exercises();
-        let results = search_exercises(&exercises, "pull-up");
+        let results = search_exercises(&exercises, "pull-up", None);
         assert_eq!(results.len(), 1);
         assert_eq!(results[0].id, "pull_up");
     }
@@ -503,7 +563,7 @@ mod tests {
     fn search_plain_query_finds_hyphenated_name() {
         // "pullup" (no hyphen) should also find the exercise named "Pull-Up"
         let exercises = sample_exercises();
-        let results = search_exercises(&exercises, "pullup");
+        let results = search_exercises(&exercises, "pullup", None);
         assert_eq!(results.len(), 1);
         assert_eq!(results[0].id, "pull_up");
     }
@@ -513,7 +573,7 @@ mod tests {
         // "bench presses" normalises to "benchpresses"; "benchpress" is a
         // substring of it, so "Bench Press" should be found.
         let exercises = sample_exercises();
-        let results = search_exercises(&exercises, "bench press");
+        let results = search_exercises(&exercises, "bench press", None);
         assert_eq!(results.len(), 1);
         assert_eq!(results[0].id, "bench_press");
     }
@@ -538,7 +598,7 @@ mod tests {
             i18n: None,
         }
         .with_lowercase()];
-        let results = search_exercises(&exercises, "wide grip bench");
+        let results = search_exercises(&exercises, "wide grip bench", None);
         assert_eq!(
             results.len(),
             1,
@@ -567,7 +627,7 @@ mod tests {
             i18n: None,
         }
         .with_lowercase()];
-        let results = search_exercises(&exercises, "… pushups");
+        let results = search_exercises(&exercises, "… pushups", None);
         assert_eq!(results.len(), 1, "punctuation-only token should be ignored");
         assert_eq!(results[0].id, "pushups");
     }
@@ -583,7 +643,7 @@ mod tests {
     #[test]
     fn search_empty_query_returns_all() {
         let exercises = sample_exercises();
-        let results = search_exercises(&exercises, "");
+        let results = search_exercises(&exercises, "", None);
         assert_eq!(results.len(), exercises.len());
     }
 
@@ -685,7 +745,7 @@ mod tests {
     fn search_with_none_force_does_not_match_force_query() {
         let exercises = sample_exercises();
         // "running" has force: None, should not match when searching for "pull"
-        let results = search_exercises(&exercises, "pull");
+        let results = search_exercises(&exercises, "pull", None);
         for r in &results {
             assert_ne!(r.id, "running");
         }
@@ -697,7 +757,7 @@ mod tests {
         // must therefore find both exercises with Equipment::BodyOnly AND those
         // with equipment: None (i.e. all three sample exercises).
         let exercises = sample_exercises();
-        let results = search_exercises(&exercises, "body only");
+        let results = search_exercises(&exercises, "body only", None);
         // pull_up has Equipment::BodyOnly, running has None equipment
         let ids: Vec<&str> = results.iter().map(|e| e.id.as_str()).collect();
         assert!(ids.contains(&"pull_up"), "BodyOnly exercise should match");
@@ -727,7 +787,7 @@ mod tests {
             i18n: None,
         }
         .with_lowercase()];
-        let results = search_exercises(&exercises, "kettlebell");
+        let results = search_exercises(&exercises, "kettlebell", None);
         assert_eq!(
             results.len(),
             1,
@@ -740,7 +800,7 @@ mod tests {
     fn search_by_secondary_muscle() {
         let exercises = sample_exercises();
         // "triceps" is a secondary muscle of bench_press
-        let results = search_exercises(&exercises, "triceps");
+        let results = search_exercises(&exercises, "triceps", None);
         assert_eq!(results.len(), 1);
         assert_eq!(results[0].id, "bench_press");
     }
@@ -749,7 +809,7 @@ mod tests {
     fn search_by_secondary_muscle_biceps() {
         let exercises = sample_exercises();
         // "biceps" is a secondary muscle of pull_up
-        let results = search_exercises(&exercises, "biceps");
+        let results = search_exercises(&exercises, "biceps", None);
         assert_eq!(results.len(), 1);
         assert_eq!(results[0].id, "pull_up");
     }
@@ -822,7 +882,7 @@ mod tests {
             images: vec![],
             i18n: None,
         }];
-        let results = search_exercises(&exercises, "quadriceps");
+        let results = search_exercises(&exercises, "quadriceps", None);
         assert_eq!(results.len(), 1);
         assert_eq!(results[0].id, "custom_squat");
     }
@@ -844,7 +904,7 @@ mod tests {
             images: vec![],
             i18n: None,
         }];
-        let results = search_exercises(&exercises, "glutes");
+        let results = search_exercises(&exercises, "glutes", None);
         assert_eq!(results.len(), 1);
         assert_eq!(results[0].id, "custom_squat");
     }
@@ -867,9 +927,76 @@ mod tests {
             i18n: None,
         }];
         // Search by category should match custom exercises too
-        let results = search_exercises(&exercises, "cardio");
+        let results = search_exercises(&exercises, "cardio", None);
         assert_eq!(results.len(), 1);
         assert_eq!(results[0].id, "custom_run");
+    }
+
+    // ── Localized search tests ──────────────────────────────────────────────
+
+    #[test]
+    fn search_by_i18n_name() {
+        // Bench Press has a French name "Développé couché"; searching the French
+        // name should find it even though the English name doesn't match.
+        let mut i18n_map = std::collections::HashMap::new();
+        i18n_map.insert(
+            "fr".to_string(),
+            crate::models::ExerciseI18n {
+                name: Some("Développé couché".to_string()),
+                instructions: None,
+            },
+        );
+        let exercises = vec![Exercise {
+            id: "bench_press".into(),
+            name: "Bench Press".into(),
+            name_lower: String::new(),
+            force: Some(Force::Push),
+            level: Some(Level::Intermediate),
+            mechanic: None,
+            equipment: Some(Equipment::Barbell),
+            primary_muscles: vec![Muscle::Chest],
+            secondary_muscles: vec![],
+            instructions: vec![],
+            category: Category::Strength,
+            images: vec![],
+            i18n: Some(i18n_map),
+        }
+        .with_lowercase()];
+        let results = search_exercises(&exercises, "développé", None);
+        assert_eq!(results.len(), 1, "should find by French name");
+        assert_eq!(results[0].id, "bench_press");
+    }
+
+    #[test]
+    fn search_by_translated_tag() {
+        // "musculation" is the French translation of category "strength".
+        // With db_i18n provided, searching "musculation" should find strength exercises.
+        use crate::models::{DbI18nLang, DbI18n};
+        let mut lang = DbI18nLang::default();
+        lang.category
+            .insert("strength".to_string(), "musculation".to_string());
+        let mut db_i18n = DbI18n::new();
+        db_i18n.insert("fr".to_string(), lang);
+
+        let exercises = sample_exercises();
+        // bench_press and pull_up are Category::Strength
+        let results = search_exercises(&exercises, "musculation", Some(&db_i18n));
+        let ids: Vec<&str> = results.iter().map(|e| e.id.as_str()).collect();
+        assert!(ids.contains(&"bench_press"), "bench_press should match");
+        assert!(ids.contains(&"pull_up"), "pull_up should match");
+        assert!(!ids.contains(&"running"), "cardio should not match");
+    }
+
+    #[test]
+    fn search_by_translated_tag_without_db_i18n_does_not_match() {
+        // Without db_i18n, "musculation" should NOT match English exercises.
+        let exercises = sample_exercises();
+        let results = search_exercises(&exercises, "musculation", None);
+        assert_eq!(
+            results.len(),
+            0,
+            "should not match translated tag without db_i18n"
+        );
     }
 
     // ── get_equipment_types / get_muscle_groups (test-only utilities) ──

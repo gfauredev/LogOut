@@ -528,6 +528,7 @@ mod tests {
             rest_start_time: None,
             current_exercise_id: None,
             current_exercise_start: None,
+            paused_at: None,
         };
         native_storage::put_item(native_storage::STORE_SESSIONS, &session.id, &session).unwrap();
         let loaded: Vec<WorkoutSession> =
@@ -554,6 +555,7 @@ mod tests {
             rest_start_time: None,
             current_exercise_id: None,
             current_exercise_start: None,
+            paused_at: None,
         };
         let s2 = WorkoutSession {
             id: id.into(),
@@ -565,6 +567,7 @@ mod tests {
             rest_start_time: None,
             current_exercise_id: None,
             current_exercise_start: None,
+            paused_at: None,
         };
         native_storage::put_item(native_storage::STORE_SESSIONS, id, &s1).unwrap();
         native_storage::put_item(native_storage::STORE_SESSIONS, id, &s2).unwrap();
@@ -598,6 +601,7 @@ mod tests {
             rest_start_time: None,
             current_exercise_id: None,
             current_exercise_start: None,
+            paused_at: None,
         };
         native_storage::put_item(native_storage::STORE_SESSIONS, id, &session).unwrap();
         native_storage::delete_item(native_storage::STORE_SESSIONS, id).unwrap();
@@ -796,6 +800,7 @@ mod tests {
             rest_start_time: None,
             current_exercise_id: None,
             current_exercise_start: None,
+            paused_at: None,
         };
         native_storage::put_item(native_storage::STORE_SESSIONS, &session.id, &session).unwrap();
         let loaded: Vec<WorkoutSession> =
@@ -874,6 +879,7 @@ mod tests {
             rest_start_time: None,
             current_exercise_id: None,
             current_exercise_start: None,
+            paused_at: None,
         }
     }
 

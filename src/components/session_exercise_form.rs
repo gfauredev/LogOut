@@ -25,6 +25,8 @@ pub(super) fn ExerciseFormPanel(
     current_exercise_start: Signal<Option<u64>>,
     /// Tracks whether the duration bell has fired for this exercise.
     duration_bell_rung: Signal<bool>,
+    /// Timestamp when the session was paused; `None` when running.
+    paused_at: Option<u64>,
     /// Called when the user clicks "✓ Complete Exercise".
     on_complete: EventHandler<()>,
     /// Called when the user clicks "Cancel".
@@ -64,6 +66,7 @@ pub(super) fn ExerciseFormPanel(
                     exercise_start: *current_exercise_start.read(),
                     last_duration,
                     duration_bell_rung,
+                    paused_at,
                 }
             }
             {

@@ -555,6 +555,11 @@ pub struct WorkoutSession {
     /// Timestamp when the current exercise started (persisted for tab-switch resilience).
     #[serde(default)]
     pub current_exercise_start: Option<u64>,
+    /// Unix timestamp when the session was paused.  `None` when the session is not paused.
+    /// On resume the pause duration is subtracted from all running timer references so that
+    /// elapsed times remain accurate.
+    #[serde(default)]
+    pub paused_at: Option<u64>,
 }
 
 impl WorkoutSession {
@@ -571,6 +576,7 @@ impl WorkoutSession {
             rest_start_time: None,
             current_exercise_id: None,
             current_exercise_start: None,
+            paused_at: None,
         }
     }
 
@@ -579,10 +585,41 @@ impl WorkoutSession {
         self.end_time.is_none()
     }
 
+    /// Returns `true` when the session timer is currently paused.
+    pub fn is_paused(&self) -> bool {
+        self.paused_at.is_some()
+    }
+
     /// Returns true when the session was cancelled (no exercises logged).
     /// Cancelled sessions should be deleted, not stored.
     pub fn is_cancelled(&self) -> bool {
         self.exercise_logs.is_empty()
+    }
+
+    /// Pause the session, recording the current timestamp.
+    /// Does nothing if the session is already paused or finished.
+    pub fn pause(&mut self) {
+        if self.end_time.is_none() && self.paused_at.is_none() {
+            self.paused_at = Some(get_current_timestamp());
+        }
+    }
+
+    /// Resume a paused session.  The pause duration is added to `start_time`,
+    /// `rest_start_time`, and `current_exercise_start` so that all elapsed-time
+    /// calculations remain correct without any special casing in the timer
+    /// components.
+    pub fn resume(&mut self) {
+        if let Some(paused) = self.paused_at.take() {
+            let now = get_current_timestamp();
+            let pause_duration = now.saturating_sub(paused);
+            self.start_time = self.start_time.saturating_add(pause_duration);
+            if let Some(rst) = self.rest_start_time {
+                self.rest_start_time = Some(rst.saturating_add(pause_duration));
+            }
+            if let Some(ces) = self.current_exercise_start {
+                self.current_exercise_start = Some(ces.saturating_add(pause_duration));
+            }
+        }
     }
 }
 
@@ -774,6 +811,7 @@ mod tests {
             rest_start_time: None,
             current_exercise_id: None,
             current_exercise_start: None,
+            paused_at: None,
         };
         assert!(session.is_active());
         session.end_time = Some(2000);
@@ -792,6 +830,7 @@ mod tests {
             rest_start_time: None,
             current_exercise_id: None,
             current_exercise_start: None,
+            paused_at: None,
         };
         assert!(session.is_cancelled());
     }
@@ -819,6 +858,7 @@ mod tests {
             rest_start_time: None,
             current_exercise_id: None,
             current_exercise_start: None,
+            paused_at: None,
         };
         assert!(!session.is_cancelled());
     }
@@ -837,6 +877,7 @@ mod tests {
             rest_start_time: None,
             current_exercise_id: None,
             current_exercise_start: None,
+            paused_at: None,
         };
         // The predicate that guards save vs. delete must return true for empty sessions.
         assert!(
@@ -870,6 +911,7 @@ mod tests {
             rest_start_time: None,
             current_exercise_id: None,
             current_exercise_start: None,
+            paused_at: None,
         };
         // The predicate must return false so the session is saved, not deleted.
         assert!(
@@ -892,6 +934,7 @@ mod tests {
             rest_start_time: None,
             current_exercise_id: None,
             current_exercise_start: None,
+            paused_at: None,
         };
         assert!(
             session.is_cancelled(),
@@ -939,6 +982,7 @@ mod tests {
                 rest_start_time: None,
                 current_exercise_id: None,
                 current_exercise_start: None,
+                paused_at: None,
             },
             WorkoutSession {
                 id: "s2".into(),
@@ -950,6 +994,7 @@ mod tests {
                 rest_start_time: None,
                 current_exercise_id: None,
                 current_exercise_start: None,
+                paused_at: None,
             },
         ];
         let active = sessions.iter().find(|s| s.is_active()).cloned();
@@ -968,6 +1013,7 @@ mod tests {
             rest_start_time: None,
             current_exercise_id: None,
             current_exercise_start: None,
+            paused_at: None,
         }];
         let active = sessions.iter().find(|s| s.is_active()).cloned();
         assert!(active.is_none());
@@ -1358,6 +1404,7 @@ mod tests {
             rest_start_time: None,
             current_exercise_id: None,
             current_exercise_start: None,
+            paused_at: None,
         };
         let json = serde_json::to_string(&session).unwrap();
         let back: WorkoutSession = serde_json::from_str(&json).unwrap();
@@ -1422,6 +1469,7 @@ mod tests {
             rest_start_time: None,
             current_exercise_id: None,
             current_exercise_start: None,
+            paused_at: None,
         };
 
         // Build pending IDs the same way SessionCard does (all logs, not deduplicated)
@@ -1901,6 +1949,7 @@ mod tests {
             rest_start_time: None,
             current_exercise_id: None,
             current_exercise_start: None,
+            paused_at: None,
         };
         let json = serde_json::to_string(&session).unwrap();
         let back: WorkoutSession = serde_json::from_str(&json).unwrap();
@@ -1974,6 +2023,7 @@ mod tests {
             rest_start_time: Some(1500),
             current_exercise_id: Some("bench_press".into()),
             current_exercise_start: Some(1200),
+            paused_at: None,
         };
         let json = serde_json::to_string(&session).unwrap();
         let back: WorkoutSession = serde_json::from_str(&json).unwrap();

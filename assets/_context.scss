@@ -1,2 +1,26 @@
 // Components modified by their Context, their position in the hierarchy
 // Selector: Component/Unique selectors surrounded by Structure selectors
+
+// ── Session page: article centering ───────────────────────────────────────
+main.session article {
+  margin: 0 auto;
+}
+
+// ── Credits page: inline URL submission form ───────────────────────────────
+main.credits article form {
+  display: flex;
+  gap: 8px;
+  align-items: stretch;
+
+  input {
+    flex: 1;
+    min-width: 0;
+  }
+}
+
+// ── Edit page: stacked form layout ────────────────────────────────────────
+main.edit>div {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing);
+}
