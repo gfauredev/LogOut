@@ -151,10 +151,13 @@
             shellHook = ''
               unset ANDROID_SDK_ROOT # Set in GitHub Runners conflict with Home
               export SE_CACHE_PATH="$PWD/.selenium"
-              # Redirect 'google-chrome' to the Nix-provided Chromium so that
-              # Maestro/Selenium uses the version matching the Nix ChromeDriver.
+              # Point Maestro/Selenium/selenium-manager to the Nix-provided Chromium
+              # so it matches the Nix ChromeDriver version. selenium-manager
+              # checks CHROME_BIN before scanning hard-coded system paths, so
+              # this avoids picking up a mismatched /usr/bin/google-chrome.
               _nix_chromium="$(type -P chromium 2>/dev/null || true)"
               if [ -n "$_nix_chromium" ]; then
+                export CHROME_BIN="$_nix_chromium"
                 _chrome_wrap_dir="$(mktemp -d /tmp/nix-chrome-wrap-XXXXXX)"
                 printf '#!/bin/sh\nexec "%s" "$@"\n' "$_nix_chromium" \
                   > "$_chrome_wrap_dir/google-chrome"
