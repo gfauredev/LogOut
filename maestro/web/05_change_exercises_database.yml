@@ -9,7 +9,7 @@ url: http://localhost:8080/LogOut/ # Change Exercises Database
 - tapOn:
     text: "https://gfauredev.github.io/free-exercise-db/"
     optional: true
-- clearText
+- eraseText
 - inputText: "http://localhost:8080"
 # Save the new URL by tapping the save button
 - tapOn: "💾"

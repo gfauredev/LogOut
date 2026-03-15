@@ -47,7 +47,7 @@ url: http://localhost:8080/LogOut/?dl_db_url=http%3A%2F%2Flocalhost%3A8080%2FLog
 # --- Remove Exercise (delete the Romanian Deadlift set) ---
 # Clear search so Romanian Deadlift is not in search results when we assert
 - tapOn: "Search for an exercise..."
-- clearText
+- eraseText
 - tapOn: "🗑️"
 # Ring Dip logs remain; Romanian Deadlift log is gone
 - assertVisible: "Ring Dip"
