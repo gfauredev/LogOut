@@ -46,8 +46,8 @@ jobs:
           extra-substituters = https://cache.garnix.io
           extra-trusted-public-keys = cache.garnix.io:CTFPyKSLcx5RMJKfLo5EEPUObbA78b0YQ2DTCJXqr9g=
     - uses: DeterminateSystems/magic-nix-cache-action@v13
-    - run: nix develop -c cargo mutants --no-shuffle --caught --timeout 300 \
-        --exclude "src/components/*"
+    - run: nix develop -c cargo mutants --no-shuffle \
+        --caught --timeout 300 --exclude "src/components/*"
 
   e2e-android:
     runs-on: macos-14 # Apple Silicon for native ARM64 emulation
@@ -55,11 +55,16 @@ jobs:
     permissions:
       contents: read
     steps:
+    # - uses: wimpysworld/nothing-but-nix@v10
     - uses: actions/checkout@v6
-    # Install Maestro CLI
-    - run: curl -Ls "https://get.maestro.mobile.dev" | bash
-    # Download the latest Android release APK (built and published by CD workflow)
-    - run: gh release download --pattern "*.apk" --dir .
+    - uses: cachix/install-nix-action@v31
+      with:
+        github_access_token: ${{ secrets.GITHUB_TOKEN }}
+        extra_nix_config: |
+          extra-substituters = https://cache.garnix.io
+          extra-trusted-public-keys = cache.garnix.io:CTFPyKSLcx5RMJKfLo5EEPUObbA78b0YQ2DTCJXqr9g=
+    - uses: DeterminateSystems/magic-nix-cache-action@v13
+    - run: gh release download --pattern "*.apk" --dir . # From CD
       env:
         GH_TOKEN: ${{ github.token }}
     # Set up ARM64 Android emulator and run tests
@@ -73,7 +78,8 @@ jobs:
         disable-animations: true
         script: |
           adb install -r LogOut.arm64-v8a.apk
-          $HOME/.maestro/bin/maestro test maestro/android
+          # $HOME/.maestro/bin/maestro test --headless maestro/android
+          nix develop -c maestro test --headless maestro/android
     - if: failure()
       uses: actions/upload-artifact@v7
       with:
