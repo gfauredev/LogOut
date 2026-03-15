@@ -1,6 +1,5 @@
 // Semantic hiearchical structure styles
-// Selector: HTML Types only, with eventual structural Operators like >, + …
-// TODO Reorg among component.scss, context.scss, structure.scss, unique.scss
+// Selector: HTML Types only, with eventual structural Operators like >, + …
 
 h2 {
   margin: 0 0 var(--spacing) 0;
@@ -25,9 +24,7 @@ a:hover {
   text-decoration: underline;
 }
 
-button,
-a.edit,
-a.add {
+button {
   padding: var(--spacing);
   opacity: 0.8;
   transition: opacity 0.2s;
@@ -46,23 +43,16 @@ a.add {
 }
 
 // Icon-only circular buttons ➕, 🔄, ✏️, 💾, ✅, ☑️, 🗑️, ❌, ▶️, ⏸️
-button:not(.label),
-a.edit:not(.label),
-a.add:not(.label) {
+button:not(.label) {
   width: var(--btn-width);
   height: var(--btn-width);
   border-radius: 50%;
   padding: 0;
-  line-height: 1; // TEST if really useful
-  display: inline-flex; // TEST if really useful
-  align-items: center; // TEST if really useful
-  justify-content: center; // TEST if really useful
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   font-weight: bold;
-}
-
-#main>button {
-  display: block;
-  margin: var(--spacing) auto;
 }
 
 ul,
@@ -84,23 +74,6 @@ input[type="number"] {
   appearance: textfield;
 }
 
-.inputs {
-  display: flex;
-  align-items: center;
-  gap: var(--spacing);
-  white-space: nowrap;
-  width: 100%;
-}
-
-.inputs a,
-.inputs button {
-  width: var(--btn-width);
-  height: var(--btn-width);
-  border-radius: 50%;
-  font-weight: bold;
-  line-height: 1;
-}
-
 select,
 input[type=text],
 input[type=url],
@@ -116,7 +89,6 @@ input[type=number] {
   width: 7ch;
 }
 
-
 input[type=url],
 input[type=text] {
   min-width: 12ch;
@@ -130,56 +102,6 @@ label {
   color: var(--secondary);
 }
 
-.muscle-tags {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-
-  >div {
-    padding: 6px var(--spacing);
-    background: var(--more);
-    color: white;
-    border-radius: var(--radius);
-    display: flex;
-    align-items: center;
-    gap: 8px;
-
-    &.secondary {
-      background: var(--separation);
-      color: var(--secondary);
-    }
-
-    >button {
-      background: none;
-      border: none;
-      color: white;
-      cursor: pointer;
-      font-size: 1.2em;
-      padding: 0;
-      line-height: 1;
-    }
-  }
-}
-
-button.add,
-a.add {
-  background: var(--more); // Add / Create ➕
-  font-size: 2em; // Bare + sign
-}
-
-button.edit,
-a.edit {
-  border-color: var(--edit); // Edit ✏️ / Save 💾
-}
-
-button.yes {
-  border-color: var(--save); // Confirm ✅ / Complete ✔️
-}
-
-button.no {
-  border-color: var(--no); // Delete 🗑️ / Cancel ❌
-}
-
 article {
   padding: var(--spacing);
   border: 1px solid var(--separation);
@@ -187,8 +109,10 @@ article {
   background: var(--article);
 }
 
-main.session article {
-  margin: 0 auto;
+main {
+  flex: 1;
+  gap: var(--spacing);
+  grid-auto-rows: max-content;
 }
 
 time {
@@ -299,35 +223,7 @@ article img {
   cursor: pointer;
 }
 
-.metric-selector {
-  margin: 0 auto var(--spacing) auto;
-  display: flex;
-  align-items: center;
-  gap: var(--spacing);
-  max-width: var(--column);
-}
-
-.exercise-selector {
-  margin: 0 auto var(--spacing) auto;
-  display: flex;
-  align-items: center;
-  gap: var(--spacing);
-  max-width: var(--column);
-
-  >div {
-    width: 20px;
-    height: 20px;
-    border-radius: var(--radius);
-    flex-shrink: 0;
-  }
-
-  select {
-    flex: 1;
-  }
-}
-
-article footer,
-header.session {
+article footer {
   display: flex;
   gap: var(--spacing);
   justify-content: center;

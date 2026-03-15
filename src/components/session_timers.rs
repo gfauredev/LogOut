@@ -66,7 +66,11 @@ pub(super) fn send_notification(is_duration_bell: bool) {
 
 /// Renders the session elapsed time, updating every second.
 #[component]
-pub(super) fn SessionDurationDisplay(session_start_time: u64, session_is_active: bool) -> Element {
+pub(super) fn SessionDurationDisplay(
+    session_start_time: u64,
+    session_is_active: bool,
+    paused_at: Option<u64>,
+) -> Element {
     let mut now_tick = use_signal(get_current_timestamp);
     use_coroutine(move |_: UnboundedReceiver<()>| async move {
         loop {
@@ -77,9 +81,10 @@ pub(super) fn SessionDurationDisplay(session_start_time: u64, session_is_active:
             now_tick.set(get_current_timestamp());
         }
     });
-    let tick = *now_tick.read();
+    // When paused, freeze the displayed time at the moment of pausing.
+    let effective_now = paused_at.unwrap_or_else(|| *now_tick.read());
     let duration = if session_is_active {
-        tick.saturating_sub(session_start_time)
+        effective_now.saturating_sub(session_start_time)
     } else {
         0
     };
@@ -92,6 +97,7 @@ pub(super) fn RestTimerDisplay(
     start_time: Signal<Option<u64>>,
     duration: Signal<u64>,
     mut bell_count: Signal<u64>,
+    paused_at: Option<u64>,
 ) -> Element {
     let mut now_tick = use_signal(get_current_timestamp);
     use_coroutine(move |_: UnboundedReceiver<()>| async move {
@@ -104,11 +110,12 @@ pub(super) fn RestTimerDisplay(
         }
     });
 
-    let tick = *now_tick.read();
+    // When paused, freeze the displayed time at the moment of pausing.
+    let effective_now = paused_at.unwrap_or_else(|| *now_tick.read());
     let Some(start) = *start_time.read() else {
         return rsx! {};
     };
-    let elapsed = tick.saturating_sub(start);
+    let elapsed = effective_now.saturating_sub(start);
     let rd = *duration.read();
 
     // Fire bell at each completed rest interval
@@ -138,6 +145,7 @@ pub(super) fn ExerciseElapsedTimer(
     exercise_start: Option<u64>,
     last_duration: Option<u64>,
     mut duration_bell_rung: Signal<bool>,
+    paused_at: Option<u64>,
 ) -> Element {
     let mut now_tick = use_signal(get_current_timestamp);
     use_coroutine(move |_: UnboundedReceiver<()>| async move {
@@ -150,9 +158,10 @@ pub(super) fn ExerciseElapsedTimer(
         }
     });
 
-    let tick = *now_tick.read();
+    // When paused, freeze the displayed time at the moment of pausing.
+    let effective_now = paused_at.unwrap_or_else(|| *now_tick.read());
     let elapsed = if let Some(start) = exercise_start {
-        tick.saturating_sub(start)
+        effective_now.saturating_sub(start)
     } else {
         0
     };

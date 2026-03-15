@@ -4,7 +4,7 @@ use crate::models::{
     WorkoutSession,
 };
 use crate::services::{exercise_db, storage};
-use crate::Route;
+use crate::{DbI18nSignal, Route};
 use dioxus::prelude::*;
 
 use super::session_exercise_form::ExerciseFormPanel;
@@ -43,10 +43,13 @@ fn prefill_inputs_from_last_log(
 fn SessionHeader(
     session_start_time: u64,
     session_is_active: bool,
+    paused_at: Option<u64>,
     exercise_count: usize,
     on_click_timer: EventHandler<()>,
+    on_pause: EventHandler<()>,
     on_finish: EventHandler<()>,
 ) -> Element {
+    let is_paused = paused_at.is_some();
     rsx! {
         header { class: "session",
             h2 { tabindex: 0, "⏱️ Active Session" }
@@ -56,7 +59,14 @@ fn SessionHeader(
                 SessionDurationDisplay {
                     session_start_time,
                     session_is_active,
+                    paused_at,
                 }
+            }
+            button {
+                class: "edit",
+                onclick: move |_| on_pause.call(()),
+                title: if is_paused { "Resume Session" } else { "Pause Session" },
+                if is_paused { "▶️" } else { "⏸️" }
             }
             if exercise_count == 0 {
                 button { class: "no",
@@ -293,6 +303,7 @@ pub fn SessionView() -> Element {
 
     let custom_exercises = storage::use_custom_exercises();
     let all_exercises = exercise_db::use_exercises();
+    let db_i18n_sig = use_context::<DbI18nSignal>().0;
 
     // Reactive snapshot of pending exercise IDs – avoids multiple session.read() calls in the template
     let pending_ids = use_memo(move || session.read().pending_exercise_ids.clone());
@@ -308,7 +319,9 @@ pub fn SessionView() -> Element {
             // Add custom exercises first (they have priority over DB exercises).
             // Use unified search_exercises so muscle/category/etc. are all searchable.
             let custom = custom_exercises.read();
-            let custom_results = exercise_db::search_exercises(&custom, &query);
+            let db_i18n = db_i18n_sig.read();
+            let db_i18n_ref = Some(&*db_i18n).filter(|m| !m.is_empty());
+            let custom_results = exercise_db::search_exercises(&custom, &query, db_i18n_ref);
             for ex in custom_results {
                 if seen_ids.insert(ex.id.clone()) {
                     results.push((ex.id.clone(), ex.name.clone(), ex.category));
@@ -317,7 +330,7 @@ pub fn SessionView() -> Element {
 
             // Add DB exercises, skipping any IDs already added from custom exercises
             let all = all_exercises.read();
-            let db_results = exercise_db::search_exercises(&all, &query);
+            let db_results = exercise_db::search_exercises(&all, &query, db_i18n_ref);
             for ex in db_results.into_iter().take(10) {
                 if seen_ids.insert(ex.id.clone()) {
                     results.push((ex.id.clone(), ex.name.clone(), ex.category));
@@ -442,6 +455,7 @@ pub fn SessionView() -> Element {
                 start_time: rest_start_time,
                 duration: rest_duration,
                 bell_count: rest_bell_count,
+                paused_at: session.read().paused_at,
             }
         }
         main { class: "session",
@@ -516,6 +530,7 @@ pub fn SessionView() -> Element {
                     distance_input,
                     current_exercise_start,
                     duration_bell_rung,
+                    paused_at: session.read().paused_at,
                     on_complete: complete_exercise,
                     on_cancel: cancel_exercise,
                 }
@@ -552,6 +567,17 @@ pub fn GlobalSessionHeader() -> Element {
     let exercise_count = sess.exercise_logs.len();
     let session_start_time = sess.start_time;
     let session_is_active = sess.is_active();
+    let paused_at = sess.paused_at;
+
+    let on_pause = move |()| {
+        let Some(mut s) = session() else { return };
+        if s.is_paused() {
+            s.resume();
+        } else {
+            s.pause();
+        }
+        storage::save_session(s);
+    };
 
     let on_finish = move |()| {
         let Some(s) = session() else { return };
@@ -559,6 +585,10 @@ pub fn GlobalSessionHeader() -> Element {
             storage::delete_session(&s.id);
         } else {
             let mut s = s.clone();
+            // Resume before finishing so timestamps are correct
+            if s.is_paused() {
+                s.resume();
+            }
             s.end_time = Some(get_current_timestamp());
             storage::save_session(s);
             congratulations.set(true);
@@ -569,11 +599,13 @@ pub fn GlobalSessionHeader() -> Element {
         SessionHeader {
             session_start_time,
             session_is_active,
+            paused_at,
             exercise_count,
             on_click_timer: move |()| {
                 let current = *show_rest.peek();
                 show_rest.set(!current);
             },
+            on_pause,
             on_finish,
         }
     }

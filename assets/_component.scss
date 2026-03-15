@@ -1,33 +1,139 @@
 // Self-contained reusable individual components
 // Selector: Class, eventually preceded by a Type, eventual pseudo-element(s)
-// TODO Reorg among component.scss, context.scss, structure.scss, unique.scss
 
-#main {
+// ── Link and button styled variants ───────────────────────────────────────
+a.edit,
+a.add {
+  padding: var(--spacing);
+  opacity: 0.8;
+  transition: opacity 0.2s;
+  color: var(--primary);
+  border-radius: var(--radius);
+  cursor: pointer;
+  text-decoration: none;
+  font-weight: bold;
+  background: none;
+  font-size: 1.1em;
+  border: 1px solid var(--more);
+
+  &:hover {
+    opacity: 1;
+  }
+}
+
+// Icon-only circular link variants
+a.edit:not(.label),
+a.add:not(.label) {
+  width: var(--btn-width);
+  height: var(--btn-width);
+  border-radius: 50%;
+  padding: 0;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+}
+
+button.add,
+a.add {
+  background: var(--more); // Add / Create ➕
+  font-size: 2em; // Bare + sign
+}
+
+button.edit,
+a.edit {
+  border-color: var(--edit); // Edit ✏️ / Save 💾
+}
+
+button.yes {
+  border-color: var(--save); // Confirm ✅ / Complete ✔️
+}
+
+button.no {
+  border-color: var(--no); // Delete 🗑️ / Cancel ❌
+}
+
+// ── Input row layout ───────────────────────────────────────────────────────
+.inputs {
   display: flex;
-  flex-direction: column;
-  min-height: 100dvh;
-  margin: 0 auto;
-  max-width: var(--max-width);
-  padding: var(--spacing) var(--spacing) 0;
-}
-
-#main>header {
-  text-align: center;
-  margin-bottom: var(--spacing);
-}
-
-main {
-  flex: 1;
+  align-items: center;
   gap: var(--spacing);
-  grid-auto-rows: max-content;
+  white-space: nowrap;
+  width: 100%;
 }
 
-main.exercises,
-main.sessions,
-main.credits,
-main.edit {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(min(var(--column), 100%), 1fr));
+.inputs a,
+.inputs button {
+  width: var(--btn-width);
+  height: var(--btn-width);
+  border-radius: 50%;
+  font-weight: bold;
+  line-height: 1;
+}
+
+input.invalid {
+  border-color: var(--no);
+}
+
+// ── Muscle tag chips ───────────────────────────────────────────────────────
+.muscle-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+
+  >div {
+    padding: 6px var(--spacing);
+    background: var(--more);
+    color: white;
+    border-radius: var(--radius);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+
+    &.secondary {
+      background: var(--separation);
+      color: var(--secondary);
+    }
+
+    >button {
+      background: none;
+      border: none;
+      color: white;
+      cursor: pointer;
+      font-size: 1.2em;
+      padding: 0;
+      line-height: 1;
+    }
+  }
+}
+
+// ── Analytics / exercise selectors ────────────────────────────────────────
+.metric-selector {
+  margin: 0 auto var(--spacing) auto;
+  display: flex;
+  align-items: center;
+  gap: var(--spacing);
+  max-width: var(--column);
+}
+
+.exercise-selector {
+  margin: 0 auto var(--spacing) auto;
+  display: flex;
+  align-items: center;
+  gap: var(--spacing);
+  max-width: var(--column);
+
+  >div {
+    width: 20px;
+    height: 20px;
+    border-radius: var(--radius);
+    flex-shrink: 0;
+  }
+
+  select {
+    flex: 1;
+  }
 }
 
 // ── Delete confirmation modal ──────────────────────────────────────────────
@@ -62,7 +168,7 @@ dialog {
   }
 }
 
-// ── Session view layout ────────────────────────────────────────────────────
+// ── Session header ─────────────────────────────────────────────────────────
 header.session {
   position: sticky;
   top: 0;
@@ -72,6 +178,7 @@ header.session {
   border-bottom: 1px solid var(--separation);
   z-index: var(--z-modal);
   display: flex;
+  gap: var(--spacing);
   justify-content: space-between;
   align-items: center;
 
@@ -79,10 +186,6 @@ header.session {
     margin: 0;
     font-size: 1.5em;
   }
-
-  /* button.no {
-    background: var(--no);
-  } */
 }
 
 // ── Completed exercise log ─────────────────────────────────────────────────
@@ -156,6 +259,7 @@ ul.results {
   }
 }
 
+// ── Rest and exercise timers ───────────────────────────────────────────────
 .rest-timer {
   text-align: center;
   padding: var(--spacing) var(--spacing);
@@ -184,54 +288,7 @@ ul.results {
   }
 }
 
-main.analytics {
-  padding: 0;
-
-  svg {
-    display: block;
-    width: 100%;
-    height: auto;
-    overflow-x: auto;
-  }
-
-  >p {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    min-height: 300px;
-    text-align: center;
-    color: var(--secondary);
-  }
-}
-
-main.credits article form {
-  display: flex;
-  gap: 8px;
-  align-items: stretch;
-
-  input {
-    flex: 1;
-    min-width: 0;
-  }
-}
-
-main.edit>div {
-  display: flex;
-  flex-direction: column;
-  gap: var(--spacing);
-}
-
-/* header>button.no {
-  background: var(--no);
-  border: none;
-  font-size: 1.1em;
-  cursor: pointer;
-  padding: 0;
-  width: var(--btn-width);
-  height: var(--btn-width);
-  border-radius: 50%;
-} */
-
+// ── Toast notification ─────────────────────────────────────────────────────
 .snackbar {
   position: fixed;
   bottom: 10%;
@@ -258,8 +315,4 @@ main.edit>div {
     opacity: 1;
     transform: translateX(-50%) translateY(0);
   }
-}
-
-input.invalid {
-  border-color: var(--no);
 }

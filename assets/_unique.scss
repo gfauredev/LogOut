@@ -1,6 +1,25 @@
 // Self-contained non reusable unique components
 // Selector: #ID or main.class
-// TODO Reorg among component.scss, context.scss, structure.scss, unique.scss
+
+// ── App shell ──────────────────────────────────────────────────────────────
+#main {
+  display: flex;
+  flex-direction: column;
+  min-height: 100dvh;
+  margin: 0 auto;
+  max-width: var(--max-width);
+  padding: var(--spacing) var(--spacing) 0;
+}
+
+#main>header {
+  text-align: center;
+  margin-bottom: var(--spacing);
+}
+
+#main>button {
+  display: block;
+  margin: var(--spacing) auto;
+}
 
 #main>nav {
   position: sticky;
@@ -26,6 +45,36 @@
   }
 }
 
+// ── Page-specific main layouts ─────────────────────────────────────────────
+main.exercises,
+main.sessions,
+main.credits,
+main.edit {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(var(--column), 100%), 1fr));
+}
+
+main.analytics {
+  padding: 0;
+
+  svg {
+    display: block;
+    width: 100%;
+    height: auto;
+    overflow-x: auto;
+  }
+
+  >p {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 300px;
+    text-align: center;
+    color: var(--secondary);
+  }
+}
+
+// ── Session page layout ────────────────────────────────────────────────────
 main.session>section.exercises {
   margin: 0 auto;
   max-width: max-content;
@@ -44,7 +93,6 @@ main.session>section.exercises {
     display: block;
   }
 }
-
 
 main.session>article {
   max-width: max-content;
