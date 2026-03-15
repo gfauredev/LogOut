@@ -13,15 +13,15 @@ if [ ! -f "$APK_PATH" ]; then
 fi
 # Ensure required environment variables are set
 if [ -z "$ANDROID_KEYSTORE_PASS" ]; then
-  if [ -z "$ANDROID_KEY_PASS" ]; then
-    echo "Error: ANDROID_KEYSTORE_PASS or ANDROID_KEY_PASS needed"
+  if [ -z "$ANDROID_KEY_PASSWORD" ]; then
+    echo "Error: ANDROID_KEYSTORE_PASS or ANDROID_KEY_PASSWORD needed"
     exit 1
   else
-    export ANDROID_KEYSTORE_PASS=$ANDROID_KEY_PASS
+    export ANDROID_KEYSTORE_PASS=$ANDROID_KEY_PASSWORD
   fi
 else
-  if [ -z "$ANDROID_KEY_PASS" ]; then
-    export ANDROID_KEY_PASS=$ANDROID_KEYSTORE_PASS
+  if [ -z "$ANDROID_KEY_PASSWORD" ]; then
+    export ANDROID_KEY_PASSWORD=$ANDROID_KEYSTORE_PASS
   fi
 fi
 # Ensure apksigner is in PATH
@@ -43,6 +43,6 @@ echo "🖋️ Signing $APK_PATH..."
 apksigner sign --ks "$KEYSTORE_PATH" \
   --ks-key-alias "$KEY_ALIAS" \
   --ks-pass "env:ANDROID_KEYSTORE_PASS" \
-  --key-pass "env:ANDROID_KEY_PASS" "$APK_PATH" # --out "$OUT"
-echo "✅ Successfully signed $APK_PATH"          # to $OUT"
+  --key-pass "env:ANDROID_KEY_PASSWORD" "$APK_PATH" # --out "$OUT"
+echo "✅ Successfully signed $APK_PATH"              # to $OUT"
 echo "To install on device, use: adb install -r $APK_PATH"
