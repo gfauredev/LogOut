@@ -782,11 +782,7 @@ mod tests {
         );
         assert!(session.paused_at.is_none());
     }
-}
 
-#[cfg(test)]
-mod tests {
-    use super::*;
     use strum::IntoEnumIterator;
 
     // ── Weight Display ──────────────────────────────────────────────────────────
