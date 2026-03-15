@@ -74,15 +74,15 @@ jobs:
         fail-on-no-checks: false
     - uses: timheuer/base64-to-file@v1.2.4
       with:
-        fileName: 'release_key.jks'
+        fileName: 'logout.jks'
         encodedString: ${{ secrets.ANDROID_KEYSTORE_B64 }}
-      id: decode_keystore
+      id: keystore
     - run: |
         nix develop -c dx build --android --release # --locked --offline
         cp --verbose target/dx/log-out/release/android/app/app/build/outputs/apk/debug/app-debug.apk LogOut.aarch64.apk
         scripts/android-sign.sh LogOut.aarch64.apk # Sign APK
       env:
-        KEYSTORE_PATH: ${{ steps.decode_keystore.outputs.filePath }}
+        ANDROID_KEYSTORE_PATH: ${{ steps.keystore.outputs.filePath }}
         ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
     - name: Publish Timestamped Pre-Release
       if: github.ref == 'refs/heads/main'
