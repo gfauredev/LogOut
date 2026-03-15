@@ -1,0 +1,16 @@
+url: http://localhost:8080/LogOut/?dl_db_url=http%3A%2F%2Flocalhost%3A8080%2FLogOut%2F
+---
+# User Story: Search Exercises in Browser
+- launchApp
+- tapOn: "📚"
+- assertVisible: "📚 Exercises"
+# Wait for exercises to load
+- assertVisible: "Ring Dip"
+# Type a search term in the search input
+- tapOn: "Search exercises, muscles, or categories..."
+- inputText: "ring"
+- assertVisible: "Ring Dip"
+- assertNotVisible: "Romanian Deadlift"
+# Clear search to restore full list
+- clearText
+- assertVisible: "Romanian Deadlift"

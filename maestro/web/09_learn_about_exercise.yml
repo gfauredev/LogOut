@@ -1,0 +1,12 @@
+url: http://localhost:8080/LogOut/?dl_db_url=http%3A%2F%2Flocalhost%3A8080%2FLogOut%2F
+---
+# User Story: Learn About an Exercise
+- launchApp
+- tapOn: "📚"
+- assertVisible: "📚 Exercises"
+# Wait for exercises to load
+- assertVisible: "Ring Dip"
+# Click the exercise name to expand its instructions
+- tapOn: "Ring Dip"
+# Instructions should now be visible (first step of Ring Dip)
+- assertVisible: "Grip a ring in each hand"

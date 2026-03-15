@@ -1,0 +1,12 @@
+url: http://localhost:8080/LogOut/?dl_db_url=http%3A%2F%2Flocalhost%3A8080%2FLogOut%2F
+---
+# User Story: Be Astonished by Your Incredible Progress
+# Precondition: Two past sessions with ring_dip at different rep counts.
+- runFlow: _flows/setup_progress_sessions.yml
+# Navigate to Analytics
+- tapOn: "📊"
+- assertVisible: "📊 Analytics"
+# The exercise selectors are visible
+- assertVisible: "-- Select Exercise --"
+# Ring Dip is available for selection (it was done in the setup sessions)
+- assertVisible: "Ring Dip"

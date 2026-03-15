@@ -1,0 +1,9 @@
+url: http://localhost:8080/LogOut/ # Clean State Credits
+---
+# User Story: Clean State Credits
+# Precondition: No custom DB URL set (launchApp clears localStorage)
+- launchApp
+- tapOn: "ℹ️"
+- assertVisible: "ℹ️ Credits"
+# The URL input should show the default exercise DB URL
+- assertVisible: "https://gfauredev.github.io/free-exercise-db/"

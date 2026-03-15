@@ -1,0 +1,10 @@
+url: http://localhost:8080/LogOut/ # Clean State Analytics
+---
+# User Story: Clean State Analytics
+# Precondition: No sessions (launchApp clears IndexedDB)
+- launchApp
+- tapOn: "📊"
+- assertVisible: "📊 Analytics"
+# No exercises can be selected when no sessions have been completed
+- assertVisible: "-- Select Exercise --"
+- assertVisible: "Select exercises to view analytics"

@@ -1,0 +1,15 @@
+url: http://localhost:8080/LogOut/?dl_db_url=http%3A%2F%2Flocalhost%3A8080%2FLogOut%2F
+---
+# User Story: Delete Past Sessions
+# Precondition: A past session is created via the setup subflow below.
+- runFlow: _flows/setup_past_session.yml
+# A completed session is visible on home
+- assertVisible: "Today"
+# Tap the "🗑️" delete button on the session card
+- tapOn: "🗑️"
+# A confirmation dialog appears
+- assertVisible: "Delete this session?"
+# Confirm deletion
+- tapOn: "🗑️ Delete"
+# The session is removed and the home shows the empty state
+- assertVisible: "No past sessions yet"
