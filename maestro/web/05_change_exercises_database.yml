@@ -1,0 +1,15 @@
+url: http://localhost:8080/LogOut/ # Change Exercises Database
+---
+# User Story: Change Exercises Database
+- launchApp
+- tapOn: "ℹ️"
+- assertVisible: "ℹ️ Credits"
+# Tap on the URL input and type the test database address
+- tapOn: "⚙️ Exercise Database URL"
+- tapOn:
+    text: "https://gfauredev.github.io/free-exercise-db/"
+    optional: true
+- clearText
+- inputText: "http://localhost:8080"
+# Save the new URL by tapping the save button
+- tapOn: "💾"

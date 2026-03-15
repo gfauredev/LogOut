@@ -1,0 +1,12 @@
+url: http://localhost:8080/LogOut/?dl_db_url=http%3A%2F%2Flocalhost%3A8080%2FLogOut%2F
+---
+# User Story: Lookup a Previously Done Exercise
+# Precondition: A past session is created via the setup subflow below.
+- runFlow: _flows/setup_past_session.yml
+# A completed session with exercise tags is visible on home
+- assertVisible: "Today"
+# Click on the "Ring Dip" exercise tag in the session card
+- tapOn: "Ring Dip"
+# The Exercise List opens with the search pre-filled with the exercise name
+- assertVisible: "📚 Exercises"
+- assertVisible: "Ring Dip"

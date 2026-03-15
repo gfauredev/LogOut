@@ -1,0 +1,14 @@
+url: http://localhost:8080/LogOut/?dl_db_url=http%3A%2F%2Flocalhost%3A8080%2FLogOut%2F
+---
+# User Story: Repeat Session from History
+# Precondition: A past session is created via the setup subflow below.
+- runFlow: _flows/setup_past_session.yml
+# A completed session with exercises is visible on home
+- assertVisible: "Today"
+# Tap the "🔄" repeat button on the session card
+- tapOn: "🔄"
+# A new Active Session opens with the previous exercises pre-added
+- assertVisible: "⏱️ Active Session"
+# The pending exercise section shows the exercises from the previous session
+- assertVisible: "Ring Dip"
+- assertVisible: "Romanian Deadlift"

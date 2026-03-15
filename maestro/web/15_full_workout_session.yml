@@ -1,0 +1,60 @@
+url: http://localhost:8080/LogOut/?dl_db_url=http%3A%2F%2Flocalhost%3A8080%2FLogOut%2F
+---
+# User Story: Full Workout Session
+# Covers: Start Session, Search Exercise, Record Exercise, Replay Exercise,
+#         Repeat For Another Exercise, Remove Exercise, Finish Session.
+
+# --- Start Session ---
+- launchApp
+# Tap "+" to start a new session
+- tapOn: "+"
+- assertVisible: "⏱️ Active Session"
+# When the session is empty, the Cancel button is shown
+- assertVisible: "❌"
+
+# --- Search Exercise (Ring Dip) ---
+- tapOn: "Search for an exercise..."
+- inputText: "ring"
+- tapOn: "Ring Dip"
+
+# --- Record Exercise (Ring Dip, set 1: 10 reps) ---
+- tapOn:
+    text: "reps"
+    optional: false
+- inputText: "10"
+- tapOn: "✔️"
+- assertVisible: "Completed Exercises"
+- assertVisible: "10 reps"
+
+# --- Replay Exercise (Ring Dip, set 2: 11 reps) ---
+- tapOn: "🔁"
+# Increment reps by 1 (pre-filled from last set: 10, now -> 11)
+- tapOn:
+    text: "+"
+    index: 1
+- tapOn: "✔️"
+
+# --- Repeat For Another Exercise (Romanian Deadlift) ---
+- tapOn: "Search for an exercise..."
+- inputText: "Romanian"
+- tapOn: "Romanian Deadlift"
+- tapOn:
+    text: "reps"
+    optional: false
+- inputText: "6"
+- tapOn: "✔️"
+
+# --- Remove Exercise (delete the Romanian Deadlift set) ---
+# Clear search so Romanian Deadlift is not in search results when we assert
+- tapOn: "Search for an exercise..."
+- clearText
+- tapOn: "🗑️"
+# Ring Dip logs remain; Romanian Deadlift log is gone
+- assertVisible: "Ring Dip"
+- assertNotVisible: "Romanian Deadlift"
+
+# --- Finish Session ---
+- tapOn: "✅"
+# Congratulations toast and session now in history
+- assertVisible: "🎉 Great workout! Session complete!"
+- assertVisible: "Today"

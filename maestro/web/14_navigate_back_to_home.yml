@@ -1,0 +1,10 @@
+url: http://localhost:8080/LogOut/ # Navigate Back to Home
+---
+# User Story: Navigate Back to Home
+- launchApp
+# Start on Credits page (different from Home)
+- tapOn: "ℹ️"
+- assertVisible: "ℹ️ Credits"
+# Tap the Home button in the bottom nav
+- tapOn: "💪"
+- assertVisible: "💪 LogOut"

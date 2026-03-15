@@ -1,0 +1,9 @@
+url: http://localhost:8080/LogOut/ # Navigate to Analytics
+---
+# User Story: Navigate to Analytics
+- launchApp
+# Start on Home page (different from Analytics)
+- assertVisible: "💪 LogOut"
+# Tap the Analytics button in the bottom nav
+- tapOn: "📊"
+- assertVisible: "📊 Analytics"

@@ -1,0 +1,6 @@
+url: http://localhost:8080/LogOut/ # Allow Notifications
+---
+# User Story: Allow Notifications
+- launchApp
+# The notification toast is shown when permission has not been granted yet
+- assertVisible: "⚠️ Tap here to enable notifications"

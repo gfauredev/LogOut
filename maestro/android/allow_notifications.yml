@@ -1,0 +1,16 @@
+appId: com.gfaure.logout
+---
+# User Story: Allow Notifications (Android)
+# Tests the native Android notification permission flow.
+# Features tested: Android notification permission dialog, notification toast.
+- launchApp:
+    permissions:
+      notifications: unset # Start with permission not yet granted
+# The notification toast prompts the user to enable notifications
+- assertVisible: "⚠️ Tap here to enable notifications"
+# Tap the toast to trigger the permission request dialog
+- tapOn: "⚠️ Tap here to enable notifications"
+# Android system permission dialog appears; deny notifications
+- tapOn: "Don't allow"
+# After denying, a "blocked" toast should appear
+- assertVisible: "⚠️ Notifications blocked"

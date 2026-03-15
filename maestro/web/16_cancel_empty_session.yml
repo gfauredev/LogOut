@@ -1,0 +1,16 @@
+url: http://localhost:8080/LogOut/ # Cancel Empty Session
+---
+# User Story: Cancel Empty Session
+# Precondition: An empty active session is started here (no external setup needed)
+- launchApp
+- assertVisible: "No past sessions yet"
+# Tap "+" to start a new session
+- tapOn: "+"
+- assertVisible: "⏱️ Active Session"
+# When session is empty, the Cancel Session button ("❌") is visible
+- assertVisible: "❌"
+# Tap Cancel Session
+- tapOn: "❌"
+# Back to Home with no sessions saved
+- assertVisible: "💪 LogOut"
+- assertVisible: "No past sessions yet"

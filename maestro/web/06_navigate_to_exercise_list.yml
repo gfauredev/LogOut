@@ -1,0 +1,9 @@
+url: http://localhost:8080/LogOut/ # Navigate to Exercise List
+---
+# User Story: Navigate to Exercise List
+- launchApp
+# Start on Home page (different from Exercise List)
+- assertVisible: "💪 LogOut"
+# Tap the Exercises button in the bottom nav
+- tapOn: "📚"
+- assertVisible: "📚 Exercises"

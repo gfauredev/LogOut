@@ -1,0 +1,22 @@
+appId: com.gfaure.logout
+---
+# User Story: Change Exercises Database (Android)
+# Tests that the exercise database URL can be changed on Android,
+# which triggers a network request to the new external database.
+- launchApp:
+    permissions:
+      notifications: deny # Dismiss notification prompt to focus on the test
+# Navigate to Credits via deep link
+- openLink: "logworkout://credits"
+- assertVisible: "ℹ️ Credits"
+# The URL input should show the default URL
+- assertVisible: "https://gfauredev.github.io/free-exercise-db/"
+# Change the database URL to the official mirror
+- tapOn: "⚙️ Exercise Database URL"
+- tapOn:
+    text: "https://gfauredev.github.io/free-exercise-db/"
+    optional: true
+- clearText
+- inputText: "https://raw.githubusercontent.com/gfauredev/free-exercise-db/main/"
+# Save and verify no error
+- tapOn: "💾"

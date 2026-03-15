@@ -49,30 +49,33 @@ jobs:
     - run: nix develop -c cargo mutants --no-shuffle --caught --timeout 300 \
         --exclude "src/components/*"
 
-  # e2e-android:
-  #   runs-on: macos-latest
-  #   timeout-minutes: 45
-  #   steps:
-  #   - uses: actions/checkout@v6
-  #   - uses: cachix/install-nix-action@v31
-  #     with:
-  #       github_access_token: ${{ secrets.GITHUB_TOKEN }}
-  #       extra_nix_config: |
-  #         extra-substituters = https://cache.garnix.io
-  #         extra-trusted-public-keys = cache.garnix.io:CTFPyKSLcx5RMJKfLo5EEPUObbA78b0YQ2DTCJXqr9g=
-  #   - uses: DeterminateSystems/magic-nix-cache-action@v13
-  #   - run: TODO With package built in CD
-  #   - uses: reactivecircus/android-emulator-runner@v2
-  #     with:
-  #       api-level: 33
-  #       target: google_apis
-  #       arch: arm64-v8a TODO Consider using x86_64 build, easier to emulate?
-  #       force-avd-creation: false
-  #       emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
-  #       disable-animations: false
-  #       script: TODO With package built in CD
-  #   - if: failure()
-  #     uses: actions/upload-artifact@v7
-  #     with:
-  #       name: maestro-android-report
-  #       path: ~/.maestro/tests
+  e2e-android:
+    runs-on: macos-14 # Apple Silicon for native ARM64 emulation
+    timeout-minutes: 60
+    permissions:
+      contents: read
+    steps:
+    - uses: actions/checkout@v6
+    # Install Maestro CLI
+    - run: curl -Ls "https://get.maestro.mobile.dev" | bash
+    # Download the latest Android release APK (built and published by CD workflow)
+    - run: gh release download --pattern "*.apk" --dir .
+      env:
+        GH_TOKEN: ${{ github.token }}
+    # Set up ARM64 Android emulator and run tests
+    - uses: reactivecircus/android-emulator-runner@v2
+      with:
+        api-level: 34
+        target: google_apis
+        arch: arm64-v8a
+        force-avd-creation: false
+        emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
+        disable-animations: true
+        script: |
+          adb install -r LogOut.arm64-v8a.apk
+          $HOME/.maestro/bin/maestro test maestro/android
+    - if: failure()
+      uses: actions/upload-artifact@v7
+      with:
+        name: maestro-android-report
+        path: ~/.maestro/tests
