@@ -1,6 +1,6 @@
 #!/bin/sh
 set -e
-# OUT=release-signed.apk
+NAME=LogOut
 APK_PATH=$1
 KEYSTORE_PATH=${ANDROID_KEYSTORE_PATH:-"android/secrets/logout.jks"}
 KEY_ALIAS=${ANDROID_KEY_ALIAS:-"logout-key"}
@@ -11,6 +11,7 @@ if [ ! -f "$APK_PATH" ]; then
   echo "Error: File $APK_PATH not found."
   exit 1
 fi
+APK_ARCH=$(aapt2 dump badging "$APK_PATH" | awk -F"'" '/native-code:/{print $2}')
 # Ensure required environment variables are set
 if [ -z "$ANDROID_KEYSTORE_PASS" ]; then
   if [ -z "$ANDROID_KEY_PASSWORD" ]; then
@@ -43,6 +44,6 @@ echo "🖋️ Signing $APK_PATH..."
 apksigner sign --ks "$KEYSTORE_PATH" \
   --ks-key-alias "$KEY_ALIAS" \
   --ks-pass "env:ANDROID_KEYSTORE_PASS" \
-  --key-pass "env:ANDROID_KEY_PASSWORD" "$APK_PATH" # --out "$OUT"
-echo "✅ Successfully signed $APK_PATH"              # to $OUT"
+  --key-pass "env:ANDROID_KEY_PASSWORD" "$APK_PATH" --out "$NAME.$APK_ARCH.apk"
+echo "✅ Successfully signed $APK_PATH to $NAME.$APK_ARCH.apk"
 echo "To install on device, use: adb install -r $APK_PATH"

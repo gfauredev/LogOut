@@ -76,7 +76,6 @@
             ];
           };
           commonNativeBuildInputs = with pkgs; [
-            apksigner
             binaryen
             cargo-binutils
             cargo-deny
@@ -94,10 +93,12 @@
             unzip
           ];
           androidNativeBuildInputs = with pkgs; [
-            cargo-ndk
+            aapt
+            apksigner
             android-tools
             androidComposition.androidsdk
             androidComposition.ndk-bundle
+            cargo-ndk
             openjdk
           ];
           commonBuildInputs = [
@@ -129,9 +130,7 @@
         {
           default = env.pkgs.mkShell {
             packages = with env.pkgs; [
-              biome
-              sass
-              scss-lint
+              # biome sass scss-lint
               strace
               taplo # TOML LSP
               typescript-language-server # TS LSP
@@ -140,7 +139,6 @@
             ];
             nativeBuildInputs = env.commonNativeBuildInputs ++ env.androidNativeBuildInputs;
             buildInputs = env.commonBuildInputs;
-            # TODO Consider merging with Android package
             ANDROID_HOME = "${env.androidComposition.androidsdk}/libexec/android-sdk";
             ANDROID_NDK_HOME = "${env.androidComposition.ndk-bundle}/libexec/android-sdk/ndk-bundle";
             GRADLE_USER_HOME = "$PWD/.gradle";
@@ -206,17 +204,7 @@
         {
           web = mkWebPackage { };
           pages = mkWebPackage { basePath = "LogOut"; };
-          android = import ./android.nix {
-            inherit (env)
-              pkgs
-              rustPlatform
-              commonNativeBuildInputs
-              commonBuildInputs
-              androidComposition
-              ;
-            inherit (env.pkgs) lib;
-            inherit self;
-          };
+          # android = TODO;
           default = env.pkgs.symlinkJoin {
             name = "logout-all";
             paths = [

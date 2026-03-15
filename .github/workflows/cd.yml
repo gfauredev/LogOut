@@ -82,9 +82,8 @@ jobs:
         encodedString: ${{ secrets.ANDROID_KEYSTORE_B64 }}
       id: keystore
     - run: |
-        nix develop -c dx build --android --release # --locked --offline
-        cp --verbose target/dx/log-out/release/android/app/app/build/outputs/apk/debug/app-debug.apk LogOut.aarch64.apk
-        scripts/android-sign.sh LogOut.aarch64.apk # Sign APK
+        nix develop -c dx build --android --release --target aarch64-linux-android # --locked --offline
+        scripts/android-sign.sh # Sign APK(s) and copy here, with architecture
       env:
         ANDROID_KEYSTORE_PATH: ${{ steps.keystore.outputs.filePath }}
         ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
