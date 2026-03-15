@@ -1,6 +1,10 @@
 on:
   push:
     branches: [main]
+    paths-ignore:
+      - '**.md'
+      - 'LICENSE*'
+      - '.gitignore'
     tags: [v*]
   workflow_dispatch:
 
@@ -84,8 +88,15 @@ jobs:
       env:
         ANDROID_KEYSTORE_PATH: ${{ steps.keystore.outputs.filePath }}
         ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
-    - name: Publish Timestamped Pre-release
+    - name: Check for SemVer Tag
+      id: check-tag
       if: github.ref == 'refs/heads/main'
+      run: |
+        if git ls-remote --tags origin | grep "^${GITHUB_SHA}.*refs/tags/v" > /dev/null; then
+          echo "has_tag=true" >> $GITHUB_OUTPUT
+        fi
+    - name: Publish Timestamped Pre-release # If no SemVer tag on last commit
+      if: github.ref == 'refs/heads/main' && steps.check-tag.outputs.has_tag != 'true'
       run: |
         NOW=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
         gh release create "pre-$(date -u +%Y-%m-%dT%H-%M-%S)" *.apk \
@@ -107,6 +118,7 @@ jobs:
     permissions:
       contents: write
     steps:
+    - uses: actions/checkout@v6
     - run: | # Cleanup rolling releases > 7 days or < 12 hours
         gh release list --json tagName,createdAt,isPrerelease \
           --jq '.[]|select(.isPrerelease == true)|"\(.tagName) \(.createdAt)"' \
