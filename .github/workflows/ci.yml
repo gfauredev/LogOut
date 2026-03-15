@@ -138,6 +138,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
+    - uses: wimpysworld/nothing-but-nix@v10
     - uses: actions/checkout@v6
     - uses: cachix/install-nix-action@v31
       with:
@@ -146,7 +147,6 @@ jobs:
           extra-substituters = https://cache.garnix.io
           extra-trusted-public-keys = cache.garnix.io:CTFPyKSLcx5RMJKfLo5EEPUObbA78b0YQ2DTCJXqr9g=
     - uses: DeterminateSystems/magic-nix-cache-action@v13
-    - uses: wimpysworld/nothing-but-nix@v10
     - run: sleep 15 #  Sleep hoping Garnix evaluation will start after
     - uses: lewagon/wait-on-check-action@v1.5.0
       with:
@@ -162,21 +162,18 @@ jobs:
     - run: ./scripts/web-test.sh # Build & Serve
     - run: |
         set -o pipefail
-        # nothing-but-nix has removed system Chrome, so selenium-manager will
-        # not find a browser at its hard-coded system paths. Create a wrapper
-        # at /usr/bin/google-chrome pointing to the Nix ungoogled-chromium
-        # (same major version as the Nix chromedriver, so no version mismatch).
-        # --no-sandbox is required because the chromium sandbox binary in the
-        # Nix store lacks the SUID bit on non-NixOS runners.
-        # GitHub Actions runners are isolated per-job (fresh VM), so writing
-        # to /usr/bin here does not affect other jobs or parallel workflows.
-        nix develop -c bash -c '
-          sudo rm -f /usr/bin/google-chrome
-          printf "#!/bin/sh\nexec \"%s\" --no-sandbox \"\$@\"\n" "$CHROME_BIN" \
-            | sudo tee /usr/bin/google-chrome > /dev/null
-          sudo chmod +x /usr/bin/google-chrome
-          maestro test --headless maestro/web
-        ' |& tee maestro_console.log
+        nix develop -c maestro test --headless maestro/web |& tee maestro_console.log
+        # wrapper /usr/bin/google-chrome pointing to Nix ungoogled-chromium
+        # (same major version as the Nix chromedriver, so no version mismatch)
+        # --no-sandbox required because chromium sandbox binary in Nix store
+        # lacks SUID bit on non-NixOS runners
+        # nix develop -c bash -c '
+        #   sudo rm -f /usr/bin/google-chrome
+        #   printf "#!/bin/sh\nexec \"%s\" --no-sandbox \"\$@\"\n" "$CHROME_BIN" \
+        #     | sudo tee /usr/bin/google-chrome > /dev/null
+        #   sudo chmod +x /usr/bin/google-chrome
+        #   maestro test --headless maestro/web
+        # ' |& tee maestro_console.log
     - if: failure() && github.event_name == 'pull_request'
       env:
         CLOUD_NAME: ${{ secrets.CLOUDINARY_CLOUD_NAME }}
