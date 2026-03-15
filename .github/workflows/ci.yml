@@ -161,7 +161,19 @@ jobs:
     - run: ./scripts/web-test.sh # Build & Serve
     - run: |
         set -o pipefail
-        nix develop -c maestro test --headless maestro/web |& tee maestro_console.log
+        # selenium-manager discovers the browser via hard-coded paths such as
+        # /usr/bin/google-chrome, bypassing PATH. The CI runner ships Chrome 145
+        # while the Nix shell provides ChromeDriver 146 → version mismatch.
+        # Also, the Nix chromium sandbox binary lacks SUID on non-NixOS hosts,
+        # so --no-sandbox is required to start Chrome.
+        # Fix: replace /usr/bin/google-chrome with a wrapper that calls the Nix
+        # chromium (146, matching Nix chromedriver 146) with --no-sandbox prepended.
+        nix develop -c bash -c '
+          printf "#!/bin/sh\nexec \"%s\" --no-sandbox \"\$@\"\n" "$CHROME_BIN" \
+            | sudo tee /usr/bin/google-chrome > /dev/null
+          sudo chmod +x /usr/bin/google-chrome
+          maestro test --headless maestro/web
+        ' |& tee maestro_console.log
     - if: failure() && github.event_name == 'pull_request'
       env:
         CLOUD_NAME: ${{ secrets.CLOUDINARY_CLOUD_NAME }}
