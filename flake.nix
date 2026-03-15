@@ -151,6 +151,7 @@
                 zlib
               ];
             shellHook = ''
+              unset ANDROID_SDK_ROOT # Set in GitHub Runners conflict with Home
               export SE_CACHE_PATH="$PWD/.selenium"
               # Patch aapt2 if in gradle cache or target dir (Android on Nix)
               find "$GRADLE_USER_HOME/caches" "$PWD/target" -name aapt2 -type f -executable 2>/dev/null | while read -r aapt2; do
