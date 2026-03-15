@@ -192,10 +192,10 @@ validated PRs), on standard Linux runners.
 CD also runs when a [SemVer] `vMAJOR.MINOR.PATCH` **tag** is pushed, publishing
 a “Stable” GitHub Release with a production Android APK buit on this `tag`.
 
-## Nightly Deep Checks
+## Weekly Deep Checks
 
 [LogOut] ensures high quality code while with additional ressource intensive
-checks that run every night at 2:00 AM (UTC) on the `main` branch.
+checks that run every Sunday at midnight on the `main` branch.
 
 - Run Android **end-to-end tests** in emulator `maestro test maestro/android`
 - Analyze dependencies for vulnerabilities or deprecations with `cargo deny`
@@ -206,19 +206,22 @@ checks that run every night at 2:00 AM (UTC) on the `main` branch.
 
 ## TODO
 
-- Android pure Nix build (beware Gradle)
-- Fix Nightly checks
-- Fix favicon downloading but not showing, marked 0x0 image in dev tools
-- Add pause button in Active Session
-- Fix Lighthouse Audit
-- Remove any non project files from coverage
-- Display last line of maestro output outside `<details>`
+- Allow search with localized exercises names and tags (in addition to english)
+- Fix favicon downloading but not showing (x-unknown-content-type)
+- Add pause button in Active Session that pauses timers
+- Reorganize CSS in structure, component, context, unique files
 - Make layout and palette harmonious but minimal, efficient
   - Equalize spacings, sizes, net but not wasteful
   - Harmonize Rest timer text color with background when rest is due
+- Remove any non project files from coverage
+- Fix Lighthouse Audit
+- Display last line of maestro output outside `<details>`
 - DRY E2E tests to only one par user story, they can still runFlow others
+  - Android Maestro E2E tests for features that interact with outside
+  - Weekly Android E2E tests
 - Mock exercise database with public/exercises.json for E2E tests, so they can
   load faster and not rely on external network requests
+- Weekly dependencies updates
 
 [LogOut]: https://gfauredev.github.io/LogOut
 [800+ exercises]: https://github.com/yuhonas/free-exercise-db
