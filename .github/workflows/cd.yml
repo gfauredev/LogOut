@@ -74,7 +74,7 @@ jobs:
         fail-on-no-checks: false
     - run: |
         nix develop -c dx build --android --release # --locked --offline
-        mv --verbose target/dx/log-workout/release/android/app/app/build/outputs/apk/debug/app-debug.apk LogOut.aarch64.apk
+        cp --verbose target/dx/log-out/release/android/app/app/build/outputs/apk/debug/app-debug.apk LogOut.aarch64.apk
         scripts/android-sign.sh LogOut.aarch64.apk # Sign APK
     - name: Publish Timestamped Pre-Release
       if: github.ref == 'refs/heads/main'
