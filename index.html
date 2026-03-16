@@ -25,6 +25,17 @@
         window.history.replaceState(null, '', url);
       }
     }());
+    // Pre-seed exercise DB URL from deep-link query param before WASM starts.
+    // The Dioxus router may replace the URL (stripping query params) before the
+    // Rust use_hook can read them, so we persist dl_db_url to localStorage here.
+    (function () {
+      const dbUrl = new URLSearchParams(window.location.search).get('dl_db_url');
+      if (dbUrl) {
+        const normalized = dbUrl.endsWith('/') ? dbUrl : dbUrl + '/';
+        localStorage.setItem('exercise_db_url', normalized);
+        localStorage.removeItem('last_exercise_fetch');
+      }
+    }());
   </script>
   <style>
     * {
