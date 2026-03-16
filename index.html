@@ -33,7 +33,7 @@
       if (dbUrl) {
         const normalized = dbUrl.endsWith('/') ? dbUrl : dbUrl + '/';
         localStorage.setItem('exercise_db_url', normalized);
-        localStorage.removeItem('last_exercise_fetch');
+        localStorage.removeItem('exercise_db_last_fetch');
       }
     }());
   </script>
