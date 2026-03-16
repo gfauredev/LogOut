@@ -211,24 +211,17 @@ checks that run every Sunday at midnight on the `main` branch.
 - ~~Fix favicon downloading but not showing (x-unknown-content-type)~~
 - ~~Add pause button in Active Session that pauses timers~~
 - ~~Reorganize CSS in structure, component, context, unique files~~
+- Make all Maestro Web E2E tests pass, either by fixing the code or the test
+- Make a flake.nix app that builds and signs Android APK, use it in CD
+- Make a flake.nix app that runs Maestro Android E2E Tests, use it in weekly
 - Coverage: exclude any non-project file, print number of passed/total in PR
-- Fix Lighthouse Audit, make it pass, print a pretty summary table in PR comment
+- Print summary table of Lighthouse Audit in PR comment with every metrics
+- Setup weekly dependencies updates with renovate
 - Display last line of maestro output outside `<details>`
-- Make one clean Maestro Web E2E test per User Story
-  - Run another test if its final state is needed with
-    [runFlow](https://docs.maestro.dev/reference/commands-available/runflow)
-  - Use deep links to quickly setup the app for the test with
-    [openLink](https://docs.maestro.dev/reference/commands-available/openlink)
-  - Ensure all Web Maestro E2E tests pass, including in GitHub CI, try them
-  - Consider mocking exercise database with public/exercises.json for E2E tests,
-    so they can load faster and not rely on external network requests
-- Add Android Maestro E2E tests for features that interact with outside
-  - Run Android E2E tests automatically every week, ensure they run properly
 - Fix ICO favicon
 - Make layout and palette harmonious but minimal, efficient
   - Equalize spacings, sizes, net but not wasteful
   - Harmonize Rest timer text color with background when rest is due
-- Weekly dependencies updates
 
 [LogOut]: https://gfauredev.github.io/LogOut
 [800+ exercises]: https://github.com/yuhonas/free-exercise-db
