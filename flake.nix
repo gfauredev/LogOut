@@ -168,7 +168,7 @@
               python3 -m http.server -d "${self.packages.${system}.pages}" 8080
             '';
           };
-          e2eWebRunner = env.pkgs.writeShellApplication {
+          pagesE2eTester = env.pkgs.writeShellApplication {
             name = "logout-e2e-web";
             runtimeInputs = with env.pkgs; [
               chromedriver
