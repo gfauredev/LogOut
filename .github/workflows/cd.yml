@@ -4,7 +4,9 @@ on:
     paths-ignore:
       - '**.md'
       - 'LICENSE*'
-      - '.gitignore'
+      - '.git*'
+      - '.envrc'
+      - 'garnix.yaml'
     tags: [v*]
   workflow_dispatch:
 
