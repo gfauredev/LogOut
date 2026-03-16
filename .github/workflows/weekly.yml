@@ -78,8 +78,7 @@ jobs:
         disable-animations: true
         script: |
           adb install -r LogOut.arm64-v8a.apk
-          # $HOME/.maestro/bin/maestro test --headless maestro/android
-          nix develop -c maestro test --headless maestro/android
+          nix run .#androidE2eTest
     - if: failure()
       uses: actions/upload-artifact@v7
       with:
