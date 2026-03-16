@@ -87,7 +87,6 @@
             maestro
             patchelf
             pkg-config
-            python3
             rustToolchain
             selenium-manager
             ungoogled-chromium
@@ -132,6 +131,7 @@
           default = env.pkgs.mkShell {
             packages = with env.pkgs; [
               # biome sass scss-lint
+              python3
               strace
               taplo # TOML LSP
               typescript-language-server # TS LSP
@@ -194,7 +194,10 @@
               '';
               installPhase = ''
                 mkdir -p $out
-                cp -r target/dx/log-out/release/web/public/* $out/
+                cp -r target/dx/log-out/release/web/public/${
+                  # Let me break a line
+                  if basePath == "/" then "* $out/" else " $out/${basePath}"
+                }
               '';
               preCheck = ''
                 export HOME=$TMPDIR/fake-home
@@ -205,7 +208,6 @@
         {
           web = mkWebPackage { };
           pages = mkWebPackage { basePath = "LogOut"; };
-          # android = TODO;
           default = env.pkgs.symlinkJoin {
             name = "logout-all";
             paths = [
@@ -220,9 +222,8 @@
         let
           env = sharedEnvFor system;
           pkgs = env.pkgs;
-          # Wrapper that invokes Nix-provided Chromium with --no-sandbox.
-          # Required on non-NixOS CI runners where the SUID sandbox binary is absent.
-          # Named "google-chrome" so selenium-manager finds it via PATH fallback.
+          # --no-sandbox required on non-NixOS CI runners where SUID sandbox
+          # binary is absent, named so selenium-manager finds via PATH
           chromiumNoSandbox = pkgs.writeShellScript "google-chrome" ''
             exec "${pkgs.ungoogled-chromium}/bin/chromium" --no-sandbox "$@"
           '';
@@ -231,11 +232,7 @@
             name = "logout-pages";
             runtimeInputs = [ pkgs.python3 ];
             text = ''
-              SERVE_DIR=$(mktemp -d)
-              trap 'rm -rf "$SERVE_DIR"' EXIT
-              ln -s "${self.packages.${system}.pages}" "$SERVE_DIR/LogOut"
-              echo "Serving LogOut at http://localhost:8080/LogOut/ (Ctrl+C to stop)"
-              python3 -m http.server -d "$SERVE_DIR" 8080
+              python3 -m http.server -d "${self.packages.${system}.pages}" 8080
             '';
           };
           # Start the pages server, then run Maestro web E2E tests against it
@@ -244,34 +241,18 @@
             runtimeInputs = with pkgs; [
               chromedriver
               maestro
-              python3
-              ungoogled-chromium
+              chromiumNoSandbox
             ];
             text = ''
-              CHROME_DIR=""
-              SERVE_DIR=""
               SERVER_PID=""
               cleanup() {
                 if [ -n "$SERVER_PID" ]; then
                   kill "$SERVER_PID" 2>/dev/null || true
                 fi
-                if [ -n "$CHROME_DIR" ]; then
-                  rm -rf "$CHROME_DIR"
-                fi
-                if [ -n "$SERVE_DIR" ]; then
-                  rm -rf "$SERVE_DIR"
-                fi
               }
               trap cleanup EXIT
-              # Put a google-chrome wrapper (with --no-sandbox) first in PATH so that
-              # selenium-manager finds it via PATH lookup instead of a system Chrome.
-              CHROME_DIR=$(mktemp -d)
-              ln -s "${chromiumNoSandbox}" "$CHROME_DIR/google-chrome"
-              export PATH="$CHROME_DIR:$PATH"
               # Serve the pages package at http://localhost:8080/LogOut/
-              SERVE_DIR=$(mktemp -d)
-              ln -s "${self.packages.${system}.pages}" "$SERVE_DIR/LogOut"
-              python3 -m http.server -d "$SERVE_DIR" 8080 &
+              ${self.apps.pages.program} &
               SERVER_PID=$!
               sleep 2
               maestro test --headless "${self}/maestro/web"
