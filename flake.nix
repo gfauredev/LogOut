@@ -204,7 +204,7 @@
               }
               trap cleanup EXIT
               # Serve the pages package at http://localhost:8080/LogOut/
-              ${self.apps.pages.program} &
+              ${self.apps.${system}.pages.program} &
               SERVER_PID=$!
               sleep 2
               maestro test --headless "${self}/maestro/web"
