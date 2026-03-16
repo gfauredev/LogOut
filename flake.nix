@@ -110,6 +110,7 @@
           ];
         in
         {
+          projectVersion = "0.2.3";
           inherit
             pkgs
             rustToolchain
@@ -132,7 +133,7 @@
             }:
             env.rustPlatform.buildRustPackage {
               pname = "logout-web";
-              version = "0.2.2";
+              version = env.projectVersion;
               src = self;
               cargoLock.lockFile = ./Cargo.lock;
               nativeBuildInputs = env.commonNativeBuildInputs;
@@ -206,14 +207,17 @@
         pages = {
           type = "app";
           program = "${self.packages.${system}.pagesServer}/bin/logout-pages";
+          meta.description = "Serve PWA";
         };
         e2e-web = {
           type = "app";
           program = "${self.packages.${system}.e2eWebRunner}/bin/logout-e2e-web";
+          meta.description = "Run E2E tests against PWA";
         };
         default = {
           type = "app";
           program = "${self.packages.${system}.pagesServer}/bin/logout-pages";
+          meta.description = "Serve PWA";
         };
       });
       devShells = forAllSystems (
@@ -277,7 +281,7 @@
           '';
           clippy = env.rustPlatform.buildRustPackage {
             pname = "logout-clippy";
-            version = "0.2.2";
+            version = env.projectVersion;
             src = self;
             cargoLock.lockFile = ./Cargo.lock;
             nativeBuildInputs = env.commonNativeBuildInputs;
@@ -290,7 +294,7 @@
           };
           coverage = env.rustPlatform.buildRustPackage {
             pname = "logout-coverage";
-            version = "0.2.2";
+            version = env.projectVersion;
             src = self;
             cargoLock.lockFile = ./Cargo.lock;
             nativeBuildInputs = env.commonNativeBuildInputs ++ [ env.pkgs.lcov ];
