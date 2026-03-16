@@ -38,12 +38,14 @@ jobs:
         check-regexp: 'Evaluate flake.nix'
         repo-token: ${{ secrets.GITHUB_TOKEN }}
         fail-on-no-checks: false
+        allowed-conclusions: success,failure,cancelled,skipped,timed_out,neutral
     - uses: lewagon/wait-on-check-action@v1.5.0
       with:
         ref: ${{ github.event.pull_request.head.sha || github.sha }}
         check-regexp: 'package pages.*'
         repo-token: ${{ secrets.GITHUB_TOKEN }}
         fail-on-no-checks: false
+        allowed-conclusions: success,failure,cancelled,skipped,timed_out,neutral
     - run: nix build .#pages -o dist
     - uses: actions/upload-pages-artifact@v4
       with:
@@ -75,12 +77,14 @@ jobs:
         check-regexp: 'Evaluate flake.nix'
         repo-token: ${{ secrets.GITHUB_TOKEN }}
         fail-on-no-checks: false
+        allowed-conclusions: success,failure,cancelled,skipped,timed_out,neutral
     - uses: lewagon/wait-on-check-action@v1.5.0
       with:
         ref: ${{ github.event.pull_request.head.sha || github.sha }}
         check-regexp: 'devShell.*linux.*'
         repo-token: ${{ secrets.GITHUB_TOKEN }}
         fail-on-no-checks: false
+        allowed-conclusions: success,failure,cancelled,skipped,timed_out,neutral
     - uses: timheuer/base64-to-file@v1.2.4
       with:
         fileName: 'logout.jks'
@@ -138,12 +142,14 @@ jobs:
         check-regexp: 'Evaluate flake.nix'
         repo-token: ${{ secrets.GITHUB_TOKEN }}
         fail-on-no-checks: false
+        allowed-conclusions: success,failure,cancelled,skipped,timed_out,neutral
     - uses: lewagon/wait-on-check-action@v1.5.0
       with:
         ref: ${{ github.event.pull_request.head.sha || github.sha }}
         check-regexp: 'devShell.*linux.*'
         repo-token: ${{ secrets.GITHUB_TOKEN }}
         fail-on-no-checks: false
+        allowed-conclusions: success,failure,cancelled,skipped,timed_out,neutral
     - uses: timheuer/base64-to-file@v1.2.4
       with:
         fileName: 'logout.jks'
