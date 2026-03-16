@@ -174,8 +174,8 @@
               chromedriver
               maestro
               # --no-sandbox required on non-NixOS CI runners where SUID sandbox
-              # binary is absent, named so selenium-manager finds via PATH
-              (writeShellScript "google-chrome" ''
+              # binary is absent, named so chromedriver finds via PATH
+              (writeShellScriptBin "google-chrome" ''
                 exec "${pkgs.ungoogled-chromium}/bin/chromium" --no-sandbox "$@"
               '')
             ];
@@ -209,7 +209,7 @@
           program = "${self.packages.${system}.pagesServer}/bin/logout-pages";
           meta.description = "Serve PWA";
         };
-        e2e-web = {
+        pagesE2eTest = {
           type = "app";
           program = "${self.packages.${system}.pagesE2eTester}/bin/logout-pages-e2e-tester";
           meta.description = "Run E2E tests against PWA";
