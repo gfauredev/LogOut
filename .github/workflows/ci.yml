@@ -48,11 +48,15 @@ jobs:
     - run: | # Process Coverage
         REPORT=$(grep -o "<table>.*</table>" coverage/html/index.html)
         PERCENT=$(jq '.data[0].totals.lines.percent' coverage/coverage.json)
+        COVERED=$(jq '.data[0].totals.lines.covered' coverage/coverage.json)
+        TOTAL=$(jq '.data[0].totals.lines.count' coverage/coverage.json)
         echo "REPORT<<EOF" >> $GITHUB_OUTPUT
         echo -e "$REPORT" >> $GITHUB_OUTPUT
         echo "EOF" >> $GITHUB_OUTPUT
         echo "PERCENT=$PERCENT" >> $GITHUB_OUTPUT
-        echo "Coverage is $PERCENT%"
+        echo "COVERED=$COVERED" >> $GITHUB_OUTPUT
+        echo "TOTAL=$TOTAL" >> $GITHUB_OUTPUT
+        echo "Coverage is $PERCENT% ($COVERED/$TOTAL lines)"
         if (( $(echo "$PERCENT < 80" | bc -l) )); then
           echo "❌ Coverage below 80%"
           echo "FAILED=true" >> $GITHUB_OUTPUT # Store failure for next step
@@ -66,7 +70,9 @@ jobs:
         issue-number: ${{ github.event.pull_request.number }}
         body: |
           ### 📊 Coverage Report
-          
+
+          **Lines: ${{ steps.coverage_report.outputs.COVERED }}/${{ steps.coverage_report.outputs.TOTAL }} (${{ steps.coverage_report.outputs.PERCENT }}%)**
+
           ${{ steps.coverage_report.outputs.REPORT }}
     - run: |
         if [ "${{ steps.coverage_report.outputs.FAILED }}" == "true" ]; then
@@ -103,15 +109,16 @@ jobs:
         echo "### 🚀 Lighthouse Audit" > "$TMPFILE"
         if [ -f .lighthouseci/manifest.json ]; then
           echo "" >> "$TMPFILE"
-          echo "| URL | Performance | Accessibility | Best Practices | SEO |" >> "$TMPFILE"
-          echo "| --- | --- | --- | --- | --- |" >> "$TMPFILE"
+          echo "| URL | Performance | Accessibility | Best Practices | SEO | PWA |" >> "$TMPFILE"
+          echo "| --- | --- | --- | --- | --- | --- |" >> "$TMPFILE"
           jq -r '.[] |
             (.url | sub("http://localhost:[0-9]*/"; "")) as $url |
             (.summary.performance // 0 | . * 100 | floor) as $perf |
             (.summary.accessibility // 0 | . * 100 | floor) as $a11y |
             (.summary["best-practices"] // 0 | . * 100 | floor) as $bp |
             (.summary.seo // 0 | . * 100 | floor) as $seo |
-            "| `\($url)` | \($perf) | \($a11y) | \($bp) | \($seo) |"
+            (.summary.pwa // 0 | . * 100 | floor) as $pwa |
+            "| `\($url)` | \($perf) | \($a11y) | \($bp) | \($seo) | \($pwa) |"
           ' .lighthouseci/manifest.json >> "$TMPFILE"
         fi
         LINKS='${{ steps.lighthouse_audit.outputs.links }}'

@@ -200,6 +200,25 @@
               maestro test --headless "${self}/maestro/web"
             '';
           };
+          androidBuilder = env.pkgs.writeShellApplication {
+            name = "logout-android-builder";
+            runtimeInputs = env.commonNativeBuildInputs ++ env.androidNativeBuildInputs;
+            text = ''
+              export ANDROID_HOME="${env.androidComposition.androidsdk}/libexec/android-sdk"
+              export ANDROID_NDK_HOME="${env.androidComposition.ndk-bundle}/libexec/android-sdk/ndk-bundle"
+              export GRADLE_USER_HOME="''${GRADLE_USER_HOME:-$PWD/.gradle}"
+              export HOME="''${HOME:-$TMPDIR}"
+              dx build --android --release --target aarch64-linux-android
+              "${self}/scripts/android-sign.sh"
+            '';
+          };
+          androidE2eTester = env.pkgs.writeShellApplication {
+            name = "logout-android-e2e-tester";
+            runtimeInputs = [ env.pkgs.maestro ];
+            text = ''
+              maestro test --headless "${self}/maestro/android"
+            '';
+          };
           default = env.pkgs.symlinkJoin {
             name = "logout-all";
             paths = [
@@ -219,6 +238,16 @@
           type = "app";
           program = "${self.packages.${system}.pagesE2eTester}/bin/logout-pages-e2e-tester";
           meta.description = "Run E2E tests against PWA";
+        };
+        androidBuild = {
+          type = "app";
+          program = "${self.packages.${system}.androidBuilder}/bin/logout-android-builder";
+          meta.description = "Build and sign Android APK";
+        };
+        androidE2eTest = {
+          type = "app";
+          program = "${self.packages.${system}.androidE2eTester}/bin/logout-android-e2e-tester";
+          meta.description = "Run Maestro Android E2E tests";
         };
         default = {
           type = "app";
@@ -309,10 +338,10 @@
               export HOME=$TMPDIR
               mkdir -p $out
               cargo llvm-cov --bin log-out \
-                --ignore-filename-regex "src/components/" \
+                --ignore-filename-regex "(src/components/|\.cargo/registry/|/rustc/)" \
                 --html --output-dir $out # /html auto added
               cargo llvm-cov --bin log-out \
-                --ignore-filename-regex "src/components/" \
+                --ignore-filename-regex "(src/components/|\.cargo/registry/|/rustc/)" \
                 --json > $out/coverage.json
             '';
             installPhase = "true";
