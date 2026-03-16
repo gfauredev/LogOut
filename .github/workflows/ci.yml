@@ -36,12 +36,14 @@ jobs:
         check-regexp: 'Evaluate flake.nix'
         repo-token: ${{ secrets.GITHUB_TOKEN }}
         fail-on-no-checks: false
+        allowed-conclusions: success,failure,cancelled,skipped,timed_out,neutral
     - uses: lewagon/wait-on-check-action@v1.5.0
       with:
         ref: ${{ github.event.pull_request.head.sha || github.sha }}
         check-regexp: 'check coverage.*'
         repo-token: ${{ secrets.GITHUB_TOKEN }}
         fail-on-no-checks: false
+        allowed-conclusions: success,failure,cancelled,skipped,timed_out,neutral
     - run: nix build .#checks.x86_64-linux.coverage -o coverage # From Garnix
     - run: | # Process Coverage
         REPORT=$(grep -o "<table>.*</table>" coverage/html/index.html)
