@@ -44,7 +44,7 @@ jobs:
     - run: nix build .#pages -o dist
     - uses: actions/upload-pages-artifact@v4
       with:
-        path: ./dist
+        path: ./dist/LogOut
     - uses: actions/deploy-pages@v4
       id: deployment
 
