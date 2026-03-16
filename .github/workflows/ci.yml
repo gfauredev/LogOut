@@ -133,7 +133,7 @@ jobs:
   e2e-web:
     needs: coverage
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 45 # Increased from 20: large packages (ungoogled-chromium) need download time
     steps:
     - uses: actions/checkout@v6
     # - uses: wimpysworld/nothing-but-nix@v10
@@ -144,12 +144,29 @@ jobs:
           extra-substituters = https://cache.garnix.io
           extra-trusted-public-keys = cache.garnix.io:CTFPyKSLcx5RMJKfLo5EEPUObbA78b0YQ2DTCJXqr9g=
     - uses: DeterminateSystems/magic-nix-cache-action@v13
-    # - uses: lewagon/wait-on-check-action@v1.5.0
-    #   with:
-    #     ref: ${{ github.event.pull_request.head.sha || github.sha }}
-    #     check-regexp: 'package pages.*'
-    #     repo-token: ${{ secrets.GITHUB_TOKEN }}
-    #     fail-on-no-checks: false
+    - name: Wait for Garnix to cache pagesE2eTester
+      env:
+        GH_TOKEN: ${{ github.token }}
+      run: |
+        SHA="${{ github.event.pull_request.head.sha || github.sha }}"
+        REPO="${{ github.repository }}"
+        echo "Waiting up to 20 minutes for Garnix to cache pagesE2eTester..."
+        for i in $(seq 1 40); do
+          CONCLUSION=$(gh api "repos/$REPO/commits/$SHA/check-runs" \
+            --jq '.check_runs[] | select(.name | test("pagesE2eTester")) | .conclusion' \
+            2>/dev/null | head -1) || true
+          if [ "$CONCLUSION" = "success" ]; then
+            echo "✅ Garnix cache ready"
+            exit 0
+          fi
+          if [ "$CONCLUSION" = "failure" ]; then
+            echo "⚠️ Garnix build failed, proceeding anyway (will try nixos.org cache)"
+            exit 0
+          fi
+          echo "Attempt $i/40: conclusion='$CONCLUSION', retrying in 30s..."
+          sleep 30
+        done
+        echo "⚠️ Timed out waiting for Garnix, proceeding (will download from nixos.org cache)"
     - run: |
         set -o pipefail
         nix run .#pagesE2eTest |& tee maestro_console.log
@@ -185,7 +202,7 @@ jobs:
       with:
         issue-number: ${{ github.event.pull_request.number }}
         body: ${{ steps.upload_screenshots.outputs.REPORT_BODY }}
-    - if: failure()
+    - if: failure() || cancelled()
       uses: actions/upload-artifact@v7
       with:
         name: maestro-web-report
