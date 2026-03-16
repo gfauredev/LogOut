@@ -122,54 +122,6 @@
         };
     in
     {
-      devShells = forAllSystems (
-        system:
-        let
-          env = sharedEnvFor system;
-        in
-        {
-          default = env.pkgs.mkShell {
-            packages = with env.pkgs; [
-              # biome sass scss-lint
-              python3
-              strace
-              taplo # TOML LSP
-              typescript-language-server # TS LSP
-              vscode-langservers-extracted # HTML/CSS/JS(ON)
-              yaml-language-server # YAML LSP
-            ];
-            nativeBuildInputs = env.commonNativeBuildInputs ++ env.androidNativeBuildInputs;
-            buildInputs = env.commonBuildInputs;
-            ANDROID_HOME = "${env.androidComposition.androidsdk}/libexec/android-sdk";
-            ANDROID_NDK_HOME = "${env.androidComposition.ndk-bundle}/libexec/android-sdk/ndk-bundle";
-            GRADLE_USER_HOME = "$PWD/.gradle";
-            LD_LIBRARY_PATH =
-              with env.pkgs;
-              lib.makeLibraryPath [
-                stdenv.cc.cc.lib
-                zlib
-              ];
-            shellHook = ''
-              unset ANDROID_SDK_ROOT # Set in GitHub Runners conflict with Home
-              export SE_CACHE_PATH="$PWD/.selenium"
-              # Patch aapt2 if in gradle cache or target dir (Android on Nix)
-              find "$GRADLE_USER_HOME/caches" "$PWD/target" -name aapt2 -type f -executable 2>/dev/null | while read -r aapt2; do
-                if ! patchelf --print-interpreter "$aapt2" >/dev/null 2>&1 || [[ "$(patchelf --print-interpreter "$aapt2")" == /lib* ]]; then
-                  echo "🔧 Patching aapt2 at $aapt2"
-                  chmod +x "$aapt2" # Just in case
-                  patchelf --set-interpreter "$(cat $NIX_CC/nix-support/dynamic-linker)" "$aapt2" || true
-                  patchelf --set-rpath "$LD_LIBRARY_PATH" "$aapt2" || true
-                fi
-              done
-              echo "💪 LogOut Dev Environment Ready"
-              echo "- Rust $(rustc --version)"
-              echo "- Dioxus CLI $(dx --version)"
-              echo "- Android SDK $ANDROID_HOME"
-              echo "- Android NDK $ANDROID_NDK_HOME"
-            '';
-          };
-        }
-      );
       packages = forAllSystems (
         system:
         let
@@ -271,6 +223,54 @@
           default = {
             type = "app";
             program = "${pagesScript}/bin/logout-pages";
+          };
+        }
+      );
+      devShells = forAllSystems (
+        system:
+        let
+          env = sharedEnvFor system;
+        in
+        {
+          default = env.pkgs.mkShell {
+            packages = with env.pkgs; [
+              # biome sass scss-lint
+              python3
+              strace
+              taplo # TOML LSP
+              typescript-language-server # TS LSP
+              vscode-langservers-extracted # HTML/CSS/JS(ON)
+              yaml-language-server # YAML LSP
+            ];
+            nativeBuildInputs = env.commonNativeBuildInputs ++ env.androidNativeBuildInputs;
+            buildInputs = env.commonBuildInputs;
+            ANDROID_HOME = "${env.androidComposition.androidsdk}/libexec/android-sdk";
+            ANDROID_NDK_HOME = "${env.androidComposition.ndk-bundle}/libexec/android-sdk/ndk-bundle";
+            GRADLE_USER_HOME = "$PWD/.gradle";
+            LD_LIBRARY_PATH =
+              with env.pkgs;
+              lib.makeLibraryPath [
+                stdenv.cc.cc.lib
+                zlib
+              ];
+            shellHook = ''
+              unset ANDROID_SDK_ROOT # Set in GitHub Runners conflict with Home
+              export SE_CACHE_PATH="$PWD/.selenium"
+              # Patch aapt2 if in gradle cache or target dir (Android on Nix)
+              find "$GRADLE_USER_HOME/caches" "$PWD/target" -name aapt2 -type f -executable 2>/dev/null | while read -r aapt2; do
+                if ! patchelf --print-interpreter "$aapt2" >/dev/null 2>&1 || [[ "$(patchelf --print-interpreter "$aapt2")" == /lib* ]]; then
+                  echo "🔧 Patching aapt2 at $aapt2"
+                  chmod +x "$aapt2" # Just in case
+                  patchelf --set-interpreter "$(cat $NIX_CC/nix-support/dynamic-linker)" "$aapt2" || true
+                  patchelf --set-rpath "$LD_LIBRARY_PATH" "$aapt2" || true
+                fi
+              done
+              echo "💪 LogOut Dev Environment Ready"
+              echo "- Rust $(rustc --version)"
+              echo "- Dioxus CLI $(dx --version)"
+              echo "- Android SDK $ANDROID_HOME"
+              echo "- Android NDK $ANDROID_NDK_HOME"
+            '';
           };
         }
       );
