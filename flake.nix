@@ -171,12 +171,13 @@
           pagesE2eTester = env.pkgs.writeShellApplication {
             name = "logout-pages-e2e-tester";
             runtimeInputs = with env.pkgs; [
+              curl
               chromedriver
               maestro
               # --no-sandbox required on non-NixOS CI runners where SUID sandbox
               # binary is absent, named so chromedriver finds via PATH
               (writeShellScriptBin "google-chrome" ''
-                exec "${pkgs.ungoogled-chromium}/bin/chromium" --no-sandbox "$@"
+                exec "${ungoogled-chromium}/bin/chromium" --no-sandbox "$@"
               '')
             ];
             text = ''
@@ -190,7 +191,8 @@
               # Serve the pages package at http://localhost:8080/LogOut/
               ${self.apps.${system}.pages.program} &
               SERVER_PID=$!
-              sleep 2
+              # Wait until the server is ready (max 60 seconds)
+              timeout 60 bash -c 'until curl -sf http://localhost:8080/LogOut/ > /dev/null 2>&1; do sleep 1; done'
               maestro test --headless "${self}/maestro/web"
             '';
           };
