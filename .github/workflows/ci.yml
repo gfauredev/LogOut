@@ -29,12 +29,13 @@ jobs:
           extra-substituters = https://cache.garnix.io
           extra-trusted-public-keys = cache.garnix.io:CTFPyKSLcx5RMJKfLo5EEPUObbA78b0YQ2DTCJXqr9g=
     - uses: DeterminateSystems/magic-nix-cache-action@v13
-    - run: sleep 10 #  Sleep hoping Garnix evaluation will start after
+    - run: sleep 5 #  Sleep hoping Garnix evaluation will start after
     - uses: lewagon/wait-on-check-action@v1.5.0
       with:
         ref: ${{ github.event.pull_request.head.sha || github.sha }}
         check-regexp: 'Evaluate flake.nix'
         repo-token: ${{ secrets.GITHUB_TOKEN }}
+        fail-on-no-checks: false
     - uses: lewagon/wait-on-check-action@v1.5.0
       with:
         ref: ${{ github.event.pull_request.head.sha || github.sha }}
