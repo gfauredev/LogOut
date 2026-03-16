@@ -80,17 +80,12 @@ jobs:
           extra-substituters = https://cache.garnix.io
           extra-trusted-public-keys = cache.garnix.io:CTFPyKSLcx5RMJKfLo5EEPUObbA78b0YQ2DTCJXqr9g=
     - uses: DeterminateSystems/magic-nix-cache-action@v13
-    - uses: lewagon/wait-on-check-action@v1.5.0
-      with:
-        ref: ${{ github.event.pull_request.head.sha || github.sha }}
-        check-regexp: 'Evaluate flake.nix'
-        repo-token: ${{ secrets.GITHUB_TOKEN }}
-    - uses: lewagon/wait-on-check-action@v1.5.0
-      with:
-        ref: ${{ github.event.pull_request.head.sha || github.sha }}
-        check-regexp: 'package pages.*'
-        repo-token: ${{ secrets.GITHUB_TOKEN }}
-        fail-on-no-checks: false
+    # - uses: lewagon/wait-on-check-action@v1.5.0
+    #   with:
+    #     ref: ${{ github.event.pull_request.head.sha || github.sha }}
+    #     check-regexp: 'package pages.*'
+    #     repo-token: ${{ secrets.GITHUB_TOKEN }}
+    #     fail-on-no-checks: false
     - name: Start pages server
       run: |
         nix run .#pages &
@@ -149,18 +144,12 @@ jobs:
           extra-substituters = https://cache.garnix.io
           extra-trusted-public-keys = cache.garnix.io:CTFPyKSLcx5RMJKfLo5EEPUObbA78b0YQ2DTCJXqr9g=
     - uses: DeterminateSystems/magic-nix-cache-action@v13
-    - uses: lewagon/wait-on-check-action@v1.5.0
-      with:
-        ref: ${{ github.event.pull_request.head.sha || github.sha }}
-        check-regexp: 'Evaluate flake.nix'
-        repo-token: ${{ secrets.GITHUB_TOKEN }}
-        fail-on-no-checks: false
-    - uses: lewagon/wait-on-check-action@v1.5.0
-      with:
-        ref: ${{ github.event.pull_request.head.sha || github.sha }}
-        check-regexp: 'package pages.*'
-        repo-token: ${{ secrets.GITHUB_TOKEN }}
-        fail-on-no-checks: false
+    # - uses: lewagon/wait-on-check-action@v1.5.0
+    #   with:
+    #     ref: ${{ github.event.pull_request.head.sha || github.sha }}
+    #     check-regexp: 'package pages.*'
+    #     repo-token: ${{ secrets.GITHUB_TOKEN }}
+    #     fail-on-no-checks: false
     - run: |
         set -o pipefail
         nix run .#e2e-web |& tee maestro_console.log
