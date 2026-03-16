@@ -160,40 +160,23 @@
         {
           web = mkWebPackage { };
           pages = mkWebPackage { basePath = "LogOut"; };
-          default = env.pkgs.symlinkJoin {
-            name = "logout-all";
-            paths = [
-              self.packages.${system}.web
-              self.packages.${system}.pages
-            ];
-          };
-        }
-      );
-      apps = forAllSystems (
-        system:
-        let
-          env = sharedEnvFor system;
-          pkgs = env.pkgs;
-          # --no-sandbox required on non-NixOS CI runners where SUID sandbox
-          # binary is absent, named so selenium-manager finds via PATH
-          chromiumNoSandbox = pkgs.writeShellScript "google-chrome" ''
-            exec "${pkgs.ungoogled-chromium}/bin/chromium" --no-sandbox "$@"
-          '';
-          # Serve the `pages` package at http://localhost:8080/LogOut/
-          pagesScript = pkgs.writeShellApplication {
+          pagesServer = env.pkgs.writeShellApplication {
             name = "logout-pages";
-            runtimeInputs = [ pkgs.python3 ];
+            runtimeInputs = [ env.pkgs.python3 ];
             text = ''
               python3 -m http.server -d "${self.packages.${system}.pages}" 8080
             '';
           };
-          # Start the pages server, then run Maestro web E2E tests against it
-          e2eWebScript = pkgs.writeShellApplication {
+          e2eWebRunner = env.pkgs.writeShellApplication {
             name = "logout-e2e-web";
-            runtimeInputs = with pkgs; [
+            runtimeInputs = with env.pkgs; [
               chromedriver
               maestro
-              chromiumNoSandbox
+              # --no-sandbox required on non-NixOS CI runners where SUID sandbox
+              # binary is absent, named so selenium-manager finds via PATH
+              (writeShellScript "google-chrome" ''
+                exec "${pkgs.ungoogled-chromium}/bin/chromium" --no-sandbox "$@"
+              '')
             ];
             text = ''
               SERVER_PID=""
@@ -210,22 +193,29 @@
               maestro test --headless "${self}/maestro/web"
             '';
           };
-        in
-        {
-          pages = {
-            type = "app";
-            program = "${pagesScript}/bin/logout-pages";
-          };
-          e2e-web = {
-            type = "app";
-            program = "${e2eWebScript}/bin/logout-e2e-web";
-          };
-          default = {
-            type = "app";
-            program = "${pagesScript}/bin/logout-pages";
+          default = env.pkgs.symlinkJoin {
+            name = "logout-all";
+            paths = [
+              self.packages.${system}.web
+              self.packages.${system}.pages
+            ];
           };
         }
       );
+      apps = forAllSystems (system: {
+        pages = {
+          type = "app";
+          program = "${self.packages.${system}.pagesServer}/bin/logout-pages";
+        };
+        e2e-web = {
+          type = "app";
+          program = "${self.packages.${system}.e2eWebRunner}/bin/logout-e2e-web";
+        };
+        default = {
+          type = "app";
+          program = "${self.packages.${system}.pagesServer}/bin/logout-pages";
+        };
+      });
       devShells = forAllSystems (
         system:
         let
