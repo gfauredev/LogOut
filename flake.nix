@@ -157,6 +157,14 @@
                 export XDG_DATA_HOME=$HOME/.local/share
               '';
             };
+          # --no-sandbox required on non-NixOS CI runners where SUID sandbox
+          # binary is absent, named so chromedriver finds via PATH.
+          # Bound to a name so its store path can be passed to SE_CHROME_PATH,
+          # overriding Selenium Manager's hardcoded /usr/bin/google-chrome
+          # detection and ensuring it uses the matching nixpkgs Chromium.
+          chromiumWrapper = env.pkgs.writeShellScriptBin "google-chrome" ''
+            exec "${env.pkgs.ungoogled-chromium}/bin/chromium" --no-sandbox "$@"
+          '';
         in
         {
           web = mkWebPackage { };
@@ -174,13 +182,13 @@
               curl
               chromedriver
               maestro
-              # --no-sandbox required on non-NixOS CI runners where SUID sandbox
-              # binary is absent, named so chromedriver finds via PATH
-              (writeShellScriptBin "google-chrome" ''
-                exec "${ungoogled-chromium}/bin/chromium" --no-sandbox "$@"
-              '')
+              chromiumWrapper
             ];
             text = ''
+              # Tell Selenium Manager to use the nixpkgs Chromium wrapper instead of
+              # detecting the system Chrome via hardcoded paths (e.g. /usr/bin/google-chrome),
+              # which could be a different version than the nixpkgs chromedriver.
+              export SE_CHROME_PATH="${chromiumWrapper}/bin/google-chrome"
               SERVER_PID=""
               cleanup() {
                 if [ -n "$SERVER_PID" ]; then
