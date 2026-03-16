@@ -169,7 +169,7 @@
             '';
           };
           pagesE2eTester = env.pkgs.writeShellApplication {
-            name = "logout-e2e-web";
+            name = "logout-pages-e2e-tester";
             runtimeInputs = with env.pkgs; [
               chromedriver
               maestro
@@ -211,7 +211,7 @@
         };
         e2e-web = {
           type = "app";
-          program = "${self.packages.${system}.e2eWebRunner}/bin/logout-e2e-web";
+          program = "${self.packages.${system}.pagesE2eTester}/bin/logout-pages-e2e-tester";
           meta.description = "Run E2E tests against PWA";
         };
         default = {
