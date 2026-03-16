@@ -92,7 +92,10 @@ jobs:
         check-regexp: 'package pages.*'
         repo-token: ${{ secrets.GITHUB_TOKEN }}
         fail-on-no-checks: false
-    - run: ./scripts/web-test.sh # Build & Serve on http://localhost:8080
+    - name: Start pages server
+      run: |
+        nix run .#pages &
+        timeout 60 bash -c 'until curl -sf http://localhost:8080/LogOut/ > /dev/null 2>&1; do sleep 1; done'
     - uses: treosh/lighthouse-ci-action@v12
       with:
         urls: http://localhost:8080/LogOut/
@@ -139,12 +142,15 @@ jobs:
     timeout-minutes: 20
     steps:
     - uses: actions/checkout@v6
+    - uses: wimpysworld/nothing-but-nix@v10
+    - uses: cachix/install-nix-action@v31
       with:
         github_access_token: ${{ secrets.GITHUB_TOKEN }}
         extra_nix_config: |
           extra-substituters = https://cache.garnix.io
           extra-trusted-public-keys = cache.garnix.io:CTFPyKSLcx5RMJKfLo5EEPUObbA78b0YQ2DTCJXqr9g=
-    - run: sleep 25 #  Sleep hoping Garnix evaluation will start after
+    - uses: DeterminateSystems/magic-nix-cache-action@v13
+    - run: sleep 15 #  Sleep hoping Garnix evaluation will start after
     - uses: lewagon/wait-on-check-action@v1.5.0
       with:
         ref: ${{ github.event.pull_request.head.sha || github.sha }}
@@ -157,17 +163,9 @@ jobs:
         check-regexp: 'package pages.*'
         repo-token: ${{ secrets.GITHUB_TOKEN }}
         fail-on-no-checks: false
-    - uses: wimpysworld/nothing-but-nix@v10
-    - uses: cachix/install-nix-action@v31
-    - uses: DeterminateSystems/magic-nix-cache-action@v13
-    - run: ./scripts/web-test.sh # Build & Serve
     - run: |
         set -o pipefail
-        sudo rm --force /usr/bin/google-chrome
-        printf '#!/bin/sh\nexec "%s" --no-sandbox "$@"\n' "$CHROME_BIN" \
-          | sudo tee /usr/bin/google-chrome > /dev/null
-        sudo chmod +x /usr/bin/google-chrome
-        nix develop -c maestro test --headless maestro/web |& tee maestro_console.log
+        nix run .#e2e-web |& tee maestro_console.log
     - if: failure() && github.event_name == 'pull_request'
       env:
         CLOUD_NAME: ${{ secrets.CLOUDINARY_CLOUD_NAME }}

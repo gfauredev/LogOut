@@ -215,6 +215,84 @@
           };
         }
       );
+      apps = forAllSystems (
+        system:
+        let
+          env = sharedEnvFor system;
+          pkgs = env.pkgs;
+          # Wrapper that invokes Nix-provided Chromium with --no-sandbox.
+          # Required on non-NixOS CI runners where the SUID sandbox binary is absent.
+          # Named "google-chrome" so selenium-manager finds it via PATH fallback.
+          chromiumNoSandbox = pkgs.writeShellScript "google-chrome" ''
+            exec "${pkgs.ungoogled-chromium}/bin/chromium" --no-sandbox "$@"
+          '';
+          # Serve the `pages` package at http://localhost:8080/LogOut/
+          pagesScript = pkgs.writeShellApplication {
+            name = "logout-pages";
+            runtimeInputs = [ pkgs.python3 ];
+            text = ''
+              SERVE_DIR=$(mktemp -d)
+              trap 'rm -rf "$SERVE_DIR"' EXIT
+              ln -s "${self.packages.${system}.pages}" "$SERVE_DIR/LogOut"
+              echo "Serving LogOut at http://localhost:8080/LogOut/ (Ctrl+C to stop)"
+              python3 -m http.server -d "$SERVE_DIR" 8080
+            '';
+          };
+          # Start the pages server, then run Maestro web E2E tests against it
+          e2eWebScript = pkgs.writeShellApplication {
+            name = "logout-e2e-web";
+            runtimeInputs = with pkgs; [
+              chromedriver
+              maestro
+              python3
+              ungoogled-chromium
+            ];
+            text = ''
+              CHROME_DIR=""
+              SERVE_DIR=""
+              SERVER_PID=""
+              cleanup() {
+                if [ -n "$SERVER_PID" ]; then
+                  kill "$SERVER_PID" 2>/dev/null || true
+                fi
+                if [ -n "$CHROME_DIR" ]; then
+                  rm -rf "$CHROME_DIR"
+                fi
+                if [ -n "$SERVE_DIR" ]; then
+                  rm -rf "$SERVE_DIR"
+                fi
+              }
+              trap cleanup EXIT
+              # Put a google-chrome wrapper (with --no-sandbox) first in PATH so that
+              # selenium-manager finds it via PATH lookup instead of a system Chrome.
+              CHROME_DIR=$(mktemp -d)
+              ln -s "${chromiumNoSandbox}" "$CHROME_DIR/google-chrome"
+              export PATH="$CHROME_DIR:$PATH"
+              # Serve the pages package at http://localhost:8080/LogOut/
+              SERVE_DIR=$(mktemp -d)
+              ln -s "${self.packages.${system}.pages}" "$SERVE_DIR/LogOut"
+              python3 -m http.server -d "$SERVE_DIR" 8080 &
+              SERVER_PID=$!
+              sleep 2
+              maestro test --headless "${self}/maestro/web"
+            '';
+          };
+        in
+        {
+          pages = {
+            type = "app";
+            program = "${pagesScript}/bin/logout-pages";
+          };
+          e2e-web = {
+            type = "app";
+            program = "${e2eWebScript}/bin/logout-e2e-web";
+          };
+          default = {
+            type = "app";
+            program = "${pagesScript}/bin/logout-pages";
+          };
+        }
+      );
       checks = forAllSystems (
         system:
         let
