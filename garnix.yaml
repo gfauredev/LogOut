@@ -1,9 +1,7 @@
 builds:
-# - exclude:
-#   - packages.*.android
-#   - packages.*.default
-#   - packages.*.web
 - include:
+  - packages.x86_64-linux.*
+  - devShells.*.*
   - checks.x86_64-linux.*
-  - devShells.x86_64-linux.*
-  - packages.x86_64-linux.pages
+- exclude:
+  - packages.x86_64-linux.web # For local testing only
