@@ -21,6 +21,16 @@ impl Metric {
         }
     }
 
+    /// Returns the index of this metric in the `available_by_metric` array.
+    fn to_index(self) -> usize {
+        match self {
+            Metric::Weight => 0,
+            Metric::Reps => 1,
+            Metric::Distance => 2,
+            Metric::Duration => 3,
+        }
+    }
+
     #[allow(clippy::cast_precision_loss)]
     fn extract_value(self, log: &ExerciseLog) -> Option<f64> {
         match self {
@@ -80,48 +90,55 @@ const COLORS: [&str; 8] = [
 
 #[component]
 pub fn Analytics() -> Element {
-    let mut selected_metric = use_signal(|| Metric::Weight);
-    let mut selected_exercises: Signal<Vec<Option<String>>> = use_signal(|| vec![None; 8]);
+    // Each slot holds a (metric, optional exercise_id) pair.  A slot becomes
+    // visible only once the preceding slot has an exercise selected.
+    let mut selected_pairs: Signal<Vec<(Metric, Option<String>)>> =
+        use_signal(|| vec![(Metric::Weight, None); 8]);
 
     let sessions = storage::use_sessions();
 
-    // Get unique exercise IDs and names, filtered by selected metric
-    let available_exercises = use_memo(move || {
+    // Pre-compute the sorted list of available exercises for each metric so
+    // that we can look them up cheaply while rendering the selectors.
+    // Index 0 → Weight, 1 → Reps, 2 → Distance, 3 → Duration
+    let available_by_metric = use_memo(move || {
         let sessions = sessions.read();
-        let metric = *selected_metric.read();
-        let mut exercises = std::collections::HashMap::<String, String>::new();
+        let mut maps: [std::collections::HashMap<String, String>; 4] =
+            std::array::from_fn(|_| std::collections::HashMap::new());
         for session in sessions.iter() {
             for log in &session.exercise_logs {
-                let tracks_metric = match metric {
-                    Metric::Weight => log.weight_hg.is_some(),
-                    Metric::Reps => log.reps.is_some(),
-                    Metric::Distance => log.distance_m.is_some(),
-                    Metric::Duration => true,
-                };
-                if tracks_metric {
-                    exercises.insert(log.exercise_id.clone(), log.exercise_name.clone());
+                if log.weight_hg.is_some() {
+                    maps[0].insert(log.exercise_id.clone(), log.exercise_name.clone());
                 }
+                if log.reps.is_some() {
+                    maps[1].insert(log.exercise_id.clone(), log.exercise_name.clone());
+                }
+                if log.distance_m.is_some() {
+                    maps[2].insert(log.exercise_id.clone(), log.exercise_name.clone());
+                }
+                // Duration is always trackable
+                maps[3].insert(log.exercise_id.clone(), log.exercise_name.clone());
             }
         }
-        let mut list: Vec<_> = exercises.into_iter().collect();
-        list.sort_by(|a, b| a.1.cmp(&b.1));
-        list
+        maps.map(|m| {
+            let mut v: Vec<_> = m.into_iter().collect();
+            v.sort_by(|a, b| a.1.cmp(&b.1));
+            v
+        })
     });
 
-    // Collect data points for each selected exercise
+    // Collect data points for each fully-specified (metric, exercise) pair.
     let chart_data: Vec<(String, Vec<(f64, f64)>)> = {
         let sessions = sessions.read();
-        selected_exercises
+        selected_pairs
             .read()
             .iter()
-            .filter_map(|opt_id| opt_id.as_ref())
-            .map(|exercise_id| {
+            .filter_map(|(metric, opt_id)| opt_id.as_ref().map(|id| (*metric, id.clone())))
+            .map(|(metric, exercise_id)| {
                 let mut points = Vec::new();
-                let metric = *selected_metric.read();
 
                 for session in sessions.iter() {
                     for log in &session.exercise_logs {
-                        if &log.exercise_id == exercise_id {
+                        if log.exercise_id == exercise_id {
                             if let Some(value) = metric.extract_value(log) {
                                 #[allow(clippy::cast_precision_loss)]
                                 points.push((log.start_time as f64, value));
@@ -132,10 +149,12 @@ pub fn Analytics() -> Element {
 
                 points.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap_or(std::cmp::Ordering::Equal));
 
-                let exercise_name = available_exercises
+                // Look up a display name from available_by_metric
+                let metric_idx = metric.to_index();
+                let exercise_name = available_by_metric
                     .read()
-                    .iter()
-                    .find(|(id, _)| id == exercise_id)
+                    .get(metric_idx)
+                    .and_then(|list| list.iter().find(|(id, _)| id == &exercise_id))
                     .map_or_else(|| exercise_id.clone(), |(_, name)| name.clone());
 
                 (exercise_name, points)
@@ -143,12 +162,20 @@ pub fn Analytics() -> Element {
             .collect()
     };
 
+    // Determine the primary metric (first pair with an exercise selected) so
+    // we can adapt the y-axis unit label accordingly.
+    let primary_metric = selected_pairs
+        .read()
+        .iter()
+        .find_map(|(m, opt_id)| opt_id.as_ref().map(|_| *m))
+        .unwrap_or(Metric::Weight);
+
     // Compute the most adapted display unit for Distance / Duration
     let all_y: Vec<f64> = chart_data
         .iter()
         .flat_map(|(_, pts)| pts.iter().map(|(_, y)| *y))
         .collect();
-    let (y_label, scale) = adapt_metric_unit(*selected_metric.read(), &all_y);
+    let (y_label, scale) = adapt_metric_unit(primary_metric, &all_y);
     // Apply scaling to produce display-ready chart data
     let display_data: Vec<(String, Vec<(f64, f64)>)> = if (scale - 1.0).abs() < f64::EPSILON {
         chart_data.clone()
@@ -168,30 +195,18 @@ pub fn Analytics() -> Element {
         header {
             h1 { "📊 Analytics" }
             p { "Track your progress over time" }
-            div { class: "metric-selector",
-                label { "Metric" }
-                select {
-                    value: "{selected_metric:?}",
-                    onchange: move |evt| {
-                        selected_metric.set(match evt.value().as_str() {
-                            "Reps" => Metric::Reps,
-                            "Distance" => Metric::Distance,
-                            "Duration" => Metric::Duration,
-                            _ => Metric::Weight,
-                        });
-                    },
-                    option { value: "Weight", "Weight (kg)" }
-                    option { value: "Reps", "Repetitions" }
-                    option { value: "Distance", "Distance" }
-                    option { value: "Duration", "Duration" }
-                }
-            }
-            label { "Exercises (⩽ 8)" }
+            label { "Metric–Exercise Pairs (⩽ 8)" }
             for i in 0..8 {
                 {
-                    let current_selections = selected_exercises.read().clone();
-                    let is_visible = i == 0 || current_selections.get(i - 1).and_then(|x| x.as_ref()).is_some();
+                    let pairs = selected_pairs.read().clone();
+                    // A slot is visible when it is the first slot, or the
+                    // preceding slot already has an exercise selected.
+                    let is_visible = i == 0
+                        || pairs.get(i - 1).is_some_and(|(_, opt_id)| opt_id.is_some());
                     if is_visible {
+                        let (current_metric, current_exercise) = pairs[i].clone();
+                        let exercises_for_slot =
+                            available_by_metric.read()[current_metric.to_index()].clone();
                         Some(rsx! {
                             div {
                                 key: "{i}",
@@ -200,20 +215,40 @@ pub fn Analytics() -> Element {
                                     style: "background: {COLORS[i]};",
                                 }
                                 select {
-                                    value: "{current_selections.get(i).and_then(|x| x.as_ref()).unwrap_or(&String::new())}",
+                                    value: "{current_metric:?}",
                                     onchange: move |evt| {
-                                        let mut selections = selected_exercises.write();
+                                        let mut pairs = selected_pairs.write();
+                                        pairs[i].0 = match evt.value().as_str() {
+                                            "Reps" => Metric::Reps,
+                                            "Distance" => Metric::Distance,
+                                            "Duration" => Metric::Duration,
+                                            _ => Metric::Weight,
+                                        };
+                                        // Clear exercise when the metric changes
+                                        pairs[i].1 = None;
+                                    },
+                                    option { value: "Weight", "Weight (kg)" }
+                                    option { value: "Reps", "Repetitions" }
+                                    option { value: "Distance", "Distance" }
+                                    option { value: "Duration", "Duration" }
+                                }
+                                select {
+                                    value: "{current_exercise.as_deref().unwrap_or(\"\")}",
+                                    onchange: move |evt| {
+                                        let mut pairs = selected_pairs.write();
                                         let value = evt.value();
-                                        selections[i] = if value.is_empty() { None } else { Some(value) };
+                                        pairs[i].1 = if value.is_empty() { None } else { Some(value) };
                                     },
                                     option { value: "", "-- Select Exercise --" }
-                                    for (id, name) in available_exercises.read().iter() {
+                                    for (id, name) in exercises_for_slot.iter() {
                                         option { value: "{id}", "{name}" }
                                     }
                                 }
                             }
                         })
-                    } else { None }
+                    } else {
+                        None
+                    }
                 }
             }
         }
