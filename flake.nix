@@ -300,7 +300,7 @@
         agent =
           let
             env = sharedEnvFor system;
-            agentConfig = "$HOME/.gemini:/root/.gemini:rw";
+            agentConfig = "$HOME/.gemini:/workspace/.gemini:rw";
             agentCommand = "gemini";
           in
           {
@@ -313,9 +313,11 @@
                 ];
                 text = ''
                   podman load --input ${self.packages.${system}.sandbox}
-                  exec podman run --rm -it --security-opt label=disable \
-                    -v "$PWD:$PWD:rw" -v "${agentConfig}" \
-                    -w "$PWD" -e HOME=/root logout-sandbox \
+                  exec podman run --rm -i --security-opt label=disable \
+                    --userns=keep-id -v /nix/store:/nix/store:ro \
+                    -v /nix/var/nix/daemon-socket/socket:/nix/var/nix/daemon-socket/socket:ro \
+                    --tmpfs /tmp -v "$PWD:/workspace:rw" -v "${agentConfig}" \
+                    -w /workspace -e HOME=/workspace logout-sandbox \
                     /bin/logout-devshell --command "${agentCommand}" "$@"
                 '';
               }
