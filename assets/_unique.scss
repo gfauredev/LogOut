@@ -72,6 +72,36 @@ main.analytics {
     text-align: center;
     color: var(--secondary);
   }
+
+  .cursor-values {
+    padding: var(--spacing);
+    display: flex;
+    flex-wrap: wrap;
+    gap: calc(var(--spacing) / 2) var(--spacing);
+
+    .cursor-value-row {
+      display: flex;
+      align-items: center;
+      gap: calc(var(--spacing) / 2);
+      font-size: 0.9rem;
+
+      .cursor-swatch {
+        display: inline-block;
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        flex-shrink: 0;
+      }
+
+      .cursor-name {
+        color: var(--secondary);
+      }
+
+      .cursor-val {
+        font-weight: bold;
+      }
+    }
+  }
 }
 
 // ── Session page layout ────────────────────────────────────────────────────
