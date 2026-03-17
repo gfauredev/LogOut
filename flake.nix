@@ -162,6 +162,38 @@
           chromiumWrapper = env.pkgs.writeShellScriptBin "google-chrome" ''
             exec "${env.pkgs.ungoogled-chromium}/bin/chromium" --no-sandbox "$@"
           '';
+          mkAndroidBuilder =
+            {
+              target ? "aarch64-linux-android",
+            }:
+            env.pkgs.writeShellApplication {
+              name = "logout-android-builder";
+              runtimeInputs = env.commonNativeBuildInputs ++ env.androidNativeBuildInputs;
+              # LD_LIBRARY_PATH = with env.pkgs; lib.makeLibraryPath [ stdenv.cc.cc.lib zlib ];
+              text = ''
+                unset ANDROID_SDK_ROOT # Set in GitHub Runners conflict with Home
+                export ANDROID_HOME="${env.androidComposition.androidsdk}/libexec/android-sdk"
+                export ANDROID_NDK_HOME="${env.androidComposition.ndk-bundle}/libexec/android-sdk/ndk-bundle"
+                export GRADLE_USER_HOME="''${GRADLE_USER_HOME:-$PWD/.gradle}" 
+                export HOME="''${HOME:-$TMPDIR}"
+                # Patch aapt2 if in gradle cache or target dir (Android on Nix)
+                # find "$GRADLE_USER_HOME/caches" "$PWD/target" -name aapt2 -type f -executable 2>/dev/null | while read -r aapt2; do
+                #   if ! patchelf --print-interpreter "$aapt2" >/dev/null 2>&1 || [[ "$(patchelf --print-interpreter "$aapt2")" == /lib* ]]; then
+                #     echo "🔧 Patching aapt2 at $aapt2"
+                #     chmod +x "$aapt2" # Just in case
+                #     patchelf --set-interpreter "$(cat $NIX_CC/nix-support/dynamic-linker)" "$aapt2" || true
+                #     patchelf --set-rpath "$LD_LIBRARY_PATH" "$aapt2" || true
+                #   fi
+                # done
+                echo "💪 LogOut Build Environment Ready"
+                echo "- Rust $(rustc --version)"
+                echo "- Dioxus CLI $(dx --version)"
+                echo "- Android SDK $ANDROID_HOME"
+                echo "- Android NDK $ANDROID_NDK_HOME"
+                dx build --android --release --target ${target}
+                "${self}/.script/android-sign.sh"
+              '';
+            };
         in
         {
           web = mkWebPackage { };
@@ -200,18 +232,7 @@
               maestro test --headless "${self}/maestro/web"
             '';
           };
-          androidBuilder = env.pkgs.writeShellApplication {
-            name = "logout-android-builder";
-            runtimeInputs = env.commonNativeBuildInputs ++ env.androidNativeBuildInputs;
-            text = ''
-              export ANDROID_HOME="${env.androidComposition.androidsdk}/libexec/android-sdk"
-              export ANDROID_NDK_HOME="${env.androidComposition.ndk-bundle}/libexec/android-sdk/ndk-bundle"
-              export GRADLE_USER_HOME="''${GRADLE_USER_HOME:-$PWD/.gradle}"
-              export HOME="''${HOME:-$TMPDIR}"
-              dx build --android --release --target aarch64-linux-android
-              "${self}/scripts/android-sign.sh"
-            '';
-          };
+          androidBuilder = mkAndroidBuilder { };
           androidE2eTester = env.pkgs.writeShellApplication {
             name = "logout-android-e2e-tester";
             runtimeInputs = [ env.pkgs.maestro ];
@@ -263,9 +284,7 @@
         {
           default = env.pkgs.mkShell {
             packages = with env.pkgs; [
-              # biome sass scss-lint
-              python3
-              strace
+              # biome sass scss-lint python3 strace
               taplo # TOML LSP
               typescript-language-server # TS LSP
               vscode-langservers-extracted # HTML/CSS/JS(ON)

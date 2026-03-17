@@ -138,9 +138,7 @@ dx build --android --release --target aarch64-linux-android
 Dioxus `0.7` don’t yet supports signing (it does, but keys have to be in clear
 in Dioxus.toml) the APK and adding icon(s) to it. So two scripts allow that.
 
-Run `scripts/android-icon.sh` to add `android/res` icons to the app.
-
-Run `scripts/android-sign.sh` to generate a signed `release-signed.apk` APK.
+Run `.script/android-sign.sh` to generate a signed `release-signed.apk` APK.
 
 ## Code Conventions & Contributing
 
