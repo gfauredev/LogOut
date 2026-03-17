@@ -252,6 +252,15 @@ fn normalize_for_search(s: &str) -> String {
         .collect()
 }
 
+/// Returns true if any whitespace-separated word in the (already-lowercased)
+/// `tag` starts with `query_lower`.  Used for muscle / category / etc. tag
+/// matching so that partial-word substrings elsewhere in a word are not hit
+/// (e.g. "ring" must not match "hamst**ring**s").
+fn tag_word_prefix_matches(tag: &str, query_lower: &str) -> bool {
+    tag.split_whitespace()
+        .any(|word| word.starts_with(query_lower))
+}
+
 /// Returns true if an already-lowercased `name_lc` matches the given
 /// pre-computed search components (all lowercase / normalised).
 fn name_lc_matches(name_lc: &str, query_lower: &str, query_norm: &str, tokens: &[String]) -> bool {
@@ -324,11 +333,11 @@ pub fn search_exercises<'a>(
                 || exercise
                     .primary_muscles
                     .iter()
-                    .any(|m| m.as_ref().contains(&query_lower))
+                    .any(|m| tag_word_prefix_matches(m.as_ref(), &query_lower))
                 || exercise
                     .secondary_muscles
                     .iter()
-                    .any(|m| m.as_ref().contains(&query_lower))
+                    .any(|m| tag_word_prefix_matches(m.as_ref(), &query_lower))
                 || exercise.category.as_ref().contains(&query_lower)
                 || exercise
                     .force
@@ -812,6 +821,24 @@ mod tests {
         let results = search_exercises(&exercises, "biceps", None);
         assert_eq!(results.len(), 1);
         assert_eq!(results[0].id, "pull_up");
+    }
+
+    #[test]
+    fn search_muscle_word_start_no_false_positive() {
+        // "ring" is a substring of "hamstrings" but the word "hamstrings" does
+        // not *start* with "ring".  "running" (which has Hamstrings as a primary
+        // muscle) must therefore not be returned when searching for "ring".
+        let exercises = sample_exercises();
+        let results = search_exercises(&exercises, "ring", None);
+        assert!(!results.iter().any(|e| e.id == "running"));
+    }
+
+    #[test]
+    fn search_muscle_word_start_prefix_matches() {
+        // "ham" is a word-start prefix of "hamstrings", so "running" should match.
+        let exercises = sample_exercises();
+        let results = search_exercises(&exercises, "ham", None);
+        assert!(results.iter().any(|e| e.id == "running"));
     }
 
     #[test]
