@@ -240,6 +240,33 @@
               maestro test --headless "${self}/maestro/android"
             '';
           };
+          sandbox =
+            let
+              pkgs = env.pkgs;
+              devShellExecutable = pkgs.writeShellScriptBin "logout-devshell" ''
+                exec ${pkgs.nix}/bin/nix develop "path:$PWD" "$@"
+              '';
+            in
+            pkgs.dockerTools.buildLayeredImage {
+              name = "logout-sandbox";
+              tag = "latest";
+              contents = [
+                pkgs.nix
+                devShellExecutable
+                pkgs.gemini-cli-bin
+                pkgs.cacert
+              ];
+              config = {
+                Cmd = [ "${devShellExecutable}/bin/logout-devshell" ];
+                Env = [
+                  "PATH=/bin"
+                  "SSL_CERT_FILE=${pkgs.cacert}/etc/ssl/certs/ca-bundle.crt"
+                  "NIX_CONFIG=experimental-features = nix-command flakes"
+                  "NIX_PAGER=cat"
+                  "SHELL=${pkgs.bashInteractive}/bin/bash"
+                ];
+              };
+            };
           default = env.pkgs.symlinkJoin {
             name = "logout-all";
             paths = [
@@ -270,6 +297,31 @@
           program = "${self.packages.${system}.androidE2eTester}/bin/logout-android-e2e-tester";
           meta.description = "Run Maestro Android E2E tests";
         };
+        agent =
+          let
+            env = sharedEnvFor system;
+            agentConfig = "$HOME/.gemini:/root/.gemini:rw";
+            agentCommand = "gemini";
+          in
+          {
+            type = "app";
+            program = "${
+              env.pkgs.writeShellApplication {
+                name = "logout-agent";
+                runtimeInputs = [
+                  env.pkgs.podman
+                ];
+                text = ''
+                  podman load --input ${self.packages.${system}.sandbox}
+                  exec podman run --rm -it --security-opt label=disable \
+                    -v "$PWD:$PWD:rw" -v "${agentConfig}" \
+                    -w "$PWD" -e HOME=/root logout-sandbox \
+                    /bin/logout-devshell --command "${agentCommand}" "$@"
+                '';
+              }
+            }/bin/logout-agent";
+            meta.description = "Run AI Agent sandboxed in Podman";
+          };
         default = {
           type = "app";
           program = "${self.packages.${system}.pagesServer}/bin/logout-pages";
