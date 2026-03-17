@@ -246,6 +246,10 @@
               devShellExecutable = pkgs.writeShellScriptBin "logout-devshell" ''
                 exec ${pkgs.nix}/bin/nix develop "path:$PWD" "$@"
               '';
+              devShellGemini = pkgs.writeShellScriptBin "gemini" ''
+                exec ${pkgs.nix}/bin/nix develop "path:$PWD" \
+                  --command ${pkgs.gemini-cli-bin}/bin/gemini "$@"
+              '';
             in
             pkgs.dockerTools.buildLayeredImage {
               name = "logout-sandbox";
@@ -253,7 +257,7 @@
               contents = [
                 pkgs.nix
                 devShellExecutable
-                pkgs.gemini-cli-bin
+                devShellGemini
                 pkgs.cacert
               ];
               config = {
@@ -300,8 +304,6 @@
         agent =
           let
             env = sharedEnvFor system;
-            agentConfig = "$HOME/.gemini:/workspace/.gemini:rw";
-            agentCommand = "gemini";
           in
           {
             type = "app";
@@ -313,12 +315,15 @@
                 ];
                 text = ''
                   podman load --input ${self.packages.${system}.sandbox}
-                  exec podman run --rm -it --security-opt label=disable \
+                  GEMINI_SANDBOX=podman
+                  GEMINI_SANDBOX_IMAGE=logout-sandbox
+                  SANDBOX_FLAGS="--rm -it --security-opt label=disable \
                     --userns=keep-id -v /nix/store:/nix/store:ro \
+                    -v \"$PWD:/workspace:rw\" --tmpfs /tmp \
                     -v /nix/var/nix/daemon-socket/socket:/nix/var/nix/daemon-socket/socket:ro \
-                    --tmpfs /tmp -v "$PWD:/workspace:rw" -v "${agentConfig}" \
-                    -w /workspace -e HOME=/workspace logout-sandbox \
-                    /bin/logout-devshell --command "${agentCommand}" "$@"
+                     -v \"$HOME/.gemini:/workspace/.gemini:rw\" \
+                    -w /workspace -e HOME=/workspace logout-sandbox"
+                  gemini --yolo "$@" # FIXME
                 '';
               }
             }/bin/logout-agent";
