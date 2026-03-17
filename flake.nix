@@ -315,15 +315,15 @@
                 ];
                 text = ''
                   podman load --input ${self.packages.${system}.sandbox}
-                  GEMINI_SANDBOX=podman
-                  GEMINI_SANDBOX_IMAGE=logout-sandbox
-                  SANDBOX_FLAGS="--rm -it --security-opt label=disable \
+                  export GEMINI_SANDBOX=podman
+                  export GEMINI_SANDBOX_IMAGE=logout-sandbox
+                  export SANDBOX_FLAGS="--rm -it --security-opt label=disable \
                     --userns=keep-id -v /nix/store:/nix/store:ro \
                     -v \"$PWD:/workspace:rw\" --tmpfs /tmp \
                     -v /nix/var/nix/daemon-socket/socket:/nix/var/nix/daemon-socket/socket:ro \
                      -v \"$HOME/.gemini:/workspace/.gemini:rw\" \
                     -w /workspace -e HOME=/workspace logout-sandbox"
-                  gemini --yolo "$@" # FIXME
+                  gemini --yolo "$@" # FIXME ERROR (catatonit:2): failed to exec pid1: No such file or directory
                 '';
               }
             }/bin/logout-agent";
