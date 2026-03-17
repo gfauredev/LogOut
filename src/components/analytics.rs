@@ -80,8 +80,9 @@ const COLORS: [&str; 8] = [
     "#e91e63", // pink
 ];
 
-/// A single metric–exercise data series: (display name, metric, timestamped values).
-type SeriesData = Vec<(String, Metric, Vec<(f64, f64)>)>;
+/// A single metric–exercise data series:
+/// (original slot index, display name, metric, timestamped values).
+type SeriesData = Vec<(usize, String, Metric, Vec<(f64, f64)>)>;
 
 #[component]
 pub fn Analytics() -> Element {
@@ -122,14 +123,17 @@ pub fn Analytics() -> Element {
     });
 
     // Collect data points for each fully-specified (metric, exercise) pair.
-    // Each entry carries the metric so ChartView can assign per-metric Y-axes.
+    // Each entry carries the slot index so ChartView assigns the right colour.
     let chart_data: SeriesData = {
         let sessions = sessions.read();
         selected_pairs
             .read()
             .iter()
-            .filter_map(|(metric, opt_id)| opt_id.as_ref().map(|id| (*metric, id.clone())))
-            .map(|(metric, exercise_id)| {
+            .enumerate()
+            .filter_map(|(i, (metric, opt_id))| {
+                opt_id.as_ref().map(|id| (i, *metric, id.clone()))
+            })
+            .map(|(i, metric, exercise_id)| {
                 let mut points = Vec::new();
 
                 for session in sessions.iter() {
@@ -153,7 +157,7 @@ pub fn Analytics() -> Element {
                     .and_then(|list| list.iter().find(|(id, _)| id == &exercise_id))
                     .map_or_else(|| exercise_id.clone(), |(_, name)| name.clone());
 
-                (exercise_name, metric, points)
+                (i, exercise_name, metric, points)
             })
             .collect()
     };
@@ -172,8 +176,20 @@ pub fn Analytics() -> Element {
                         || pairs.get(i - 1).is_some_and(|(_, opt_id)| opt_id.is_some());
                     if is_visible {
                         let (current_metric, current_exercise) = pairs[i].clone();
-                        let exercises_for_slot =
-                            available_by_metric.read()[current_metric.to_index()].clone();
+                        // Filter out exercises already paired with the same metric
+                        // in any other slot, to prevent duplicate series.
+                        let exercises_for_slot: Vec<_> =
+                            available_by_metric.read()[current_metric.to_index()]
+                                .iter()
+                                .filter(|(id, _)| {
+                                    !pairs.iter().enumerate().any(|(j, (m, opt_id))| {
+                                        j != i
+                                            && *m == current_metric
+                                            && opt_id.as_deref() == Some(id.as_str())
+                                    })
+                                })
+                                .cloned()
+                                .collect();
                         Some(rsx! {
                             div {
                                 key: "{i}",
@@ -220,7 +236,7 @@ pub fn Analytics() -> Element {
             }
         }
         main { class: "analytics",
-            if chart_data.is_empty() || chart_data.iter().all(|(_, _, points)| points.is_empty()) {
+            if chart_data.is_empty() || chart_data.iter().all(|(_, _, _, points)| points.is_empty()) {
                 p { "Select exercises to view analytics" }
             } else {
                 ChartView {
@@ -235,6 +251,9 @@ pub fn Analytics() -> Element {
 
 #[component]
 fn ChartView(data: SeriesData, colors: Vec<&'static str>) -> Element {
+    // Internal state: timestamp of the clicked cursor (None = no cursor shown).
+    let mut cursor_ts: Signal<Option<f64>> = use_signal(|| None);
+
     let width = 600.0_f64;
     let height = 400.0_f64;
     let axis_slot = 55.0_f64; // horizontal space reserved per Y-axis
@@ -244,7 +263,7 @@ fn ChartView(data: SeriesData, colors: Vec<&'static str>) -> Element {
 
     // ── Collect distinct metrics (only those that have data points) ──────────
     let mut distinct_metrics: Vec<Metric> = Vec::new();
-    for (_, metric, pts) in &data {
+    for (_, _, metric, pts) in &data {
         if !pts.is_empty() && !distinct_metrics.contains(metric) {
             distinct_metrics.push(*metric);
         }
@@ -259,7 +278,7 @@ fn ChartView(data: SeriesData, colors: Vec<&'static str>) -> Element {
     // ── Global X range ───────────────────────────────────────────────────────
     let mut min_x = f64::INFINITY;
     let mut max_x = f64::NEG_INFINITY;
-    for (_, _, pts) in &data {
+    for (_, _, _, pts) in &data {
         for (x, _) in pts {
             min_x = min_x.min(*x);
             max_x = max_x.max(*x);
@@ -275,15 +294,16 @@ fn ChartView(data: SeriesData, colors: Vec<&'static str>) -> Element {
     };
 
     // ── Per-axis precomputed data ────────────────────────────────────────────
-    // For each distinct metric: (unit, scale_factor, min_y, max_y, x_pos, color)
-    let axes: Vec<(&'static str, f64, f64, f64, f64, &'static str)> = distinct_metrics
+    // For each distinct metric: (unit, scale_factor, min_y, max_y, x_pos)
+    // Axes are drawn in a neutral colour (not series colour) to avoid confusion.
+    let axes: Vec<(&'static str, f64, f64, f64, f64)> = distinct_metrics
         .iter()
         .enumerate()
         .map(|(i, metric)| {
             let raw_y: Vec<f64> = data
                 .iter()
-                .filter(|(_, m, _)| m == metric)
-                .flat_map(|(_, _, pts)| pts.iter().map(|(_, y)| *y))
+                .filter(|(_, _, m, _)| m == metric)
+                .flat_map(|(_, _, _, pts)| pts.iter().map(|(_, y)| *y))
                 .collect();
             let (unit, scale) = adapt_metric_unit(*metric, &raw_y);
             let scaled: Vec<f64> = raw_y.iter().map(|y| y * scale).collect();
@@ -298,19 +318,13 @@ fn ChartView(data: SeriesData, colors: Vec<&'static str>) -> Element {
             let max_y = s_max + rng * 0.1;
             #[allow(clippy::cast_precision_loss)]
             let x_pos = axis_slot * (i as f64 + 1.0);
-            // Color matches the first series that uses this metric
-            let color_idx = data
-                .iter()
-                .position(|(_, m, _)| m == metric)
-                .unwrap_or(0);
-            let color = *colors.get(color_idx).unwrap_or(&"#ccc");
-            (unit, scale, min_y, max_y, x_pos, color)
+            (unit, scale, min_y, max_y, x_pos)
         })
         .collect();
 
     // Inline helper: SVG y coordinate for a display value on a given axis
     let y_svg = |y_display: f64, axis_idx: usize| -> f64 {
-        let (_, _, min_y, max_y, _, _) = axes[axis_idx];
+        let (_, _, min_y, max_y, _) = axes[axis_idx];
         if (max_y - min_y).abs() < f64::EPSILON {
             top_pad + chart_height / 2.0
         } else {
@@ -323,11 +337,35 @@ fn ChartView(data: SeriesData, colors: Vec<&'static str>) -> Element {
         crate::utils::format_session_date(ts as u64)
     };
 
+    // ── Cursor values: for each series find the nearest point to cursor_ts ──
+    let cursor_values: Vec<(usize, String, f64, &'static str)> =
+        if let Some(ts) = *cursor_ts.read() {
+            data.iter()
+                .filter_map(|(slot_idx, name, metric, points)| {
+                    if points.is_empty() {
+                        return None;
+                    }
+                    let axis_idx = distinct_metrics.iter().position(|m| m == metric)?;
+                    let (unit, scale, _, _, _) = axes[axis_idx];
+                    let nearest = points.iter().min_by(|(t1, _), (t2, _)| {
+                        (t1 - ts)
+                            .abs()
+                            .partial_cmp(&(t2 - ts).abs())
+                            .unwrap_or(std::cmp::Ordering::Equal)
+                    })?;
+                    Some((*slot_idx, name.clone(), nearest.1 * scale, unit))
+                })
+                .collect()
+        } else {
+            Vec::new()
+        };
+
     rsx! {
         svg {
             width: "100%",
             height: "auto",
             view_box: "0 0 {width} {height}",
+            style: "cursor: crosshair;",
 
             // X-axis baseline
             line {
@@ -339,8 +377,8 @@ fn ChartView(data: SeriesData, colors: Vec<&'static str>) -> Element {
                 stroke_width: "1",
             }
 
-            // ── Y-axes (one per distinct metric) ─────────────────────────────
-            for (axis_idx, (unit, _scale, min_y, max_y, x_pos, ax_color)) in axes.iter().enumerate() {
+            // ── Y-axes (one per distinct metric, neutral colour) ──────────────
+            for (axis_idx, (unit, _scale, min_y, max_y, x_pos)) in axes.iter().enumerate() {
                 g { key: "axis_{axis_idx}",
                     // Axis line
                     line {
@@ -348,9 +386,9 @@ fn ChartView(data: SeriesData, colors: Vec<&'static str>) -> Element {
                         y1: "{top_pad}",
                         x2: "{x_pos}",
                         y2: "{top_pad + chart_height}",
-                        stroke: "{ax_color}",
+                        stroke: "#555",
                         stroke_width: "1",
-                        stroke_opacity: "0.5",
+                        stroke_opacity: "0.7",
                     }
                     // Unit label on top of the axis (short, no rotation)
                     text {
@@ -359,7 +397,7 @@ fn ChartView(data: SeriesData, colors: Vec<&'static str>) -> Element {
                         text_anchor: "middle",
                         font_size: "12",
                         font_weight: "bold",
-                        fill: "{ax_color}",
+                        fill: "#aaa",
                         "{unit}"
                     }
                     // 5 tick marks + numeric labels
@@ -376,16 +414,15 @@ fn ChartView(data: SeriesData, colors: Vec<&'static str>) -> Element {
                                         y1: "{sy}",
                                         x2: "{x_pos}",
                                         y2: "{sy}",
-                                        stroke: "{ax_color}",
+                                        stroke: "#555",
                                         stroke_width: "1",
-                                        stroke_opacity: "0.5",
                                     }
                                     text {
                                         x: "{x_pos - 7.0}",
                                         y: "{sy + 4.0}",
                                         text_anchor: "end",
                                         font_size: "11",
-                                        fill: "{ax_color}",
+                                        fill: "#888",
                                         "{y_val:.1}"
                                     }
                                 }
@@ -398,7 +435,7 @@ fn ChartView(data: SeriesData, colors: Vec<&'static str>) -> Element {
             // ── X-axis date labels ───────────────────────────────────────────
             {
                 let num_labels = 4
-                    .min(data.iter().map(|(_, _, p)| p.len()).max().unwrap_or(0))
+                    .min(data.iter().map(|(_, _, _, p)| p.len()).max().unwrap_or(0))
                     .max(2);
                 rsx! {
                     for i in 0..num_labels {
@@ -425,13 +462,14 @@ fn ChartView(data: SeriesData, colors: Vec<&'static str>) -> Element {
             }
 
             // ── Plot lines + dots per series ─────────────────────────────────
-            for (idx, (_, metric, points)) in data.iter().enumerate() {
+            for (slot_idx, _, metric, points) in data.iter() {
                 {
                     let axis_idx_opt =
                         distinct_metrics.iter().position(|m| m == metric);
                     if let Some(axis_idx) = axis_idx_opt {
-                        let (_, scale, _, _, _, _) = axes[axis_idx];
-                        let color = *colors.get(idx).unwrap_or(&"#ccc");
+                        let (_, scale, _, _, _) = axes[axis_idx];
+                        // Colour is determined by the original slot position.
+                        let color = *colors.get(*slot_idx).unwrap_or(&"#ccc");
                         if points.len() >= 2 {
                             let path_d = points
                                 .iter()
@@ -448,7 +486,7 @@ fn ChartView(data: SeriesData, colors: Vec<&'static str>) -> Element {
                                 .collect::<Vec<_>>()
                                 .join(" ");
                             Some(rsx! {
-                                g { key: "series_{idx}",
+                                g { key: "series_{slot_idx}",
                                     path {
                                         d: "{path_d}",
                                         stroke: "{color}",
@@ -473,7 +511,7 @@ fn ChartView(data: SeriesData, colors: Vec<&'static str>) -> Element {
                             let (x, y) = points[0];
                             Some(rsx! {
                                 circle {
-                                    key: "dot_{idx}",
+                                    key: "dot_{slot_idx}",
                                     cx: "{scale_x(x)}",
                                     cy: "{y_svg(y * scale, axis_idx)}",
                                     r: "5",
@@ -492,14 +530,14 @@ fn ChartView(data: SeriesData, colors: Vec<&'static str>) -> Element {
             }
 
             // ── Legend ───────────────────────────────────────────────────────
-            for (idx, (exercise_name, metric, _)) in data.iter().enumerate() {
+            for (legend_idx, (slot_idx, exercise_name, metric, _)) in data.iter().enumerate() {
                 {
                     if distinct_metrics.contains(metric) {
                         #[allow(clippy::cast_precision_loss)]
-                        let ly = top_pad + idx as f64 * 18.0;
-                        let color = *colors.get(idx).unwrap_or(&"#ccc");
+                        let ly = top_pad + legend_idx as f64 * 18.0;
+                        let color = *colors.get(*slot_idx).unwrap_or(&"#ccc");
                         Some(rsx! {
-                            g { key: "legend_{idx}",
+                            g { key: "legend_{slot_idx}",
                                 circle {
                                     cx: "{width - 140.0}",
                                     cy: "{ly}",
@@ -517,6 +555,86 @@ fn ChartView(data: SeriesData, colors: Vec<&'static str>) -> Element {
                         })
                     } else {
                         None
+                    }
+                }
+            }
+
+            // ── Cursor vertical line ─────────────────────────────────────────
+            if let Some(ts) = *cursor_ts.read() {
+                {
+                    let cx = scale_x(ts);
+                    rsx! {
+                        line {
+                            x1: "{cx}",
+                            y1: "{top_pad}",
+                            x2: "{cx}",
+                            y2: "{top_pad + chart_height}",
+                            stroke: "#fff",
+                            stroke_width: "1",
+                            stroke_opacity: "0.5",
+                            stroke_dasharray: "4 3",
+                            pointer_events: "none",
+                        }
+                    }
+                }
+            }
+
+            // ── Transparent click-capture rectangle ──────────────────────────
+            rect {
+                x: "{left_pad}",
+                y: "{top_pad}",
+                width: "{chart_width}",
+                height: "{chart_height}",
+                fill: "transparent",
+                onclick: move |evt| {
+                    let client_x = evt.client_coordinates().x;
+                    let client_y = evt.client_coordinates().y;
+                    let lp = left_pad;
+                    let cw = chart_width;
+                    let mx = min_x;
+                    let dx = max_x - min_x;
+                    spawn(async move {
+                        let mut ev = dioxus::prelude::document::eval(r#"
+                            const svg = document.querySelector("main.analytics svg");
+                            const pt = svg.createSVGPoint();
+                            const coords = await dioxus.recv();
+                            pt.x = coords[0];
+                            pt.y = coords[1];
+                            const svgPt = pt.matrixTransform(svg.getScreenCTM().inverse());
+                            dioxus.send([svgPt.x, svgPt.y]);
+                        "#);
+                        if ev.send(serde_json::json!([client_x, client_y])).is_ok() {
+                            if let Ok(result) = ev.recv::<serde_json::Value>().await {
+                                if let Some(arr) = result.as_array() {
+                                    if let Some(svg_x) =
+                                        arr.first().and_then(serde_json::Value::as_f64)
+                                    {
+                                        let frac = (svg_x - lp) / cw;
+                                        if (0.0..=1.0).contains(&frac) {
+                                            cursor_ts.set(Some(mx + frac * dx));
+                                        } else {
+                                            cursor_ts.set(None);
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    });
+                },
+            }
+        }
+
+        // ── Cursor values displayed below the chart ───────────────────────────
+        if !cursor_values.is_empty() {
+            div { class: "cursor-values",
+                for (slot_idx, name, value, unit) in cursor_values.iter() {
+                    div { class: "cursor-value-row",
+                        span {
+                            class: "cursor-swatch",
+                            style: "background:{colors.get(*slot_idx).unwrap_or(&\"#ccc\")};",
+                        }
+                        span { class: "cursor-name", "{name}" }
+                        span { class: "cursor-val", "{value:.1} {unit}" }
                     }
                 }
             }
