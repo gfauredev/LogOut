@@ -92,6 +92,48 @@ main.session>section.exercises {
     margin: var(--spacing) auto;
     display: block;
   }
+
+  // ── Pre-added exercises dropdown ─────────────────────────────────────────
+  details {
+    margin-bottom: var(--spacing);
+
+    >summary {
+      cursor: pointer;
+      list-style: none;
+      padding: var(--spacing) calc(var(--spacing) * 2);
+      color: var(--secondary);
+      border: 1px dashed var(--separation);
+      border-radius: var(--radius);
+      text-align: center;
+      user-select: none;
+
+      &::-webkit-details-marker {
+        display: none;
+      }
+
+      &::marker {
+        display: none;
+      }
+
+      &::after {
+        content: " ▼";
+        font-size: 0.75em;
+      }
+
+      &:hover {
+        color: var(--primary);
+        border-color: var(--edit);
+      }
+    }
+
+    &[open]>summary::after {
+      content: " ▲";
+    }
+
+    >article {
+      margin-top: var(--spacing);
+    }
+  }
 }
 
 main.session>article {
