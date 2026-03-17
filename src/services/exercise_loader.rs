@@ -39,9 +39,6 @@ pub fn use_exercises() -> Signal<Vec<Exercise>> {
 /// empty response, JSON parse) it shows an appropriate error message so the
 /// user knows the URL change did not take effect.
 pub async fn reload_exercises(mut sig: Signal<Vec<Exercise>>, mut toast: Signal<Option<String>>) {
-    // Clear immediately so the UI does not show stale data from the old URL
-    sig.set(Vec::new());
-
     #[cfg(target_arch = "wasm32")]
     {
         use crate::services::storage::idb_exercises;

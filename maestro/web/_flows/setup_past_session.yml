@@ -3,6 +3,10 @@ url: http://localhost:8080/LogOut/?dl_db_url=http%3A%2F%2Flocalhost%3A8080%2FLog
 # Sub-flow: set up a completed past session with two exercises (ring_dip and
 # romanian_deadlift). Works standalone and as a runFlow setup step in other tests.
 - launchApp
+# Wait for the WASM app to fully initialize so that the SetDbUrl deep-link
+# handler has run and persisted exercise_db_url to localStorage before
+# openLink triggers a page reload.
+- assertVisible: "💪 LogOut"
 # Create a completed past session via deep link; exercises load from mock DB
 - openLink: "http://localhost:8080/LogOut/?dl_session=ring_dip%3A80%3A10%2Cromanian_deadlift%3A60%3A6"
 # Wait for mock exercises to load and session to be saved and shown on home

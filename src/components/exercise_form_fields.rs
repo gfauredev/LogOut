@@ -113,8 +113,9 @@ pub fn ExerciseFormFields(
 
     rsx! {
         div {
-            label { "Exercise Name *" }
+            label { r#for: "exercise-name-input", "Exercise Name *" }
             input {
+                id: "exercise-name-input",
                 r#type: "text",
                 placeholder: "Pushups",
                 value: "{name_input}",
