@@ -107,54 +107,14 @@ pub fn Exercises() -> Element {
         results
     });
 
-    // Set up scroll-based auto-pagination via a web-sys scroll event listener.
-    // Using `use_hook` ensures the listener is registered once per component mount.
-    // `window.onscroll` assignment (rather than addEventListener) avoids accumulating
-    // duplicate listeners across component remounts.
-    #[cfg(target_arch = "wasm32")]
-    use_hook(move || {
-        use wasm_bindgen::prelude::*;
-        use wasm_bindgen::JsCast;
-
-        let closure = Closure::<dyn FnMut()>::new(move || {
-            let Some(window) = web_sys::window() else {
-                return;
-            };
-            let Some(doc) = window.document() else { return };
-            let Some(el) = doc.document_element() else {
-                return;
-            };
-
-            let scroll_top = window.scroll_y().unwrap_or(0.0);
-            let client_height = el.client_height() as f64;
-            let scroll_height = el.scroll_height() as f64;
-
-            if scroll_top + client_height >= scroll_height - f64::from(SCROLL_THRESHOLD_PX) {
-                let cur = *visible_count.peek();
-                let total = exercises.peek().len();
-                if cur < total {
-                    visible_count.set(cur + PAGE_SIZE);
-                }
-            }
-        });
-
-        if let Some(window) = web_sys::window() {
-            let js_fn: &js_sys::Function = closure.as_ref().unchecked_ref();
-            let _ = js_sys::Reflect::set(&window, &"onscroll".into(), js_fn);
-        }
-        // Leak the closure so it lives for the page lifetime.
-        closure.forget();
-    });
-
-    // Infinite scroll for native platforms (Android/desktop) via eval.
-    // Injects a polling interval in the WebView that sends a message whenever
-    // the user is near the bottom; Rust receives it and increments visible_count.
-    #[cfg(not(target_arch = "wasm32"))]
+    // Set up scroll-based auto-pagination via document::eval (cross-platform).
+    // Injects a scroll listener that sends a message whenever the user is near
+    // the bottom; Rust receives it and increments visible_count.
     use_hook(move || {
         let js = format!(
             r"
             (function() {{
-                setInterval(function() {{
+                const handler = function() {{
                     var el = document.documentElement;
                     var scrollTop = window.scrollY || el.scrollTop || 0;
                     var clientHeight = el.clientHeight || window.innerHeight || 0;
@@ -162,7 +122,8 @@ pub fn Exercises() -> Element {
                     if (scrollHeight > 0 && scrollTop + clientHeight >= scrollHeight - {SCROLL_THRESHOLD_PX}) {{
                         dioxus.send(true);
                     }}
-                }}, {SCROLL_POLL_INTERVAL_MS});
+                }};
+                window.onscroll = handler;
             }})()
             "
         );
