@@ -313,7 +313,7 @@
                 ];
                 text = ''
                   podman load --input ${self.packages.${system}.sandbox}
-                  exec podman run --rm -i --security-opt label=disable \
+                  exec podman run --rm -it --security-opt label=disable \
                     --userns=keep-id -v /nix/store:/nix/store:ro \
                     -v /nix/var/nix/daemon-socket/socket:/nix/var/nix/daemon-socket/socket:ro \
                     --tmpfs /tmp -v "$PWD:/workspace:rw" -v "${agentConfig}" \
