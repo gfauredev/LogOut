@@ -259,6 +259,72 @@ ul.results {
   }
 }
 
+// ── Hard-filter chips (Exercise List) ─────────────────────────────────────
+// A row of small pill buttons that appear below the search box. Two variants:
+//   .active   – currently applied filter (click to remove)
+//   .suggestion – suggested filter based on search query (click to apply)
+.filter-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: calc(var(--spacing) / 2);
+  margin-top: calc(var(--spacing) / 2);
+
+  // Override the default round icon-button shape for these text labels.
+  button.filter-chip {
+    width: auto;
+    height: auto;
+    border-radius: var(--radius);
+    padding: 4px 10px;
+    font-size: 0.85em;
+    font-weight: normal;
+    white-space: nowrap;
+  }
+
+  button.filter-chip.active {
+    border-color: var(--more);
+    background: color-mix(in srgb, var(--more) 20%, transparent);
+    color: var(--primary);
+  }
+
+  button.filter-chip.suggestion {
+    border-color: var(--edit);
+    background: none;
+    color: var(--secondary);
+    opacity: 0.8;
+
+    &:hover {
+      opacity: 1;
+      color: var(--primary);
+    }
+  }
+}
+  list-style: none;
+  padding: 0;
+  margin-top: var(--spacing);
+  border: 1px solid var(--separation);
+  border-radius: var(--radius);
+  background: var(--article);
+  max-height: 300px;
+  overflow-y: auto;
+
+  >li {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: var(--spacing);
+    cursor: pointer;
+    border-bottom: 1px solid var(--separation);
+
+    &:last-child {
+      border-bottom: none;
+    }
+
+    &:hover {
+      background: var(--separation);
+    }
+  }
+}
+
 // ── Rest and exercise timers ───────────────────────────────────────────────
 .rest-timer {
   text-align: center;

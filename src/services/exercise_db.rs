@@ -1,6 +1,5 @@
-use crate::models::{DbI18n, Exercise, ExerciseI18n, ExerciseLangEntry};
-#[cfg(test)]
-use crate::models::{Equipment, Muscle};
+use crate::models::{Category, DbI18n, Equipment, Exercise, ExerciseI18n, ExerciseLangEntry,
+    Force, Level, Muscle};
 use dioxus::prelude::*;
 
 /// Newtype wrapper for the exercise-database signal so its `TypeId` is distinct
@@ -275,8 +274,189 @@ fn name_lc_matches(name_lc: &str, query_lower: &str, query_norm: &str, tokens: &
         })
 }
 
+/// Relevance score tiers for exercise search results.
+/// Higher = better match. Name matches always outrank attribute matches.
+const SCORE_EXACT_NAME: u32 = 100;
+const SCORE_NAME_STARTS: u32 = 90;
+const SCORE_NAME_NORM_EXACT: u32 = 85;
+const SCORE_NAME_CONTAINS: u32 = 80;
+const SCORE_NAME_NORM_TOKEN_START: u32 = 75;
+const SCORE_NAME_NORM_CONTAINS: u32 = 70;
+const SCORE_NAME_ALL_TOKENS: u32 = 65;
+const SCORE_NAME_REVERSE: u32 = 60;
+const SCORE_I18N_NAME: u32 = 55;
+const SCORE_PRIMARY_MUSCLE: u32 = 50;
+const SCORE_SECONDARY_MUSCLE: u32 = 45;
+const SCORE_CATEGORY: u32 = 40;
+const SCORE_FORCE: u32 = 35;
+const SCORE_EQUIPMENT: u32 = 30;
+const SCORE_LEVEL: u32 = 25;
+const SCORE_ID_TOKENS: u32 = 20;
+const SCORE_I18N_TAG: u32 = 15;
+
+/// Computes a relevance score for `exercise` against the pre-computed query
+/// components.  Returns 0 if the exercise does not match the query at all.
+/// Name matches always outrank attribute (muscle/category/…) matches so that
+/// e.g. "Push-Up" appears before "Bench Press" (force=push) when searching
+/// "push-up".
+fn score_exercise(
+    exercise: &Exercise,
+    query_lower: &str,
+    query_norm: &str,
+    tokens: &[String],
+    db_i18n: Option<&DbI18n>,
+) -> u32 {
+    // Resolve pre-computed lowercase name.
+    let computed_name_lower;
+    let name_lc: &str = if exercise.name_lower.is_empty() {
+        computed_name_lower = exercise.name.to_lowercase();
+        &computed_name_lower
+    } else {
+        &exercise.name_lower
+    };
+    let name_norm = normalize_for_search(name_lc);
+
+    // ── Name-based scoring (highest priority) ───────────────────────────────
+    if name_lc == query_lower {
+        return SCORE_EXACT_NAME;
+    }
+    if name_lc.starts_with(query_lower) {
+        return SCORE_NAME_STARTS;
+    }
+    if !query_norm.is_empty() && name_norm == query_norm {
+        return SCORE_NAME_NORM_EXACT;
+    }
+    if name_lc.contains(query_lower) {
+        return SCORE_NAME_CONTAINS;
+    }
+    // Token-start: first token matches the beginning of the normalised name.
+    if !tokens.is_empty() && name_norm.starts_with(tokens[0].as_str()) {
+        return SCORE_NAME_NORM_TOKEN_START;
+    }
+    // Normalised name contains the full normalised query.
+    if !query_norm.is_empty() && name_norm.contains(query_norm) {
+        return SCORE_NAME_NORM_CONTAINS;
+    }
+    // All tokens appear (in any order) in the normalised name.
+    if !tokens.is_empty() && tokens.iter().all(|t| name_norm.contains(t.as_str())) {
+        return SCORE_NAME_ALL_TOKENS;
+    }
+    // Reverse check: normalised name is a substring of the normalised query
+    // (handles over-specified queries like "bench presses" → "bench press").
+    if !query_norm.is_empty() && !name_norm.is_empty() && query_norm.contains(&name_norm) {
+        return SCORE_NAME_REVERSE;
+    }
+
+    // ── Localised name scoring ───────────────────────────────────────────────
+    if exercise.i18n.as_ref().is_some_and(|map| {
+        map.values().any(|i18n| {
+            i18n.name.as_deref().is_some_and(|n| {
+                let n_lc = n.to_lowercase();
+                name_lc_matches(&n_lc, query_lower, query_norm, tokens)
+            })
+        })
+    }) {
+        return SCORE_I18N_NAME;
+    }
+
+    // ── Attribute-based scoring (lower priority) ─────────────────────────────
+    if exercise
+        .primary_muscles
+        .iter()
+        .any(|m| tag_word_prefix_matches(m.as_ref(), query_lower))
+    {
+        return SCORE_PRIMARY_MUSCLE;
+    }
+    if exercise
+        .secondary_muscles
+        .iter()
+        .any(|m| tag_word_prefix_matches(m.as_ref(), query_lower))
+    {
+        return SCORE_SECONDARY_MUSCLE;
+    }
+    if exercise.category.as_ref().contains(query_lower) {
+        return SCORE_CATEGORY;
+    }
+    if exercise
+        .force
+        .is_some_and(|f| f.as_ref().contains(query_lower))
+    {
+        return SCORE_FORCE;
+    }
+    {
+        // Schema2: no-equipment means body-only.
+        let equipment_str = match exercise.equipment {
+            Some(e) => e.as_ref().to_owned(),
+            None => "body only".to_owned(),
+        };
+        if equipment_str.contains(query_lower) {
+            return SCORE_EQUIPMENT;
+        }
+    }
+    if exercise
+        .level
+        .is_some_and(|l| l.as_ref().contains(query_lower))
+    {
+        return SCORE_LEVEL;
+    }
+    {
+        // Schema2 normalised IDs as extra search tokens.
+        let id_words = exercise.id.to_lowercase().replace(['_', '-'], " ");
+        if id_words.contains(query_lower)
+            || (!tokens.is_empty()
+                && tokens.iter().all(|t| id_words.contains(t.as_str())))
+        {
+            return SCORE_ID_TOKENS;
+        }
+    }
+
+    // ── Translated tag search ────────────────────────────────────────────────
+    if db_i18n.is_some_and(|i18n| {
+        let check_tag = |field: &str, english_val: &str| -> bool {
+            i18n.values().any(|lang| {
+                let translated = match field {
+                    "category" => lang.category.get(english_val),
+                    "force" => lang.force.get(english_val),
+                    "equipment" => lang.equipment.get(english_val),
+                    "level" => lang.level.get(english_val),
+                    "muscles" => lang.muscles.get(english_val),
+                    _ => None,
+                };
+                translated.is_some_and(|v| v.to_lowercase().contains(query_lower))
+            })
+        };
+        check_tag("category", exercise.category.as_ref())
+            || exercise
+                .force
+                .is_some_and(|f| check_tag("force", f.as_ref()))
+            || exercise
+                .equipment
+                .is_some_and(|e| check_tag("equipment", e.as_ref()))
+            || exercise
+                .level
+                .is_some_and(|l| check_tag("level", l.as_ref()))
+            || exercise
+                .primary_muscles
+                .iter()
+                .any(|m| check_tag("muscles", m.as_ref()))
+            || exercise
+                .secondary_muscles
+                .iter()
+                .any(|m| check_tag("muscles", m.as_ref()))
+    }) {
+        return SCORE_I18N_TAG;
+    }
+
+    0 // No match
+}
+
 /// Search exercises by name (English and all available localized names), muscle
 /// groups, category, force, equipment, level, and ID tokens.
+///
+/// Results are sorted by relevance: exact / near-exact name matches appear
+/// first, followed by prefix / token matches, then attribute (muscle, category,
+/// etc.) matches.  This ensures that e.g. "Push-Up" is the first result when
+/// searching "push-up" even though many other exercises have `force = push`.
 ///
 /// When `db_i18n` is provided translated tag values (category, force,
 /// equipment, level, muscles) in every available language are also searched,
@@ -297,111 +477,151 @@ pub fn search_exercises<'a>(
         .map(normalize_for_search)
         .filter(|t| t.chars().any(char::is_alphanumeric))
         .collect();
-    exercises
+
+    let mut scored: Vec<(u32, &Exercise)> = exercises
         .iter()
-        .filter(|exercise| {
-            // Use the pre-computed lowercase name when available to avoid per-call allocations.
-            // Fall back to computing on the fly for exercises created without calling with_lowercase().
-            let computed_name_lower;
-            let name_lc: &str = if exercise.name_lower.is_empty() {
-                computed_name_lower = exercise.name.to_lowercase();
-                &computed_name_lower
+        .filter_map(|exercise| {
+            let score =
+                score_exercise(exercise, &query_lower, &query_norm, &tokens, db_i18n);
+            if score > 0 {
+                Some((score, exercise))
             } else {
-                &exercise.name_lower
-            };
-            // Exact (lowercase) substring match first, then normalised matching:
-            //  • token-based: all whitespace-separated query tokens must appear
-            //    in the normalised name; this handles multi-word queries with
-            //    interleaved words (e.g. "wide grip bench" → "Wide-Grip Barbell
-            //    Bench Press") and also single-word hyphen/space variants because
-            //    each single token is equivalent to the full normalised query
-            //    (e.g. "push-ups" normalises to "pushups" and matches "Pushups").
-            //  • reverse check: the normalised name is a substring of the
-            //    normalised query, to tolerate over-specified queries
-            //    (e.g. "bench presses" → query_norm "benchpresses" ⊇ name_norm
-            //    "benchpress", so "Bench Press" is still found).
-            name_lc_matches(name_lc, &query_lower, &query_norm, &tokens)
-                // Localized name search: check all translated names in exercise.i18n
-                || exercise.i18n.as_ref().is_some_and(|map| {
-                    map.values().any(|i18n| {
-                        i18n.name.as_deref().is_some_and(|n| {
-                            let n_lc = n.to_lowercase();
-                            name_lc_matches(&n_lc, &query_lower, &query_norm, &tokens)
-                        })
-                    })
-                })
-                || exercise
-                    .primary_muscles
-                    .iter()
-                    .any(|m| tag_word_prefix_matches(m.as_ref(), &query_lower))
-                || exercise
-                    .secondary_muscles
-                    .iter()
-                    .any(|m| tag_word_prefix_matches(m.as_ref(), &query_lower))
-                || exercise.category.as_ref().contains(&query_lower)
-                || exercise
-                    .force
-                    .is_some_and(|f| f.as_ref().contains(&query_lower))
-                || {
-                    // Schema2: no-equipment means body-only.  Treat `None`
-                    // equipment as "body only" so searches for "body only" or
-                    // "bodyweight" still find these exercises.
-                    let equipment_str = match exercise.equipment {
-                        Some(e) => e.as_ref().to_owned(),
-                        None => "body only".to_owned(),
-                    };
-                    equipment_str.contains(&query_lower)
-                }
-                || exercise
-                    .level
-                    .is_some_and(|l| l.as_ref().contains(&query_lower))
-                || {
-                    // Schema2 normalised IDs (lowercase, underscores) work as
-                    // additional search tokens.  Underscores and hyphens are
-                    // treated as word separators so "pistol squat" finds
-                    // "kettlebell_pistol_squat".
-                    let id_words = exercise.id.to_lowercase().replace(['_', '-'], " ");
-                    id_words.contains(&query_lower)
-                        || (!tokens.is_empty()
-                            && tokens.iter().all(|t| id_words.contains(t.as_str())))
-                }
-                // Translated tag search: if DbI18n is provided, check whether any
-                // translated category, force, equipment, level, or muscle name matches.
-                || db_i18n.is_some_and(|i18n| {
-                    let check_tag = |field: &str, english_val: &str| -> bool {
-                        i18n.values().any(|lang| {
-                            let translated = match field {
-                                "category" => lang.category.get(english_val),
-                                "force" => lang.force.get(english_val),
-                                "equipment" => lang.equipment.get(english_val),
-                                "level" => lang.level.get(english_val),
-                                "muscles" => lang.muscles.get(english_val),
-                                _ => None,
-                            };
-                            translated.is_some_and(|v| v.to_lowercase().contains(&query_lower))
-                        })
-                    };
-                    check_tag("category", exercise.category.as_ref())
-                        || exercise
-                            .force
-                            .is_some_and(|f| check_tag("force", f.as_ref()))
-                        || exercise
-                            .equipment
-                            .is_some_and(|e| check_tag("equipment", e.as_ref()))
-                        || exercise
-                            .level
-                            .is_some_and(|l| check_tag("level", l.as_ref()))
-                        || exercise
-                            .primary_muscles
-                            .iter()
-                            .any(|m| check_tag("muscles", m.as_ref()))
-                        || exercise
-                            .secondary_muscles
-                            .iter()
-                            .any(|m| check_tag("muscles", m.as_ref()))
-                })
+                None
+            }
         })
-        .collect()
+        .collect();
+
+    // Sort descending by score so the best matches appear first.
+    // Use a stable sort to preserve the original order among equal-score items
+    // (preserves the DB ordering, which is often alphabetical).
+    scored.sort_by(|a, b| b.0.cmp(&a.0));
+    scored.into_iter().map(|(_, ex)| ex).collect()
+}
+
+// ─── Hard-filter types and helpers ───────────────────────────────────────────
+
+/// A hard filter that restricts the exercise list to a specific attribute value.
+///
+/// Up to 4 filters can be active simultaneously.  Filters of the **same
+/// variant** (e.g. two `Category` filters) form a **union** (OR) so that
+/// contradictory values like "strength + cardio" return exercises that satisfy
+/// either constraint.  Filters of **different variants** form an
+/// **intersection** (AND).
+#[derive(Clone, PartialEq, Debug)]
+pub enum SearchFilter {
+    Category(Category),
+    Force(Force),
+    Equipment(Equipment),
+    Level(Level),
+    /// Matches exercises where `muscle` is either a primary or secondary muscle.
+    Muscle(Muscle),
+}
+
+impl SearchFilter {
+    /// Human-readable label for display in the UI (e.g. "💪 strength").
+    pub fn label(&self) -> String {
+        match self {
+            Self::Category(c) => format!("🏷 {c}"),
+            Self::Force(f) => format!("⚡ {f}"),
+            Self::Equipment(e) => format!("🔧 {e}"),
+            Self::Level(l) => format!("📊 {l}"),
+            Self::Muscle(m) => format!("💪 {m}"),
+        }
+    }
+
+    /// Returns true if `self` and `other` are the same variant (regardless of
+    /// the inner value).  Used to group contradictory filters into OR unions.
+    pub fn same_kind(&self, other: &SearchFilter) -> bool {
+        std::mem::discriminant(self) == std::mem::discriminant(other)
+    }
+
+    /// Returns true when `exercise` satisfies this individual filter.
+    fn matches(&self, exercise: &Exercise) -> bool {
+        match self {
+            Self::Category(c) => &exercise.category == c,
+            Self::Force(f) => exercise.force.as_ref() == Some(f),
+            Self::Equipment(e) => exercise.equipment.as_ref() == Some(e),
+            Self::Level(l) => exercise.level.as_ref() == Some(l),
+            Self::Muscle(m) => {
+                exercise.primary_muscles.contains(m)
+                    || exercise.secondary_muscles.contains(m)
+            }
+        }
+    }
+}
+
+/// Returns true when `exercise` passes **all** active filters.
+///
+/// Filters of the same variant form an OR group; OR groups are ANDed together.
+pub fn exercise_matches_filters(exercise: &Exercise, filters: &[SearchFilter]) -> bool {
+    if filters.is_empty() {
+        return true;
+    }
+    // Build groups: collect distinct kinds, then check each group as an OR.
+    // We iterate filters twice but the list is always ≤ 4 elements, so this
+    // is effectively O(1).
+    let mut handled_kinds: Vec<std::mem::Discriminant<SearchFilter>> = Vec::new();
+    for filter in filters {
+        let kind = std::mem::discriminant(filter);
+        if handled_kinds.contains(&kind) {
+            continue; // already processed this group
+        }
+        handled_kinds.push(kind);
+        // OR: exercise must satisfy at least one filter of this kind.
+        let group_ok = filters
+            .iter()
+            .filter(|f| std::mem::discriminant(*f) == kind)
+            .any(|f| f.matches(exercise));
+        if !group_ok {
+            return false;
+        }
+    }
+    true
+}
+
+/// Examines `query` and returns filter suggestions – one per matching attribute
+/// value.  A suggestion is emitted when the query **exactly equals** (case-
+/// insensitive) or starts with a known attribute value (or vice-versa) so that
+/// typing "card", "cardio", or "CARDIO" all suggest the `Category::Cardio`
+/// filter.
+pub fn detect_filter_suggestions(query: &str) -> Vec<SearchFilter> {
+    use strum::IntoEnumIterator;
+    let q = query.to_lowercase();
+    if q.len() < 2 {
+        return Vec::new();
+    }
+    let mut suggestions = Vec::new();
+    for cat in Category::iter() {
+        let val = cat.as_ref().to_lowercase();
+        if val.contains(&q) || q.contains(&val) {
+            suggestions.push(SearchFilter::Category(cat));
+        }
+    }
+    for force in Force::iter() {
+        let val = force.as_ref().to_lowercase();
+        if val.contains(&q) || q.contains(&val) {
+            suggestions.push(SearchFilter::Force(force));
+        }
+    }
+    for equip in Equipment::iter() {
+        let val = equip.as_ref().to_lowercase();
+        if val.contains(&q) || q.contains(&val) {
+            suggestions.push(SearchFilter::Equipment(equip));
+        }
+    }
+    for level in Level::iter() {
+        let val = level.as_ref().to_lowercase();
+        if val.contains(&q) || q.contains(&val) {
+            suggestions.push(SearchFilter::Level(level));
+        }
+    }
+    for muscle in Muscle::iter() {
+        let val = muscle.as_ref().to_lowercase();
+        if val.contains(&q) || q.contains(&val) {
+            suggestions.push(SearchFilter::Muscle(muscle));
+        }
+    }
+    suggestions
 }
 
 pub fn get_exercise_by_id<'a>(exercises: &'a [Exercise], id: &str) -> Option<&'a Exercise> {
@@ -1377,5 +1597,254 @@ mod tests {
             url.ends_with("i18n.json"),
             "URL should end with i18n.json, got: {url}"
         );
+    }
+
+    // ── Search ordering / scoring tests ─────────────────────────────────────
+
+    #[test]
+    fn search_name_ranks_above_force_attribute() {
+        // An exercise named "Push-Up" must appear BEFORE exercises that only
+        // match via force=Push when the query is "push-up".
+        let exercises = vec![
+            Exercise {
+                id: "bench_press".into(),
+                name: "Bench Press".into(),
+                name_lower: String::new(),
+                force: Some(Force::Push),
+                level: Some(Level::Intermediate),
+                mechanic: None,
+                equipment: Some(Equipment::Barbell),
+                primary_muscles: vec![Muscle::Chest],
+                secondary_muscles: vec![Muscle::Triceps],
+                instructions: vec![],
+                category: Category::Strength,
+                images: vec![],
+                i18n: None,
+            }
+            .with_lowercase(),
+            Exercise {
+                id: "push_up".into(),
+                name: "Push-Up".into(),
+                name_lower: String::new(),
+                force: Some(Force::Push),
+                level: Some(Level::Beginner),
+                mechanic: None,
+                equipment: Some(Equipment::BodyOnly),
+                primary_muscles: vec![Muscle::Chest],
+                secondary_muscles: vec![Muscle::Triceps],
+                instructions: vec![],
+                category: Category::Strength,
+                images: vec![],
+                i18n: None,
+            }
+            .with_lowercase(),
+        ];
+        let results = search_exercises(&exercises, "push-up", None);
+        assert!(
+            !results.is_empty(),
+            "search should find at least the Push-Up exercise"
+        );
+        assert_eq!(
+            results[0].id, "push_up",
+            "Push-Up should be the first result when searching 'push-up'"
+        );
+    }
+
+    #[test]
+    fn search_exact_name_ranks_first() {
+        // "Bench Press" typed exactly should appear before any other match.
+        let exercises = sample_exercises();
+        let results = search_exercises(&exercises, "bench press", None);
+        assert!(!results.is_empty());
+        assert_eq!(results[0].id, "bench_press");
+    }
+
+    #[test]
+    fn search_name_prefix_ranks_above_substring() {
+        // "pull" should rank exercises whose name starts with "pull" above
+        // those that merely contain "pull" elsewhere.
+        let exercises = vec![
+            Exercise {
+                id: "supine_pull".into(),
+                name: "Supine Pull".into(),
+                name_lower: String::new(),
+                force: Some(Force::Pull),
+                level: Some(Level::Beginner),
+                mechanic: None,
+                equipment: None,
+                primary_muscles: vec![Muscle::Lats],
+                secondary_muscles: vec![],
+                instructions: vec![],
+                category: Category::Strength,
+                images: vec![],
+                i18n: None,
+            }
+            .with_lowercase(),
+            Exercise {
+                id: "pull_up".into(),
+                name: "Pull-Up".into(),
+                name_lower: String::new(),
+                force: Some(Force::Pull),
+                level: Some(Level::Beginner),
+                mechanic: None,
+                equipment: Some(Equipment::BodyOnly),
+                primary_muscles: vec![Muscle::Lats],
+                secondary_muscles: vec![Muscle::Biceps],
+                instructions: vec![],
+                category: Category::Strength,
+                images: vec![],
+                i18n: None,
+            }
+            .with_lowercase(),
+        ];
+        let results = search_exercises(&exercises, "pull", None);
+        assert!(results.len() >= 2);
+        assert_eq!(
+            results[0].id, "pull_up",
+            "Pull-Up (starts with 'pull') should rank above 'Supine Pull' (contains 'pull')"
+        );
+    }
+
+    // ── SearchFilter / exercise_matches_filters tests ────────────────────────
+
+    #[test]
+    fn filter_by_category_matches_correct_exercises() {
+        let exercises = sample_exercises();
+        let filters = vec![SearchFilter::Category(Category::Cardio)];
+        let results: Vec<_> = exercises
+            .iter()
+            .filter(|e| exercise_matches_filters(e, &filters))
+            .collect();
+        assert_eq!(results.len(), 1);
+        assert_eq!(results[0].id, "running");
+    }
+
+    #[test]
+    fn filter_by_muscle_matches_primary_and_secondary() {
+        let exercises = sample_exercises();
+        // Triceps is a *secondary* muscle of bench_press.
+        let filters = vec![SearchFilter::Muscle(Muscle::Triceps)];
+        let results: Vec<_> = exercises
+            .iter()
+            .filter(|e| exercise_matches_filters(e, &filters))
+            .collect();
+        assert_eq!(results.len(), 1);
+        assert_eq!(results[0].id, "bench_press");
+    }
+
+    #[test]
+    fn filter_contradictory_same_kind_returns_union() {
+        // Cardio OR Strength should return exercises from both categories.
+        let exercises = sample_exercises();
+        let filters = vec![
+            SearchFilter::Category(Category::Cardio),
+            SearchFilter::Category(Category::Strength),
+        ];
+        let results: Vec<_> = exercises
+            .iter()
+            .filter(|e| exercise_matches_filters(e, &filters))
+            .collect();
+        // All 3 exercises match: bench_press + pull_up (Strength) + running (Cardio)
+        assert_eq!(results.len(), 3);
+    }
+
+    #[test]
+    fn filter_different_kinds_intersect() {
+        // Category::Strength AND Force::Push → only bench_press.
+        let exercises = sample_exercises();
+        let filters = vec![
+            SearchFilter::Category(Category::Strength),
+            SearchFilter::Force(Force::Push),
+        ];
+        let results: Vec<_> = exercises
+            .iter()
+            .filter(|e| exercise_matches_filters(e, &filters))
+            .collect();
+        assert_eq!(results.len(), 1);
+        assert_eq!(results[0].id, "bench_press");
+    }
+
+    #[test]
+    fn filter_empty_returns_all() {
+        let exercises = sample_exercises();
+        let results: Vec<_> = exercises
+            .iter()
+            .filter(|e| exercise_matches_filters(e, &[]))
+            .collect();
+        assert_eq!(results.len(), exercises.len());
+    }
+
+    // ── detect_filter_suggestions tests ─────────────────────────────────────
+
+    #[test]
+    fn detect_filter_suggests_category_for_cardio() {
+        let suggestions = detect_filter_suggestions("cardio");
+        assert!(
+            suggestions
+                .iter()
+                .any(|f| f == &SearchFilter::Category(Category::Cardio)),
+            "should suggest Cardio category filter"
+        );
+    }
+
+    #[test]
+    fn detect_filter_suggests_muscle_prefix() {
+        let suggestions = detect_filter_suggestions("bicep");
+        assert!(
+            suggestions
+                .iter()
+                .any(|f| f == &SearchFilter::Muscle(Muscle::Biceps)),
+            "should suggest Biceps muscle filter for prefix 'bicep'"
+        );
+    }
+
+    #[test]
+    fn detect_filter_short_query_returns_empty() {
+        let suggestions = detect_filter_suggestions("a");
+        assert!(
+            suggestions.is_empty(),
+            "single-character query should return no suggestions"
+        );
+    }
+
+    #[test]
+    fn detect_filter_suggests_level_beginner() {
+        let suggestions = detect_filter_suggestions("beginner");
+        assert!(
+            suggestions
+                .iter()
+                .any(|f| f == &SearchFilter::Level(Level::Beginner)),
+            "should suggest Beginner level filter"
+        );
+    }
+
+    #[test]
+    fn filter_label_is_human_readable() {
+        assert_eq!(
+            SearchFilter::Category(Category::Cardio).label(),
+            "🏷 cardio"
+        );
+        assert_eq!(SearchFilter::Force(Force::Push).label(), "⚡ push");
+        assert_eq!(
+            SearchFilter::Equipment(Equipment::Barbell).label(),
+            "🔧 barbell"
+        );
+        assert_eq!(
+            SearchFilter::Level(Level::Beginner).label(),
+            "📊 beginner"
+        );
+        assert_eq!(
+            SearchFilter::Muscle(Muscle::Biceps).label(),
+            "💪 biceps"
+        );
+    }
+
+    #[test]
+    fn filter_same_kind_detects_contradictory() {
+        let a = SearchFilter::Category(Category::Cardio);
+        let b = SearchFilter::Category(Category::Strength);
+        let c = SearchFilter::Force(Force::Push);
+        assert!(a.same_kind(&b), "two Category filters are same kind");
+        assert!(!a.same_kind(&c), "Category and Force are different kinds");
     }
 }
