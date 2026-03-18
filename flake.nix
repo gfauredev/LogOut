@@ -246,10 +246,6 @@
               devShellExecutable = pkgs.writeShellScriptBin "logout-devshell" ''
                 exec ${pkgs.nix}/bin/nix develop "path:$PWD" "$@"
               '';
-              devShellGemini = pkgs.writeShellScriptBin "gemini" ''
-                exec ${pkgs.nix}/bin/nix develop "path:$PWD" \
-                  --command ${pkgs.gemini-cli-bin}/bin/gemini "$@"
-              '';
             in
             pkgs.dockerTools.buildLayeredImage {
               name = "logout-sandbox";
@@ -257,7 +253,6 @@
               contents = [
                 pkgs.nix
                 devShellExecutable
-                devShellGemini
                 pkgs.cacert
               ];
               config = {
@@ -301,34 +296,6 @@
           program = "${self.packages.${system}.androidE2eTester}/bin/logout-android-e2e-tester";
           meta.description = "Run Maestro Android E2E tests";
         };
-        agent =
-          let
-            env = sharedEnvFor system;
-          in
-          {
-            type = "app";
-            program = "${
-              env.pkgs.writeShellApplication {
-                name = "logout-agent";
-                runtimeInputs = [
-                  env.pkgs.podman
-                ];
-                text = ''
-                  podman load --input ${self.packages.${system}.sandbox}
-                  export GEMINI_SANDBOX=podman
-                  export GEMINI_SANDBOX_IMAGE=logout-sandbox
-                  export SANDBOX_FLAGS="--rm -it --security-opt label=disable \
-                    --userns=keep-id -v /nix/store:/nix/store:ro \
-                    -v \"$PWD:/workspace:rw\" --tmpfs /tmp \
-                    -v /nix/var/nix/daemon-socket/socket:/nix/var/nix/daemon-socket/socket:ro \
-                     -v \"$HOME/.gemini:/workspace/.gemini:rw\" \
-                    -w /workspace -e HOME=/workspace logout-sandbox"
-                  gemini --yolo "$@" # FIXME ERROR (catatonit:2): failed to exec pid1: No such file or directory
-                '';
-              }
-            }/bin/logout-agent";
-            meta.description = "Run AI Agent sandboxed in Podman";
-          };
         default = {
           type = "app";
           program = "${self.packages.${system}.pagesServer}/bin/logout-pages";
