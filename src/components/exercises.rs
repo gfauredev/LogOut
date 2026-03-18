@@ -1,9 +1,13 @@
 use crate::components::{ActiveTab, BottomNav, ExerciseCard};
+use crate::models::Exercise;
 use crate::services::{exercise_db, storage};
+use crate::services::exercise_db::{SearchFilter, detect_filter_suggestions, exercise_matches_filters};
 use crate::{DbI18nSignal, ExerciseSearchSignal, Route};
 use dioxus::prelude::*;
 use dioxus_i18n::t;
 
+/// Maximum number of simultaneously active hard filters.
+const MAX_FILTERS: usize = 4;
 /// Number of exercises loaded per scroll increment.
 const PAGE_SIZE: usize = 20;
 /// Pixels from the bottom of the page at which an auto-pagination is triggered.
@@ -20,6 +24,7 @@ pub fn Exercises() -> Element {
     let db_i18n_sig = use_context::<DbI18nSignal>().0;
     let mut search_query = use_signal(String::new);
     let mut visible_count = use_signal(|| PAGE_SIZE);
+    let mut active_filters: Signal<Vec<SearchFilter>> = use_signal(Vec::new);
 
     // If another page set a search query via the global signal, consume it.
     let mut search_signal = use_context::<ExerciseSearchSignal>().0;
@@ -51,6 +56,20 @@ pub fn Exercises() -> Element {
             .and_then(|s| s.current_exercise_id.clone())
     });
 
+    // Filter suggestions derived from the current search query.
+    // A suggestion is only shown if it is not already an active filter.
+    let filter_suggestions = use_memo(move || {
+        let query = search_query.read();
+        if query.is_empty() {
+            return Vec::new();
+        }
+        let current = active_filters.read();
+        detect_filter_suggestions(&query)
+            .into_iter()
+            .filter(|s| !current.contains(s))
+            .collect::<Vec<_>>()
+    });
+
     // Merge DB exercises and user-created exercises into a unified list.
     // Unified search applies to both custom and DB exercises (by name, muscle, category, etc.).
     let exercises = use_memo(move || {
@@ -58,19 +77,44 @@ pub fn Exercises() -> Element {
         let all = all_exercises.read();
         let custom = custom_exercises.read();
         let active_ids = active_session_ids();
+        let filters = active_filters.read();
+
+        // Pre-filter by active hard filters (if any).
+        let all_filtered: Vec<Exercise>;
+        let custom_filtered: Vec<Exercise>;
+        let all_slice: &[Exercise];
+        let custom_slice: &[Exercise];
+        if filters.is_empty() {
+            all_slice = &all;
+            custom_slice = &custom;
+        } else {
+            all_filtered = all
+                .iter()
+                .filter(|e| exercise_matches_filters(e, &filters))
+                .cloned()
+                .collect();
+            custom_filtered = custom
+                .iter()
+                .filter(|e| exercise_matches_filters(e, &filters))
+                .cloned()
+                .collect();
+            all_slice = &all_filtered;
+            custom_slice = &custom_filtered;
+        }
 
         let mut results = Vec::new();
         let mut seen_ids = std::collections::HashSet::new();
 
         if query.is_empty() {
+            // No text query – just filters (or none at all).
             // Add all user-created exercises first (they have priority)
-            for ex in custom.iter() {
+            for ex in custom_slice.iter() {
                 if seen_ids.insert(ex.id.clone()) {
                     results.push((ex.clone(), true));
                 }
             }
             // Add all DB exercises (no hard limit – scroll pagination handles display)
-            for ex in all.iter() {
+            for ex in all_slice.iter() {
                 if seen_ids.insert(ex.id.clone()) {
                     results.push((ex.clone(), false));
                 }
@@ -80,13 +124,13 @@ pub fn Exercises() -> Element {
             // so that muscle, category, equipment, etc. are all searchable.
             let db_i18n = db_i18n_sig.read();
             let db_i18n_ref = Some(&*db_i18n).filter(|m| !m.is_empty());
-            let custom_results = exercise_db::search_exercises(&custom, &query, db_i18n_ref);
+            let custom_results = exercise_db::search_exercises(custom_slice, &query, db_i18n_ref);
             for ex in custom_results {
                 if seen_ids.insert(ex.id.clone()) {
                     results.push((ex.clone(), true));
                 }
             }
-            let db_results = exercise_db::search_exercises(&all, &query, db_i18n_ref);
+            let db_results = exercise_db::search_exercises(all_slice, &query, db_i18n_ref);
             for ex in db_results {
                 if seen_ids.insert(ex.id.clone()) {
                     results.push((ex.clone(), false));
@@ -175,6 +219,50 @@ pub fn Exercises() -> Element {
                     to: Route::AddExercise {},
                     title: t!("add-exercise"),
                     "+"
+                }
+            }
+            // Active filter chips – click to remove the filter.
+            if !active_filters.read().is_empty() {
+                div { class: "filter-chips",
+                    for (i, filter) in active_filters.read().iter().enumerate() {
+                        button {
+                            class: "filter-chip active",
+                            title: t!("filter-remove"),
+                            onclick: move |_| {
+                                let mut filters = active_filters.write();
+                                if i < filters.len() {
+                                    filters.remove(i);
+                                }
+                                visible_count.set(PAGE_SIZE);
+                            },
+                            "{filter.label()} ✕"
+                        }
+                    }
+                }
+            }
+            // Filter suggestion buttons – shown when the search term matches
+            // an attribute value.  Clicking activates the filter, clears
+            // the search input, and allows the user to search within the
+            // filtered results.
+            if !filter_suggestions.read().is_empty() {
+                div { class: "filter-chips",
+                    for suggestion in filter_suggestions.read().iter() {
+                        if active_filters.read().len() < MAX_FILTERS {
+                            button {
+                                class: "filter-chip suggestion",
+                                title: t!("filter-add"),
+                                onclick: {
+                                    let suggestion = suggestion.clone();
+                                    move |_| {
+                                        active_filters.write().push(suggestion.clone());
+                                        search_query.set(String::new());
+                                        visible_count.set(PAGE_SIZE);
+                                    }
+                                },
+                                "🔍 {suggestion.label()}"
+                            }
+                        }
+                    }
                 }
             }
         }

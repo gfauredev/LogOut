@@ -13,6 +13,8 @@ start-new-workout = Start New Workout
 browse-exercises = Browse { $count } exercises
 search-placeholder = Search exercises, muscles, or categories...
 add-exercise = Add Custom Exercise
+filter-add = Activate filter
+filter-remove = Remove filter
 
 ## Exercise card
 exercise-edit = Edit
