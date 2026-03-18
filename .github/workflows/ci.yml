@@ -1,5 +1,6 @@
 on:
   pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
     branches:
       - main
     paths-ignore:
@@ -20,6 +21,7 @@ permissions:
 
 jobs:
   coverage:
+    if: github.event_name != 'pull_request' || github.event.pull_request.draft == false
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -82,6 +84,7 @@ jobs:
         fi
 
   lighthouse:
+    if: github.event_name != 'pull_request' || github.event.pull_request.draft == false
     needs: coverage
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -140,6 +143,7 @@ jobs:
         body: ${{ steps.lighthouse_results.outputs.BODY }}
 
   e2e-web:
+    if: github.event_name != 'pull_request' || github.event.pull_request.draft == false
     needs: coverage
     runs-on: ubuntu-latest
     timeout-minutes: 40

@@ -3,12 +3,14 @@ on:
     paths:
       - .github/workflows/copilot-setup-steps.yml
   pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
     paths:
       - .github/workflows/copilot-setup-steps.yml
   workflow_dispatch:
 
 jobs:
   copilot-setup-steps:
+    if: github.event_name != 'pull_request' || github.event.pull_request.draft == false
     runs-on: ubuntu-latest
     permissions:
       contents: read
