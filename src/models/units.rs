@@ -7,7 +7,7 @@ pub struct Weight(pub u16);
 
 impl fmt::Display for Weight {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        if self.0 % 10 == 0 {
+        if self.0.is_multiple_of(10) {
             write!(f, "{} kg", self.0 / 10)
         } else {
             write!(f, "{:.1} kg", f64::from(self.0) / 10.0)
@@ -22,7 +22,7 @@ pub struct Distance(pub u32);
 impl fmt::Display for Distance {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         if self.0 >= 1000 {
-            if self.0 % 1000 == 0 {
+            if self.0.is_multiple_of(1000) {
                 write!(f, "{} km", self.0 / 1000)
             } else {
                 write!(f, "{:.2} km", f64::from(self.0) / 1000.0)

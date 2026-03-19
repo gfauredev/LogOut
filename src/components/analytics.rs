@@ -305,8 +305,8 @@ fn ChartView(data: SeriesData, colors: Vec<&'static str>) -> Element {
                 .collect();
             let (unit, scale) = adapt_metric_unit(*metric, &raw_y);
             let scaled: Vec<f64> = raw_y.iter().map(|y| y * scale).collect();
-            let s_min = scaled.iter().cloned().fold(f64::INFINITY, f64::min);
-            let s_max = scaled.iter().cloned().fold(f64::NEG_INFINITY, f64::max);
+            let s_min = scaled.iter().copied().fold(f64::INFINITY, f64::min);
+            let s_max = scaled.iter().copied().fold(f64::NEG_INFINITY, f64::max);
             let rng = if (s_max - s_min).abs() < f64::EPSILON {
                 1.0
             } else {

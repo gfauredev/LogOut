@@ -107,13 +107,13 @@ pub fn Exercises() -> Element {
         if query.is_empty() {
             // No text query – just filters (or none at all).
             // Add all user-created exercises first (they have priority)
-            for ex in custom_slice.iter() {
+            for ex in custom_slice {
                 if seen_ids.insert(ex.id.clone()) {
                     results.push((ex.clone(), true));
                 }
             }
             // Add all DB exercises (no hard limit – scroll pagination handles display)
-            for ex in all_slice.iter() {
+            for ex in all_slice {
                 if seen_ids.insert(ex.id.clone()) {
                     results.push((ex.clone(), false));
                 }

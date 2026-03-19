@@ -179,27 +179,28 @@ pub fn More() -> Element {
 
     // onchange handlers for the hidden file inputs
     let on_sessions_file_change = move |_| {
-        let cb = handle_sessions_json.clone();
         #[cfg(target_arch = "wasm32")]
         spawn(async move {
             if let Some(json) = read_file_input("import-sessions-input").await {
-                cb(json);
+                handle_sessions_json(json);
             }
         });
         #[cfg(not(target_arch = "wasm32"))]
-        let _ = cb;
+        let _ = handle_sessions_json;
     };
 
     let on_exercises_file_change = move |_| {
-        let cb = handle_exercises_json.clone();
         #[cfg(target_arch = "wasm32")]
-        spawn(async move {
-            if let Some(json) = read_file_input("import-exercises-input").await {
-                cb(json);
-            }
-        });
+        {
+            let mut cb = handle_exercises_json;
+            spawn(async move {
+                if let Some(json) = read_file_input("import-exercises-input").await {
+                    cb(json);
+                }
+            });
+        }
         #[cfg(not(target_arch = "wasm32"))]
-        let _ = cb;
+        let _ = handle_exercises_json;
     };
 
     // ── Confirmation modal helpers ────────────────────────────────────────────
@@ -412,19 +413,19 @@ fn trigger_download(filename: &str, content: &str) {
         return;
     };
     blob_parts.push(&wasm_bindgen::JsValue::from_str(content));
-    let mut props = web_sys::BlobPropertyBag::new();
-    props.type_("application/json");
-    let Ok(blob) =
-        web_sys::Blob::new_with_str_sequence_and_options(&blob_parts, &props)
-    else {
+    let props = web_sys::BlobPropertyBag::new();
+    props.set_type("application/json");
+    let Ok(blob) = web_sys::Blob::new_with_str_sequence_and_options(&blob_parts, &props) else {
         return;
     };
     let Ok(url) = web_sys::Url::create_object_url_with_blob(&blob) else {
         return;
     };
-    let Ok(anchor) = document
-        .create_element("a")
-        .and_then(|el| el.dyn_into::<web_sys::HtmlAnchorElement>())
+    let Ok(anchor): Result<web_sys::HtmlAnchorElement, _> =
+        document.create_element("a").and_then(|el| {
+            el.dyn_into::<web_sys::HtmlAnchorElement>()
+                .map_err(|_| wasm_bindgen::JsValue::NULL)
+        })
     else {
         let _ = web_sys::Url::revoke_object_url(&url);
         return;
@@ -464,10 +465,7 @@ async fn read_file_input(id: &str) -> Option<String> {
     use wasm_bindgen::JsCast;
 
     let document = web_sys::window()?.document()?;
-    let input: web_sys::HtmlInputElement = document
-        .get_element_by_id(id)?
-        .dyn_into()
-        .ok()?;
+    let input: web_sys::HtmlInputElement = document.get_element_by_id(id)?.dyn_into().ok()?;
     let files = input.files()?;
     let file = files.get(0)?;
 
@@ -479,10 +477,9 @@ async fn read_file_input(id: &str) -> Option<String> {
             let result = reader_clone.result().unwrap_or(wasm_bindgen::JsValue::NULL);
             let _ = resolve.call1(&wasm_bindgen::JsValue::NULL, &result);
         });
-        let onerror =
-            wasm_bindgen::closure::Closure::once(move |_: wasm_bindgen::JsValue| {
-                let _ = reject.call0(&wasm_bindgen::JsValue::NULL);
-            });
+        let onerror = wasm_bindgen::closure::Closure::once(move |_: wasm_bindgen::JsValue| {
+            let _ = reject.call0(&wasm_bindgen::JsValue::NULL);
+        });
         reader.set_onload(Some(onload.as_ref().unchecked_ref()));
         reader.set_onerror(Some(onerror.as_ref().unchecked_ref()));
         onload.forget();

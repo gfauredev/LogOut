@@ -38,24 +38,23 @@ pub fn Home() -> Element {
     // Injects a scroll listener that sends a message whenever the user is near
     // the bottom; Rust receives it and increments visible_count.
     use_hook(move || {
-        let js = format!(
-            r"
-            (function() {{
-                const handler = function() {{
+        let js = r"
+            (function() {
+                const handler = function() {
                     var el = document.documentElement;
                     var scrollTop = window.scrollY || el.scrollTop || 0;
                     var clientHeight = el.clientHeight || window.innerHeight || 0;
                     var scrollHeight = el.scrollHeight || 0;
-                    if (scrollHeight > 0 && scrollTop + clientHeight >= scrollHeight - 300) {{
+                    if (scrollHeight > 0 && scrollTop + clientHeight >= scrollHeight - 300) {
                         dioxus.send(true);
-                    }}
-                }};
+                    }
+                };
                 window.addEventListener('scroll', handler);
                 // Dioxus eval will automatically clean up when the future is dropped
                 // but we can also handle it if we want.
-            }})()
+            })()
             "
-        );
+        .to_string();
         spawn(async move {
             let mut eval = dioxus::prelude::document::eval(&js);
             while eval.recv::<bool>().await.is_ok() {
