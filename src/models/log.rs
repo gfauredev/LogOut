@@ -1,7 +1,7 @@
-use serde::{Deserialize, Serialize};
 use super::enums::{Category, Force};
 use super::exercise_type_tag;
-use super::units::{Weight, Distance};
+use super::units::{Distance, Weight};
+use serde::{Deserialize, Serialize};
 
 /// A single completed (or in-progress) exercise within a [`WorkoutSession`].
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]

@@ -1,6 +1,6 @@
-use serde::{Deserialize, Serialize};
 use super::log::ExerciseLog;
-use super::{DATA_VERSION, get_current_timestamp};
+use super::{get_current_timestamp, DATA_VERSION};
+use serde::{Deserialize, Serialize};
 
 /// A collection of exercise logs performed in one workout bout.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -200,7 +200,7 @@ mod tests {
             paused_at: None,
         };
         assert_eq!(s.duration_seconds(), 1000);
-        
+
         // With pause
         s.paused_at = Some(1500);
         assert_eq!(s.duration_seconds(), 500);

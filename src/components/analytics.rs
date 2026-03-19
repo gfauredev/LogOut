@@ -130,9 +130,7 @@ pub fn Analytics() -> Element {
             .read()
             .iter()
             .enumerate()
-            .filter_map(|(i, (metric, opt_id))| {
-                opt_id.as_ref().map(|id| (i, *metric, id.clone()))
-            })
+            .filter_map(|(i, (metric, opt_id))| opt_id.as_ref().map(|id| (i, *metric, id.clone())))
             .map(|(i, metric, exercise_id)| {
                 let mut points = Vec::new();
 
@@ -338,27 +336,27 @@ fn ChartView(data: SeriesData, colors: Vec<&'static str>) -> Element {
     };
 
     // ── Cursor values: for each series find the nearest point to cursor_ts ──
-    let cursor_values: Vec<(usize, String, f64, &'static str)> =
-        if let Some(ts) = *cursor_ts.read() {
-            data.iter()
-                .filter_map(|(slot_idx, name, metric, points)| {
-                    if points.is_empty() {
-                        return None;
-                    }
-                    let axis_idx = distinct_metrics.iter().position(|m| m == metric)?;
-                    let (unit, scale, _, _, _) = axes[axis_idx];
-                    let nearest = points.iter().min_by(|(t1, _), (t2, _)| {
-                        (t1 - ts)
-                            .abs()
-                            .partial_cmp(&(t2 - ts).abs())
-                            .unwrap_or(std::cmp::Ordering::Equal)
-                    })?;
-                    Some((*slot_idx, name.clone(), nearest.1 * scale, unit))
-                })
-                .collect()
-        } else {
-            Vec::new()
-        };
+    let cursor_values: Vec<(usize, String, f64, &'static str)> = if let Some(ts) = *cursor_ts.read()
+    {
+        data.iter()
+            .filter_map(|(slot_idx, name, metric, points)| {
+                if points.is_empty() {
+                    return None;
+                }
+                let axis_idx = distinct_metrics.iter().position(|m| m == metric)?;
+                let (unit, scale, _, _, _) = axes[axis_idx];
+                let nearest = points.iter().min_by(|(t1, _), (t2, _)| {
+                    (t1 - ts)
+                        .abs()
+                        .partial_cmp(&(t2 - ts).abs())
+                        .unwrap_or(std::cmp::Ordering::Equal)
+                })?;
+                Some((*slot_idx, name.clone(), nearest.1 * scale, unit))
+            })
+            .collect()
+    } else {
+        Vec::new()
+    };
 
     rsx! {
         svg {
