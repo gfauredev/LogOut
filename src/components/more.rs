@@ -192,10 +192,10 @@ pub fn More() -> Element {
     let on_exercises_file_change = move |_| {
         #[cfg(target_arch = "wasm32")]
         {
-            let mut cb = handle_exercises_json;
+            let mut handler = handle_exercises_json;
             spawn(async move {
                 if let Some(json) = read_file_input("import-exercises-input").await {
-                    cb(json);
+                    handler(json);
                 }
             });
         }
