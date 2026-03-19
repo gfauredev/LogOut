@@ -204,28 +204,11 @@ checks that run every Sunday at midnight on the `main` branch.
 
 ## TODO
 
-- Make search find all the matching results, potentially defering least matching
-  ones to no hinder performance (currently "push-up" doesn’t even finds push-up)
-- Improve search algorithm, like "push-up" should be the first result when
-  searching "push-up"; make clever suggestions
-- In Exercise List, when the search term matches or nearly matches an existing
-  attribute value, displays a button that allows to hard-filter by it; once
-  filter is activated, clear the search input and allow user to search normally
-  within the filtered results; click again on the filter button to disable
-  - Allow to stack up to 4 filters, contradictory ones returning their union
-- ~~Allow search with localized exercises names and tags (in addition to
-  english)~~
-- ~~Fix favicon downloading but not showing (x-unknown-content-type)~~
-- ~~Add pause button in Active Session that pauses timers~~
-- ~~Reorganize CSS in structure, component, context, unique files~~
-- ~~Make all Maestro Web E2E tests pass, either by fixing the code or the test~~
-- ~~Make a flake.nix app that builds and signs Android APK, use it in CD~~
-- ~~Make a flake.nix app that runs Maestro Android E2E Tests, use it in weekly~~
+- Make all Maestro Web E2E tests pass, either by fixing the code or the test
 - ~~Coverage: exclude any non-project file, print number of passed/total in PR~~
 - ~~Print summary table of Lighthouse Audit in PR comment with every metrics~~
 - ~~Setup weekly dependencies updates with renovate~~
 - Display last line of maestro output outside `<details>`
-- Fix ICO favicon
 - Make layout and palette harmonious but minimal, efficient
   - Equalize spacings, sizes, net but not wasteful
   - Harmonize Rest timer text color with background when rest is due
