@@ -24,6 +24,8 @@ jobs:
       id-token: write
     steps:
     - uses: actions/checkout@v6
+      with:
+        lfs: true
     - uses: cachix/install-nix-action@v31
       with:
         github_access_token: ${{ secrets.GITHUB_TOKEN }}
