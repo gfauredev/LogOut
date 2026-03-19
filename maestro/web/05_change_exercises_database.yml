@@ -2,8 +2,8 @@ url: http://localhost:8080/LogOut/ # Change Exercises Database
 ---
 # User Story: Change Exercises Database
 - launchApp
-- tapOn: "ℹ️"
-- assertVisible: "ℹ️ Credits"
+- tapOn: "⚙️"
+- assertVisible: "⚙️ More"
 # Tap on the URL input and type the test database address
 - tapOn: "⚙️ Exercise Database URL"
 - tapOn:

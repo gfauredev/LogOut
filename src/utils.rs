@@ -140,6 +140,7 @@ pub enum DeepLinkAction {
 /// - `logworkout://exercises[?q=<query>]`
 /// - `logworkout://analytics`
 /// - `logworkout://credits[?db_url=<url>]`
+/// - `logworkout://more[?db_url=<url>]`
 /// - `logworkout://exercise/add`
 /// - `logworkout://session/start[?exercises=<id>,<id>,…]`
 /// - `logworkout://session/create?exercises=<id>:<kg>:<reps>,…`
@@ -205,11 +206,11 @@ fn parse_deep_link_path(path: &str, query: &str) -> Option<DeepLinkAction> {
             }
         }
         "analytics" => Some(DeepLinkAction::Navigate("/analytics".to_string())),
-        "credits" => {
+        "credits" | "more" => {
             if let Some(url) = get_query_param(query, "db_url") {
                 Some(DeepLinkAction::SetDbUrl(url))
             } else {
-                Some(DeepLinkAction::Navigate("/credits".to_string()))
+                Some(DeepLinkAction::Navigate("/more".to_string()))
             }
         }
         "exercise/add" => Some(DeepLinkAction::Navigate("/add-exercise".to_string())),
@@ -328,7 +329,7 @@ fn route_name_to_path(name: &str) -> String {
         "home" | "/" => "/".to_string(),
         "exercises" => "/exercises".to_string(),
         "analytics" => "/analytics".to_string(),
-        "credits" => "/credits".to_string(),
+        "credits" | "more" => "/more".to_string(),
         "add-exercise" | "add_exercise" => "/add-exercise".to_string(),
         other => format!("/{other}"),
     }
@@ -509,7 +510,15 @@ mod tests {
     fn parse_deep_link_credits_no_url() {
         assert_eq!(
             super::parse_deep_link("logworkout://credits"),
-            Some(DeepLinkAction::Navigate("/credits".to_string()))
+            Some(DeepLinkAction::Navigate("/more".to_string()))
+        );
+    }
+
+    #[test]
+    fn parse_deep_link_more_no_url() {
+        assert_eq!(
+            super::parse_deep_link("logworkout://more"),
+            Some(DeepLinkAction::Navigate("/more".to_string()))
         );
     }
 

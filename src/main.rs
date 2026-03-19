@@ -17,7 +17,7 @@ mod services;
 pub mod utils;
 
 use components::{
-    AddExercise, Analytics, Credits, EditExercise, Exercises, GlobalSessionHeader, Home,
+    AddExercise, Analytics, EditExercise, Exercises, GlobalSessionHeader, Home, More,
 };
 
 /// Global context signal for the congratulations toast shown after completing a session.
@@ -70,8 +70,8 @@ enum Route {
     Exercises {},
     #[route("/analytics")]
     Analytics {},
-    #[route("/credits")]
-    Credits {},
+    #[route("/more")]
+    More {},
     #[route("/add-exercise")]
     AddExercise {},
     #[route("/edit-exercise/:id")]
@@ -281,7 +281,7 @@ fn path_to_route(path: &str) -> Route {
         "/" | "home" => Route::Home {},
         "/exercises" | "exercises" => Route::Exercises {},
         "/analytics" | "analytics" => Route::Analytics {},
-        "/credits" | "credits" => Route::Credits {},
+        "/credits" | "credits" | "/more" | "more" => Route::More {},
         "/add-exercise" | "add-exercise" => Route::AddExercise {},
         other => {
             // Try to parse /edit-exercise/:id
