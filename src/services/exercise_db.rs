@@ -557,20 +557,18 @@ pub fn exercise_matches_filters(exercise: &Exercise, filters: &[SearchFilter]) -
     if filters.is_empty() {
         return true;
     }
-    // Build groups: collect distinct kinds, then check each group as an OR.
-    // We iterate filters twice but the list is always ≤ 4 elements, so this
-    // is effectively O(1).
-    let mut handled_kinds: Vec<std::mem::Discriminant<SearchFilter>> = Vec::new();
+    // Build groups by iterating once to find the first unseen kind, then checking
+    // all filters of that kind as an OR group.  The list is always ≤ 4 elements.
+    let mut handled: Vec<&SearchFilter> = Vec::new();
     for filter in filters {
-        let kind = std::mem::discriminant(filter);
-        if handled_kinds.contains(&kind) {
+        if handled.iter().any(|h| h.same_kind(filter)) {
             continue; // already processed this group
         }
-        handled_kinds.push(kind);
+        handled.push(filter);
         // OR: exercise must satisfy at least one filter of this kind.
         let group_ok = filters
             .iter()
-            .filter(|f| std::mem::discriminant(*f) == kind)
+            .filter(|f| f.same_kind(filter))
             .any(|f| f.matches(exercise));
         if !group_ok {
             return false;

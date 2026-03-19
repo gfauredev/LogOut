@@ -103,9 +103,7 @@ fn SessionCard(session: WorkoutSession) -> Element {
     let mut search_signal = use_context::<ExerciseSearchSignal>().0;
     let navigator = use_navigator();
 
-    let duration = session
-        .end_time
-        .map_or(0, |end| end.saturating_sub(session.start_time));
+    let duration = session.duration_seconds();
     let date_str = format_session_date(session.start_time);
 
     // Collect unique exercise names (deduplicated by ID, preserving order)
