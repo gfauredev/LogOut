@@ -2,7 +2,7 @@
 //!
 //! This module defines the core entities (Exercises, Logs, Sessions) and their
 //! supporting types (Enums, Units). All types are serialisable to JSON for
-//! persistence in IndexedDB or SQLite.
+//! persistence in `IndexedDB` or `SQLite`.
 
 pub mod enums;
 pub mod exercise;

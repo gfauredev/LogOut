@@ -300,6 +300,7 @@ const SCORE_I18N_TAG: u32 = 15;
 /// Name matches always outrank attribute (muscle/category/…) matches so that
 /// e.g. "Push-Up" appears before "Bench Press" (force=push) when searching
 /// "push-up".
+#[allow(clippy::too_many_lines)]
 fn score_exercise(
     exercise: &Exercise,
     query_lower: &str,
@@ -550,7 +551,7 @@ impl SearchFilter {
 
 /// Returns true when `exercise` passes **all** active filters.
 ///
-/// Filters of the same variant form an OR group; OR groups are ANDed together.
+/// Filters of the same variant form an OR group; OR groups are `AND`ed together.
 pub fn exercise_matches_filters(exercise: &Exercise, filters: &[SearchFilter]) -> bool {
     if filters.is_empty() {
         return true;
