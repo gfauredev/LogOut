@@ -1,9 +1,9 @@
-url: http://localhost:8080/LogOut/ # Navigate to Credits
+url: http://localhost:8080/LogOut/ # Navigate to More
 ---
-# User Story: Navigate to Credits
+# User Story: Navigate to More
 - launchApp
-# Start on Home page (different from Credits)
+# Start on Home page (different from More)
 - assertVisible: "💪 LogOut"
-# Tap the Credits button in the bottom nav
-- tapOn: "ℹ️"
-- assertVisible: "ℹ️ Credits"
+# Tap the More button in the bottom nav
+- tapOn: "⚙️"
+- assertVisible: "⚙️ More"

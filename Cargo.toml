@@ -25,6 +25,10 @@ web-sys = { version = "0.3", features = [
     "ServiceWorkerContainer", "ServiceWorkerRegistration",
     "Document", "Element", "EventTarget", "VisibilityState",
     "Notification", "NotificationPermission", "NotificationOptions",
+    "Blob", "BlobPropertyBag", "Url",
+    "HtmlAnchorElement", "HtmlInputElement",
+    "FileList", "File", "FileReader",
+    "ProgressEvent",
 ] }
 wasm-bindgen = "0.2"
 wasm-bindgen-futures = "0.4"

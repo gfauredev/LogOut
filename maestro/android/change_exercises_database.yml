@@ -6,9 +6,9 @@ appId: com.gfaure.logout
 - launchApp:
     permissions:
       notifications: deny # Dismiss notification prompt to focus on the test
-# Navigate to Credits via deep link
-- openLink: "logworkout://credits"
-- assertVisible: "ℹ️ Credits"
+# Navigate to More via deep link
+- openLink: "logworkout://more"
+- assertVisible: "⚙️ More"
 # The URL input should show the default URL
 - assertVisible: "https://gfauredev.github.io/free-exercise-db/"
 # Change the database URL to the official mirror

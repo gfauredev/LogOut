@@ -6,7 +6,7 @@ pub enum ActiveTab {
     Exercises,
     Sessions,
     Analytics,
-    Credits,
+    More,
 }
 
 #[component]
@@ -29,9 +29,9 @@ pub fn BottomNav(active_tab: ActiveTab) -> Element {
                 "📊"
             }
             Link {
-                class: if active_tab == ActiveTab::Credits { "credits active" } else { "credits" },
-                to: Route::Credits {},
-                "ℹ️"
+                class: if active_tab == ActiveTab::More { "more active" } else { "more" },
+                to: Route::More {},
+                "⚙️"
             }
         }
     }
