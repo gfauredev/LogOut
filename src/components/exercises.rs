@@ -12,9 +12,6 @@ const MAX_FILTERS: usize = 4;
 const PAGE_SIZE: usize = 20;
 /// Pixels from the bottom of the page at which an auto-pagination is triggered.
 const SCROLL_THRESHOLD_PX: u32 = 300;
-/// Polling interval (ms) for the non-wasm scroll detection loop.
-#[cfg(not(target_arch = "wasm32"))]
-const SCROLL_POLL_INTERVAL_MS: u32 = 400;
 
 #[component]
 pub fn Exercises() -> Element {
