@@ -1,5 +1,6 @@
-use crate::models::{Category, DbI18n, Equipment, Exercise, ExerciseI18n, ExerciseLangEntry,
-    Force, Level, Muscle};
+use crate::models::{
+    Category, DbI18n, Equipment, Exercise, ExerciseI18n, ExerciseLangEntry, Force, Level, Muscle,
+};
 use dioxus::prelude::*;
 
 /// Newtype wrapper for the exercise-database signal so its `TypeId` is distinct
@@ -403,8 +404,7 @@ fn score_exercise(
         // Schema2 normalised IDs as extra search tokens.
         let id_words = exercise.id.to_lowercase().replace(['_', '-'], " ");
         if id_words.contains(query_lower)
-            || (!tokens.is_empty()
-                && tokens.iter().all(|t| id_words.contains(t.as_str())))
+            || (!tokens.is_empty() && tokens.iter().all(|t| id_words.contains(t.as_str())))
         {
             return SCORE_ID_TOKENS;
         }
@@ -481,8 +481,7 @@ pub fn search_exercises<'a>(
     let mut scored: Vec<(u32, &Exercise)> = exercises
         .iter()
         .filter_map(|exercise| {
-            let score =
-                score_exercise(exercise, &query_lower, &query_norm, &tokens, db_i18n);
+            let score = score_exercise(exercise, &query_lower, &query_norm, &tokens, db_i18n);
             if score > 0 {
                 Some((score, exercise))
             } else {
@@ -543,8 +542,7 @@ impl SearchFilter {
             Self::Equipment(e) => exercise.equipment.as_ref() == Some(e),
             Self::Level(l) => exercise.level.as_ref() == Some(l),
             Self::Muscle(m) => {
-                exercise.primary_muscles.contains(m)
-                    || exercise.secondary_muscles.contains(m)
+                exercise.primary_muscles.contains(m) || exercise.secondary_muscles.contains(m)
             }
         }
     }
@@ -1818,23 +1816,14 @@ mod tests {
 
     #[test]
     fn filter_label_is_human_readable() {
-        assert_eq!(
-            SearchFilter::Category(Category::Cardio).label(),
-            "🏷 cardio"
-        );
+        assert_eq!(SearchFilter::Category(Category::Cardio).label(), "🏷 cardio");
         assert_eq!(SearchFilter::Force(Force::Push).label(), "⚡ push");
         assert_eq!(
             SearchFilter::Equipment(Equipment::Barbell).label(),
             "🔧 barbell"
         );
-        assert_eq!(
-            SearchFilter::Level(Level::Beginner).label(),
-            "📊 beginner"
-        );
-        assert_eq!(
-            SearchFilter::Muscle(Muscle::Biceps).label(),
-            "💪 biceps"
-        );
+        assert_eq!(SearchFilter::Level(Level::Beginner).label(), "📊 beginner");
+        assert_eq!(SearchFilter::Muscle(Muscle::Biceps).label(), "💪 biceps");
     }
 
     #[test]

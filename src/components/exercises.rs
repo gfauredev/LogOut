@@ -1,7 +1,9 @@
 use crate::components::{ActiveTab, BottomNav, ExerciseCard};
 use crate::models::Exercise;
+use crate::services::exercise_db::{
+    detect_filter_suggestions, exercise_matches_filters, SearchFilter,
+};
 use crate::services::{exercise_db, storage};
-use crate::services::exercise_db::{SearchFilter, detect_filter_suggestions, exercise_matches_filters};
 use crate::{DbI18nSignal, ExerciseSearchSignal, Route};
 use dioxus::prelude::*;
 use dioxus_i18n::t;

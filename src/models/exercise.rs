@@ -1,7 +1,7 @@
-use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
 use super::enums::{Category, Equipment, Force, Level, Mechanic, Muscle};
 use super::exercise_type_tag;
+use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 
 /// Sub-path for exercise images within the exercise database repository.
 pub(crate) const EXERCISES_IMAGE_SUB_PATH: &str = "exercises/";
