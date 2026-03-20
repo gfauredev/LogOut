@@ -51,7 +51,11 @@ button.yes {
 }
 
 button.no {
-  border-color: var(--back); // Delete 🗑️ / Cancel ❌
+  border-color: var(--back); // Cancel ❌ / Go Back
+}
+
+button.delete {
+  border-color: var(--delete); // Delete permanently 🗑️
 }
 
 // ── Input row layout ───────────────────────────────────────────────────────
@@ -73,7 +77,7 @@ button.no {
 }
 
 input.invalid {
-  border-color: var(--back);
+  border-color: var(--delete);
 }
 
 // ── Muscle tag chips ───────────────────────────────────────────────────────
@@ -302,16 +306,62 @@ ul.results {
 // ── Rest and exercise timers ───────────────────────────────────────────────
 .rest-timer {
   text-align: center;
-  padding: var(--spacing) var(--spacing);
-  font-size: 1.2em;
+  padding: calc(var(--spacing) / 2) var(--spacing);
+  font-size: 1em;
   font-weight: bold;
-  background: color-mix(in srgb, var(--save) 15%, transparent);
   color: var(--save);
-  border-bottom: 1px solid var(--separation);
 
   &.exceeded {
-    background: var(--back);
+    color: var(--delete); // red font when rest time is up
   }
+}
+
+// ── Session header timer block ─────────────────────────────────────────────
+.session-timers {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  cursor: pointer;
+  gap: 2px;
+}
+
+// ── Completed-exercise action buttons (stacked on the right) ──────────────
+.header-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  align-items: flex-end;
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
+// ── Exercise input grid: label | − | value | + | ATH ─────────────────────
+.exercise-inputs-grid {
+  display: grid;
+  grid-template-columns: minmax(5ch, auto) var(--btn-width) 1fr var(--btn-width) auto;
+  gap: var(--spacing);
+  align-items: center;
+  margin-bottom: var(--spacing);
+}
+
+.exercise-inputs-grid > .input-row {
+  display: contents;
+}
+
+// All-time high value displayed in the ATH column
+.ath {
+  color: var(--more);
+  font-size: 0.85em;
+  white-space: nowrap;
+}
+
+// Duration row shown above the input grid
+.duration-row {
+  display: flex;
+  gap: var(--spacing);
+  align-items: center;
+  margin-bottom: var(--spacing);
+  flex-wrap: wrap;
 }
 
 .exercise-timer {

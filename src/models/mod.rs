@@ -49,6 +49,17 @@ pub fn format_time(seconds: u64) -> String {
     }
 }
 
+/// Like [`format_time`] but accepts a signed integer so a negative countdown
+/// can be rendered with a leading `"-"`.
+#[must_use]
+pub fn format_time_i64(seconds: i64) -> String {
+    if seconds < 0 {
+        format!("-{}", format_time((-seconds) as u64))
+    } else {
+        format_time(seconds as u64)
+    }
+}
+
 /// Shared logic for returning the CSS class and icon for an exercise type tag.
 pub(crate) fn exercise_type_tag(
     category: Category,
@@ -82,5 +93,18 @@ mod tests {
         let ts = get_current_timestamp();
         // Greater than March 2024
         assert!(ts > 1_710_000_000);
+    }
+
+    #[test]
+    fn format_time_i64_positive_delegates_to_format_time() {
+        assert_eq!(format_time_i64(0), "00:00");
+        assert_eq!(format_time_i64(90), "01:30");
+        assert_eq!(format_time_i64(3661), "01:01:01");
+    }
+
+    #[test]
+    fn format_time_i64_negative_prefixes_minus() {
+        assert_eq!(format_time_i64(-1), "-00:01");
+        assert_eq!(format_time_i64(-90), "-01:30");
     }
 }

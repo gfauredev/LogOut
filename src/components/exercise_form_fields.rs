@@ -234,7 +234,7 @@ pub fn ExerciseFormFields(
                 ol { for (idx, instruction) in instructions_list.read().iter().enumerate() {
                     li { key: "{idx}",
                         span { "{instruction}" }
-                        button { class: "no",
+                        button { class: "delete",
                             onclick: move |_| remove_instruction(idx),
                             "🗑️"
                         }

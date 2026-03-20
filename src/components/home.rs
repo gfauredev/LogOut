@@ -128,14 +128,22 @@ fn SessionCard(session: WorkoutSession) -> Element {
             .collect()
     };
 
-    // Collect exercise IDs in order (including repeats) for the repeat action.
-    // Each exercise is included as many times as it was performed so that the
-    // pre-added queue in the new session mirrors the original session exactly.
-    let pending_ids: Vec<String> = session
-        .exercise_logs
-        .iter()
-        .map(|log| log.exercise_id.clone())
-        .collect();
+    // Collect unique exercise IDs in order (deduplicated, preserving first occurrence)
+    // for the repeat action so each exercise appears only once in the pre-added queue.
+    let pending_ids: Vec<String> = {
+        let mut seen = std::collections::HashSet::new();
+        session
+            .exercise_logs
+            .iter()
+            .filter_map(|log| {
+                if seen.insert(log.exercise_id.clone()) {
+                    Some(log.exercise_id.clone())
+                } else {
+                    None
+                }
+            })
+            .collect()
+    };
 
     // Up to 9 tags visible initially (~3 lines of 3 tags each)
     let total_unique = unique_exercises.len();
@@ -166,7 +174,7 @@ fn SessionCard(session: WorkoutSession) -> Element {
                         "🔁"
                     }
                 }
-                button { class: "no",
+                button { class: "delete",
                     onclick: move |_| show_delete_confirm.set(true),
                     title: "Delete session",
                     "🗑️"
@@ -212,13 +220,13 @@ fn SessionCard(session: WorkoutSession) -> Element {
                                     show_delete_confirm.set(false);
                                 }
                             },
-                            class: "no label",
+                            class: "delete label",
                             "🗑️ Delete"
                         }
                         button {
                             onclick: move |_| show_delete_confirm.set(false),
-                            class: "yes", // Safer
-                            "❌"
+                            class: "no label",
+                            "❌ Cancel"
                         }
                     }
                 }

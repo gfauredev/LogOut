@@ -4,14 +4,11 @@ use crate::models::{
     WorkoutSession,
 };
 use crate::services::{exercise_db, storage};
-use crate::{DbI18nSignal, Route};
+use crate::{DbI18nSignal, RestDurationSignal, Route};
 use dioxus::prelude::*;
 
 use super::session_exercise_form::ExerciseFormPanel;
 use super::session_timers::{RestTimerDisplay, SessionDurationDisplay};
-
-/// Default rest duration in seconds
-const DEFAULT_REST_DURATION: u64 = 30;
 
 /// Prefill the weight / reps / distance inputs from the last recorded log for
 /// `exercise_id`, or clear them if no prior log exists.
@@ -38,13 +35,17 @@ fn prefill_inputs_from_last_log(
     }
 }
 
-/// Sticky session header showing the elapsed timer and the cancel/finish button.
+/// Sticky session header showing the elapsed timer, rest timer, and session controls.
 #[component]
 fn SessionHeader(
     session_start_time: u64,
     session_is_active: bool,
     paused_at: Option<u64>,
     exercise_count: usize,
+    /// Timestamp when the current rest period began, or `None` when not resting.
+    rest_start_time: Option<u64>,
+    /// Configured rest duration (seconds).
+    rest_duration: u64,
     on_click_timer: EventHandler<()>,
     on_pause: EventHandler<()>,
     on_finish: EventHandler<()>,
@@ -53,12 +54,19 @@ fn SessionHeader(
     rsx! {
         header { class: "session",
             h2 { tabindex: 0, "⏱️ Active Session" }
-            time {
+            div { class: "session-timers",
                 onclick: move |_| on_click_timer.call(()),
                 title: "Click to set rest duration",
-                SessionDurationDisplay {
-                    session_start_time,
-                    session_is_active,
+                time {
+                    SessionDurationDisplay {
+                        session_start_time,
+                        session_is_active,
+                        paused_at,
+                    }
+                }
+                RestTimerDisplay {
+                    start_time: rest_start_time,
+                    rest_duration,
                     paused_at,
                 }
             }
@@ -306,32 +314,6 @@ pub fn SessionView() -> Element {
     let mut reps_input = use_signal(String::new);
     let mut distance_input = use_signal(String::new);
 
-    // Rest duration setting (configurable by clicking the timer header)
-    let rest_duration = use_signal(|| DEFAULT_REST_DURATION);
-    // show_rest_input is driven by the global ShowRestInputSignal so that
-    // the header (rendered in the layout) can toggle it from any page.
-    let show_rest_input = use_context::<crate::ShowRestInputSignal>().0;
-    let mut rest_input_value = use_signal(|| DEFAULT_REST_DURATION.to_string());
-
-    // Pre-fill the rest duration input with the current value each time the
-    // rest-input panel is opened (so the field always reflects the latest setting).
-    use_effect(move || {
-        if *show_rest_input.read() {
-            rest_input_value.set(rest_duration.read().to_string());
-        }
-    });
-
-    // Rest timer state: tracks when the last exercise was completed
-    let mut rest_start_time = use_signal(move || {
-        sessions
-            .read()
-            .iter()
-            .find(|s| s.is_active())
-            .and_then(|s| s.rest_start_time)
-    });
-
-    // Bell rung tracker: how many times the rest bell has rung this rest period
-    let mut rest_bell_count = use_signal(|| 0u64);
     // Duration bell tracker: whether the duration bell has been rung for this exercise
     let mut duration_bell_rung = use_signal(|| false);
 
@@ -381,9 +363,6 @@ pub fn SessionView() -> Element {
         let exercise_start = get_current_timestamp();
         current_exercise_start.set(Some(exercise_start));
         search_query.set(String::new());
-        // Clear rest timer when starting a new exercise
-        rest_start_time.set(None);
-        rest_bell_count.set(0);
         duration_bell_rung.set(false);
         // Persist exercise start and cleared rest timer in session
         let mut current_session = session.read().clone();
@@ -456,9 +435,6 @@ pub fn SessionView() -> Element {
         weight_input.set(String::new());
         reps_input.set(String::new());
         distance_input.set(String::new());
-        // Start rest timer
-        rest_start_time.set(Some(rest_start));
-        rest_bell_count.set(0);
         duration_bell_rung.set(false);
     };
 
@@ -476,22 +452,7 @@ pub fn SessionView() -> Element {
     };
 
     rsx! {
-        // NOTE: SessionHeader is rendered by GlobalSessionHeader in the layout.
-        if *show_rest_input.read() {
-            RestDurationInput {
-                show_rest_input,
-                rest_input_value,
-                rest_duration,
-            }
-        }
-        if current_exercise_id.read().is_none() {
-            RestTimerDisplay {
-                start_time: rest_start_time,
-                duration: rest_duration,
-                bell_count: rest_bell_count,
-                paused_at: session.read().paused_at,
-            }
-        }
+        // NOTE: SessionHeader (with rest timer) is rendered by GlobalSessionHeader in the layout.
         main { class: "session",
             if current_exercise_id.read().is_none() && !pending_ids().is_empty() {
                 PendingExercisesSection {
@@ -525,8 +486,6 @@ pub fn SessionView() -> Element {
                         current_exercise_id.set(Some(exercise_id.clone()));
                         current_exercise_start.set(Some(pending_start));
                         search_query.set(String::new());
-                        rest_start_time.set(None);
-                        rest_bell_count.set(0);
                         duration_bell_rung.set(false);
                     },
                 }
@@ -583,8 +542,8 @@ pub fn SessionView() -> Element {
 /// Sticky session header rendered in the app-level layout so it remains
 /// visible on every page while a workout session is active.
 ///
-/// Clicking the timer toggles the rest-duration input form in [`SessionView`]
-/// via the global [`crate::ShowRestInputSignal`].
+/// Clicking the timer block toggles the rest-duration input form via the
+/// global [`crate::ShowRestInputSignal`].
 /// The finish/cancel button ends or discards the session from any page.
 #[component]
 pub fn GlobalSessionHeader() -> Element {
@@ -592,7 +551,16 @@ pub fn GlobalSessionHeader() -> Element {
     let session = use_memo(move || sessions.read().iter().find(|s| s.is_active()).cloned());
 
     let mut show_rest = use_context::<crate::ShowRestInputSignal>().0;
+    let rest_duration = use_context::<RestDurationSignal>().0;
+    let mut rest_input_value = use_signal(|| 30u64.to_string());
     let mut congratulations = use_context::<crate::CongratulationsSignal>().0;
+
+    // Pre-fill the rest duration input each time the form is opened.
+    use_effect(move || {
+        if *show_rest.read() {
+            rest_input_value.set(rest_duration.read().to_string());
+        }
+    });
 
     let Some(sess) = session() else {
         return rsx! {};
@@ -602,6 +570,7 @@ pub fn GlobalSessionHeader() -> Element {
     let session_start_time = sess.start_time;
     let session_is_active = sess.is_active();
     let paused_at = sess.paused_at;
+    let rest_start_time = sess.rest_start_time;
 
     let on_pause = move |()| {
         let Some(mut s) = session() else { return };
@@ -635,12 +604,21 @@ pub fn GlobalSessionHeader() -> Element {
             session_is_active,
             paused_at,
             exercise_count,
+            rest_start_time,
+            rest_duration: *rest_duration.read(),
             on_click_timer: move |()| {
                 let current = *show_rest.peek();
                 show_rest.set(!current);
             },
             on_pause,
             on_finish,
+        }
+        if *show_rest.read() {
+            RestDurationInput {
+                show_rest_input: show_rest,
+                rest_input_value,
+                rest_duration,
+            }
         }
     }
 }

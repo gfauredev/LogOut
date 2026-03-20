@@ -1,4 +1,4 @@
-use crate::models::{format_time, get_current_timestamp};
+use crate::models::{format_time, format_time_i64, get_current_timestamp};
 use dioxus::prelude::*;
 
 /// Timer tick interval in milliseconds
@@ -99,15 +99,30 @@ pub(super) fn SessionDurationDisplay(
     rsx! { "{format_time(duration)}" }
 }
 
-/// Renders the rest timer and fires a notification when the rest period ends.
+/// Renders the rest timer inside the session header.
+///
+/// Behaviour:
+/// - When `start_time` is `None` (not currently resting): shows the configured
+///   `rest_duration` as a static reference value so the user can see the setting.
+/// - When `start_time` is `Some`: counts *down* from `rest_duration` toward zero
+///   and continues into negative values without limit.
+/// - Font colour turns red (via the `exceeded` CSS class) once the countdown
+///   reaches zero or below.
+/// - Fires a notification bell at each completed rest interval.
 #[component]
 pub(super) fn RestTimerDisplay(
-    start_time: Signal<Option<u64>>,
-    duration: Signal<u64>,
-    mut bell_count: Signal<u64>,
+    /// Timestamp when the current rest period started, or `None` when idle.
+    start_time: Option<u64>,
+    /// Configured rest duration in seconds (used for countdown and idle display).
+    rest_duration: u64,
     paused_at: Option<u64>,
 ) -> Element {
     let mut now_tick = use_signal(get_current_timestamp);
+    let mut bell_count = use_signal(|| 0u64);
+    // Track the last seen start_time so we can reset bell_count when a new
+    // rest period begins (start_time changes to a different value).
+    let mut last_seen_start = use_signal(|| start_time);
+
     use_coroutine(move |_: UnboundedReceiver<()>| async move {
         loop {
             #[cfg(target_arch = "wasm32")]
@@ -118,15 +133,25 @@ pub(super) fn RestTimerDisplay(
         }
     });
 
+    // Reset bell count whenever a new rest period begins.
+    if *last_seen_start.read() != start_time {
+        last_seen_start.set(start_time);
+        bell_count.set(0);
+    }
+
+    let Some(start) = start_time else {
+        // Not resting: display the configured rest duration as a reference.
+        return rsx! {
+            div { class: "rest-timer", "🛋️ {format_time(rest_duration)}" }
+        };
+    };
+
     // When paused, freeze the displayed time at the moment of pausing.
     let effective_now = paused_at.unwrap_or_else(|| *now_tick.read());
-    let Some(start) = *start_time.read() else {
-        return rsx! {};
-    };
     let elapsed = effective_now.saturating_sub(start);
-    let rd = *duration.read();
+    let rd = rest_duration;
 
-    // Fire bell at each completed rest interval
+    // Fire bell at each completed rest interval.
     if rd > 0 && elapsed > 0 {
         let intervals = elapsed / rd;
         let prev_count = *bell_count.read();
@@ -137,11 +162,12 @@ pub(super) fn RestTimerDisplay(
         }
     }
 
-    let exceeded = rd > 0 && elapsed >= rd;
+    let remaining = rd as i64 - elapsed as i64;
+    let exceeded = remaining <= 0;
     rsx! {
         div {
             class: if exceeded { "rest-timer exceeded" } else { "rest-timer" },
-            "🛋️ Rest: {format_time(elapsed)}"
+            "🛋️ {format_time_i64(remaining)}"
         }
     }
 }
