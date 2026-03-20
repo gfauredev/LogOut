@@ -275,7 +275,13 @@ pub fn get_exercise_bests(exercise_id: &str) -> ExerciseBests {
             if let Some(w) = log.weight_hg {
                 bests.weight_hg = Some(match bests.weight_hg {
                     None => w,
-                    Some(prev) => if w.0 > prev.0 { w } else { prev },
+                    Some(prev) => {
+                        if w.0 > prev.0 {
+                            w
+                        } else {
+                            prev
+                        }
+                    }
                 });
             }
             if let Some(r) = log.reps {
@@ -287,7 +293,13 @@ pub fn get_exercise_bests(exercise_id: &str) -> ExerciseBests {
             if let Some(d) = log.distance_m {
                 bests.distance_m = Some(match bests.distance_m {
                     None => d,
-                    Some(prev) => if d.0 > prev.0 { d } else { prev },
+                    Some(prev) => {
+                        if d.0 > prev.0 {
+                            d
+                        } else {
+                            prev
+                        }
+                    }
                 });
             }
             if let Some(dur) = log.duration_seconds() {

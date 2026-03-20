@@ -39,8 +39,7 @@ pub(super) fn ExerciseInputForm(
     let weight = weight_input.read();
     let weight_invalid = !weight.is_empty() && parse_weight_kg(&weight).is_none();
     let reps = reps_input.read();
-    let reps_invalid =
-        !reps.is_empty() && reps.parse::<u32>().map(|r| r == 0).unwrap_or(true);
+    let reps_invalid = !reps.is_empty() && reps.parse::<u32>().map(|r| r == 0).unwrap_or(true);
     let dist = distance_input.read();
     let distance_invalid = !dist.is_empty() && parse_distance_km(&dist).is_none();
 
