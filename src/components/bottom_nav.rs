@@ -29,7 +29,7 @@ pub fn BottomNav(active_tab: ActiveTab) -> Element {
                 "📊"
             }
             Link {
-                class: if active_tab == ActiveTab::More { "more active" } else { "more" },
+                class: if active_tab == ActiveTab::More { "active" } else { "" },
                 to: Route::More {},
                 "⚙️"
             }

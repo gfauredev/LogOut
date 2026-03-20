@@ -83,7 +83,7 @@ pub fn Home() -> Element {
                     }
                 }
             }
-            button { class: "icon add",
+            button { class: "icon more",
                 onclick: start_new_session,
                 title: t!("start-new-workout"),
                 "+"
@@ -174,7 +174,7 @@ fn SessionCard(session: WorkoutSession) -> Element {
                         "🔁"
                     }
                 }
-                button { class: "delete",
+                button { class: "less",
                     onclick: move |_| show_delete_confirm.set(true),
                     title: "Delete session",
                     "🗑️"
@@ -220,12 +220,12 @@ fn SessionCard(session: WorkoutSession) -> Element {
                                     show_delete_confirm.set(false);
                                 }
                             },
-                            class: "delete label",
+                            class: "less label",
                             "🗑️ Delete"
                         }
                         button {
                             onclick: move |_| show_delete_confirm.set(false),
-                            class: "no label",
+                            class: "back label",
                             "❌ Cancel"
                         }
                     }

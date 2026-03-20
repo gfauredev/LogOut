@@ -183,16 +183,16 @@ pub fn ExerciseFormFields(
                         option { value: "{muscle}", "{muscle}" }
                     }
                 }
-                button { class: "add", onclick: add_muscle, "+" }
+                button { class: "more", onclick: add_muscle, "+" }
             }
             if !muscles_list.read().is_empty() {
-                div { for muscle in muscles_list.read().iter() {
-                    button { key: "{muscle}", class: "no label",
+                ul { class: "tags", for muscle in muscles_list.read().iter() {
+                    li { button { key: "{muscle}", class: "less label",
                         onclick: {
                             let m = *muscle;
                             move |_| remove_muscle(m)
                         }, "{muscle}"
-                    }}
+                    }}}
                 }
             }
         }
@@ -207,16 +207,16 @@ pub fn ExerciseFormFields(
                         option { value: "{muscle}", "{muscle}" }
                     }
                 }
-                button { class: "add", onclick: add_secondary_muscle, "+"}
+                button { class: "more", onclick: add_secondary_muscle, "+"}
             }
             if !secondary_muscles_list.read().is_empty() {
-                div { for muscle in secondary_muscles_list.read().iter() {
-                    button { key: "{muscle}", class: "no label",
+                ul { class: "tags", for muscle in secondary_muscles_list.read().iter() {
+                    li { button { key: "{muscle}", class: "less label",
                         onclick: {
                             let m = *muscle;
                             move |_| remove_secondary_muscle(m)
                         }, "{muscle}"
-                    }}
+                    }}}
                 }
             }
         }
@@ -228,13 +228,13 @@ pub fn ExerciseFormFields(
                     value: "{instructions_input}",
                     oninput: move |evt| instructions_input.set(evt.value()),
                 }
-                button { class: "add", onclick: add_instruction, "+"}
+                button { class: "more", onclick: add_instruction, "+"}
             }
             if !instructions_list.read().is_empty() {
                 ol { for (idx, instruction) in instructions_list.read().iter().enumerate() {
                     li { key: "{idx}",
                         span { "{instruction}" }
-                        button { class: "delete",
+                        button { class: "del",
                             onclick: move |_| remove_instruction(idx),
                             "🗑️"
                         }
@@ -250,19 +250,17 @@ pub fn ExerciseFormFields(
                     value: "{image_url_input}",
                     oninput: move |evt| image_url_input.set(evt.value()),
                 }
-                button { class: "add", onclick: add_image, "+" }
+                button { class: "more", onclick: add_image, "+" }
             }
             if !images_list.read().is_empty() {
-                div {
-                    for (idx, url) in images_list.read().iter().enumerate() {
-                        div { key: "{idx}",
-                            button { class: "no label",
-                                onclick: move |_| remove_image(idx),
-                                "{url}"
-                            }
+                ul { class: "tags", for (idx, url) in images_list.read().iter().enumerate() {
+                    li { key: "{idx}",
+                        button { class: "del label",
+                            onclick: move |_| remove_image(idx),
+                            "{url}"
                         }
                     }
-                }
+                }}
             }
         }
         button { class: "edit label",

@@ -227,7 +227,7 @@ pub fn More() -> Element {
             // ── Data management ───────────────────────────────────────────────
             article {
                 h2 { "📤 Export" }
-                div { class: "actions",
+                div { class: "inputs",
                     button {
                         class: "label save",
                         onclick: export_exercises,
@@ -242,7 +242,7 @@ pub fn More() -> Element {
             }
             article {
                 h2 { "📥 Import" }
-                div { class: "actions",
+                div { class: "inputs",
                     button {
                         class: "label more",
                         onclick: open_exercises_import,
@@ -306,7 +306,7 @@ pub fn More() -> Element {
                     }
                     button {
                         r#type: "submit",
-                        class: "icon edit",
+                        class: "icon save",
                         aria_label: "Save",
                         "💾"
                     }

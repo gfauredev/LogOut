@@ -77,12 +77,12 @@ fn SessionHeader(
                 if is_paused { "▶️" } else { "⏸️" }
             }
             if exercise_count == 0 {
-                button { class: "no",
+                button { class: "back",
                     onclick: move |_| on_finish.call(()),
                     title: "Cancel Session", "❌"
                 }
             } else {
-                button { class: "yes",
+                button { class: "save",
                     onclick: move |_| on_finish.call(()),
                     title: "Finish Session", "💾"
                 }
@@ -497,7 +497,7 @@ pub fn SessionView() -> Element {
                         value: "{search_query}",
                         oninput: move |evt| search_query.set(evt.value()),
                     }
-                    Link { class: "add",
+                    Link { class: "more",
                         to: Route::AddExercise {},
                         title: "Add Custom Exercise",
                         "+"

@@ -50,7 +50,7 @@ pub fn CompletedExerciseLog(
             header {
                 h4 { "{log.exercise_name}" }
                 // Action buttons stacked on the right
-                div { class: "header-actions",
+                div {class: "inputs",
                     if show_replay {
                         button { class: "edit", title: "Do another set",
                             onclick: move |_| on_replay.call(()), "🔁"
@@ -59,7 +59,7 @@ pub fn CompletedExerciseLog(
                     button { class: "edit", onclick: start_edit,
                         title: "Edit this exercise", "✏️"
                     }
-                    button { class: "delete", title: "Delete this exercise",
+                    button { class: "less", title: "Delete this exercise",
                         onclick: move |_| {
                             let mut current_session = session.read().clone();
                             current_session.exercise_logs.remove(idx);

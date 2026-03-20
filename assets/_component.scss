@@ -3,7 +3,7 @@
 
 // ── Link and button styled variants ───────────────────────────────────────
 a.edit,
-a.add {
+a.more {
   padding: var(--spacing);
   opacity: 0.8;
   transition: opacity 0.2s;
@@ -14,7 +14,7 @@ a.add {
   font-weight: bold;
   background: none;
   font-size: 1.1em;
-  border: 1px solid var(--more);
+  border: 2px solid var(--more);
 
   &:hover {
     opacity: 1;
@@ -23,7 +23,8 @@ a.add {
 
 // Icon-only circular link variants
 a.edit:not(.label),
-a.add:not(.label) {
+a.less:not(.label),
+a.more:not(.label) {
   width: var(--btn-width);
   height: var(--btn-width);
   border-radius: 50%;
@@ -35,10 +36,17 @@ a.add:not(.label) {
   font-weight: bold;
 }
 
-button.add,
-a.add {
-  background: var(--more); // Add / Create ➕
-  font-size: 2em; // Bare + sign
+button.more,
+a.more {
+  background: var(--more); // more / Create ➕
+  border: none;
+}
+
+button.more:not(.label),
+a.more:not(.label),
+button.less:not(.label),
+a.less:not(.label) {
+  font-size: 2em; // Bare plus "+" or minus "-" signs
 }
 
 button.edit,
@@ -46,41 +54,44 @@ a.edit {
   border-color: var(--edit); // Edit ✏️ / Save 💾
 }
 
-button.yes {
+button.save {
   border-color: var(--save); // Confirm 💾 / Complete 💾
 }
 
-button.no {
+button.back {
   border-color: var(--back); // Cancel ❌ / Go Back
 }
 
-button.delete {
-  border-color: var(--delete); // Delete permanently 🗑️
+button.less {
+  background-color: var(--less); // Delete permanently 🗑️
+  border: none;
 }
 
-// ── Input row layout ───────────────────────────────────────────────────────
+button.del {
+  border-color: var(--less);
+}
+
 .inputs {
   display: flex;
   align-items: center;
   gap: var(--spacing);
   white-space: nowrap;
-  width: 100%;
+  /* width: 100%; */
 }
 
-.inputs a,
+/* .inputs a,
 .inputs button {
   width: var(--btn-width);
   height: var(--btn-width);
   border-radius: 50%;
   font-weight: bold;
   line-height: 1;
-}
+} */
 
 input.invalid {
-  border-color: var(--delete);
+  border-color: var(--less);
 }
 
-// ── Muscle tag chips ───────────────────────────────────────────────────────
 .muscle-tags {
   display: flex;
   flex-wrap: wrap;
@@ -312,7 +323,7 @@ ul.results {
   color: var(--save);
 
   &.exceeded {
-    color: var(--delete); // red font when rest time is up
+    color: var(--less); // red font when rest time is up
   }
 }
 
@@ -325,16 +336,6 @@ ul.results {
   gap: 2px;
 }
 
-// ── Completed-exercise action buttons (stacked on the right) ──────────────
-.header-actions {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  align-items: flex-end;
-  margin-left: auto;
-  flex-shrink: 0;
-}
-
 // ── Exercise input grid: label | − | value | + | ATH ─────────────────────
 .exercise-inputs-grid {
   display: grid;
@@ -344,15 +345,8 @@ ul.results {
   margin-bottom: var(--spacing);
 }
 
-.exercise-inputs-grid > .input-row {
+.exercise-inputs-grid>.input-row {
   display: contents;
-}
-
-// All-time high value displayed in the ATH column
-.ath {
-  color: var(--more);
-  font-size: 0.85em;
-  white-space: nowrap;
 }
 
 // Duration row shown above the input grid

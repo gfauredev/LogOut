@@ -35,7 +35,7 @@ button {
   font-weight: bold;
   background: none;
   font-size: 1.1em;
-  border: 1px solid var(--more);
+  border: 2px solid var(--more);
 
   &:hover {
     opacity: 1;
@@ -120,6 +120,14 @@ time {
   color: var(--secondary);
 }
 
+article>* {
+  margin-bottom: var(--spacing);
+
+  &:last-child {
+    margin-bottom: 0;
+  }
+}
+
 article>header {
   display: flex;
   align-items: center;
@@ -141,15 +149,16 @@ article>header span {
 }
 
 article>ul,
-article>header>ul {
+article>header>ul,
+ul.tags {
   display: flex;
   flex-wrap: wrap;
   gap: var(--spacing);
-  margin: 0;
+  margin-x: 0;
   list-style: none;
   padding: 0;
 
-  li {
+  li:not(:has(button)) {
     padding: calc(var(--spacing) / 2) var(--spacing);
     background: var(--separation);
     border-radius: var(--radius);
@@ -217,9 +226,9 @@ article img {
   display: block;
   width: auto;
   max-width: 100%;
-  max-height: 20vh;
+  max-height: 66vh;
   border-radius: var(--radius);
-  margin: 0 auto 10px auto;
+  margin-x: auto;
   cursor: pointer;
 }
 

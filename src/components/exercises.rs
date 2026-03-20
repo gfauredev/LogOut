@@ -214,7 +214,7 @@ pub fn Exercises() -> Element {
                         visible_count.set(PAGE_SIZE);
                     }
                 }
-                Link { class: "add",
+                Link { class: "more",
                     to: Route::AddExercise {},
                     title: t!("add-exercise"),
                     "+"

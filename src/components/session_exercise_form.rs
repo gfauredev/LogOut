@@ -57,7 +57,7 @@ pub(super) fn ExerciseInputForm(
                 }
                 if let Some(best) = bests.duration {
                     if last_duration.is_none_or(|prev| best > prev) {
-                        div { class: "ath", label { "🏆" } time { "{format_time(best)}" } }
+                        div {label { "🏆" } time { "{format_time(best)}" } }
                     }
                 }
             }
@@ -67,7 +67,7 @@ pub(super) fn ExerciseInputForm(
             // Weight row
             div { class: "input-row",
                 label { "Weight" }
-                button { class: "no",
+                button { class: "less",
                     r#type: "button",
                     tabindex: -1,
                     onclick: move |_| {
@@ -86,7 +86,7 @@ pub(super) fn ExerciseInputForm(
                     oninput: move |evt| weight_input.set(evt.value()),
                     class: if weight_invalid { "invalid" } else { "" },
                 }
-                button { class: "yes",
+                button { class: "more",
                     r#type: "button",
                     tabindex: -1,
                     onclick: move |_| {
@@ -96,16 +96,13 @@ pub(super) fn ExerciseInputForm(
                     "+"
                 }
                 if let Some(best) = bests.weight_hg {
-                    span { class: "ath", "{best}" }
-                } else {
-                    span {}
-                }
+                    span { "{best}" } } else { span {} }
             }
             // Distance row (cardio only)
             if is_cardio {
                 div { class: "input-row",
                     label { "Distance" }
-                    button { class: "no",
+                    button { class: "less",
                         r#type: "button",
                         tabindex: -1,
                         onclick: move |_| {
@@ -124,7 +121,7 @@ pub(super) fn ExerciseInputForm(
                         oninput: move |evt| distance_input.set(evt.value()),
                         class: if distance_invalid { "invalid" } else { "" },
                     }
-                    button { class: "yes",
+                    button { class: "more",
                         r#type: "button",
                         tabindex: -1,
                         onclick: move |_| {
@@ -134,17 +131,14 @@ pub(super) fn ExerciseInputForm(
                         "+"
                     }
                     if let Some(best) = bests.distance_m {
-                        span { class: "ath", "{best}" }
-                    } else {
-                        span {}
-                    }
+                        span { "{best}" } } else { span {} }
                 }
             }
             // Reps row (strength / push / pull)
             if show_reps {
                 div { class: "input-row",
                     label { "Reps" }
-                    button { class: "no",
+                    button { class: "less",
                         r#type: "button",
                         tabindex: -1,
                         onclick: move |_| {
@@ -163,7 +157,7 @@ pub(super) fn ExerciseInputForm(
                         oninput: move |evt| reps_input.set(evt.value()),
                         class: if reps_invalid { "invalid" } else { "" },
                     }
-                    button { class: "yes",
+                    button { class: "more",
                         r#type: "button",
                         tabindex: -1,
                         onclick: move |_| {
@@ -181,12 +175,12 @@ pub(super) fn ExerciseInputForm(
             }
         }
         footer {
-            button { class: "yes",
+            button { class: "save",
                 onclick: move |_| on_complete.call(()),
                 disabled: complete_disabled,
                 title: "Complete Exercise", "💾"
             }
-            button { class: "no",
+            button { class: "back",
                 onclick: move |_| on_cancel.call(()),
                 "❌"
             }

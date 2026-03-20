@@ -65,7 +65,7 @@ pub fn AddExercise() -> Element {
     rsx! {
         header {
             h1 { "Add Exercise" }
-            button { class: "no",
+            button { class: "back",
                 onclick: move |_| navigator().go_back(),
                 title: "Cancel", "❌"
             }

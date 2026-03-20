@@ -118,7 +118,7 @@ pub fn ExerciseCard(
                         "✏️"
                     }
                 } else {
-                    button { class: "add",
+                    button { class: "more",
                         onclick: {
                             let exercise = exercise.clone();
                             move |_| {
