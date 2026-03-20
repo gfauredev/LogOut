@@ -10,12 +10,16 @@
       url = "github:oxalica/rust-overlay";
       inputs.nixpkgs.follows = "nixpkgs";
     };
+    crane = {
+      url = "github:ipetkov/crane";
+    };
   };
   outputs =
     {
       self,
       nixpkgs,
       rust-overlay,
+      crane,
     }:
     let
       forAllSystems = nixpkgs.lib.genAttrs [
@@ -55,6 +59,37 @@
             cargo = rustToolchain;
             rustc = rustToolchain;
           };
+          craneLib = (crane.mkLib pkgs).overrideToolchain rustToolchain;
+          commonNativeBuildInputs = with pkgs; [
+            binaryen
+            cargo-binutils
+            cargo-deny
+            cargo-llvm-cov
+            cargo-mutants
+            chromedriver
+            dioxus-cli
+            wasm-bindgen-cli_0_2_114
+            maestro
+            patchelf
+            pkg-config
+            rustToolchain
+            selenium-manager
+            ungoogled-chromium
+            unzip
+          ];
+          commonBuildInputs =
+            [
+              pkgs.openssl
+            ]
+            ++ pkgs.lib.optionals pkgs.stdenv.isDarwin [
+              pkgs.darwin.apple_sdk.frameworks.Security
+              pkgs.darwin.apple_sdk.frameworks.SystemConfiguration
+            ];
+          cargoArtifacts = craneLib.buildDepsOnly {
+            src = craneLib.cleanCargoSource (craneLib.path ./.);
+            nativeBuildInputs = commonNativeBuildInputs;
+            buildInputs = commonBuildInputs;
+          };
           androidComposition = pkgs.androidenv.composeAndroidPackages {
             platformVersions = [
               "33"
@@ -75,23 +110,6 @@
               "x86_64"
             ];
           };
-          commonNativeBuildInputs = with pkgs; [
-            binaryen
-            cargo-binutils
-            cargo-deny
-            cargo-llvm-cov
-            cargo-mutants
-            chromedriver
-            dioxus-cli
-            wasm-bindgen-cli_0_2_114
-            maestro
-            patchelf
-            pkg-config
-            rustToolchain
-            selenium-manager
-            ungoogled-chromium
-            unzip
-          ];
           androidNativeBuildInputs = with pkgs; [
             aapt
             apksigner
@@ -101,13 +119,6 @@
             cargo-ndk
             openjdk
           ];
-          commonBuildInputs = [
-            pkgs.openssl
-          ]
-          ++ pkgs.lib.optionals pkgs.stdenv.isDarwin [
-            pkgs.darwin.apple_sdk.frameworks.Security
-            pkgs.darwin.apple_sdk.frameworks.SystemConfiguration
-          ];
         in
         {
           projectVersion = "0.2.3";
@@ -115,6 +126,8 @@
             pkgs
             rustToolchain
             rustPlatform
+            craneLib
+            cargoArtifacts
             androidComposition
             commonNativeBuildInputs
             androidNativeBuildInputs
@@ -131,11 +144,11 @@
             {
               basePath ? "/",
             }:
-            env.rustPlatform.buildRustPackage {
+            env.craneLib.buildPackage {
+              inherit (env) cargoArtifacts;
               pname = "logout-web";
               version = env.projectVersion;
-              src = self;
-              cargoLock.lockFile = ./Cargo.lock;
+              src = env.craneLib.path ./.;
               nativeBuildInputs = env.commonNativeBuildInputs;
               buildInputs = env.commonBuildInputs;
               buildPhase = ''
@@ -152,10 +165,7 @@
                   if basePath == "/" then "* $out/" else " $out/${basePath}"
                 }
               '';
-              preCheck = ''
-                export HOME=$TMPDIR/fake-home
-                export XDG_DATA_HOME=$HOME/.local/share
-              '';
+              doCheck = false;
             };
           # --no-sandbox on non-NixOS CI runners where SUID sandbox
           # binary is absent, named so chromedriver finds via PATH
@@ -359,24 +369,20 @@
             cargo fmt --all -- --check
             touch $out
           '';
-          clippy = env.rustPlatform.buildRustPackage {
+          clippy = env.craneLib.cargoClippy {
+            inherit (env) cargoArtifacts;
             pname = "logout-clippy";
             version = env.projectVersion;
-            src = self;
-            cargoLock.lockFile = ./Cargo.lock;
+            src = env.craneLib.path ./.;
             nativeBuildInputs = env.commonNativeBuildInputs;
             buildInputs = env.commonBuildInputs;
-            buildPhase = ''
-              export HOME=$TMPDIR
-              cargo clippy --all-targets -- -D warnings -W clippy::all -W clippy::pedantic
-            '';
-            installPhase = "touch $out";
+            cargoClippyExtraArgs = "--all-targets -- -D warnings -W clippy::all -W clippy::pedantic";
           };
-          coverage = env.rustPlatform.buildRustPackage {
+          coverage = env.craneLib.buildPackage {
+            inherit (env) cargoArtifacts;
             pname = "logout-coverage";
             version = env.projectVersion;
-            src = self;
-            cargoLock.lockFile = ./Cargo.lock;
+            src = env.craneLib.path ./.;
             nativeBuildInputs = env.commonNativeBuildInputs ++ [ env.pkgs.lcov ];
             buildInputs = env.commonBuildInputs;
             buildPhase = ''
@@ -390,6 +396,7 @@
                 --json > $out/coverage.json
             '';
             installPhase = "true";
+            doCheck = false;
           };
         }
       );
