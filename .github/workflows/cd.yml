@@ -65,6 +65,8 @@ jobs:
       statuses: read  # Required by wait-on-check-action
     steps:
     - uses: actions/checkout@v6
+      with:
+        lfs: true
     - uses: cachix/install-nix-action@v31
       with:
         github_access_token: ${{ secrets.GITHUB_TOKEN }}
@@ -128,6 +130,8 @@ jobs:
       statuses: read  # Required by wait-on-check-action
     steps:
     - uses: actions/checkout@v6
+      with:
+        lfs: true
     - uses: cachix/install-nix-action@v31
       with:
         github_access_token: ${{ secrets.GITHUB_TOKEN }}
