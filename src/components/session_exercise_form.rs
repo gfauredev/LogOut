@@ -179,7 +179,7 @@ pub(super) fn ExerciseFormPanel(
                         button { class: "yes",
                             onclick: move |_| on_complete.call(()),
                             disabled: complete_disabled,
-                            title: "Complete Exercise", "✔️"
+                            title: "Complete Exercise", "💾"
                         }
                         button { class: "no",
                             onclick: move |_| on_cancel.call(()),

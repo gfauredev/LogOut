@@ -60,7 +60,7 @@ pub async fn reload_exercises(mut sig: Signal<Vec<Exercise>>, mut toast: Signal<
                         .collect(),
                 );
                 toast.set(Some(
-                    "✅ Exercise database reloaded successfully".to_string(),
+                    "💾 Exercise database reloaded successfully".to_string(),
                 ));
             }
             Ok(_) => {
@@ -97,7 +97,7 @@ pub async fn reload_exercises(mut sig: Signal<Vec<Exercise>>, mut toast: Signal<
                         .collect(),
                 );
                 toast.set(Some(
-                    "✅ Exercise database reloaded successfully".to_string(),
+                    "💾 Exercise database reloaded successfully".to_string(),
                 ));
             }
             Ok(_) => {

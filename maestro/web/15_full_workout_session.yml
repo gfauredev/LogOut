@@ -22,7 +22,7 @@ url: http://localhost:8080/LogOut/?dl_db_url=http%3A%2F%2Flocalhost%3A8080%2FLog
     text: "reps"
     optional: false
 - inputText: "10"
-- tapOn: "✔️"
+- tapOn: "💾"
 - assertVisible: "Completed Exercises"
 - assertVisible: "10 reps"
 
@@ -32,7 +32,7 @@ url: http://localhost:8080/LogOut/?dl_db_url=http%3A%2F%2Flocalhost%3A8080%2FLog
 - tapOn:
     text: "+"
     index: 1
-- tapOn: "✔️"
+- tapOn: "💾"
 
 # --- Repeat For Another Exercise (Romanian Deadlift) ---
 - tapOn: "Search for an exercise..."
@@ -42,7 +42,7 @@ url: http://localhost:8080/LogOut/?dl_db_url=http%3A%2F%2Flocalhost%3A8080%2FLog
     text: "reps"
     optional: false
 - inputText: "6"
-- tapOn: "✔️"
+- tapOn: "💾"
 
 # --- Remove Exercise (delete the Romanian Deadlift set) ---
 # Clear search so Romanian Deadlift is not in search results when we assert
@@ -54,7 +54,7 @@ url: http://localhost:8080/LogOut/?dl_db_url=http%3A%2F%2Flocalhost%3A8080%2FLog
 - assertNotVisible: "Romanian Deadlift"
 
 # --- Finish Session ---
-- tapOn: "✅"
+- tapOn: "💾"
 # Congratulations toast and session now in history
 - assertVisible: "🎉 Great workout! Session complete!"
 - assertVisible: "Today"

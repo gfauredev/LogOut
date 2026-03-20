@@ -7,11 +7,11 @@
   --primary: white;
   --secondary: #a0a0a0;
   // Actions Colors
-  --more: #2e7dff; // Increment +, Add +, Create ➕, New ➕ …
-  --less: #ff3b30; // Decrement -, Delete (permanently) 🗑️ …
-  --edit: #e0e0e0; // Edit ✏️, Repeat 🔁, Again 🔄 …
-  --save: #00ff94; // Save 💾, Complete ✅, Done ☑️, Ok ✔️ …
-  --no: #ff3b30; // Cancel ❌/✖️ … TODO Differentiate from Delete
+  --more: #2e7dff; // Increment or Add +
+  --less: #ff3b30; // Decrement - or Delete (permanently) 🗑️
+  --edit: #e0e0e0; // Edit ✏️ or Repeat 🔁
+  --save: #00ff94; // Save 💾, confirm writing of data
+  --back: #ff3b30; // Cancel or Go Back ❌ TODO Differentiate from Delete
   // Data Type Tag Colors
   --tag-category: #e67e22; // orange
   --tag-force: #3498db; // blue

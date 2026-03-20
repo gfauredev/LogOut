@@ -47,11 +47,11 @@ a.edit {
 }
 
 button.yes {
-  border-color: var(--save); // Confirm ✅ / Complete ✔️
+  border-color: var(--save); // Confirm 💾 / Complete 💾
 }
 
 button.no {
-  border-color: var(--no); // Delete 🗑️ / Cancel ❌
+  border-color: var(--back); // Delete 🗑️ / Cancel ❌
 }
 
 // ── Input row layout ───────────────────────────────────────────────────────
@@ -73,7 +73,7 @@ button.no {
 }
 
 input.invalid {
-  border-color: var(--no);
+  border-color: var(--back);
 }
 
 // ── Muscle tag chips ───────────────────────────────────────────────────────
@@ -310,7 +310,7 @@ ul.results {
   border-bottom: 1px solid var(--separation);
 
   &.exceeded {
-    background: var(--no);
+    background: var(--back);
   }
 }
 

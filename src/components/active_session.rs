@@ -76,7 +76,7 @@ fn SessionHeader(
             } else {
                 button { class: "yes",
                     onclick: move |_| on_finish.call(()),
-                    title: "Finish Session", "✅"
+                    title: "Finish Session", "💾"
                 }
             }
         }
@@ -108,7 +108,7 @@ fn RestDurationInput(
                 value: "{rest_input_value}",
                 oninput: move |evt| rest_input_value.set(evt.value()),
             }
-            button { class: "yes", r#type: "submit", "✅" }
+            button { class: "yes", r#type: "submit", "💾" }
         }
     }
 }
@@ -116,7 +116,7 @@ fn RestDurationInput(
 /// List of exercises pre-added to the session that haven't been started yet.
 /// The first (oldest) exercise is always visible and directly clickable.
 /// Any additional exercises are hidden inside a folded `<details>` dropdown.
-/// Fires `on_start` with the exercise ID when the user taps 🔄.
+/// Fires `on_start` with the exercise ID when the user taps 🔁.
 #[component]
 fn PendingExercisesSection(pending_ids: Vec<String>, on_start: EventHandler<String>) -> Element {
     let all_exercises = exercise_db::use_exercises();
@@ -153,7 +153,7 @@ fn PendingExercisesSection(pending_ids: Vec<String>, on_start: EventHandler<Stri
                             ul { li { "{cat}" } }
                             button { class: "edit",
                                 onclick: move |_| on_start.call(id.clone()),
-                                "🔄"
+                                "🔁"
                             }
                         }}
                     }
@@ -173,7 +173,7 @@ fn PendingExercisesSection(pending_ids: Vec<String>, on_start: EventHandler<Stri
                                         ul { li { "{category}" } }
                                         button { class: "edit",
                                             onclick: move |_| on_start.call(id2.clone()),
-                                            "🔄"
+                                            "🔁"
                                         }
                                     }
                                 }

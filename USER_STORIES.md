@@ -341,7 +341,7 @@ it in my history and see my progress over time.
 
 #### Acceptance Criteria
 
-- Tap the "✅" (Finish Session) button in the active session header
+- Tap the "💾" (Finish Session) button in the active session header
 - The home screen shows the completed session with the current date
 - A congratulation toast appears
 
@@ -377,7 +377,7 @@ that** I can quickly repeat the same exercises.
 ### Acceptance Criteria
 
 - A completed session with at least one exercise is visible on the home screen
-- **Click** 🔄 button on a previous Session card, a new Active Session opens
+- **Click** 🔁 button on a previous Session card, a new Active Session opens
 - The "Pre-added Exercises" section contains the previous session exercises
 
 ## Delete Past Sessions

@@ -382,7 +382,7 @@ pub fn More() -> Element {
                     button {
                         class: "no label",
                         onclick: confirm_replace,
-                        "✅ Replace"
+                        "💾 Replace"
                     }
                     button {
                         class: "yes",

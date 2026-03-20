@@ -163,7 +163,7 @@ fn SessionCard(session: WorkoutSession) -> Element {
                             }
                         },
                         title: "Start a new session based on this one",
-                        "🔄"
+                        "🔁"
                     }
                 }
                 button { class: "no",

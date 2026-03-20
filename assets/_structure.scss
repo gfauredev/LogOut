@@ -42,7 +42,7 @@ button {
   }
 }
 
-// Icon-only circular buttons ➕, 🔄, ✏️, 💾, ✅, ☑️, 🗑️, ❌, ▶️, ⏸️
+// Icon-only circular buttons ➕, 🔁, ✏️, 💾, 🗑️, ❌, ▶️, ⏸️
 button:not(.label) {
   width: var(--btn-width);
   height: var(--btn-width);
