@@ -204,6 +204,18 @@ checks that run every Sunday at midnight on the `main` branch.
 
 ## TODO
 
+- Move rest timer in Active Session header, below Session timer
+  - When not resting, rest timer displays the configured rest duration
+  - Set the rest duration by clicking on the block containing both timers
+  - When resting, decrement the rest timer ; it can go negative without limit
+  - Set font color in red (no/danger) if rest timer <= 0, not background
+- Keep only one occurence of different pre-added exercies from a past session
+- Stack completed exercises buttons (redo, edit…) on the right of the header
+- Use the same form when performing an exercise intially and editing it
+  - Display the all-time high exercise duration right of previous duration
+  - Display the all-time high of Weight/Reps/Distance right of "+" button
+  - Align Weight/Reps/Distance, "-", value, "+" and all-time high on a grid
+- Use two different, appropriate colors for Delete and Cancel/Back
 - Make all Maestro Web E2E tests pass, either by fixing the code or the test
 - ~~Coverage: exclude any non-project file, print number of passed/total in PR~~
 - ~~Print summary table of Lighthouse Audit in PR comment with every metrics~~
