@@ -77,14 +77,13 @@
             ungoogled-chromium
             unzip
           ];
-          commonBuildInputs =
-            [
-              pkgs.openssl
-            ]
-            ++ pkgs.lib.optionals pkgs.stdenv.isDarwin [
-              pkgs.darwin.apple_sdk.frameworks.Security
-              pkgs.darwin.apple_sdk.frameworks.SystemConfiguration
-            ];
+          commonBuildInputs = [
+            pkgs.openssl
+          ]
+          ++ pkgs.lib.optionals pkgs.stdenv.isDarwin [
+            pkgs.darwin.apple_sdk.frameworks.Security
+            pkgs.darwin.apple_sdk.frameworks.SystemConfiguration
+          ];
           cargoArtifacts = craneLib.buildDepsOnly {
             src = craneLib.cleanCargoSource (craneLib.path ./.);
             nativeBuildInputs = commonNativeBuildInputs;
@@ -121,7 +120,7 @@
           ];
         in
         {
-          projectVersion = "0.2.3";
+          projectVersion = "0.2.4";
           inherit
             pkgs
             rustToolchain
