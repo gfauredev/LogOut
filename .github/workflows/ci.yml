@@ -10,6 +10,7 @@ on:
       - '.git*'
       - '.envrc'
       - 'garnix.yaml'
+      - '.github/workflows/cd.yml'
   workflow_dispatch:
 
 permissions:
