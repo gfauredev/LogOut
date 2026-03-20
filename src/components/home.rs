@@ -174,7 +174,7 @@ fn SessionCard(session: WorkoutSession) -> Element {
                         "🔁"
                     }
                 }
-                button { class: "less",
+                button { class: "del",
                     onclick: move |_| show_delete_confirm.set(true),
                     title: "Delete session",
                     "🗑️"
@@ -220,7 +220,7 @@ fn SessionCard(session: WorkoutSession) -> Element {
                                     show_delete_confirm.set(false);
                                 }
                             },
-                            class: "less label",
+                            class: "del label",
                             "🗑️ Delete"
                         }
                         button {

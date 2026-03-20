@@ -59,7 +59,7 @@ pub fn CompletedExerciseLog(
                     button { class: "edit", onclick: start_edit,
                         title: "Edit this exercise", "✏️"
                     }
-                    button { class: "less", title: "Delete this exercise",
+                    button { class: "del", title: "Delete this exercise",
                         onclick: move |_| {
                             let mut current_session = session.read().clone();
                             current_session.exercise_logs.remove(idx);
