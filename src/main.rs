@@ -41,6 +41,12 @@ pub struct NotificationPermissionToastSignal(pub Signal<bool>);
 #[derive(Clone, Copy)]
 pub struct ShowRestInputSignal(pub Signal<bool>);
 
+/// Global context signal holding the configured rest duration (in seconds).
+/// Shared between [`GlobalSessionHeader`] (which reads/displays it) and the
+/// rest-duration input form that updates it.
+#[derive(Clone, Copy)]
+pub struct RestDurationSignal(pub Signal<u64>);
+
 /// Auto-dismiss delay for toasts in milliseconds.
 const TOAST_DISMISS_MS: u32 = 3_000;
 
@@ -144,6 +150,7 @@ fn App() -> Element {
     use_context_provider(|| ExerciseSearchSignal(Signal::new(None)));
     use_context_provider(|| PendingDeepLinkSignal(Signal::new(None)));
     use_context_provider(|| ShowRestInputSignal(Signal::new(false)));
+    use_context_provider(|| RestDurationSignal(Signal::new(30u64)));
 
     // Show the notification permission warning toast when permission has not yet
     // been granted.  The toast prompts the user to click it — respecting browsers

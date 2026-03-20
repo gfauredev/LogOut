@@ -5,7 +5,7 @@
 //! [`storage`](super::storage) module; this module just wires the Dioxus
 //! reactive primitives to those backends.
 
-use crate::models::{Exercise, ExerciseLog, WorkoutSession};
+use crate::models::{Distance, Exercise, ExerciseLog, Weight, WorkoutSession};
 use crate::ToastSignal;
 use dioxus::prelude::*;
 
@@ -241,4 +241,62 @@ pub(crate) fn find_last_exercise_log<'a>(
         }
     }
     None
+}
+
+/// All-time best (personal record) values for a specific exercise, derived by
+/// scanning every completed log across all stored sessions.
+pub struct ExerciseBests {
+    /// Heaviest weight ever lifted for this exercise.
+    pub weight_hg: Option<Weight>,
+    /// Most repetitions ever performed in a single set.
+    pub reps: Option<u32>,
+    /// Longest distance ever covered in a single set.
+    pub distance_m: Option<Distance>,
+    /// Longest set duration ever recorded.
+    pub duration: Option<u64>,
+}
+
+/// Returns the all-time personal bests for `exercise_id` across every stored
+/// session, or `None` fields when the exercise has never been logged.
+pub fn get_exercise_bests(exercise_id: &str) -> ExerciseBests {
+    let sessions = use_sessions();
+    let sessions = sessions.read();
+    let mut bests = ExerciseBests {
+        weight_hg: None,
+        reps: None,
+        distance_m: None,
+        duration: None,
+    };
+    for session in sessions.iter() {
+        for log in session.exercise_logs.iter() {
+            if log.exercise_id != exercise_id || !log.is_complete() {
+                continue;
+            }
+            if let Some(w) = log.weight_hg {
+                bests.weight_hg = Some(match bests.weight_hg {
+                    None => w,
+                    Some(prev) => if w.0 > prev.0 { w } else { prev },
+                });
+            }
+            if let Some(r) = log.reps {
+                bests.reps = Some(match bests.reps {
+                    None => r,
+                    Some(prev) => prev.max(r),
+                });
+            }
+            if let Some(d) = log.distance_m {
+                bests.distance_m = Some(match bests.distance_m {
+                    None => d,
+                    Some(prev) => if d.0 > prev.0 { d } else { prev },
+                });
+            }
+            if let Some(dur) = log.duration_seconds() {
+                bests.duration = Some(match bests.duration {
+                    None => dur,
+                    Some(prev) => prev.max(dur),
+                });
+            }
+        }
+    }
+    bests
 }

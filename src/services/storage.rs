@@ -16,8 +16,8 @@
 // These live in `app_state` to keep that module free of storage backend code and
 // to keep this module free of Dioxus hooks so its storage logic is unit-testable.
 pub use super::app_state::{
-    add_custom_exercise, delete_session, get_last_exercise_log, provide_app_state, save_session,
-    update_custom_exercise, use_custom_exercises, use_sessions,
+    add_custom_exercise, delete_session, get_exercise_bests, get_last_exercise_log,
+    provide_app_state, save_session, update_custom_exercise, use_custom_exercises, use_sessions,
 };
 
 #[cfg(target_arch = "wasm32")]

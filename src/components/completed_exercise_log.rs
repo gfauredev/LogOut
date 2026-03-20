@@ -1,8 +1,8 @@
-use crate::models::{
-    format_time, parse_distance_km, parse_weight_kg, Category, ExerciseLog, Force, WorkoutSession,
-};
+use crate::models::{Category, ExerciseLog, Force, WorkoutSession};
 use crate::services::storage;
 use dioxus::prelude::*;
+
+use super::session_exercise_form::ExerciseInputForm;
 
 /// A single completed exercise log entry with inline edit support.
 #[component]
@@ -40,95 +40,64 @@ pub fn CompletedExerciseLog(
         }
     };
 
-    let save_edit = move |_| {
-        let mut current_session = session.read().clone();
-        if let Some(log) = current_session.exercise_logs.get_mut(idx) {
-            log.weight_hg = parse_weight_kg(&edit_weight_input.read());
-            let force = log.force;
-            log.reps = if force.is_some_and(Force::has_reps) {
-                edit_reps_input.read().parse().ok()
-            } else {
-                None
-            };
-            if log.category == Category::Cardio {
-                log.distance_m = parse_distance_km(&edit_distance_input.read());
-            }
-        }
-        storage::save_session(current_session.clone());
-        is_editing.set(false);
-        edit_weight_input.set(String::new());
-        edit_reps_input.set(String::new());
-        edit_distance_input.set(String::new());
-    };
-
     let force = log.force;
-    let show_reps = force.is_some_and(Force::has_reps);
-    let is_cardio = log.category == Category::Cardio;
+    let category = log.category;
+    let exercise_id = log.exercise_id.clone();
+    let last_duration = log.duration_seconds();
 
     rsx! {
         article {
             header {
                 h4 { "{log.exercise_name}" }
-                if show_replay {
-                    button { class: "edit", title: "Do another set",
-                        onclick: move |_| on_replay.call(()), "🔁"
+                // Action buttons stacked on the right
+                div { class: "header-actions",
+                    if show_replay {
+                        button { class: "edit", title: "Do another set",
+                            onclick: move |_| on_replay.call(()), "🔁"
+                        }
                     }
-                }
-                button { class: "edit", onclick: start_edit,
-                    title: "Edit this exercise", "✏️"
-                }
-                button { class: "no", title: "Delete this exercise",
-                    onclick: move |_| {
-                        let mut current_session = session.read().clone();
-                        current_session.exercise_logs.remove(idx);
-                        storage::save_session(current_session.clone());
-                    }, "🗑️"
+                    button { class: "edit", onclick: start_edit,
+                        title: "Edit this exercise", "✏️"
+                    }
+                    button { class: "delete", title: "Delete this exercise",
+                        onclick: move |_| {
+                            let mut current_session = session.read().clone();
+                            current_session.exercise_logs.remove(idx);
+                            storage::save_session(current_session.clone());
+                        }, "🗑️"
+                    }
                 }
             }
             if *is_editing.read() {
-                form {
-                    div {
-                        label { "Weight" }
-                        input {
-                            r#type: "number",
-                            inputmode: "decimal",
-                            step: "0.5",
-                            placeholder: "kg",
-                            value: "{edit_weight_input}",
-                            oninput: move |evt| edit_weight_input.set(evt.value()),
-                        }
-                    }
-                    if is_cardio {
-                        div {
-                            label { "Distance" }
-                            input {
-                                r#type: "number",
-                                inputmode: "decimal",
-                                step: "0.1",
-                                placeholder: "km",
-                                value: "{edit_distance_input}",
-                                oninput: move |evt| edit_distance_input.set(evt.value()),
+                ExerciseInputForm {
+                    exercise_id,
+                    weight_input: edit_weight_input,
+                    reps_input: edit_reps_input,
+                    distance_input: edit_distance_input,
+                    force,
+                    category,
+                    last_duration,
+                    on_complete: move |()| {
+                        let mut current_session = session.read().clone();
+                        if let Some(log) = current_session.exercise_logs.get_mut(idx) {
+                            use crate::models::{parse_distance_km, parse_weight_kg};
+                            log.weight_hg = parse_weight_kg(&edit_weight_input.read());
+                            log.reps = if force.is_some_and(Force::has_reps) {
+                                edit_reps_input.read().parse().ok()
+                            } else {
+                                None
+                            };
+                            if log.category == Category::Cardio {
+                                log.distance_m = parse_distance_km(&edit_distance_input.read());
                             }
                         }
-                    }
-                    if show_reps {
-                        div {
-                            label { "Repetitions" }
-                            input {
-                                r#type: "number",
-                                inputmode: "numeric",
-                                placeholder: "reps",
-                                value: "{edit_reps_input}",
-                                oninput: move |evt| edit_reps_input.set(evt.value()),
-                            }
-                        }
-                    }
-                    footer {
-                        button { class: "edit", onclick: save_edit, "💾" }
-                        button { class: "no",
-                            onclick: move |_| is_editing.set(false), "❌"
-                        }
-                    }
+                        storage::save_session(current_session);
+                        is_editing.set(false);
+                        edit_weight_input.set(String::new());
+                        edit_reps_input.set(String::new());
+                        edit_distance_input.set(String::new());
+                    },
+                    on_cancel: move |()| is_editing.set(false),
                 }
             } else {
                 ul {
@@ -136,7 +105,7 @@ pub fn CompletedExerciseLog(
                     if let Some(reps) = log.reps { li { "{reps} reps" } }
                     if let Some(d) = log.distance_m { li { "{d}" } }
                     if let Some(duration) = log.duration_seconds() {
-                        li { "{format_time(duration)}" }
+                        li { "{crate::models::format_time(duration)}" }
                     }
                 }
             }
