@@ -5,3 +5,5 @@ Respect coding conventions or guidelines you found, especially about processes.
 This project uses a development environment, defined in `flake.nix`, providing
 all the dependencies and tools needed for development. Enter it with
 `nix develop`.
+
+Use Conventional Commits (1.0.0) and Semantic Versioning (2.0.0).
