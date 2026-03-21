@@ -162,7 +162,7 @@ pub(super) fn RestTimerDisplay(
         }
     }
 
-    let remaining = rd as i64 - elapsed as i64;
+    let remaining = rd.cast_signed() - elapsed.cast_signed();
     let exceeded = remaining <= 0;
     rsx! {
         div {

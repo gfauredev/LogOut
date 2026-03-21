@@ -268,7 +268,7 @@ pub fn get_exercise_bests(exercise_id: &str) -> ExerciseBests {
         duration: None,
     };
     for session in sessions.iter() {
-        for log in session.exercise_logs.iter() {
+        for log in &session.exercise_logs {
             if log.exercise_id != exercise_id || !log.is_complete() {
                 continue;
             }
