@@ -122,10 +122,11 @@ pub fn Home() -> Element {
     // which calls `window.removeEventListener` to prevent a memory leak.
     #[cfg(target_arch = "wasm32")]
     let _scroll_guard = use_hook(move || {
+        use std::rc::Rc;
         use wasm_bindgen::prelude::Closure;
         use wasm_bindgen::JsCast as _;
 
-        let closure: Closure<dyn Fn()> = Closure::wrap(Box::new(move || {
+        let closure: Closure<dyn FnMut()> = Closure::wrap(Box::new(move || {
             if *is_loading.peek() || *all_loaded.peek() {
                 return;
             }
@@ -166,7 +167,8 @@ pub fn Home() -> Element {
         /// component unmounts, preventing a JS interop memory leak.
         struct ScrollGuard {
             /// Keeps the underlying JS function alive until the listener is removed.
-            closure: Closure<dyn Fn()>,
+            #[allow(dead_code)]
+            closure: Closure<dyn FnMut()>,
             func: js_sys::Function,
         }
         impl Drop for ScrollGuard {
@@ -177,7 +179,7 @@ pub fn Home() -> Element {
             }
         }
 
-        ScrollGuard { closure, func }
+        Rc::new(ScrollGuard { closure, func })
     });
 
     rsx! {
