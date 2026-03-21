@@ -400,8 +400,7 @@ pub(crate) mod native_storage {
     fn open_db() -> Result<Connection, StorageError> {
         std::fs::create_dir_all(data_dir())?;
         let conn = Connection::open(db_path())?;
-        let schema_version: u32 =
-            conn.query_row("PRAGMA user_version", [], |r| r.get(0))?;
+        let schema_version: u32 = conn.query_row("PRAGMA user_version", [], |r| r.get(0))?;
         if schema_version == 0 {
             conn.execute_batch(
                 "CREATE TABLE IF NOT EXISTS sessions (id TEXT PRIMARY KEY, data TEXT NOT NULL);
@@ -1003,8 +1002,7 @@ mod tests {
         native_storage::put_item(native_storage::STORE_SESSIONS, &active.id, &active).unwrap();
         native_storage::put_item(native_storage::STORE_SESSIONS, &done.id, &done).unwrap();
 
-        let page =
-            native_storage::get_completed_sessions_paged(10, 0).expect("paged query failed");
+        let page = native_storage::get_completed_sessions_paged(10, 0).expect("paged query failed");
         assert!(
             page.iter().any(|s| s.id == done.id),
             "completed session must appear"
@@ -1023,9 +1021,7 @@ mod tests {
     fn completed_sessions_paged_respects_limit_and_offset() {
         let _g = lock();
         // Insert 5 completed sessions with distinct start times
-        let ids: Vec<String> = (1u64..=5)
-            .map(|i| format!("paged_limit_s{i}"))
-            .collect();
+        let ids: Vec<String> = (1u64..=5).map(|i| format!("paged_limit_s{i}")).collect();
         for (i, id) in ids.iter().enumerate() {
             let s = WorkoutSession {
                 id: id.clone(),
