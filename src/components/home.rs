@@ -19,28 +19,91 @@ pub fn Home() -> Element {
 
     let has_active = use_memo(move || sessions.read().iter().any(WorkoutSession::is_active));
 
-    // Track the number of completed sessions to detect transitions (e.g., a
-    // session finishes or is deleted) without re-running on every active-session
-    // heartbeat update.
-    let completed_count =
-        use_memo(move || sessions.read().iter().filter(|s| !s.is_active()).count());
+    // Track the set of IDs of completed sessions so we can detect whether a
+    // session was added or deleted without watching every field of every session
+    // (which would cause the paginated list to reset on every active-session
+    // heartbeat update).
+    let completed_session_ids = use_memo(move || {
+        sessions
+            .read()
+            .iter()
+            .filter(|s| !s.is_active())
+            .map(|s| s.id.clone())
+            .collect::<std::collections::HashSet<String>>()
+    });
 
-    // Reload the first page of completed sessions from storage whenever the
-    // count of completed sessions changes.  This replaces the previous
-    // in-memory clone-and-sort of the entire history.
+    // Keep the paginated completed_sessions view in sync with the sessions
+    // signal without resetting the scroll position on every change.
+    //
+    // Three cases are handled:
+    // 1. Initial load (completed_sessions is empty) → load the first page.
+    // 2. Deletion → remove the deleted item directly from the local vector.
+    // 3. New completion → prepend the newly-completed session(s) to the top.
     use_effect(move || {
-        let _ = *completed_count.read();
-        sessions_loaded_offset.set(0);
-        all_loaded.set(false);
-        is_loading.set(true);
-        spawn(async move {
-            let page = storage::load_completed_sessions_page(PAGE_SIZE, 0).await;
-            let len = page.len();
-            completed_sessions.set(page);
-            sessions_loaded_offset.set(len);
-            all_loaded.set(len < PAGE_SIZE);
-            is_loading.set(false);
-        });
+        let new_ids = completed_session_ids.read().clone();
+
+        // Peek to avoid creating a reactive dependency on completed_sessions,
+        // which would create a feedback loop.
+        let viewed_ids: std::collections::HashSet<String> = completed_sessions
+            .peek()
+            .iter()
+            .map(|s| s.id.clone())
+            .collect();
+
+        // ── Case 1: initial load ──────────────────────────────────────────
+        if viewed_ids.is_empty() {
+            if !new_ids.is_empty() {
+                sessions_loaded_offset.set(0);
+                all_loaded.set(false);
+                is_loading.set(true);
+                spawn(async move {
+                    let page = storage::load_completed_sessions_page(PAGE_SIZE, 0).await;
+                    let len = page.len();
+                    completed_sessions.set(page);
+                    sessions_loaded_offset.set(len);
+                    all_loaded.set(len < PAGE_SIZE);
+                    is_loading.set(false);
+                });
+            }
+            return;
+        }
+
+        // ── Case 2: deletion ──────────────────────────────────────────────
+        let removed: Vec<String> = viewed_ids
+            .difference(&new_ids)
+            .cloned()
+            .collect();
+        if !removed.is_empty() {
+            let new_len = {
+                let mut cs = completed_sessions.write();
+                cs.retain(|s| !removed.contains(&s.id));
+                cs.len()
+            };
+            // Keep offset consistent with what we have loaded in memory.
+            sessions_loaded_offset.set(new_len);
+            return;
+        }
+
+        // ── Case 3: new completion ────────────────────────────────────────
+        // Peek at sessions to get the full data for newly-completed entries
+        // without creating an additional reactive subscription.
+        let mut newly_completed: Vec<WorkoutSession> = sessions
+            .peek()
+            .iter()
+            .filter(|s| !s.is_active() && !viewed_ids.contains(&s.id))
+            .cloned()
+            .collect();
+        if !newly_completed.is_empty() {
+            newly_completed.sort_by(|a, b| b.start_time.cmp(&a.start_time));
+            let new_len = {
+                let mut cs = completed_sessions.write();
+                let old = std::mem::take(&mut *cs);
+                cs.extend(newly_completed);
+                cs.extend(old);
+                cs.len()
+            };
+            sessions_loaded_offset.set(new_len);
+        }
     });
 
     let start_new_session = move |_| {

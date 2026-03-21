@@ -142,6 +142,12 @@ fn App() -> Element {
 
     // Provide shared state signals via context
     services::storage::provide_app_state();
+    // Register a pagehide listener to flush any pending IDB writes before
+    // the browser tears down the page context (web only).
+    #[cfg(target_arch = "wasm32")]
+    use_hook(|| {
+        services::storage::idb_queue::register_pagehide_flush();
+    });
     use_context_provider(|| DbI18nSignal(Signal::new(models::DbI18n::default())));
     services::exercise_db::provide_exercises();
     use_context_provider(|| CongratulationsSignal(Signal::new(false)));

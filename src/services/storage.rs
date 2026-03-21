@@ -210,6 +210,23 @@ pub(crate) mod idb_queue {
         });
     }
 
+    /// Drain all pending queue items immediately.
+    ///
+    /// Intended to be called from a `pagehide` / `beforeunload` handler so that
+    /// writes that are still queued when the user closes the tab are not lost.
+    /// The function spawns a local future and returns immediately; the async
+    /// operations run as microtasks before the browser tears down the JS context.
+    pub fn flush() {
+        QUEUE.with(|q| {
+            let draining = q.borrow().0;
+            if !draining {
+                q.borrow_mut().0 = true;
+                wasm_bindgen_futures::spawn_local(drain());
+            }
+            // If a drain is already running it will process all pending items.
+        });
+    }
+
     async fn drain() {
         loop {
             let op = QUEUE.with(|q| q.borrow_mut().1.pop_front());
@@ -238,6 +255,30 @@ pub(crate) mod idb_queue {
                 }
             }
         }
+    }
+
+    /// Register a `pagehide` event listener that flushes any remaining queued
+    /// writes before the browser may terminate the page.
+    ///
+    /// Call once at app startup.  The closure is intentionally leaked
+    /// (`Closure::forget`) because it must live for the duration of the page.
+    pub fn register_pagehide_flush() {
+        use wasm_bindgen::prelude::Closure;
+        use wasm_bindgen::JsCast as _;
+
+        let closure: Closure<dyn Fn()> = Closure::wrap(Box::new(|| {
+            flush();
+        }));
+
+        if let Some(window) = web_sys::window() {
+            let _ = window.add_event_listener_with_callback(
+                "pagehide",
+                closure.as_ref().unchecked_ref(),
+            );
+        }
+
+        // Leak the closure so it stays alive for the page lifetime.
+        closure.forget();
     }
 }
 
@@ -394,12 +435,11 @@ pub(crate) mod native_storage {
         data_dir().join("log-out.db")
     }
 
-    /// Opens (or creates) the `SQLite` database and ensures all required tables exist.
-    /// Uses `PRAGMA user_version` to run the schema DDL only once (when the DB is
-    /// first created), rather than on every operation.
-    fn open_db() -> Result<Connection, StorageError> {
-        std::fs::create_dir_all(data_dir())?;
-        let conn = Connection::open(db_path())?;
+    /// Runs the schema DDL migration if the database is brand-new (`user_version == 0`).
+    ///
+    /// Separated from [`open_db`] so it can be called in tests after a manual schema
+    /// reset without needing to re-create the long-lived connection.
+    fn apply_migration_if_needed(conn: &Connection) -> Result<(), StorageError> {
         let schema_version: u32 = conn.query_row("PRAGMA user_version", [], |r| r.get(0))?;
         if schema_version == 0 {
             conn.execute_batch(
@@ -410,7 +450,44 @@ pub(crate) mod native_storage {
                  PRAGMA user_version = 1;",
             )?;
         }
-        Ok(conn)
+        Ok(())
+    }
+
+    /// Returns a mutex guard for the long-lived `SQLite` connection.
+    ///
+    /// The connection is opened **once** via [`std::sync::OnceLock`] and reused for the
+    /// lifetime of the process.  The schema migration is also applied exactly once,
+    /// inside the `OnceLock` initialiser, so it never runs on subsequent calls.
+    ///
+    /// # Panics
+    ///
+    /// Panics on the first call if the data directory cannot be created or the database
+    /// file cannot be opened.  These are considered fatal, unrecoverable errors.
+    fn open_db() -> Result<std::sync::MutexGuard<'static, Connection>, StorageError> {
+        static DB: std::sync::OnceLock<std::sync::Mutex<Connection>> =
+            std::sync::OnceLock::new();
+
+        let mutex = DB.get_or_init(|| {
+            std::fs::create_dir_all(data_dir())
+                .expect("open_db: failed to create data directory");
+            let conn =
+                Connection::open(db_path()).expect("open_db: failed to open SQLite database");
+            apply_migration_if_needed(&conn)
+                .expect("open_db: failed to apply schema migration");
+            std::sync::Mutex::new(conn)
+        });
+
+        Ok(mutex.lock().unwrap_or_else(std::sync::PoisonError::into_inner))
+    }
+
+    /// Re-applies the schema migration using the shared long-lived connection.
+    ///
+    /// Only available in tests.  Use this after manually dropping tables to simulate
+    /// a fresh-database migration without needing a separate `Connection`.
+    #[cfg(test)]
+    pub(crate) fn apply_migration_for_testing() -> Result<(), StorageError> {
+        let conn = open_db()?;
+        apply_migration_if_needed(&conn)
     }
 
     /// Reads all items from a store, deserialising each row's JSON `data` column.
@@ -890,28 +967,51 @@ mod tests {
 
     // ── schema migration ─────────────────────────────────────────────────────
 
-    /// Verify that `open_db` creates all required tables when the database is
-    /// brand-new (`user_version` == 0), covering the schema-migration code path.
+    /// Verify that the schema migration creates all required tables and leaves
+    /// them in a usable state.
+    ///
+    /// With the `OnceLock`-based connection the migration runs exactly once on
+    /// first access.  This test simulates a "fresh database" by dropping all
+    /// tables via the shared connection and then calling
+    /// [`native_storage::apply_migration_for_testing`] to re-apply the DDL,
+    /// which checks `user_version` and recreates the tables when it is 0.
     #[test]
     fn schema_migration_runs_on_fresh_database() {
         let _g = lock();
-        let db_path = native_storage::data_dir().join("log-out.db");
-        // Reset to a blank-slate: drop all tables and reset user_version.
-        if db_path.exists() {
-            let conn = rusqlite::Connection::open(&db_path).unwrap();
-            conn.execute_batch(
-                "DROP TABLE IF EXISTS sessions;
-                 DROP TABLE IF EXISTS custom_exercises;
-                 DROP TABLE IF EXISTS exercises;
-                 DROP TABLE IF EXISTS config;
-                 PRAGMA user_version = 0;",
-            )
-            .unwrap();
+        // Reset to a blank-slate via the shared connection so that the
+        // `OnceLock`-cached connection sees the drop immediately.
+        {
+            let conn = native_storage::apply_migration_for_testing()
+                .map(|_| ())
+                .ok();
+            // We just need to trigger init; ignore the result here.
+            let _ = conn;
         }
-        // Any public function that calls open_db should trigger schema creation.
-        let result = native_storage::get_all::<WorkoutSession>(native_storage::STORE_SESSIONS);
-        assert!(result.is_ok(), "schema migration must succeed on fresh DB");
+        // Drop all tables and reset user_version using the shared connection.
+        {
+            // Open a temporary connection only to reset the schema version and
+            // drop tables; the shared OnceLock connection will re-apply the
+            // migration below.
+            let db_path = native_storage::data_dir().join("log-out.db");
+            if db_path.exists() {
+                let conn = rusqlite::Connection::open(&db_path).unwrap();
+                conn.execute_batch(
+                    "DROP TABLE IF EXISTS sessions;
+                     DROP TABLE IF EXISTS custom_exercises;
+                     DROP TABLE IF EXISTS exercises;
+                     DROP TABLE IF EXISTS config;
+                     PRAGMA user_version = 0;",
+                )
+                .unwrap();
+            }
+        }
+        // Re-apply the migration through the shared connection so that the
+        // tables are recreated without opening a new connection object.
+        native_storage::apply_migration_for_testing()
+            .expect("schema migration must succeed on fresh DB");
         // Confirm the tables are usable after migration.
+        let result = native_storage::get_all::<WorkoutSession>(native_storage::STORE_SESSIONS);
+        assert!(result.is_ok(), "sessions table must be accessible after migration");
         let session = WorkoutSession {
             id: "schema_migration_test".into(),
             start_time: 1_000,

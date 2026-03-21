@@ -152,12 +152,20 @@ impl Exercise {
     }
 
     /// Get the URL for a specific image by index.
-    /// Images that are already full URLs (start with http:// or https://) are
-    /// returned as-is.  Relative paths from the exercise-db are prefixed with
-    /// the `EXERCISES_IMAGE_BASE_URL`.
+    ///
+    /// Images with a known URL scheme (`http://`, `https://`, `blob:`, `data:`,
+    /// `file://`) or an absolute filesystem path (starting with `/`) are returned
+    /// unchanged.  Relative paths from the exercise database are prefixed with
+    /// the configured `EXERCISES_IMAGE_BASE_URL`.
     pub fn get_image_url(&self, index: usize) -> Option<String> {
         self.images.get(index).map(|img| {
-            if img.starts_with("http://") || img.starts_with("https://") {
+            if img.starts_with("http://")
+                || img.starts_with("https://")
+                || img.starts_with("blob:")
+                || img.starts_with("data:")
+                || img.starts_with("file://")
+                || img.starts_with('/')
+            {
                 img.clone()
             } else {
                 let base_url = crate::utils::get_exercise_images_base_url();
@@ -231,6 +239,72 @@ mod tests {
             i18n: None,
         };
         assert_eq!(ex.get_first_image_url(), None);
+    }
+
+    fn make_exercise_with_image(image: &str) -> Exercise {
+        Exercise {
+            id: "ex1".into(),
+            name: "Test".into(),
+            name_lower: String::new(),
+            force: None,
+            level: None,
+            mechanic: None,
+            equipment: None,
+            primary_muscles: vec![],
+            secondary_muscles: vec![],
+            instructions: vec![],
+            category: Category::Strength,
+            images: vec![image.into()],
+            i18n: None,
+        }
+    }
+
+    #[test]
+    fn get_image_url_passes_through_blob_url() {
+        let ex = make_exercise_with_image("blob:https://example.com/abc-123");
+        assert_eq!(
+            ex.get_first_image_url(),
+            Some("blob:https://example.com/abc-123".into())
+        );
+    }
+
+    #[test]
+    fn get_image_url_passes_through_data_url() {
+        let ex = make_exercise_with_image("data:image/jpeg;base64,/9j/4AAQ");
+        assert_eq!(
+            ex.get_first_image_url(),
+            Some("data:image/jpeg;base64,/9j/4AAQ".into())
+        );
+    }
+
+    #[test]
+    fn get_image_url_passes_through_file_url() {
+        let ex = make_exercise_with_image("file:///home/user/images/my.jpg");
+        assert_eq!(
+            ex.get_first_image_url(),
+            Some("file:///home/user/images/my.jpg".into())
+        );
+    }
+
+    #[test]
+    fn get_image_url_passes_through_absolute_path() {
+        let ex = make_exercise_with_image("/data/user/0/dev.log_out/images/my.jpg");
+        assert_eq!(
+            ex.get_first_image_url(),
+            Some("/data/user/0/dev.log_out/images/my.jpg".into())
+        );
+    }
+
+    #[test]
+    fn get_image_url_prefixes_relative_exercise_db_path() {
+        #[cfg(not(target_arch = "wasm32"))]
+        let _g = crate::services::storage::native_storage::test_lock();
+        let ex = make_exercise_with_image("Squat/0.jpg");
+        let url = ex.get_first_image_url().unwrap();
+        assert!(
+            url.contains("exercises/Squat/0.jpg"),
+            "relative path must be prefixed; got: {url}"
+        );
     }
 
     #[test]
