@@ -2767,6 +2767,7 @@ dependencies = [
  "jni 0.21.1",
  "js-sys",
  "log",
+ "percent-encoding",
  "reqwest",
  "rexie",
  "rusqlite",
