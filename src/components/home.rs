@@ -12,59 +12,110 @@ const PAGE_SIZE: usize = 20;
 #[component]
 pub fn Home() -> Element {
     let sessions = storage::use_sessions();
-    #[cfg_attr(not(target_arch = "wasm32"), allow(unused_mut))]
-    let mut visible_count = use_signal(|| PAGE_SIZE);
+    let mut completed_sessions = use_signal(Vec::<WorkoutSession>::new);
+    let mut sessions_loaded_offset = use_signal(|| 0usize);
+    let mut all_loaded = use_signal(|| false);
+    let mut is_loading = use_signal(|| false);
 
     let has_active = use_memo(move || sessions.read().iter().any(WorkoutSession::is_active));
+
+    // Track the number of completed sessions to detect transitions (e.g., a
+    // session finishes or is deleted) without re-running on every active-session
+    // heartbeat update.
+    let completed_count =
+        use_memo(move || sessions.read().iter().filter(|s| !s.is_active()).count());
+
+    // Reload the first page of completed sessions from storage whenever the
+    // count of completed sessions changes.  This replaces the previous
+    // in-memory clone-and-sort of the entire history.
+    use_effect(move || {
+        let _ = *completed_count.read();
+        sessions_loaded_offset.set(0);
+        all_loaded.set(false);
+        is_loading.set(true);
+        spawn(async move {
+            let page = storage::load_completed_sessions_page(PAGE_SIZE, 0).await;
+            let len = page.len();
+            completed_sessions.set(page);
+            sessions_loaded_offset.set(len);
+            all_loaded.set(len < PAGE_SIZE);
+            is_loading.set(false);
+        });
+    });
 
     let start_new_session = move |_| {
         let new_session = WorkoutSession::new();
         storage::save_session(new_session);
     };
 
-    let completed_sessions = use_memo(move || {
-        let mut completed: Vec<WorkoutSession> = sessions
-            .read()
-            .iter()
-            .filter(|s| !s.is_active())
-            .cloned()
-            .collect();
-        // antichronological order
-        completed.sort_by(|a, b| b.start_time.cmp(&a.start_time));
-        completed
-    });
+    // Set up scroll-based auto-pagination on wasm32 via a web-sys `Closure`.
+    //
+    // Using `web-sys` instead of `document::eval` lets us hold a Rust reference
+    // to the handler function.  The returned `ScrollGuard` is stored in the
+    // component's hook state and dropped when the `Home` component unmounts,
+    // which calls `window.removeEventListener` to prevent a memory leak.
+    #[cfg(target_arch = "wasm32")]
+    let _scroll_guard = use_hook(move || {
+        use wasm_bindgen::prelude::Closure;
+        use wasm_bindgen::JsCast as _;
 
-    // Set up scroll-based auto-pagination via document::eval (cross-platform).
-    // Injects a scroll listener that sends a message whenever the user is near
-    // the bottom; Rust receives it and increments visible_count.
-    use_hook(move || {
-        let js = r"
-            (function() {
-                const handler = function() {
-                    var el = document.documentElement;
-                    var scrollTop = window.scrollY || el.scrollTop || 0;
-                    var clientHeight = el.clientHeight || window.innerHeight || 0;
-                    var scrollHeight = el.scrollHeight || 0;
-                    if (scrollHeight > 0 && scrollTop + clientHeight >= scrollHeight - 300) {
-                        dioxus.send(true);
-                    }
-                };
-                window.addEventListener('scroll', handler);
-                // Dioxus eval will automatically clean up when the future is dropped
-                // but we can also handle it if we want.
-            })()
-            "
-        .to_string();
-        spawn(async move {
-            let mut eval = dioxus::prelude::document::eval(&js);
-            while eval.recv::<bool>().await.is_ok() {
-                let cur = *visible_count.peek();
-                let total = completed_sessions.peek().len();
-                if cur < total {
-                    visible_count.set(cur + PAGE_SIZE);
+        let closure: Closure<dyn Fn()> = Closure::wrap(Box::new(move || {
+            if *is_loading.peek() || *all_loaded.peek() {
+                return;
+            }
+            let Some(window) = web_sys::window() else {
+                return;
+            };
+            let Some(document) = window.document() else {
+                return;
+            };
+            let Some(el) = document.document_element() else {
+                return;
+            };
+            let scroll_top = window.scroll_y().unwrap_or(0.0);
+            let client_height = f64::from(el.client_height());
+            let scroll_height = f64::from(el.scroll_height());
+            if scroll_height > 0.0 && scroll_top + client_height >= scroll_height - 300.0 {
+                is_loading.set(true);
+                let off = *sessions_loaded_offset.peek();
+                wasm_bindgen_futures::spawn_local(async move {
+                    let next =
+                        crate::services::storage::load_completed_sessions_page(PAGE_SIZE, off)
+                            .await;
+                    let len = next.len();
+                    completed_sessions.write().extend(next);
+                    sessions_loaded_offset.set(off + len);
+                    all_loaded.set(len < PAGE_SIZE);
+                    is_loading.set(false);
+                });
+            }
+        }));
+
+        let func: js_sys::Function =
+            closure.as_ref().unchecked_ref::<js_sys::Function>().clone();
+        if let Some(window) = web_sys::window() {
+            let _ = window.add_event_listener_with_callback("scroll", &func);
+        }
+
+        /// Drop guard that removes the scroll event listener when the `Home`
+        /// component unmounts, preventing a JS interop memory leak.
+        struct ScrollGuard {
+            /// Keeps the underlying JS function alive until the listener is removed.
+            closure: Closure<dyn Fn()>,
+            func: js_sys::Function,
+        }
+        impl Drop for ScrollGuard {
+            fn drop(&mut self) {
+                if let Some(window) = web_sys::window() {
+                    let _ = window.remove_event_listener_with_callback("scroll", &self.func);
                 }
             }
-        });
+        }
+
+        ScrollGuard {
+            closure,
+            func,
+        }
     });
 
     rsx! {
@@ -73,12 +124,12 @@ pub fn Home() -> Element {
                 h1 { tabindex: 0, {t!("app-title")} }
                 p { tabindex: 0, {t!("app-subtitle")} }
             }
-            if completed_sessions().is_empty() {
+            if completed_sessions.read().is_empty() {
                 p { {t!("no-sessions")} }
                 p { {t!("start-first-workout")} }
             } else {
                 main { class: "sessions",
-                    for session in completed_sessions().into_iter().take(*visible_count.read()) {
+                    for session in completed_sessions.read().iter() {
                         SessionCard { key: "{session.id}", session: session.clone() }
                     }
                 }

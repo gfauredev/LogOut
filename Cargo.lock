@@ -2775,6 +2775,7 @@ dependencies = [
  "serde_json",
  "strum",
  "sys-locale",
+ "thiserror 2.0.18",
  "time",
  "tokio",
  "unic-langid",

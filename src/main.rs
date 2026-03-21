@@ -238,10 +238,9 @@ fn DeepLinkLayout() -> Element {
                     });
                 }
                 DeepLinkAction::StartSession(exercise_ids) => {
-                    let mut session = models::WorkoutSession::new();
-                    session.pending_exercise_ids = exercise_ids;
-                    services::storage::save_session(session);
-                    nav.push(Route::Home {});
+                    // Defer validation until exercises are loaded so that
+                    // unrecognised / fabricated IDs are rejected.
+                    pending.set(Some(DeepLinkAction::StartSession(exercise_ids)));
                 }
                 // Deferred: needs exercises to be loaded first
                 action @ DeepLinkAction::CreateSession(_) => {
@@ -268,9 +267,27 @@ fn DeepLinkLayout() -> Element {
             }
             // Clear the pending action to avoid reprocessing on future re-runs
             pending.set(None);
-            if let DeepLinkAction::CreateSession(entries) = action {
-                let session = build_session_from_entries(&entries, &exercises);
-                services::storage::save_session(session);
+            match action {
+                DeepLinkAction::CreateSession(entries) => {
+                    let session = build_session_from_entries(&entries, &exercises);
+                    services::storage::save_session(session);
+                }
+                DeepLinkAction::StartSession(exercise_ids) => {
+                    // Build a HashSet of valid exercise IDs for O(1) lookup,
+                    // then reject any fabricated or unknown IDs to prevent
+                    // deep-link data poisoning.
+                    let known_ids: std::collections::HashSet<&str> =
+                        exercises.iter().map(|e| e.id.as_str()).collect();
+                    let valid_ids: Vec<String> = exercise_ids
+                        .into_iter()
+                        .filter(|id| known_ids.contains(id.as_str()))
+                        .collect();
+                    let mut session = models::WorkoutSession::new();
+                    session.pending_exercise_ids = valid_ids;
+                    services::storage::save_session(session);
+                    nav.push(Route::Home {});
+                }
+                _ => {} // other actions are handled immediately in use_hook
             }
         });
     }
