@@ -271,10 +271,8 @@ pub(crate) mod idb_queue {
         }));
 
         if let Some(window) = web_sys::window() {
-            let _ = window.add_event_listener_with_callback(
-                "pagehide",
-                closure.as_ref().unchecked_ref(),
-            );
+            let _ = window
+                .add_event_listener_with_callback("pagehide", closure.as_ref().unchecked_ref());
         }
 
         // Leak the closure so it stays alive for the page lifetime.
@@ -464,20 +462,19 @@ pub(crate) mod native_storage {
     /// Panics on the first call if the data directory cannot be created or the database
     /// file cannot be opened.  These are considered fatal, unrecoverable errors.
     fn open_db() -> std::sync::MutexGuard<'static, Connection> {
-        static DB: std::sync::OnceLock<std::sync::Mutex<Connection>> =
-            std::sync::OnceLock::new();
+        static DB: std::sync::OnceLock<std::sync::Mutex<Connection>> = std::sync::OnceLock::new();
 
         let mutex = DB.get_or_init(|| {
-            std::fs::create_dir_all(data_dir())
-                .expect("open_db: failed to create data directory");
+            std::fs::create_dir_all(data_dir()).expect("open_db: failed to create data directory");
             let conn =
                 Connection::open(db_path()).expect("open_db: failed to open SQLite database");
-            apply_migration_if_needed(&conn)
-                .expect("open_db: failed to apply schema migration");
+            apply_migration_if_needed(&conn).expect("open_db: failed to apply schema migration");
             std::sync::Mutex::new(conn)
         });
 
-        mutex.lock().unwrap_or_else(std::sync::PoisonError::into_inner)
+        mutex
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
     }
 
     /// Re-applies the schema migration using the shared long-lived connection.
@@ -1005,7 +1002,10 @@ mod tests {
             .expect("schema migration must succeed on fresh DB");
         // Confirm the tables are usable after migration.
         let result = native_storage::get_all::<WorkoutSession>(native_storage::STORE_SESSIONS);
-        assert!(result.is_ok(), "sessions table must be accessible after migration");
+        assert!(
+            result.is_ok(),
+            "sessions table must be accessible after migration"
+        );
         let session = WorkoutSession {
             id: "schema_migration_test".into(),
             start_time: 1_000,

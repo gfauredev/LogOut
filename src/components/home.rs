@@ -69,10 +69,7 @@ pub fn Home() -> Element {
         }
 
         // ── Case 2: deletion ──────────────────────────────────────────────
-        let removed: Vec<String> = viewed_ids
-            .difference(&new_ids)
-            .cloned()
-            .collect();
+        let removed: Vec<String> = viewed_ids.difference(&new_ids).cloned().collect();
         if !removed.is_empty() {
             let new_len = {
                 let mut cs = completed_sessions.write();
