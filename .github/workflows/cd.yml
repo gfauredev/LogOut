@@ -167,9 +167,9 @@ jobs:
     - name: Publish Timestamped Pre-release # If no SemVer tag on last commit
       run: |
         NOW=$(date -u +"%Y-%m-%d")
-        gh release list --json tagName,createdAt,isPrerelease --limit 1 \
-          --jq '.[]|select(.isPrerelease == true)|"\(.tagName) \(.createdAt)"' \
-          | read -r OLD_TAG CREATED_AT
+        read -r OLD_TAG CREATED_AT <<< "$(gh release list \
+          --json tagName,createdAt,isPrerelease --limit 1 \
+          --jq '.[]|select(.isPrerelease == true)|"\(.tagName) \(.createdAt)"')"
         if [ -z "$CREATED_AT" ] ||
           [ "$(date -d "$CREATED_AT" +%s)" -le "$(date -d '2 days ago' +%s)" ]
         then
