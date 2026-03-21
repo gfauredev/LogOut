@@ -33,6 +33,10 @@ pub fn ExerciseFormFields(
     let mut image_url_input = image_url_input;
     let mut images_list = images_list;
 
+    // Native-only: path to a local image file to be copied into the data directory.
+    #[cfg(not(target_arch = "wasm32"))]
+    let mut local_image_path_input = use_signal(String::new);
+
     let add_muscle = move |_| {
         let value = muscle_input.read().trim().to_string();
         if !value.is_empty() {
@@ -108,6 +112,96 @@ pub fn ExerciseFormFields(
         if idx < imgs.len() {
             imgs.remove(idx);
             images_list.set(imgs);
+        }
+    };
+
+    // Web (WASM): set up a persistent `FileReader` listener via `document::eval`
+    // so that when the user picks a file the reader converts it to a `data:` URL
+    // and pushes it into `images_list`.  The listener is registered once on mount
+    // and survives re-renders by listening on `document` rather than the input
+    // element directly.
+    #[cfg(target_arch = "wasm32")]
+    use_hook(move || {
+        let js = r#"
+            (function() {
+                document.addEventListener('change', function(e) {
+                    if (!e.target || e.target.id !== 'image-file-input') return;
+                    var file = e.target.files && e.target.files[0];
+                    if (!file) return;
+                    var reader = new FileReader();
+                    reader.onload = function(re) {
+                        dioxus.send(re.target.result);
+                    };
+                    reader.readAsDataURL(file);
+                });
+            })()
+        "#;
+        spawn(async move {
+            let mut eval = document::eval(js);
+            while let Ok(data_url) = eval.recv::<String>().await {
+                let mut imgs = images_list.write();
+                if !imgs.contains(&data_url) {
+                    imgs.push(data_url);
+                }
+            }
+        });
+    });
+
+    // Native: copy the file at the given path into the app's local images
+    // directory and store the destination path in `images_list`.
+    #[cfg(not(target_arch = "wasm32"))]
+    let add_local_image = move |_| {
+        let path_str = local_image_path_input.read().trim().to_string();
+        if path_str.is_empty() {
+            return;
+        }
+        let src = std::path::Path::new(&path_str);
+        if !src.exists() {
+            return;
+        }
+        let images_dir =
+            crate::services::storage::native_storage::data_dir().join("images");
+        if std::fs::create_dir_all(&images_dir).is_err() {
+            return;
+        }
+        if let Some(filename) = src.file_name() {
+            let dest = images_dir.join(filename);
+            if std::fs::copy(src, &dest).is_ok() {
+                let dest_str = dest.to_string_lossy().to_string();
+                let mut imgs = images_list.write();
+                if !imgs.contains(&dest_str) {
+                    imgs.push(dest_str);
+                }
+                local_image_path_input.set(String::new());
+            }
+        }
+    };
+
+    // Build the platform-specific image-upload widget before the main rsx! block
+    // so we can use `#[cfg]` on whole statement items.
+    #[cfg(target_arch = "wasm32")]
+    let image_upload_widget: Element = rsx! {
+        div { class: "inputs",
+            input {
+                id: "image-file-input",
+                r#type: "file",
+                accept: "image/*",
+                title: "Upload a local image file",
+            }
+        }
+    };
+
+    #[cfg(not(target_arch = "wasm32"))]
+    let image_upload_widget: Element = rsx! {
+        div { class: "inputs",
+            input {
+                r#type: "text",
+                placeholder: "/path/to/local/image.jpg",
+                value: "{local_image_path_input}",
+                oninput: move |evt| local_image_path_input.set(evt.value()),
+                title: "Path to a local image file (will be copied into app storage)",
+            }
+            button { class: "more", onclick: add_local_image, "📁" }
         }
     };
 
@@ -243,7 +337,7 @@ pub fn ExerciseFormFields(
             }
         }
         div {
-            label { "Images (URLs)" }
+            label { "Images" }
             div { class: "inputs",
                 input { r#type: "url",
                     placeholder: "https://example.com/image.jpg",
@@ -252,6 +346,8 @@ pub fn ExerciseFormFields(
                 }
                 button { class: "more", onclick: add_image, "+" }
             }
+            // Platform-specific upload widget (file picker on web, path input on native)
+            {image_upload_widget}
             if !images_list.read().is_empty() {
                 ul { class: "tags", for (idx, url) in images_list.read().iter().enumerate() {
                     li { key: "{idx}",
