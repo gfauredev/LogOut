@@ -290,7 +290,7 @@
           };
         }
       );
-      apps = forAllSystems (system: {
+      apps = forAllSystems (system: rec {
         pages = {
           type = "app";
           program = "${self.packages.${system}.pagesServer}/bin/logout-pages";
@@ -299,7 +299,7 @@
         pagesE2eTest = {
           type = "app";
           program = "${self.packages.${system}.pagesE2eTester}/bin/logout-pages-e2e-tester";
-          meta.description = "Run E2E tests against PWA";
+          meta.description = "Run Maestro E2E tests against PWA";
         };
         androidBuild = {
           type = "app";
@@ -309,13 +309,9 @@
         androidE2eTest = {
           type = "app";
           program = "${self.packages.${system}.androidE2eTester}/bin/logout-android-e2e-tester";
-          meta.description = "Run Maestro Android E2E tests";
+          meta.description = "Run Maestro E2E tests against Android App";
         };
-        default = {
-          type = "app";
-          program = "${self.packages.${system}.pagesServer}/bin/logout-pages";
-          meta.description = "Serve PWA";
-        };
+        default = pages;
       });
       devShells = forAllSystems (
         system:
@@ -377,7 +373,7 @@
           '';
           clippy = env.craneLib.cargoClippy {
             inherit (env) cargoArtifacts;
-            pname = "logout-clippy";
+            pname = "logout";
             version = env.projectVersion;
             src = env.craneLib.path ./.;
             nativeBuildInputs = env.commonNativeBuildInputs;
