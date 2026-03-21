@@ -97,9 +97,12 @@ pub fn Home() -> Element {
             newly_completed.sort_by(|a, b| b.start_time.cmp(&a.start_time));
             let new_len = {
                 let mut cs = completed_sessions.write();
-                let old = std::mem::take(&mut *cs);
-                cs.extend(newly_completed);
-                cs.extend(old);
+                // Build a new vec with correct capacity to avoid double-allocation:
+                // newly_completed first (newest), then existing paginated entries.
+                let mut new_cs = Vec::with_capacity(newly_completed.len() + cs.len());
+                new_cs.extend(newly_completed);
+                new_cs.extend(cs.drain(..));
+                *cs = new_cs;
                 cs.len()
             };
             sessions_loaded_offset.set(new_len);

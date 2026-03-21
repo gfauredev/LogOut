@@ -115,13 +115,23 @@ pub fn ExerciseFormFields(
         }
     };
 
-    // Web (WASM): set up a persistent `FileReader` listener via `document::eval`
-    // so that when the user picks a file the reader converts it to a `data:` URL
-    // and pushes it into `images_list`.  The listener is registered once on mount
-    // and survives re-renders by listening on `document` rather than the input
-    // element directly.
+    // Web (WASM): set up a `FileReader` listener via `document::eval` that
+    // converts a picked file to a `data:` URL and pushes it into `images_list`.
+    //
+    // The listener is registered on `document` (not on the input element) so it
+    // survives component re-renders.  A `thread_local` flag ensures at most one
+    // listener is ever registered, even if the component remounts.
     #[cfg(target_arch = "wasm32")]
     use_hook(move || {
+        use std::cell::Cell;
+        thread_local! {
+            static LISTENER_REGISTERED: Cell<bool> = const { Cell::new(false) };
+        }
+        if LISTENER_REGISTERED.with(Cell::get) {
+            return;
+        }
+        LISTENER_REGISTERED.with(|r| r.set(true));
+
         let js = r#"
             (function() {
                 document.addEventListener('change', function(e) {
@@ -157,22 +167,29 @@ pub fn ExerciseFormFields(
         }
         let src = std::path::Path::new(&path_str);
         if !src.exists() {
+            log::warn!("Local image file not found: {src:?}");
             return;
         }
         let images_dir =
             crate::services::storage::native_storage::data_dir().join("images");
-        if std::fs::create_dir_all(&images_dir).is_err() {
+        if let Err(e) = std::fs::create_dir_all(&images_dir) {
+            log::error!("Failed to create images directory {images_dir:?}: {e}");
             return;
         }
         if let Some(filename) = src.file_name() {
             let dest = images_dir.join(filename);
-            if std::fs::copy(src, &dest).is_ok() {
-                let dest_str = dest.to_string_lossy().to_string();
-                let mut imgs = images_list.write();
-                if !imgs.contains(&dest_str) {
-                    imgs.push(dest_str);
+            match std::fs::copy(src, &dest) {
+                Ok(_) => {
+                    let dest_str = dest.to_string_lossy().to_string();
+                    let mut imgs = images_list.write();
+                    if !imgs.contains(&dest_str) {
+                        imgs.push(dest_str);
+                    }
+                    local_image_path_input.set(String::new());
                 }
-                local_image_path_input.set(String::new());
+                Err(e) => {
+                    log::error!("Failed to copy image from {src:?} to {dest:?}: {e}");
+                }
             }
         }
     };
