@@ -91,8 +91,7 @@ pub fn Home() -> Element {
             }
         }));
 
-        let func: js_sys::Function =
-            closure.as_ref().unchecked_ref::<js_sys::Function>().clone();
+        let func: js_sys::Function = closure.as_ref().unchecked_ref::<js_sys::Function>().clone();
         if let Some(window) = web_sys::window() {
             let _ = window.add_event_listener_with_callback("scroll", &func);
         }
@@ -112,10 +111,7 @@ pub fn Home() -> Element {
             }
         }
 
-        ScrollGuard {
-            closure,
-            func,
-        }
+        ScrollGuard { closure, func }
     });
 
     rsx! {
