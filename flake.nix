@@ -1,8 +1,14 @@
 {
   description = "LogOut dev envs";
   nixConfig = {
-    extra-substituters = [ "https://cache.garnix.io" ];
-    extra-trusted-public-keys = [ "cache.garnix.io:CTFPyKSLcx5RMJKfLo5EEPUObbA78b0YQ2DTCJXqr9g=" ];
+    extra-substituters = [
+      "https://cache.garnix.io"
+      "https://gfauredev.cachix.org"
+    ];
+    extra-trusted-public-keys = [
+      "cache.garnix.io:CTFPyKSLcx5RMJKfLo5EEPUObbA78b0YQ2DTCJXqr9g="
+      "gfauredev.cachix.org-1:mGOZ5I0bDVatgwLhbuTasIiWpVjgCyMFjfIZEPjmQfM="
+    ];
   };
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
@@ -320,6 +326,7 @@
           default = env.pkgs.mkShell {
             packages = with env.pkgs; [
               # biome sass scss-lint python3 strace
+              cachix
               taplo # TOML LSP
               typescript-language-server # TS LSP
               vscode-langservers-extracted # HTML/CSS/JS(ON)
