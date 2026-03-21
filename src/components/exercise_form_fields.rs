@@ -167,13 +167,13 @@ pub fn ExerciseFormFields(
         }
         let src = std::path::Path::new(&path_str);
         if !src.exists() {
-            log::warn!("Local image file not found: {src:?}");
+            log::warn!("Local image file not found: {}", src.display());
             return;
         }
         let images_dir =
             crate::services::storage::native_storage::data_dir().join("images");
         if let Err(e) = std::fs::create_dir_all(&images_dir) {
-            log::error!("Failed to create images directory {images_dir:?}: {e}");
+            log::error!("Failed to create images directory {}: {e}", images_dir.display());
             return;
         }
         if let Some(filename) = src.file_name() {
@@ -188,7 +188,11 @@ pub fn ExerciseFormFields(
                     local_image_path_input.set(String::new());
                 }
                 Err(e) => {
-                    log::error!("Failed to copy image from {src:?} to {dest:?}: {e}");
+                    log::error!(
+                        "Failed to copy image from {} to {}: {e}",
+                        src.display(),
+                        dest.display()
+                    );
                 }
             }
         }
