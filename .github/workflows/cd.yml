@@ -170,8 +170,9 @@ jobs:
         gh release list --json tagName,createdAt,isPrerelease --limit 1 \
           --jq '.[]|select(.isPrerelease == true)|"\(.tagName) \(.createdAt)"' \
           | read -r OLD_TAG CREATED_AT
-        TIMESTAMP=$(date -d "$CREATED_AT" +%s)
-        if [ "$TIMESTAMP" -le "$(date -d '2 days ago' +%s)" ]; then
+        if [ -z "$CREATED_AT" ] ||
+          [ "$(date -d "$CREATED_AT" +%s)" -le "$(date -d '2 days ago' +%s)" ]
+        then
           gh release create "pre-$NOW" *.apk --prerelease \
             --title "$NOW" --notes "Automated pre-release for $NOW"
         fi
