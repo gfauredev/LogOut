@@ -20,6 +20,47 @@ pub use super::app_state::{
     provide_app_state, save_session, update_custom_exercise, use_custom_exercises, use_sessions,
 };
 
+/// Load a page of completed sessions, sorted by `start_time` descending.
+///
+/// On native platforms, executes a SQL query with `LIMIT`/`OFFSET` so only
+/// the requested rows are transferred from the database, avoiding the need to
+/// load, clone, and sort the entire history in memory.
+///
+/// On the web platform, all sessions are retrieved from `IndexedDB`, then
+/// filtered, sorted, and sliced — true cursor-based pagination requires IDB
+/// indices which would add schema-migration complexity.
+///
+/// Returns an empty `Vec` and logs an error when storage access fails.
+pub async fn load_completed_sessions_page(
+    limit: usize,
+    offset: usize,
+) -> Vec<crate::models::WorkoutSession> {
+    #[cfg(target_arch = "wasm32")]
+    {
+        match idb::get_all::<crate::models::WorkoutSession>(idb::STORE_SESSIONS).await {
+            Ok(mut sessions) => {
+                sessions.retain(|s| !s.is_active());
+                sessions.sort_by(|a, b| b.start_time.cmp(&a.start_time));
+                sessions.into_iter().skip(offset).take(limit).collect()
+            }
+            Err(e) => {
+                log::error!("Failed to load sessions from IDB: {e}");
+                vec![]
+            }
+        }
+    }
+    #[cfg(not(target_arch = "wasm32"))]
+    {
+        match native_storage::get_completed_sessions_paged(limit, offset) {
+            Ok(sessions) => sessions,
+            Err(e) => {
+                log::error!("Failed to load completed sessions: {e}");
+                vec![]
+            }
+        }
+    }
+}
+
 #[cfg(target_arch = "wasm32")]
 pub(crate) mod idb {
     use rexie::{ObjectStore, Rexie, TransactionMode};
@@ -301,15 +342,35 @@ pub(crate) mod native_storage {
     pub const STORE_CUSTOM_EXERCISES: &str = "custom_exercises";
     pub const STORE_EXERCISES: &str = "exercises";
 
-    const KNOWN_STORES: &[&str] = &[STORE_SESSIONS, STORE_CUSTOM_EXERCISES, STORE_EXERCISES];
+    /// Structured error type for native (SQLite) storage operations.
+    #[derive(Debug, thiserror::Error)]
+    pub enum StorageError {
+        /// Unknown store name — indicates a programming error.
+        #[error("Unknown store: {0}")]
+        UnknownStore(String),
+        /// Database-level error from `rusqlite`.
+        #[error("Database error: {0}")]
+        Database(#[from] rusqlite::Error),
+        /// JSON serialisation / deserialisation error.
+        #[error("Serialization error: {0}")]
+        Serialization(#[from] serde_json::Error),
+        /// OS-level I/O error (directory creation, file access, etc.).
+        #[error("IO error: {0}")]
+        Io(#[from] std::io::Error),
+    }
 
-    /// Validates `store_name` against the known store constants to prevent SQL
-    /// injection from unexpected callers.  Returns `Err` when the name is unknown.
-    fn validate_store(store_name: &str) -> Result<(), String> {
-        if KNOWN_STORES.contains(&store_name) {
-            Ok(())
-        } else {
-            Err(format!("Unknown store: {store_name}"))
+    /// Returns a static SQL table name for a known store, or
+    /// `Err(StorageError::UnknownStore)` for an unrecognised name.
+    ///
+    /// Using this function for all table-name resolution ensures that no
+    /// dynamic string can ever reach a SQL statement, eliminating table-name
+    /// injection as a risk regardless of call order.
+    fn store_table(store_name: &str) -> Result<&'static str, StorageError> {
+        match store_name {
+            STORE_SESSIONS => Ok("sessions"),
+            STORE_CUSTOM_EXERCISES => Ok("custom_exercises"),
+            STORE_EXERCISES => Ok("exercises"),
+            other => Err(StorageError::UnknownStore(other.to_string())),
         }
     }
 
@@ -333,12 +394,11 @@ pub(crate) mod native_storage {
     /// Opens (or creates) the `SQLite` database and ensures all required tables exist.
     /// Uses `PRAGMA user_version` to run the schema DDL only once (when the DB is
     /// first created), rather than on every operation.
-    fn open_db() -> Result<Connection, String> {
-        std::fs::create_dir_all(data_dir()).map_err(|e| e.to_string())?;
-        let conn = Connection::open(db_path()).map_err(|e| e.to_string())?;
-        let schema_version: u32 = conn
-            .query_row("PRAGMA user_version", [], |r| r.get(0))
-            .map_err(|e| e.to_string())?;
+    fn open_db() -> Result<Connection, StorageError> {
+        std::fs::create_dir_all(data_dir())?;
+        let conn = Connection::open(db_path())?;
+        let schema_version: u32 =
+            conn.query_row("PRAGMA user_version", [], |r| r.get(0))?;
         if schema_version == 0 {
             conn.execute_batch(
                 "CREATE TABLE IF NOT EXISTS sessions (id TEXT PRIMARY KEY, data TEXT NOT NULL);
@@ -346,22 +406,25 @@ pub(crate) mod native_storage {
                  CREATE TABLE IF NOT EXISTS exercises (id TEXT PRIMARY KEY, data TEXT NOT NULL);
                  CREATE TABLE IF NOT EXISTS config (key TEXT PRIMARY KEY, value TEXT NOT NULL);
                  PRAGMA user_version = 1;",
-            )
-            .map_err(|e| e.to_string())?;
+            )?;
         }
         Ok(conn)
     }
 
     /// Reads all items from a store, deserialising each row's JSON `data` column.
-    pub fn get_all<T: DeserializeOwned>(store_name: &str) -> Result<Vec<T>, String> {
-        validate_store(store_name)?;
+    pub fn get_all<T: DeserializeOwned>(store_name: &str) -> Result<Vec<T>, StorageError> {
+        let table = store_table(store_name)?;
         let conn = open_db()?;
-        let mut stmt = conn
-            .prepare(&format!("SELECT data FROM {store_name}"))
-            .map_err(|e| e.to_string())?;
+        let query = match table {
+            "sessions" => "SELECT data FROM sessions",
+            "custom_exercises" => "SELECT data FROM custom_exercises",
+            "exercises" => "SELECT data FROM exercises",
+            // store_table only returns the three values above; this is dead code.
+            _ => unreachable!("store_table returns a known table name"),
+        };
+        let mut stmt = conn.prepare(query)?;
         let items = stmt
-            .query_map([], |row| row.get::<_, String>(0))
-            .map_err(|e| e.to_string())?
+            .query_map([], |row| row.get::<_, String>(0))?
             .filter_map(Result::ok)
             .filter_map(|data| {
                 serde_json::from_str::<T>(&data)
@@ -372,52 +435,105 @@ pub(crate) mod native_storage {
         Ok(items)
     }
 
-    /// Replaces the entire contents of a store with `items` in a single transaction.
-    pub fn store_all<T: Serialize>(store_name: &str, items: &[T]) -> Result<(), String> {
-        validate_store(store_name)?;
+    /// Reads completed sessions ordered by `start_time` descending, with
+    /// database-level `LIMIT` / `OFFSET` pagination to avoid loading the
+    /// entire history into memory.
+    ///
+    /// `limit` and `offset` are clamped to `i64::MAX` before being passed to
+    /// SQLite; in practice both will always be tiny (tens to hundreds).
+    pub fn get_completed_sessions_paged(
+        limit: usize,
+        offset: usize,
+    ) -> Result<Vec<crate::models::WorkoutSession>, StorageError> {
         let conn = open_db()?;
-        let tx = conn.unchecked_transaction().map_err(|e| e.to_string())?;
-        tx.execute(&format!("DELETE FROM {store_name}"), [])
-            .map_err(|e| e.to_string())?;
+        let mut stmt = conn.prepare(
+            "SELECT data FROM sessions \
+             WHERE json_extract(data, '$.end_time') IS NOT NULL \
+             ORDER BY json_extract(data, '$.start_time') DESC \
+             LIMIT ?1 OFFSET ?2",
+        )?;
+        let limit_i64 = i64::try_from(limit).unwrap_or(i64::MAX);
+        let offset_i64 = i64::try_from(offset).unwrap_or(i64::MAX);
+        let items = stmt
+            .query_map(params![limit_i64, offset_i64], |row| {
+                row.get::<_, String>(0)
+            })?
+            .filter_map(Result::ok)
+            .filter_map(|data| {
+                serde_json::from_str::<crate::models::WorkoutSession>(&data)
+                    .inspect_err(|e| log::warn!("Skipping corrupt SQLite row: {e}"))
+                    .ok()
+            })
+            .collect();
+        Ok(items)
+    }
+
+    /// Replaces the entire contents of a store with `items` in a single transaction.
+    pub fn store_all<T: Serialize>(store_name: &str, items: &[T]) -> Result<(), StorageError> {
+        let table = store_table(store_name)?;
+        let conn = open_db()?;
+        let tx = conn.unchecked_transaction()?;
+        let delete_sql = match table {
+            "sessions" => "DELETE FROM sessions",
+            "custom_exercises" => "DELETE FROM custom_exercises",
+            "exercises" => "DELETE FROM exercises",
+            _ => unreachable!("store_table returns a known table name"),
+        };
+        tx.execute(delete_sql, [])?;
+        let insert_sql = match table {
+            "sessions" => "INSERT OR REPLACE INTO sessions (id, data) VALUES (?1, ?2)",
+            "custom_exercises" => {
+                "INSERT OR REPLACE INTO custom_exercises (id, data) VALUES (?1, ?2)"
+            }
+            "exercises" => "INSERT OR REPLACE INTO exercises (id, data) VALUES (?1, ?2)",
+            _ => unreachable!("store_table returns a known table name"),
+        };
         for item in items {
-            let val = serde_json::to_value(item).map_err(|e| e.to_string())?;
+            let val = serde_json::to_value(item)?;
             let id = val
                 .get("id")
                 .and_then(|v| v.as_str())
                 .unwrap_or("")
                 .to_string();
-            let data = serde_json::to_string(item).map_err(|e| e.to_string())?;
-            tx.execute(
-                &format!("INSERT OR REPLACE INTO {store_name} (id, data) VALUES (?1, ?2)"),
-                params![id, data],
-            )
-            .map_err(|e| e.to_string())?;
+            let data = serde_json::to_string(item)?;
+            tx.execute(insert_sql, params![id, data])?;
         }
-        tx.commit().map_err(|e| e.to_string())
+        tx.commit()?;
+        Ok(())
     }
 
     /// Upserts one item (identified by `id`) into a store.
-    pub fn put_item<T: Serialize>(store_name: &str, id: &str, item: &T) -> Result<(), String> {
-        validate_store(store_name)?;
+    pub fn put_item<T: Serialize>(
+        store_name: &str,
+        id: &str,
+        item: &T,
+    ) -> Result<(), StorageError> {
+        let table = store_table(store_name)?;
         let conn = open_db()?;
-        let data = serde_json::to_string(item).map_err(|e| e.to_string())?;
-        conn.execute(
-            &format!("INSERT OR REPLACE INTO {store_name} (id, data) VALUES (?1, ?2)"),
-            params![id, data],
-        )
-        .map_err(|e| e.to_string())?;
+        let data = serde_json::to_string(item)?;
+        let insert_sql = match table {
+            "sessions" => "INSERT OR REPLACE INTO sessions (id, data) VALUES (?1, ?2)",
+            "custom_exercises" => {
+                "INSERT OR REPLACE INTO custom_exercises (id, data) VALUES (?1, ?2)"
+            }
+            "exercises" => "INSERT OR REPLACE INTO exercises (id, data) VALUES (?1, ?2)",
+            _ => unreachable!("store_table returns a known table name"),
+        };
+        conn.execute(insert_sql, params![id, data])?;
         Ok(())
     }
 
     /// Deletes the item with `id` from a store (no-op if absent).
-    pub fn delete_item(store_name: &str, id: &str) -> Result<(), String> {
-        validate_store(store_name)?;
+    pub fn delete_item(store_name: &str, id: &str) -> Result<(), StorageError> {
+        let table = store_table(store_name)?;
         let conn = open_db()?;
-        conn.execute(
-            &format!("DELETE FROM {store_name} WHERE id = ?1"),
-            params![id],
-        )
-        .map_err(|e| e.to_string())?;
+        let delete_sql = match table {
+            "sessions" => "DELETE FROM sessions WHERE id = ?1",
+            "custom_exercises" => "DELETE FROM custom_exercises WHERE id = ?1",
+            "exercises" => "DELETE FROM exercises WHERE id = ?1",
+            _ => unreachable!("store_table returns a known table name"),
+        };
+        conn.execute(delete_sql, params![id])?;
         Ok(())
     }
 
@@ -435,23 +551,21 @@ pub(crate) mod native_storage {
     }
 
     /// Sets `key` to `value`.  Passing an empty `value` removes the key.
-    pub fn set_config_value(key: &str, value: &str) -> Result<(), String> {
+    pub fn set_config_value(key: &str, value: &str) -> Result<(), StorageError> {
         let conn = open_db()?;
         if value.is_empty() {
-            conn.execute("DELETE FROM config WHERE key = ?1", params![key])
-                .map_err(|e| e.to_string())?;
+            conn.execute("DELETE FROM config WHERE key = ?1", params![key])?;
         } else {
             conn.execute(
                 "INSERT OR REPLACE INTO config (key, value) VALUES (?1, ?2)",
                 params![key, value],
-            )
-            .map_err(|e| e.to_string())?;
+            )?;
         }
         Ok(())
     }
 
     /// Removes `key` from the config (no-op if absent).
-    pub fn remove_config_value(key: &str) -> Result<(), String> {
+    pub fn remove_config_value(key: &str) -> Result<(), StorageError> {
         set_config_value(key, "")
     }
 
@@ -500,7 +614,13 @@ mod tests {
         let _g = lock();
         let result = native_storage::get_all::<WorkoutSession>("unknown_store");
         assert!(result.is_err());
-        assert!(result.unwrap_err().contains("Unknown store"));
+        assert!(
+            matches!(
+                result.unwrap_err(),
+                native_storage::StorageError::UnknownStore(_)
+            ),
+            "expected StorageError::UnknownStore for an unknown store name"
+        );
     }
 
     // ── data_dir ──────────────────────────────────────────────────────────────
@@ -848,7 +968,96 @@ mod tests {
         }
     }
 
-    // ── helpers ───────────────────────────────────────────────────────────────
+    // ── get_completed_sessions_paged ──────────────────────────────────────────
+
+    #[test]
+    fn completed_sessions_paged_returns_only_completed() {
+        let _g = lock();
+        let active = WorkoutSession {
+            id: "paged_active".into(),
+            start_time: 5_000,
+            end_time: None, // active
+            exercise_logs: vec![],
+            version: DATA_VERSION,
+            pending_exercise_ids: vec![],
+            rest_start_time: None,
+            current_exercise_id: None,
+            current_exercise_start: None,
+            paused_at: None,
+        };
+        let done = WorkoutSession {
+            id: "paged_done".into(),
+            start_time: 4_000,
+            end_time: Some(5_000), // completed
+            exercise_logs: vec![],
+            version: DATA_VERSION,
+            pending_exercise_ids: vec![],
+            rest_start_time: None,
+            current_exercise_id: None,
+            current_exercise_start: None,
+            paused_at: None,
+        };
+        native_storage::put_item(native_storage::STORE_SESSIONS, &active.id, &active).unwrap();
+        native_storage::put_item(native_storage::STORE_SESSIONS, &done.id, &done).unwrap();
+
+        let page =
+            native_storage::get_completed_sessions_paged(10, 0).expect("paged query failed");
+        assert!(
+            page.iter().any(|s| s.id == done.id),
+            "completed session must appear"
+        );
+        assert!(
+            !page.iter().any(|s| s.id == active.id),
+            "active session must be excluded"
+        );
+
+        // Clean up
+        native_storage::delete_item(native_storage::STORE_SESSIONS, &active.id).unwrap();
+        native_storage::delete_item(native_storage::STORE_SESSIONS, &done.id).unwrap();
+    }
+
+    #[test]
+    fn completed_sessions_paged_respects_limit_and_offset() {
+        let _g = lock();
+        // Insert 5 completed sessions with distinct start times
+        let ids: Vec<String> = (1u64..=5)
+            .map(|i| format!("paged_limit_s{i}"))
+            .collect();
+        for (i, id) in ids.iter().enumerate() {
+            let s = WorkoutSession {
+                id: id.clone(),
+                start_time: (i as u64 + 1) * 1_000,
+                end_time: Some((i as u64 + 1) * 1_000 + 60),
+                exercise_logs: vec![],
+                version: DATA_VERSION,
+                pending_exercise_ids: vec![],
+                rest_start_time: None,
+                current_exercise_id: None,
+                current_exercise_start: None,
+                paused_at: None,
+            };
+            native_storage::put_item(native_storage::STORE_SESSIONS, &s.id, &s).unwrap();
+        }
+
+        let page1 =
+            native_storage::get_completed_sessions_paged(2, 0).expect("page 1 query failed");
+        assert_eq!(page1.len(), 2, "limit 2 must return 2 sessions");
+
+        let page2 =
+            native_storage::get_completed_sessions_paged(2, 2).expect("page 2 query failed");
+        assert_eq!(page2.len(), 2, "offset 2 must skip first 2 sessions");
+
+        // Verify descending order: page 1 should have higher start_times than page 2
+        assert!(
+            page1[0].start_time > page2[0].start_time,
+            "results must be ordered newest-first"
+        );
+
+        // Clean up
+        for id in &ids {
+            native_storage::delete_item(native_storage::STORE_SESSIONS, id).unwrap();
+        }
+    }
 
     fn make_exercise(id: &str, name: &str) -> Exercise {
         Exercise {
