@@ -978,15 +978,9 @@ mod tests {
     #[test]
     fn schema_migration_runs_on_fresh_database() {
         let _g = lock();
-        // Reset to a blank-slate via the shared connection so that the
-        // `OnceLock`-cached connection sees the drop immediately.
-        {
-            let conn = native_storage::apply_migration_for_testing()
-                .map(|_| ())
-                .ok();
-            // We just need to trigger init; ignore the result here.
-            let _ = conn;
-        }
+        // Ensure the OnceLock connection is initialized before we try to
+        // reset the schema.
+        native_storage::get_all::<WorkoutSession>(native_storage::STORE_SESSIONS).ok();
         // Drop all tables and reset user_version using the shared connection.
         {
             // Open a temporary connection only to reset the schema version and
