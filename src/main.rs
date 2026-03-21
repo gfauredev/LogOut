@@ -329,9 +329,9 @@ fn path_to_route(path: &str) -> Route {
 ///
 /// The [`utils::SessionExerciseEntry`] URL format uses `weight_hg` for the weight
 /// in hectograms and `reps` for repetitions.  For cardio exercises, the `reps`
-/// value is reinterpreted as a distance in kilometres (multiplied by 1000 to get
-/// metres), since cardio deep-link params typically encode a distance rather than
-/// a repetition count.  Strength and static exercises use `reps` directly.
+/// value is reinterpreted directly as a distance in metres, since cardio
+/// deep-link params typically encode a distance rather than a repetition count.
+/// Strength and static exercises use `reps` directly.
 #[cfg_attr(not(target_arch = "wasm32"), allow(dead_code))]
 fn build_session_from_entries(
     entries: &[utils::SessionExerciseEntry],
@@ -366,7 +366,7 @@ fn build_session_from_entries(
             None
         };
         let distance_m = if category == Category::Cardio {
-            entry.reps.map(|r| Distance(r * 1000))
+            entry.reps.map(Distance) // reps directly as metres
         } else {
             None
         };
