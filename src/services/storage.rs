@@ -31,6 +31,9 @@ pub use super::app_state::{
 /// indices which would add schema-migration complexity.
 ///
 /// Returns an empty `Vec` and logs an error when storage access fails.
+// On native (non-wasm32) the body has no `.await` because SQLite is synchronous;
+// the function must still be `async` so callers can `.await` it uniformly.
+#[cfg_attr(not(target_arch = "wasm32"), allow(clippy::unused_async))]
 pub async fn load_completed_sessions_page(
     limit: usize,
     offset: usize,
@@ -342,7 +345,7 @@ pub(crate) mod native_storage {
     pub const STORE_CUSTOM_EXERCISES: &str = "custom_exercises";
     pub const STORE_EXERCISES: &str = "exercises";
 
-    /// Structured error type for native (SQLite) storage operations.
+    /// Structured error type for native (`SQLite`) storage operations.
     #[derive(Debug, thiserror::Error)]
     pub enum StorageError {
         /// Unknown store name — indicates a programming error.
@@ -440,7 +443,7 @@ pub(crate) mod native_storage {
     /// entire history into memory.
     ///
     /// `limit` and `offset` are clamped to `i64::MAX` before being passed to
-    /// SQLite; in practice both will always be tiny (tens to hundreds).
+    /// `SQLite`; in practice both will always be tiny (tens to hundreds).
     pub fn get_completed_sessions_paged(
         limit: usize,
         offset: usize,

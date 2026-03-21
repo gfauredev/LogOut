@@ -54,9 +54,9 @@ pub fn format_time(seconds: u64) -> String {
 #[must_use]
 pub fn format_time_i64(seconds: i64) -> String {
     if seconds < 0 {
-        format!("-{}", format_time((-seconds) as u64))
+        format!("-{}", format_time((-seconds).cast_unsigned()))
     } else {
-        format_time(seconds as u64)
+        format_time(seconds.cast_unsigned())
     }
 }
 
