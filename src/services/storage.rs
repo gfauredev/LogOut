@@ -463,7 +463,7 @@ pub(crate) mod native_storage {
     ///
     /// Panics on the first call if the data directory cannot be created or the database
     /// file cannot be opened.  These are considered fatal, unrecoverable errors.
-    fn open_db() -> Result<std::sync::MutexGuard<'static, Connection>, StorageError> {
+    fn open_db() -> std::sync::MutexGuard<'static, Connection> {
         static DB: std::sync::OnceLock<std::sync::Mutex<Connection>> =
             std::sync::OnceLock::new();
 
@@ -477,7 +477,7 @@ pub(crate) mod native_storage {
             std::sync::Mutex::new(conn)
         });
 
-        Ok(mutex.lock().unwrap_or_else(std::sync::PoisonError::into_inner))
+        mutex.lock().unwrap_or_else(std::sync::PoisonError::into_inner)
     }
 
     /// Re-applies the schema migration using the shared long-lived connection.
@@ -486,14 +486,14 @@ pub(crate) mod native_storage {
     /// a fresh-database migration without needing a separate `Connection`.
     #[cfg(test)]
     pub(crate) fn apply_migration_for_testing() -> Result<(), StorageError> {
-        let conn = open_db()?;
+        let conn = open_db();
         apply_migration_if_needed(&conn)
     }
 
     /// Reads all items from a store, deserialising each row's JSON `data` column.
     pub fn get_all<T: DeserializeOwned>(store_name: &str) -> Result<Vec<T>, StorageError> {
         let table = store_table(store_name)?;
-        let conn = open_db()?;
+        let conn = open_db();
         let query = match table {
             "sessions" => "SELECT data FROM sessions",
             "custom_exercises" => "SELECT data FROM custom_exercises",
@@ -524,7 +524,7 @@ pub(crate) mod native_storage {
         limit: usize,
         offset: usize,
     ) -> Result<Vec<crate::models::WorkoutSession>, StorageError> {
-        let conn = open_db()?;
+        let conn = open_db();
         let mut stmt = conn.prepare(
             "SELECT data FROM sessions \
              WHERE json_extract(data, '$.end_time') IS NOT NULL \
@@ -550,7 +550,7 @@ pub(crate) mod native_storage {
     /// Replaces the entire contents of a store with `items` in a single transaction.
     pub fn store_all<T: Serialize>(store_name: &str, items: &[T]) -> Result<(), StorageError> {
         let table = store_table(store_name)?;
-        let conn = open_db()?;
+        let conn = open_db();
         let tx = conn.unchecked_transaction()?;
         let delete_sql = match table {
             "sessions" => "DELETE FROM sessions",
@@ -588,7 +588,7 @@ pub(crate) mod native_storage {
         item: &T,
     ) -> Result<(), StorageError> {
         let table = store_table(store_name)?;
-        let conn = open_db()?;
+        let conn = open_db();
         let data = serde_json::to_string(item)?;
         let insert_sql = match table {
             "sessions" => "INSERT OR REPLACE INTO sessions (id, data) VALUES (?1, ?2)",
@@ -605,7 +605,7 @@ pub(crate) mod native_storage {
     /// Deletes the item with `id` from a store (no-op if absent).
     pub fn delete_item(store_name: &str, id: &str) -> Result<(), StorageError> {
         let table = store_table(store_name)?;
-        let conn = open_db()?;
+        let conn = open_db();
         let delete_sql = match table {
             "sessions" => "DELETE FROM sessions WHERE id = ?1",
             "custom_exercises" => "DELETE FROM custom_exercises WHERE id = ?1",
@@ -620,7 +620,7 @@ pub(crate) mod native_storage {
 
     /// Returns the string value for `key`, or `None` if absent.
     pub fn get_config_value(key: &str) -> Option<String> {
-        let conn = open_db().ok()?;
+        let conn = open_db();
         conn.query_row(
             "SELECT value FROM config WHERE key = ?1",
             params![key],
@@ -631,7 +631,7 @@ pub(crate) mod native_storage {
 
     /// Sets `key` to `value`.  Passing an empty `value` removes the key.
     pub fn set_config_value(key: &str, value: &str) -> Result<(), StorageError> {
-        let conn = open_db()?;
+        let conn = open_db();
         if value.is_empty() {
             conn.execute("DELETE FROM config WHERE key = ?1", params![key])?;
         } else {
