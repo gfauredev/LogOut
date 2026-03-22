@@ -21,6 +21,7 @@ use log::{error, info};
 pub fn provide_app_state() {
     use_context_provider(|| Signal::new(Vec::<WorkoutSession>::new()));
     use_context_provider(|| Signal::new(Vec::<Exercise>::new()));
+    use_context_provider(|| Signal::new(BestsCache::new()));
 
     // Load persisted data into the signals via a resource (lifecycle-managed).
     use_resource(load_storage_data);
@@ -51,15 +52,18 @@ async fn load_storage_data() {
         let mut toast = consume_context::<ToastSignal>().0;
 
         match idb::get_all::<WorkoutSession>(idb::STORE_SESSIONS).await {
-            Ok(sessions) if !sessions.is_empty() => {
-                info!("Loaded {} sessions from IndexedDB", sessions.len());
-                sessions_sig.set(sessions);
+            Ok(sessions) => {
+                let active: Vec<WorkoutSession> =
+                    sessions.into_iter().filter(|s| s.is_active()).collect();
+                if !active.is_empty() {
+                    info!("Loaded {} active sessions from IndexedDB", active.len());
+                    sessions_sig.set(active);
+                }
             }
             Err(e) => {
                 error!("Failed to load sessions from IndexedDB: {e}");
                 toast.set(Some(format!("⚠️ Failed to load sessions: {e}")));
             }
-            _ => {}
         }
         match idb::get_all::<Exercise>(idb::STORE_CUSTOM_EXERCISES).await {
             Ok(custom) if !custom.is_empty() => {
@@ -84,15 +88,18 @@ async fn load_storage_data() {
         let mut toast = consume_context::<ToastSignal>().0;
 
         match native_storage::get_all::<WorkoutSession>(native_storage::STORE_SESSIONS) {
-            Ok(sessions) if !sessions.is_empty() => {
-                log::info!("Loaded {} sessions from storage", sessions.len());
-                sessions_sig.set(sessions);
+            Ok(sessions) => {
+                let active: Vec<WorkoutSession> =
+                    sessions.into_iter().filter(|s| s.is_active()).collect();
+                if !active.is_empty() {
+                    log::info!("Loaded {} active sessions from storage", active.len());
+                    sessions_sig.set(active);
+                }
             }
             Err(e) => {
                 log::error!("Failed to load sessions: {e}");
                 toast.set(Some(format!("⚠️ Failed to load sessions: {e}")));
             }
-            _ => {}
         }
         match native_storage::get_all::<Exercise>(native_storage::STORE_CUSTOM_EXERCISES) {
             Ok(custom) if !custom.is_empty() => {
@@ -128,6 +135,23 @@ pub fn save_session(session: WorkoutSession) {
         }
     }
 
+    // Incrementally update the personal-records cache when a session is saved
+    // in a completed state (i.e., not active).  This avoids a full rescan on
+    // the next call to get_exercise_bests.
+    if !session.is_active() {
+        let mut cache_sig = consume_context::<Signal<BestsCache>>();
+        let mut cache = cache_sig.write();
+        for log in &session.exercise_logs {
+            let entry = cache.entry(log.exercise_id.clone()).or_insert(ExerciseBests {
+                weight_hg: None,
+                reps: None,
+                distance_m: None,
+                duration: None,
+            });
+            merge_log_into_bests(entry, log);
+        }
+    }
+
     // Use wasm_bindgen_futures::spawn_local instead of Dioxus spawn so that the
     // IndexedDB write is not cancelled when the calling component unmounts
     // (e.g. when finishing a session causes SessionView to be removed).
@@ -150,7 +174,32 @@ pub fn save_session(session: WorkoutSession) {
 /// Remove the session with `id` from the in-memory signal and from the backend.
 pub fn delete_session(id: &str) {
     let mut sig = use_sessions();
+    // Collect exercise IDs from the session being deleted so we can evict the
+    // corresponding personal-record cache entries (they may need recomputation
+    // after the session is gone).
+    let exercise_ids: Vec<String> = sig
+        .read()
+        .iter()
+        .find(|s| s.id == id)
+        .map(|s| {
+            s.exercise_logs
+                .iter()
+                .map(|l| l.exercise_id.clone())
+                .collect()
+        })
+        .unwrap_or_default();
+
     sig.write().retain(|s| s.id != id);
+
+    // Evict the affected exercise bests from the cache so they are recomputed
+    // from the full session history on the next access.
+    if !exercise_ids.is_empty() {
+        let mut cache_sig = consume_context::<Signal<BestsCache>>();
+        let mut cache = cache_sig.write();
+        for ex_id in &exercise_ids {
+            cache.remove(ex_id);
+        }
+    }
 
     #[cfg(target_arch = "wasm32")]
     {
@@ -245,6 +294,7 @@ pub(crate) fn find_last_exercise_log<'a>(
 
 /// All-time best (personal record) values for a specific exercise, derived by
 /// scanning every completed log across all stored sessions.
+#[derive(Clone)]
 pub struct ExerciseBests {
     /// Heaviest weight ever lifted for this exercise.
     pub weight_hg: Option<Weight>,
@@ -256,9 +306,66 @@ pub struct ExerciseBests {
     pub duration: Option<u64>,
 }
 
-/// Returns the all-time personal bests for `exercise_id` across every stored
-/// session, or `None` fields when the exercise has never been logged.
+/// In-memory cache of per-exercise all-time bests, maintained incrementally.
+///
+/// The cache is populated lazily: on the first call to [`get_exercise_bests`]
+/// for a given `exercise_id` the entire sessions signal is scanned once and
+/// the result is stored here.  Subsequent calls return the cached value
+/// without touching the sessions signal.
+///
+/// When a session is **completed** (saved with `is_active() == false`) the
+/// relevant exercise entries are updated incrementally from the new session
+/// only, avoiding a full rescan.
+///
+/// When a session is **deleted** the cache entries for every exercise in that
+/// session are evicted so they are recomputed from scratch on the next access.
+type BestsCache = std::collections::HashMap<String, ExerciseBests>;
+
+/// Merge one exercise log's values into an existing best, updating it in place.
+fn merge_log_into_bests(bests: &mut ExerciseBests, log: &ExerciseLog) {
+    if !log.is_complete() {
+        return;
+    }
+    if let Some(w) = log.weight_hg {
+        bests.weight_hg = Some(match bests.weight_hg {
+            None => w,
+            Some(prev) => if w.0 > prev.0 { w } else { prev },
+        });
+    }
+    if let Some(r) = log.reps {
+        bests.reps = Some(match bests.reps {
+            None => r,
+            Some(prev) => prev.max(r),
+        });
+    }
+    if let Some(d) = log.distance_m {
+        bests.distance_m = Some(match bests.distance_m {
+            None => d,
+            Some(prev) => if d.0 > prev.0 { d } else { prev },
+        });
+    }
+    if let Some(dur) = log.duration_seconds() {
+        bests.duration = Some(match bests.duration {
+            None => dur,
+            Some(prev) => prev.max(dur),
+        });
+    }
+}
+
+/// Returns the all-time personal bests for `exercise_id`.
+///
+/// On the first call for a given exercise the bests are computed by scanning
+/// all completed logs in the sessions signal and the result is cached.
+/// Subsequent calls return the cached value in O(1).
 pub fn get_exercise_bests(exercise_id: &str) -> ExerciseBests {
+    let mut cache_sig = consume_context::<Signal<BestsCache>>();
+    {
+        let cache = cache_sig.read();
+        if let Some(cached) = cache.get(exercise_id) {
+            return cached.clone();
+        }
+    }
+    // Cache miss: compute from the in-memory sessions signal.
     let sessions = use_sessions();
     let sessions = sessions.read();
     let mut bests = ExerciseBests {
@@ -269,46 +376,12 @@ pub fn get_exercise_bests(exercise_id: &str) -> ExerciseBests {
     };
     for session in sessions.iter() {
         for log in &session.exercise_logs {
-            if log.exercise_id != exercise_id || !log.is_complete() {
-                continue;
-            }
-            if let Some(w) = log.weight_hg {
-                bests.weight_hg = Some(match bests.weight_hg {
-                    None => w,
-                    Some(prev) => {
-                        if w.0 > prev.0 {
-                            w
-                        } else {
-                            prev
-                        }
-                    }
-                });
-            }
-            if let Some(r) = log.reps {
-                bests.reps = Some(match bests.reps {
-                    None => r,
-                    Some(prev) => prev.max(r),
-                });
-            }
-            if let Some(d) = log.distance_m {
-                bests.distance_m = Some(match bests.distance_m {
-                    None => d,
-                    Some(prev) => {
-                        if d.0 > prev.0 {
-                            d
-                        } else {
-                            prev
-                        }
-                    }
-                });
-            }
-            if let Some(dur) = log.duration_seconds() {
-                bests.duration = Some(match bests.duration {
-                    None => dur,
-                    Some(prev) => prev.max(dur),
-                });
+            if log.exercise_id == exercise_id {
+                merge_log_into_bests(&mut bests, log);
             }
         }
     }
+    // Store in cache before returning.
+    cache_sig.write().insert(exercise_id.to_owned(), bests.clone());
     bests
 }

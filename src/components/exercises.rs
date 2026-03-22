@@ -4,7 +4,7 @@ use crate::services::exercise_db::{
     detect_filter_suggestions, exercise_matches_filters, SearchFilter,
 };
 use crate::services::{exercise_db, storage};
-use crate::{DbI18nSignal, ExerciseSearchSignal, Route};
+use crate::{ExerciseSearchSignal, Route};
 use dioxus::prelude::*;
 use dioxus_i18n::t;
 
@@ -20,7 +20,6 @@ pub fn Exercises() -> Element {
     let all_exercises = exercise_db::use_exercises();
     let custom_exercises = storage::use_custom_exercises();
     let sessions = storage::use_sessions();
-    let db_i18n_sig = use_context::<DbI18nSignal>().0;
     let mut search_query = use_signal(String::new);
     let mut visible_count = use_signal(|| PAGE_SIZE);
     let mut active_filters: Signal<Vec<SearchFilter>> = use_signal(Vec::new);
@@ -119,17 +118,14 @@ pub fn Exercises() -> Element {
                 }
             }
         } else {
-            // Unified search: use search_exercises for both custom and DB exercises
-            // so that muscle, category, equipment, etc. are all searchable.
-            let db_i18n = db_i18n_sig.read();
-            let db_i18n_ref = Some(&*db_i18n).filter(|m| !m.is_empty());
-            let custom_results = exercise_db::search_exercises(custom_slice, &query, db_i18n_ref);
+            // Unified search: use search_exercises for both custom and DB exercises.
+            let custom_results = exercise_db::search_exercises(custom_slice, &query);
             for ex in custom_results {
                 if seen_ids.insert(ex.id.clone()) {
                     results.push((ex.clone(), true));
                 }
             }
-            let db_results = exercise_db::search_exercises(all_slice, &query, db_i18n_ref);
+            let db_results = exercise_db::search_exercises(all_slice, &query);
             for ex in db_results {
                 if seen_ids.insert(ex.id.clone()) {
                     results.push((ex.clone(), false));

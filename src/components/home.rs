@@ -19,10 +19,27 @@ pub fn Home() -> Element {
 
     let has_active = use_memo(move || sessions.read().iter().any(WorkoutSession::is_active));
 
-    // Track the set of IDs of completed sessions so we can detect whether a
-    // session was added or deleted without watching every field of every session
-    // (which would cause the paginated list to reset on every active-session
-    // heartbeat update).
+    // Trigger the first page load once when the Home component mounts.
+    // Using use_hook ensures this runs exactly once per component lifetime,
+    // regardless of how many times the component re-renders.
+    use_hook(|| {
+        is_loading.set(true);
+        spawn(async move {
+            let page = storage::load_completed_sessions_page(PAGE_SIZE, 0).await;
+            let len = page.len();
+            completed_sessions.set(page);
+            sessions_loaded_offset.set(len);
+            all_loaded.set(len < PAGE_SIZE);
+            is_loading.set(false);
+        });
+    });
+
+    // Track the set of IDs of completed sessions (from the sessions signal) so
+    // we can detect when a session transitions from active to inactive during the
+    // current app session and prepend it to the paginated list.
+    //
+    // Historical sessions are not in the sessions signal (lazy-loaded), so this
+    // memo only covers sessions that became inactive in the current app session.
     let completed_session_ids = use_memo(move || {
         sessions
             .read()
@@ -32,13 +49,9 @@ pub fn Home() -> Element {
             .collect::<std::collections::HashSet<String>>()
     });
 
-    // Keep the paginated completed_sessions view in sync with the sessions
-    // signal without resetting the scroll position on every change.
-    //
-    // Three cases are handled:
-    // 1. Initial load (completed_sessions is empty) → load the first page.
-    // 2. Deletion → remove the deleted item directly from the local vector.
-    // 3. New completion → prepend the newly-completed session(s) to the top.
+    // Prepend newly-completed sessions to the top of the paginated list.
+    // Deletion from the paginated list is handled via the `on_delete` callback
+    // passed to each `SessionCard` component.
     use_effect(move || {
         let new_ids = completed_session_ids.read().clone();
 
@@ -50,38 +63,7 @@ pub fn Home() -> Element {
             .map(|s| s.id.clone())
             .collect();
 
-        // ── Case 1: initial load ──────────────────────────────────────────
-        if viewed_ids.is_empty() {
-            if !new_ids.is_empty() {
-                sessions_loaded_offset.set(0);
-                all_loaded.set(false);
-                is_loading.set(true);
-                spawn(async move {
-                    let page = storage::load_completed_sessions_page(PAGE_SIZE, 0).await;
-                    let len = page.len();
-                    completed_sessions.set(page);
-                    sessions_loaded_offset.set(len);
-                    all_loaded.set(len < PAGE_SIZE);
-                    is_loading.set(false);
-                });
-            }
-            return;
-        }
-
-        // ── Case 2: deletion ──────────────────────────────────────────────
-        let removed: Vec<String> = viewed_ids.difference(&new_ids).cloned().collect();
-        if !removed.is_empty() {
-            let new_len = {
-                let mut cs = completed_sessions.write();
-                cs.retain(|s| !removed.contains(&s.id));
-                cs.len()
-            };
-            // Keep offset consistent with what we have loaded in memory.
-            sessions_loaded_offset.set(new_len);
-            return;
-        }
-
-        // ── Case 3: new completion ────────────────────────────────────────
+        // ── New completion ──────────────────────────────────────────────────
         // Peek at sessions to get the full data for newly-completed entries
         // without creating an additional reactive subscription.
         let mut newly_completed: Vec<WorkoutSession> = sessions
@@ -104,6 +86,8 @@ pub fn Home() -> Element {
             };
             sessions_loaded_offset.set(new_len);
         }
+        // Keep new_ids in scope to suppress unused-variable warning.
+        let _ = new_ids;
     });
 
     let start_new_session = move |_| {
@@ -185,13 +169,24 @@ pub fn Home() -> Element {
                 h1 { tabindex: 0, {t!("app-title")} }
                 p { tabindex: 0, {t!("app-subtitle")} }
             }
-            if completed_sessions.read().is_empty() {
+            if completed_sessions.read().is_empty() && !*is_loading.read() {
                 p { {t!("no-sessions")} }
                 p { {t!("start-first-workout")} }
             } else {
                 main { class: "sessions",
                     for session in completed_sessions.read().iter() {
-                        SessionCard { key: "{session.id}", session: session.clone() }
+                        SessionCard {
+                            key: "{session.id}",
+                            session: session.clone(),
+                            on_delete: move |id: String| {
+                                let new_len = {
+                                    let mut cs = completed_sessions.write();
+                                    cs.retain(|s| s.id != id);
+                                    cs.len()
+                                };
+                                sessions_loaded_offset.set(new_len);
+                            },
+                        }
                     }
                 }
             }
@@ -206,7 +201,7 @@ pub fn Home() -> Element {
 }
 
 #[component]
-fn SessionCard(session: WorkoutSession) -> Element {
+fn SessionCard(session: WorkoutSession, on_delete: EventHandler<String>) -> Element {
     const MAX_VISIBLE: usize = 9;
     let mut show_delete_confirm = use_signal(|| false);
     let mut show_all_exercises = use_signal(|| false);
@@ -329,6 +324,7 @@ fn SessionCard(session: WorkoutSession) -> Element {
                                 let id = session_id.clone();
                                 move |_| {
                                     storage::delete_session(&id);
+                                    on_delete.call(id.clone());
                                     show_delete_confirm.set(false);
                                 }
                             },

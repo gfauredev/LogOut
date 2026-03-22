@@ -598,8 +598,8 @@ mod tests {
         let log = &session.exercise_logs[0];
         assert_eq!(log.exercise_name, "Running");
         assert_eq!(log.category, Category::Cardio);
-        // Cardio: reps is reinterpreted as distance (km × 1000 → metres)
-        assert_eq!(log.distance_m, Some(models::Distance(5000)));
+        // Cardio: reps is reinterpreted as distance in metres directly
+        assert_eq!(log.distance_m, Some(models::Distance(5)));
         // Cardio exercises with no force should not have reps set
         assert_eq!(log.reps, None);
     }

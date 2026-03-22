@@ -91,13 +91,38 @@ pub fn Analytics() -> Element {
     let mut selected_pairs: Signal<Vec<(Metric, Option<String>)>> =
         use_signal(|| vec![(Metric::Weight, None); 8]);
 
-    let sessions = storage::use_sessions();
+    // Load all completed sessions lazily when the Analytics page is opened.
+    // The sessions signal only holds active sessions (startup-loaded), so we
+    // fetch the full history from storage here.
+    let sessions_resource = use_resource(move || async move {
+        // Load pages until all sessions are fetched.
+        let mut all: Vec<crate::models::WorkoutSession> = Vec::new();
+        let mut offset = 0usize;
+        let page_size = 500usize;
+        loop {
+            let page = storage::load_completed_sessions_page(page_size, offset).await;
+            let fetched = page.len();
+            all.extend(page);
+            if fetched < page_size {
+                break;
+            }
+            offset += fetched;
+        }
+        all
+    });
+
+    let sessions: Vec<crate::models::WorkoutSession> = sessions_resource
+        .read()
+        .as_deref()
+        .unwrap_or(&[])
+        .to_vec();
 
     // Pre-compute the sorted list of available exercises for each metric so
     // that we can look them up cheaply while rendering the selectors.
     // Index 0 → Weight, 1 → Reps, 2 → Distance, 3 → Duration
     let available_by_metric = use_memo(move || {
-        let sessions = sessions.read();
+        let res = sessions_resource.read();
+        let sessions = res.as_deref().unwrap_or(&[]);
         let mut maps: [std::collections::HashMap<String, String>; 4] =
             std::array::from_fn(|_| std::collections::HashMap::new());
         for session in sessions.iter() {
@@ -125,7 +150,6 @@ pub fn Analytics() -> Element {
     // Collect data points for each fully-specified (metric, exercise) pair.
     // Each entry carries the slot index so ChartView assigns the right colour.
     let chart_data: SeriesData = {
-        let sessions = sessions.read();
         selected_pairs
             .read()
             .iter()
