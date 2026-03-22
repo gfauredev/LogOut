@@ -13,21 +13,49 @@ const MAX_FILTERS: usize = 4;
 const PAGE_SIZE: usize = 20;
 /// Pixels from the bottom of the page at which an auto-pagination is triggered.
 const SCROLL_THRESHOLD_PX: u32 = 300;
+/// Debounce delay in milliseconds before re-running the expensive exercise filter.
+const SEARCH_DEBOUNCE_MS: u32 = 200;
 #[component]
 pub fn Exercises() -> Element {
     let all_exercises = exercise_db::use_exercises();
     let custom_exercises = storage::use_custom_exercises();
     let sessions = storage::use_sessions();
+    // Raw query updated on every keystroke (drives the input value and filter-suggestion chips).
     let mut search_query = use_signal(String::new);
+    // Debounced query – only updated `SEARCH_DEBOUNCE_MS` after the user stops typing.
+    // Used for the expensive exercise-scoring memo so typing stays responsive.
+    let mut debounced_query = use_signal(String::new);
+    let mut debounce_gen = use_signal(|| 0u64);
     let mut visible_count = use_signal(|| PAGE_SIZE);
     let mut active_filters: Signal<Vec<SearchFilter>> = use_signal(Vec::new);
     let mut search_signal = use_context::<ExerciseSearchSignal>().0;
     use_effect(move || {
         let q = search_signal.read().clone();
         if let Some(q) = q {
-            search_query.set(q);
+            search_query.set(q.clone());
+            debounced_query.set(q);
             search_signal.set(None);
         }
+    });
+    // Debounce: update `debounced_query` only after SEARCH_DEBOUNCE_MS of inactivity.
+    use_effect(move || {
+        let q = search_query.read().clone();
+        let cur_gen = {
+            let mut g = debounce_gen.write();
+            *g += 1;
+            *g
+        };
+        spawn(async move {
+            #[cfg(target_arch = "wasm32")]
+            gloo_timers::future::TimeoutFuture::new(SEARCH_DEBOUNCE_MS).await;
+            #[cfg(not(target_arch = "wasm32"))]
+            tokio::time::sleep(std::time::Duration::from_millis(u64::from(SEARCH_DEBOUNCE_MS)))
+                .await;
+            if *debounce_gen.peek() == cur_gen {
+                debounced_query.set(q);
+                visible_count.set(PAGE_SIZE);
+            }
+        });
     });
     let active_session_ids = use_memo(move || {
         let mut ids = std::collections::HashSet::new();
@@ -56,54 +84,52 @@ pub fn Exercises() -> Element {
             .filter(|s| !current.contains(s))
             .collect::<Vec<_>>()
     });
-    let exercises = use_memo(move || {
-        let query = search_query.read();
+    // Step 1: filter the full list by active filter chips (only re-runs when chips change).
+    let filter_pool = use_memo(move || {
         let all = all_exercises.read();
         let custom = custom_exercises.read();
-        let active_ids = active_session_ids();
         let filters = active_filters.read();
-        let all_filtered: Vec<Exercise>;
-        let custom_filtered: Vec<Exercise>;
-        let all_slice: &[Exercise];
-        let custom_slice: &[Exercise];
         if filters.is_empty() {
-            all_slice = &all;
-            custom_slice = &custom;
-        } else {
-            all_filtered = all
-                .iter()
-                .filter(|e| exercise_matches_filters(e, &filters))
-                .cloned()
-                .collect();
-            custom_filtered = custom
-                .iter()
-                .filter(|e| exercise_matches_filters(e, &filters))
-                .cloned()
-                .collect();
-            all_slice = &all_filtered;
-            custom_slice = &custom_filtered;
+            return (all.clone(), custom.clone());
         }
+        let filtered_all: Vec<Exercise> = all
+            .iter()
+            .filter(|e| exercise_matches_filters(e, &filters))
+            .cloned()
+            .collect();
+        let filtered_custom: Vec<Exercise> = custom
+            .iter()
+            .filter(|e| exercise_matches_filters(e, &filters))
+            .cloned()
+            .collect();
+        (filtered_all, filtered_custom)
+    });
+    // Step 2: text-search (or list) within the pre-filtered pool (re-runs on debounced keystrokes).
+    let exercises = use_memo(move || {
+        let query = debounced_query.read();
+        let (all_pool, custom_pool) = filter_pool();
+        let active_ids = active_session_ids();
         let mut results = Vec::new();
         let mut seen_ids = std::collections::HashSet::new();
         if query.is_empty() {
-            for ex in custom_slice {
+            for ex in &custom_pool {
                 if seen_ids.insert(ex.id.clone()) {
                     results.push((ex.clone(), true));
                 }
             }
-            for ex in all_slice {
+            for ex in &all_pool {
                 if seen_ids.insert(ex.id.clone()) {
                     results.push((ex.clone(), false));
                 }
             }
         } else {
-            let custom_results = exercise_db::search_exercises(custom_slice, &query);
+            let custom_results = exercise_db::search_exercises(&custom_pool, &query);
             for ex in custom_results {
                 if seen_ids.insert(ex.id.clone()) {
                     results.push((ex.clone(), true));
                 }
             }
-            let db_results = exercise_db::search_exercises(all_slice, &query);
+            let db_results = exercise_db::search_exercises(&all_pool, &query);
             for ex in db_results {
                 if seen_ids.insert(ex.id.clone()) {
                     results.push((ex.clone(), false));
@@ -175,7 +201,6 @@ pub fn Exercises() -> Element {
                     value: "{search_query}",
                     oninput: move |evt| {
                         search_query.set(evt.value());
-                        visible_count.set(PAGE_SIZE);
                     },
                 }
                 Link {
@@ -215,6 +240,7 @@ pub fn Exercises() -> Element {
                                     move |_| {
                                         active_filters.write().push(suggestion.clone());
                                         search_query.set(String::new());
+                                        debounced_query.set(String::new());
                                         visible_count.set(PAGE_SIZE);
                                     }
                                 },

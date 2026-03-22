@@ -67,7 +67,7 @@ async fn load_storage_data() {
         match native_storage::get_all::<WorkoutSession>(native_storage::STORE_SESSIONS) {
             Ok(sessions) => {
                 let active: Vec<WorkoutSession> =
-                    sessions.into_iter().filter(|s| s.is_active()).collect();
+                    sessions.into_iter().filter(WorkoutSession::is_active).collect();
                 if !active.is_empty() {
                     log::info!("Loaded {} active sessions from storage", active.len());
                     sessions_sig.set(active);

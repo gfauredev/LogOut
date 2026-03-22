@@ -193,17 +193,20 @@ fn merge_lang_entries(exercises: &mut [Exercise], lang: &str, entries: &[Exercis
     }
 }
 /// Downloads the enum-translation file (`i18n.json`) from the configured URL.
-/// Returns an empty [`DbI18n`] map on any HTTP or parse error so the app
-/// degrades gracefully to English labels.
-pub(crate) async fn download_db_i18n() -> DbI18n {
+/// Returns `Ok(data)` on success, or `Err(message)` when a network or parse
+/// error occurs so the caller can surface it via the toast signal.
+pub(crate) async fn download_db_i18n() -> Result<DbI18n, String> {
     let url = db_i18n_url();
-    let Ok(response) = reqwest::get(&url).await else {
-        return DbI18n::default();
-    };
+    let response = reqwest::get(&url)
+        .await
+        .map_err(|e| format!("Network error fetching i18n.json: {e}"))?;
     if !response.status().is_success() {
-        return DbI18n::default();
+        return Err(format!("HTTP {} fetching i18n.json", response.status()));
     }
-    response.json().await.unwrap_or_default()
+    response
+        .json()
+        .await
+        .map_err(|e| format!("JSON parse error in i18n.json: {e}"))
 }
 /// Normalises a string for error-tolerant search: lowercases and strips
 /// hyphens, apostrophes, and spaces so that e.g. "push-ups", "Pushups", and
@@ -1099,7 +1102,7 @@ mod tests {
             assert!(result.unwrap().is_empty());
         }
         #[test]
-        fn download_db_i18n_returns_default_on_connection_refused() {
+        fn download_db_i18n_returns_err_on_connection_refused() {
             let _g = cfg_lock();
             let port = {
                 let l = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
@@ -1116,8 +1119,8 @@ mod tests {
                 .unwrap();
             let result = rt.block_on(download_db_i18n());
             assert!(
-                result.is_empty(),
-                "download_db_i18n should return empty map on connection error",
+                result.is_err(),
+                "download_db_i18n should return Err on connection error",
             );
         }
     }

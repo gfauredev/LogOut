@@ -113,6 +113,9 @@ pub fn ExerciseFormFields(
             return;
         }
         LISTENER_REGISTERED.with(|r| r.set(true));
+        // Read the selected file as an ArrayBuffer, store bytes in IndexedDB under a
+        // UUID key, and push "idb:<uuid>" into the images list.  This keeps the
+        // Exercise JSON tiny – only the stable key is serialised, not the raw bytes.
         let js = r#"
             (function() {
                 document.addEventListener('change', function(e) {
@@ -121,18 +124,38 @@ pub fn ExerciseFormFields(
                     if (!file) return;
                     var reader = new FileReader();
                     reader.onload = function(re) {
-                        dioxus.send(re.target.result);
+                        dioxus.send({
+                            name: file.name,
+                            data: Array.from(new Uint8Array(re.target.result))
+                        });
                     };
-                    reader.readAsDataURL(file);
+                    reader.readAsArrayBuffer(file);
                 });
             })()
         "#;
         spawn(async move {
             let mut eval = document::eval(js);
-            while let Ok(data_url) = eval.recv::<String>().await {
-                let mut imgs = images_list.write();
-                if !imgs.contains(&data_url) {
-                    imgs.push(data_url);
+            while let Ok(val) = eval.recv::<serde_json::Value>().await {
+                let name = val["name"].as_str().unwrap_or("image").to_string();
+                let bytes: Vec<u8> = val["data"]
+                    .as_array()
+                    .map(|arr| arr.iter().filter_map(|v| v.as_u64().map(|b| b as u8)).collect())
+                    .unwrap_or_default();
+                if bytes.is_empty() {
+                    continue;
+                }
+                // Derive a stable image key from current timestamp + filename.
+                let ts = js_sys::Date::now() as u64;
+                let image_key = format!("{ts}_{name}");
+                match crate::services::storage::idb_images::store_image(&image_key, &bytes).await {
+                    Ok(()) => {
+                        let key = format!("idb:{image_key}");
+                        let mut imgs = images_list.write();
+                        if !imgs.contains(&key) {
+                            imgs.push(key);
+                        }
+                    }
+                    Err(e) => log::error!("Failed to store image in IndexedDB: {e}"),
                 }
             }
         });
@@ -160,10 +183,11 @@ pub fn ExerciseFormFields(
             let dest = images_dir.join(filename);
             match std::fs::copy(src, &dest) {
                 Ok(_) => {
-                    let dest_str = dest.to_string_lossy().to_string();
+                    // Store only "local:<filename>" – the full path is resolved at display time.
+                    let key = format!("local:{}", filename.to_string_lossy());
                     let mut imgs = images_list.write();
-                    if !imgs.contains(&dest_str) {
-                        imgs.push(dest_str);
+                    if !imgs.contains(&key) {
+                        imgs.push(key);
                     }
                     local_image_path_input.set(String::new());
                 }
