@@ -48,7 +48,7 @@ pub async fn reload_exercises(mut sig: Signal<Vec<Exercise>>, mut toast: Signal<
         use crate::services::storage::idb_exercises;
         idb_exercises::clear_all_exercises().await;
         match exercise_db::download_exercises().await {
-            Ok(exercises) if !exercises.is_empty() => {
+            Ok(Some(exercises)) if !exercises.is_empty() => {
                 log::info!(
                     "Reloaded {} exercises from new URL, storing in IndexedDB",
                     exercises.len()
@@ -65,10 +65,16 @@ pub async fn reload_exercises(mut sig: Signal<Vec<Exercise>>, mut toast: Signal<
                     "💾 Exercise database reloaded successfully".to_string(),
                 ));
             }
-            Ok(_) => {
+            Ok(Some(_)) => {
                 log::warn!("Reloaded exercises file was empty");
                 toast.set(Some(
                     "⚠️ exercises.json was empty — check the database URL".to_string(),
+                ));
+            }
+            Ok(None) => {
+                log::info!("exercises.json unchanged (304) — no reload needed");
+                toast.set(Some(
+                    "ℹ️ Exercise database is already up to date".to_string(),
                 ));
             }
             Err(e) => {
@@ -82,7 +88,7 @@ pub async fn reload_exercises(mut sig: Signal<Vec<Exercise>>, mut toast: Signal<
         use crate::services::storage::native_exercises;
         native_exercises::clear_all_exercises();
         match exercise_db::download_exercises().await {
-            Ok(exercises) if !exercises.is_empty() => {
+            Ok(Some(exercises)) if !exercises.is_empty() => {
                 log::info!(
                     "Reloaded {} exercises from new URL, storing in local file",
                     exercises.len()
@@ -99,10 +105,16 @@ pub async fn reload_exercises(mut sig: Signal<Vec<Exercise>>, mut toast: Signal<
                     "💾 Exercise database reloaded successfully".to_string(),
                 ));
             }
-            Ok(_) => {
+            Ok(Some(_)) => {
                 log::warn!("Reloaded exercises file was empty");
                 toast.set(Some(
                     "⚠️ exercises.json was empty — check the database URL".to_string(),
+                ));
+            }
+            Ok(None) => {
+                log::info!("exercises.json unchanged (304) — no reload needed");
+                toast.set(Some(
+                    "ℹ️ Exercise database is already up to date".to_string(),
                 ));
             }
             Err(e) => {
@@ -128,7 +140,7 @@ async fn load_exercises(mut sig: Signal<Vec<Exercise>>) {
             log::info!("Exercise database is stale – refreshing in background");
         }
         match exercise_db::download_exercises().await {
-            Ok(exercises) if !exercises.is_empty() => {
+            Ok(Some(exercises)) if !exercises.is_empty() => {
                 log::info!(
                     "Downloaded {} exercises, storing in IndexedDB",
                     exercises.len()
@@ -143,7 +155,13 @@ async fn load_exercises(mut sig: Signal<Vec<Exercise>>) {
                 );
                 return;
             }
-            Ok(_) => log::warn!("Downloaded exercises file was empty"),
+            Ok(Some(_)) => log::warn!("Downloaded exercises file was empty"),
+            Ok(None) => {
+                // 304 Not Modified: cached copy in IndexedDB is still current.
+                log::info!("exercises.json unchanged (304) – using IndexedDB cache");
+                exercise_db::record_fetch_timestamp();
+                return;
+            }
             Err(e) => log::warn!("Failed to download exercises: {e:?}"),
         }
     }
@@ -161,7 +179,7 @@ async fn load_exercises(mut sig: Signal<Vec<Exercise>>) {
             log::info!("Exercise database is stale – refreshing in background");
         }
         match exercise_db::download_exercises().await {
-            Ok(exercises) if !exercises.is_empty() => {
+            Ok(Some(exercises)) if !exercises.is_empty() => {
                 log::info!(
                     "Downloaded {} exercises, storing in local file",
                     exercises.len()
@@ -176,7 +194,13 @@ async fn load_exercises(mut sig: Signal<Vec<Exercise>>) {
                 );
                 return;
             }
-            Ok(_) => log::warn!("Downloaded exercises file was empty"),
+            Ok(Some(_)) => log::warn!("Downloaded exercises file was empty"),
+            Ok(None) => {
+                // 304 Not Modified: cached copy on disk is still current.
+                log::info!("exercises.json unchanged (304) – using local cache");
+                exercise_db::record_fetch_timestamp();
+                return;
+            }
             Err(e) => log::warn!("Failed to download exercises: {e:?}"),
         }
     }

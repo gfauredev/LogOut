@@ -15,6 +15,9 @@ const EXERCISE_DB_REFRESH_INTERVAL_SECS: u64 = 7 * 24 * 60 * 60;
 /// Storage key used to track when exercises were last downloaded
 /// (localStorage on WASM, config file on native).
 const LAST_FETCH_KEY: &str = "exercise_db_last_fetch";
+/// Storage key used to persist the ETag returned by the last successful
+/// `exercises.json` download (localStorage on WASM, config on native).
+const EXERCISES_ETAG_KEY: &str = "exercise_db_etag";
 /// Language codes for which per-exercise translation files are fetched and
 /// merged into the exercise database on download.
 const SUPPORTED_TRANSLATION_LANGS: &[&str] = &["fr"];
@@ -114,6 +117,7 @@ pub fn clear_fetch_cache() {
         return;
     };
     let _ = storage.remove_item(LAST_FETCH_KEY);
+    let _ = storage.remove_item(EXERCISES_ETAG_KEY);
 }
 /// Clears the locally-cached fetch timestamp so that the exercise database is
 /// re-downloaded from the current URL on the next application load.
@@ -121,21 +125,76 @@ pub fn clear_fetch_cache() {
 pub fn clear_fetch_cache() {
     use crate::services::storage::native_storage;
     let _ = native_storage::remove_config_value(LAST_FETCH_KEY);
+    let _ = native_storage::remove_config_value(EXERCISES_ETAG_KEY);
+}
+/// Returns the stored ETag for `exercises.json`, if any.
+#[cfg(target_arch = "wasm32")]
+fn get_stored_etag() -> Option<String> {
+    web_sys::window()?
+        .local_storage()
+        .ok()??
+        .get_item(EXERCISES_ETAG_KEY)
+        .ok()?
+}
+/// Returns the stored ETag for `exercises.json`, if any.
+#[cfg(not(target_arch = "wasm32"))]
+fn get_stored_etag() -> Option<String> {
+    crate::services::storage::native_storage::get_config_value(EXERCISES_ETAG_KEY)
+}
+/// Persists an ETag value for `exercises.json`.
+#[cfg(target_arch = "wasm32")]
+fn store_etag(etag: &str) {
+    let Some(window) = web_sys::window() else {
+        return;
+    };
+    let Ok(Some(storage)) = window.local_storage() else {
+        return;
+    };
+    let _ = storage.set_item(EXERCISES_ETAG_KEY, etag);
+}
+/// Persists an ETag value for `exercises.json`.
+#[cfg(not(target_arch = "wasm32"))]
+fn store_etag(etag: &str) {
+    let _ = crate::services::storage::native_storage::set_config_value(EXERCISES_ETAG_KEY, etag);
 }
 /// Downloads the exercises JSON from the configured URL using `reqwest`, then
 /// fetches and merges all available per-language translation files
 /// (e.g. `exercises.fr.json`) so that each [`Exercise::i18n`] field is
 /// populated with translated name / instructions where available.
 ///
+/// Sends `If-None-Match` with the stored ETag on each request.  On a
+/// `304 Not Modified` response the server confirms the cached copy is still
+/// current and the function returns `Ok(None)` – the caller should keep
+/// using its cached exercises unchanged.  On a successful `200` the response
+/// ETag (if provided) is persisted for the next request, and the parsed
+/// exercise list is returned as `Ok(Some(exercises))`.
+///
 /// Works on all platforms: reqwest uses the browser's `fetch` on WASM and
 /// native TLS on Android / desktop.
-pub(crate) async fn download_exercises() -> Result<Vec<Exercise>, String> {
+pub(crate) async fn download_exercises() -> Result<Option<Vec<Exercise>>, String> {
     let url = exercises_json_url();
-    let response = reqwest::get(&url)
+    let mut request = reqwest::Client::new().get(&url);
+    if let Some(etag) = get_stored_etag() {
+        request = request.header("If-None-Match", etag);
+    }
+    let response = request
+        .send()
         .await
         .map_err(|e| format!("HTTP error: {e}"))?;
+    if response.status().as_u16() == 304 {
+        log::info!("exercises.json is up to date (304 Not Modified)");
+        return Ok(None);
+    }
     if !response.status().is_success() {
         return Err(format!("HTTP {}", response.status()));
+    }
+    // Persist the ETag for the next conditional request.
+    if let Some(etag) = response
+        .headers()
+        .get(reqwest::header::ETAG)
+        .and_then(|v| v.to_str().ok())
+    {
+        store_etag(etag);
     }
     let mut exercises: Vec<Exercise> = response
         .json()
@@ -146,7 +205,7 @@ pub(crate) async fn download_exercises() -> Result<Vec<Exercise>, String> {
             merge_lang_entries(&mut exercises, lang, &entries);
         }
     }
-    Ok(exercises)
+    Ok(Some(exercises))
 }
 /// Downloads a per-language exercise translation file (e.g. `exercises.fr.json`)
 /// and returns the parsed entries.  Returns `Ok(vec![])` on HTTP 404 so the
@@ -1098,8 +1157,30 @@ mod tests {
                 .build()
                 .unwrap();
             let result = rt.block_on(download_exercises());
-            assert!(result.is_ok(), "expected Ok([]), got: {result:?}");
-            assert!(result.unwrap().is_empty());
+            assert!(result.is_ok(), "expected Ok(Some([])), got: {result:?}");
+            assert!(result.unwrap().unwrap().is_empty());
+        }
+        #[test]
+        fn download_exercises_returns_none_on_304() {
+            let _g = cfg_lock();
+            let response =
+                b"HTTP/1.1 304 Not Modified\r\nContent-Length: 0\r\nConnection: close\r\n\r\n"
+                    .to_vec();
+            let port = start_one_shot_server(response);
+            let _url = ConfigKeyGuard(crate::utils::EXERCISE_DB_URL_STORAGE_KEY);
+            let _ = native_storage::set_config_value(
+                crate::utils::EXERCISE_DB_URL_STORAGE_KEY,
+                &format!("http://127.0.0.1:{port}/"),
+            );
+            let rt = tokio::runtime::Builder::new_current_thread()
+                .enable_all()
+                .build()
+                .unwrap();
+            let result = rt.block_on(download_exercises());
+            assert!(
+                matches!(result, Ok(None)),
+                "expected Ok(None) on 304, got: {result:?}",
+            );
         }
         #[test]
         fn download_db_i18n_returns_err_on_connection_refused() {
