@@ -81,10 +81,13 @@ fn ExerciseImage(images: Vec<String>, display_name: String) -> Element {
     #[cfg(target_arch = "wasm32")]
     let idb_url = {
         let images_for_idb = images.clone();
-        use_resource(move || async move {
-            let key = images_for_idb.get(*img_index.read())?.clone();
-            let image_key = key.strip_prefix("idb:")?;
-            crate::services::storage::idb_images::get_image_blob_url(image_key).await
+        use_resource(move || {
+            let images = images_for_idb.clone();
+            async move {
+                let key = images.get(*img_index.read())?.clone();
+                let image_key = key.strip_prefix("idb:")?;
+                crate::services::storage::idb_images::get_image_blob_url(image_key).await
+            }
         })
     };
     let display_url: Option<String> = {

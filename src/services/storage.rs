@@ -313,7 +313,7 @@ pub mod idb_images {
             .ok()?;
         let store = tx.store(super::idb::STORE_IMAGES).ok()?;
         let key = JsValue::from_str(image_key);
-        let value = store.get(&key).await.ok()??;
+        let value = store.get(key).await.ok()??;
         if value.is_undefined() || value.is_null() {
             return None;
         }
