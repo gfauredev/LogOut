@@ -2,14 +2,10 @@ use crate::components::exercise_form_fields::ExerciseFormFields;
 use crate::models::{Equipment, Exercise, Force};
 use crate::services::storage;
 use dioxus::prelude::*;
-
 #[component]
 pub fn EditExercise(id: String) -> Element {
     let custom_exercises = storage::use_custom_exercises();
-
-    // Load the exercise to edit
     let exercise = use_memo(move || custom_exercises.read().iter().find(|e| e.id == id).cloned());
-
     let Some(ex) = exercise() else {
         return rsx! {
             main { class: "edit",
@@ -23,7 +19,6 @@ pub fn EditExercise(id: String) -> Element {
             }
         };
     };
-
     let name_input = use_signal(|| ex.name.clone());
     let category_input = use_signal(|| ex.category);
     let force_input: Signal<Option<Force>> = use_signal(|| ex.force);
@@ -36,18 +31,15 @@ pub fn EditExercise(id: String) -> Element {
     let instructions_list = use_signal(|| ex.instructions.clone());
     let image_url_input = use_signal(String::new);
     let images_list = use_signal(|| ex.images.clone());
-
     let exercise_id = ex.id.clone();
     let exercise_level = ex.level;
     let exercise_mechanic = ex.mechanic;
-
     let save_exercise = move |()| {
         let name = name_input.read().trim().to_string();
         if name.is_empty() {
             return;
         }
         let name_lower = name.to_lowercase();
-
         let updated = Exercise {
             id: exercise_id.clone(),
             name,
@@ -63,11 +55,9 @@ pub fn EditExercise(id: String) -> Element {
             images: images_list.read().clone(),
             i18n: None,
         };
-
         storage::update_custom_exercise(updated);
         navigator().go_back();
     };
-
     rsx! {
         header {
             button {

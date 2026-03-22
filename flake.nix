@@ -368,8 +368,9 @@
         {
           fmt = env.pkgs.runCommand "cargo-fmt-check" { nativeBuildInputs = [ env.rustToolchain ]; } ''
             cd ${self}
-            cargo fmt --all -- --check
-            touch $out
+            dx fmt --check >> $out
+            echo >> $out
+            cargo fmt --all -- --check >> $out
           '';
           clippy = env.craneLib.cargoClippy {
             inherit (env) cargoArtifacts;

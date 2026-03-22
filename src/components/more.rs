@@ -3,27 +3,19 @@ use crate::models::Exercise;
 use crate::services::{exercise_db, storage};
 use crate::ToastSignal;
 use dioxus::prelude::*;
-
 #[component]
 pub fn More() -> Element {
-    // Current exercise DB URL (defaults to the compile-time constant)
     let mut url_input = use_signal(crate::utils::get_exercise_db_url);
     let toast = consume_context::<ToastSignal>().0;
     let exercises_sig = exercise_db::use_exercises();
-
-    // State for import conflict confirmation: exercises that need user confirmation
-    // to replace an existing custom exercise.
     let mut exercises_to_confirm: Signal<Vec<Exercise>> = use_signal(Vec::new);
-
     let sessions = storage::use_sessions();
     let custom_exercises = storage::use_custom_exercises();
     let all_exercises = exercise_db::use_exercises();
-
     let save_url = move |evt: Event<FormData>| {
         evt.prevent_default();
         #[allow(unused_variables)]
         let url = crate::utils::normalize_db_url(url_input.read().trim());
-        // Keep the input in sync with what was actually stored
         url_input.set(url.clone());
         #[cfg(target_arch = "wasm32")]
         {
@@ -36,7 +28,6 @@ pub fn More() -> Element {
                     }
                 }
             }
-            // Clear cached fetch timestamp so reload_exercises downloads from the new URL
             crate::services::exercise_db::clear_fetch_cache();
         }
         #[cfg(not(target_arch = "wasm32"))]
@@ -51,18 +42,13 @@ pub fn More() -> Element {
                     &url,
                 );
             }
-            // Clear cached fetch timestamp so reload_exercises downloads from the new URL
             crate::services::exercise_db::clear_fetch_cache();
         }
-        // Immediately reload exercises from the (new) URL, with toast feedback
         let sig = exercises_sig;
         spawn(async move {
             exercise_db::reload_exercises(sig, toast).await;
         });
     };
-
-    // ── Export handlers ───────────────────────────────────────────────────────
-
     let export_exercises = move |_| {
         let exercises = custom_exercises.read().clone();
         match serde_json::to_string_pretty(&exercises) {
@@ -78,15 +64,11 @@ pub fn More() -> Element {
             }
         }
     };
-
     let export_sessions = move |_| {
         let mut t = toast;
         spawn(async move {
-            // Load all sessions from storage for export (active + completed).
-            // Active sessions are exported directly from the in-memory signal.
             let active = sessions.peek().clone();
             let mut all = active;
-            // Load completed sessions page by page.
             let mut offset = 0usize;
             let page_size = 500usize;
             loop {
@@ -112,10 +94,6 @@ pub fn More() -> Element {
             }
         });
     };
-
-    // ── Import handlers ───────────────────────────────────────────────────────
-
-    // Called after a sessions JSON file has been read.
     let handle_sessions_json = move |json: String| {
         let mut t = toast;
         match serde_json::from_str::<Vec<crate::models::WorkoutSession>>(&json) {
@@ -135,14 +113,12 @@ pub fn More() -> Element {
                 }
                 if refused > 0 {
                     t.set(Some(format!(
-                        "⚠️ {refused} session(s) refused: ID already exists"
+                        "⚠️ {refused} session(s) refused: ID already exists",
                     )));
                 }
             }
         }
     };
-
-    // Called after a custom-exercises JSON file has been read.
     let handle_exercises_json = move |json: String| {
         let mut t = toast;
         match serde_json::from_str::<Vec<Exercise>>(&json) {
@@ -157,13 +133,10 @@ pub fn More() -> Element {
                 let mut to_confirm: Vec<Exercise> = Vec::new();
                 for exercise in imported {
                     if db.iter().any(|e| e.id == exercise.id) {
-                        // Matches a built-in exercise → refuse
                         refused += 1;
                     } else if customs.iter().any(|e| e.id == exercise.id) {
-                        // Matches an existing custom exercise → needs confirmation
                         to_confirm.push(exercise);
                     } else {
-                        // New exercise → add directly
                         to_add.push(exercise);
                     }
                 }
@@ -174,7 +147,7 @@ pub fn More() -> Element {
                 }
                 if refused > 0 {
                     t.set(Some(format!(
-                        "⚠️ {refused} exercise(s) refused: built-in ID conflict"
+                        "⚠️ {refused} exercise(s) refused: built-in ID conflict",
                     )));
                 }
                 if !to_confirm.is_empty() {
@@ -183,19 +156,14 @@ pub fn More() -> Element {
             }
         }
     };
-
-    // Button handlers that trigger the hidden file inputs
     let open_sessions_import = move |_| {
         #[cfg(target_arch = "wasm32")]
         click_file_input("import-sessions-input");
     };
-
     let open_exercises_import = move |_| {
         #[cfg(target_arch = "wasm32")]
         click_file_input("import-exercises-input");
     };
-
-    // onchange handlers for the hidden file inputs
     let on_sessions_file_change = move |_| {
         #[cfg(target_arch = "wasm32")]
         spawn(async move {
@@ -206,7 +174,6 @@ pub fn More() -> Element {
         #[cfg(not(target_arch = "wasm32"))]
         let _ = handle_sessions_json;
     };
-
     let on_exercises_file_change = move |_| {
         #[cfg(target_arch = "wasm32")]
         {
@@ -220,10 +187,6 @@ pub fn More() -> Element {
         #[cfg(not(target_arch = "wasm32"))]
         let _ = handle_exercises_json;
     };
-
-    // ── Confirmation modal helpers ────────────────────────────────────────────
-
-    // Confirm replacing the first exercise in the queue
     let confirm_replace = move |_| {
         let queue = exercises_to_confirm.read();
         if let Some(exercise) = queue.first().cloned() {
@@ -232,47 +195,29 @@ pub fn More() -> Element {
             exercises_to_confirm.write().remove(0);
         }
     };
-
-    // Skip (refuse) replacing the first exercise in the queue
     let skip_replace = move |_| {
         exercises_to_confirm.write().remove(0);
     };
-
     rsx! {
-        header { h1 { "⚙️ More" } }
+        header {
+            h1 { "⚙️ More" }
+        }
         main { class: "more",
-
-            // ── Data management ───────────────────────────────────────────────
             article {
                 h2 { "📤 Export" }
                 div { class: "inputs",
-                    button {
-                        class: "label save",
-                        onclick: export_exercises,
-                        "💾 Custom Exercises"
-                    }
-                    button {
-                        class: "label save",
-                        onclick: export_sessions,
-                        "💾 Sessions"
-                    }
+                    button { class: "label save", onclick: export_exercises, "💾 Custom Exercises" }
+                    button { class: "label save", onclick: export_sessions, "💾 Sessions" }
                 }
             }
             article {
                 h2 { "📥 Import" }
                 div { class: "inputs",
-                    button {
-                        class: "label more",
-                        onclick: open_exercises_import,
+                    button { class: "label more", onclick: open_exercises_import,
                         "📂 Custom Exercises"
                     }
-                    button {
-                        class: "label more",
-                        onclick: open_sessions_import,
-                        "📂 Sessions"
-                    }
+                    button { class: "label more", onclick: open_sessions_import, "📂 Sessions" }
                 }
-                // Hidden file inputs
                 input {
                     r#type: "file",
                     id: "import-exercises-input",
@@ -288,12 +233,11 @@ pub fn More() -> Element {
                     onchange: on_sessions_file_change,
                 }
             }
-
-            // ── App ───────────────────────────────────────────────────────────
             article {
                 h2 { "LogOut" }
                 p { "Turn off your computer, Log your workOut." }
-                p { "A simple, efficient and cross-platform workout "
+                p {
+                    "A simple, efficient and cross-platform workout "
                     "logging application with "
                     a {
                         href: "https://github.com/yuhonas/free-exercise-db",
@@ -301,23 +245,18 @@ pub fn More() -> Element {
                         "800+ exercises"
                     }
                     " built-in, by "
-                    a {
-                        href: "https://www.guilhemfau.re",
-                        target: "_blank",
-                        "Guilhem Fauré."
-                    }
+                    a { href: "https://www.guilhemfau.re", target: "_blank", "Guilhem Fauré." }
                 }
             }
-
-            // ── Exercise database ─────────────────────────────────────────────
             article {
                 h2 { "⚙️ Exercise Database URL" }
-                p { "Override the exercise database source. "
+                p {
+                    "Override the exercise database source. "
                     "Save to trigger a re-download on next reload."
                 }
-                form {
-                    onsubmit: save_url,
-                    input { r#type: "url",
+                form { onsubmit: save_url,
+                    input {
+                        r#type: "url",
                         value: "{url_input}",
                         placeholder: "{crate::utils::EXERCISE_DB_BASE_URL}",
                         oninput: move |evt| url_input.set(evt.value()),
@@ -330,11 +269,10 @@ pub fn More() -> Element {
                     }
                 }
             }
-
-            // ── Open Source & Licences ────────────────────────────────────────
             article {
                 h2 { "Open Source & Licences" }
-                p { "This project is open-source under the GPL-3.0, "
+                p {
+                    "This project is open-source under the GPL-3.0, "
                     "and uses other open-source projects. See its "
                     a {
                         href: "https://github.com/gfauredev/LogOut",
@@ -352,25 +290,15 @@ pub fn More() -> Element {
                     "."
                 }
             }
-
-            // ── Built With ────────────────────────────────────────────────────
             article {
                 h2 { "Built With" }
                 ul {
                     li {
-                        a {
-                            href: "https://rust-lang.org",
-                            target: "_blank",
-                            "Rust"
-                        }
+                        a { href: "https://rust-lang.org", target: "_blank", "Rust" }
                         " — Systems programming language"
                     }
                     li {
-                        a {
-                            href: "https://dioxuslabs.com",
-                            target: "_blank",
-                            "Dioxus"
-                        }
+                        a { href: "https://dioxuslabs.com", target: "_blank", "Dioxus" }
                         " — Rust framework for cross-platform apps"
                     }
                     li {
@@ -385,38 +313,23 @@ pub fn More() -> Element {
                 }
             }
         }
-
-        // ── Confirmation modal for replacing a custom exercise ────────────────
         if let Some(exercise) = exercises_to_confirm.read().first().cloned() {
-            div {
-                class: "backdrop",
-                onclick: skip_replace,
-            }
-            dialog {
-                open: true,
-                onclick: move |evt| evt.stop_propagation(),
-                p { "Replace custom exercise "{exercise.name}"?" }
+            div { class: "backdrop", onclick: skip_replace }
+            dialog { open: true, onclick: move |evt| evt.stop_propagation(),
+                p {
+                    "Replace custom exercise "
+                    {exercise.name}
+                    "?"
+                }
                 div {
-                    button {
-                        class: "no label",
-                        onclick: confirm_replace,
-                        "💾 Replace"
-                    }
-                    button {
-                        class: "yes",
-                        onclick: skip_replace,
-                        "❌"
-                    }
+                    button { class: "no label", onclick: confirm_replace, "💾 Replace" }
+                    button { class: "yes", onclick: skip_replace, "❌" }
                 }
             }
         }
-
         BottomNav { active_tab: ActiveTab::More }
     }
 }
-
-// ── Web-only helpers ──────────────────────────────────────────────────────────
-
 /// Trigger a file download in the browser by creating a temporary anchor element.
 #[cfg(target_arch = "wasm32")]
 fn trigger_download(filename: &str, content: &str) {
@@ -457,7 +370,6 @@ fn trigger_download(filename: &str, content: &str) {
     }
     let _ = web_sys::Url::revoke_object_url(&url);
 }
-
 /// Programmatically click the file input element with the given id.
 #[cfg(target_arch = "wasm32")]
 fn click_file_input(id: &str) {
@@ -474,20 +386,16 @@ fn click_file_input(id: &str) {
         }
     }
 }
-
 /// Read the text content of the first selected file from a file input element.
 ///
 /// Returns `None` if no file is selected or an error occurs.
 #[cfg(target_arch = "wasm32")]
 async fn read_file_input(id: &str) -> Option<String> {
     use wasm_bindgen::JsCast;
-
     let document = web_sys::window()?.document()?;
     let input: web_sys::HtmlInputElement = document.get_element_by_id(id)?.dyn_into().ok()?;
     let files = input.files()?;
     let file = files.get(0)?;
-
-    // Wrap FileReader in a Promise so we can await it.
     let promise = js_sys::Promise::new(&mut |resolve, reject| {
         let reader = web_sys::FileReader::new().expect("FileReader");
         let reader_clone = reader.clone();
@@ -504,7 +412,6 @@ async fn read_file_input(id: &str) -> Option<String> {
         onerror.forget();
         let _ = reader.read_as_text(&file);
     });
-
     let result = wasm_bindgen_futures::JsFuture::from(promise).await.ok()?;
     result.as_string()
 }

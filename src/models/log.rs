@@ -2,7 +2,6 @@ use super::enums::{Category, Force};
 use super::exercise_type_tag;
 use super::units::{Distance, Weight};
 use serde::{Deserialize, Serialize};
-
 /// A single completed (or in-progress) exercise within a [`WorkoutSession`].
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct ExerciseLog {
@@ -26,18 +25,15 @@ pub struct ExerciseLog {
     /// Force type of the exercise (push / pull / static).
     pub force: Option<Force>,
 }
-
 impl ExerciseLog {
     /// Calculate duration in seconds
     pub fn duration_seconds(&self) -> Option<u64> {
         self.end_time.map(|end| end.saturating_sub(self.start_time))
     }
-
     /// Check if this log is complete (has end time)
     pub fn is_complete(&self) -> bool {
         self.end_time.is_some()
     }
-
     /// Returns the CSS class and icon for this log's exercise type tag.
     ///
     /// Mirrors [`Exercise::type_tag`] using the denormalised category and force
@@ -46,11 +42,9 @@ impl ExerciseLog {
         exercise_type_tag(self.category, self.force)
     }
 }
-
 #[cfg(test)]
 mod tests {
     use super::*;
-
     #[test]
     fn exercise_log_is_complete() {
         let mut log = ExerciseLog {
@@ -68,7 +62,6 @@ mod tests {
         log.end_time = Some(1060);
         assert!(log.is_complete());
     }
-
     #[test]
     fn exercise_log_duration_seconds() {
         let log = ExerciseLog {
@@ -84,7 +77,6 @@ mod tests {
         };
         assert_eq!(log.duration_seconds(), Some(60));
     }
-
     #[test]
     fn exercise_log_duration_seconds_none_when_incomplete() {
         let log = ExerciseLog {
@@ -100,7 +92,6 @@ mod tests {
         };
         assert_eq!(log.duration_seconds(), None);
     }
-
     #[test]
     fn exercise_log_duration_saturates_on_underflow() {
         let log = ExerciseLog {
@@ -108,7 +99,7 @@ mod tests {
             exercise_name: "Bench".into(),
             category: Category::Strength,
             start_time: 2000,
-            end_time: Some(1000), // end before start
+            end_time: Some(1000),
             weight_hg: None,
             reps: None,
             distance_m: None,
@@ -116,7 +107,6 @@ mod tests {
         };
         assert_eq!(log.duration_seconds(), Some(0));
     }
-
     #[test]
     fn exercise_log_serde_round_trip_with_all_fields() {
         let log = ExerciseLog {
@@ -134,7 +124,6 @@ mod tests {
         let back: ExerciseLog = serde_json::from_str(&json).unwrap();
         assert_eq!(back, log);
     }
-
     #[test]
     fn exercise_log_force_none_is_omitted_in_json() {
         let log = ExerciseLog {
@@ -151,7 +140,6 @@ mod tests {
         let json = serde_json::to_string(&log).unwrap();
         assert!(!json.contains("force"));
     }
-
     #[test]
     fn exercise_log_type_tag_mirrors_exercise() {
         let log = ExerciseLog {

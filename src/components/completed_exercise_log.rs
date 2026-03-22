@@ -1,9 +1,7 @@
+use super::session_exercise_form::ExerciseInputForm;
 use crate::models::{Category, ExerciseLog, Force, WorkoutSession};
 use crate::services::storage;
 use dioxus::prelude::*;
-
-use super::session_exercise_form::ExerciseInputForm;
-
 /// A single completed exercise log entry with inline edit support.
 #[component]
 pub fn CompletedExerciseLog(
@@ -21,7 +19,6 @@ pub fn CompletedExerciseLog(
     let mut edit_weight_input = use_signal(String::new);
     let mut edit_reps_input = use_signal(String::new);
     let mut edit_distance_input = use_signal(String::new);
-
     let start_edit = {
         let log = log.clone();
         move |_| {
@@ -39,32 +36,38 @@ pub fn CompletedExerciseLog(
             is_editing.set(true);
         }
     };
-
     let force = log.force;
     let category = log.category;
     let exercise_id = log.exercise_id.clone();
     let last_duration = log.duration_seconds();
-
     rsx! {
         article {
             header {
                 h4 { "{log.exercise_name}" }
-                // Action buttons stacked on the right
-                div {class: "inputs",
+                div { class: "inputs",
                     if show_replay {
-                        button { class: "edit", title: "Do another set",
-                            onclick: move |_| on_replay.call(()), "🔁"
+                        button {
+                            class: "edit",
+                            title: "Do another set",
+                            onclick: move |_| on_replay.call(()),
+                            "🔁"
                         }
                     }
-                    button { class: "edit", onclick: start_edit,
-                        title: "Edit this exercise", "✏️"
+                    button {
+                        class: "edit",
+                        onclick: start_edit,
+                        title: "Edit this exercise",
+                        "✏️"
                     }
-                    button { class: "del", title: "Delete this exercise",
+                    button {
+                        class: "del",
+                        title: "Delete this exercise",
                         onclick: move |_| {
                             let mut current_session = session.read().clone();
                             current_session.exercise_logs.remove(idx);
                             storage::save_session(current_session.clone());
-                        }, "🗑️"
+                        },
+                        "🗑️"
                     }
                 }
             }
@@ -101,9 +104,15 @@ pub fn CompletedExerciseLog(
                 }
             } else {
                 ul {
-                    if let Some(w) = log.weight_hg { li { "{w}" } }
-                    if let Some(reps) = log.reps { li { "{reps} reps" } }
-                    if let Some(d) = log.distance_m { li { "{d}" } }
+                    if let Some(w) = log.weight_hg {
+                        li { "{w}" }
+                    }
+                    if let Some(reps) = log.reps {
+                        li { "{reps} reps" }
+                    }
+                    if let Some(d) = log.distance_m {
+                        li { "{d}" }
+                    }
                     if let Some(duration) = log.duration_seconds() {
                         li { "{crate::models::format_time(duration)}" }
                     }

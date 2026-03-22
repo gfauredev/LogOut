@@ -1,30 +1,21 @@
-// Async write queue for SQLite (native only)
-//
-// Mirrors the wasm32 `idb_queue` pattern: serialises all write operations
-// so that concurrent Dioxus tasks never fight over the same DB file.
-// Uses Dioxus `spawn` (backed by the single-threaded tokio runtime on native)
-// so that in-flight writes are not cancelled when a component unmounts.
-
 use super::storage::native_storage;
 use crate::models::{Exercise, WorkoutSession};
 use dioxus::prelude::WritableExt;
 use dioxus::signals::Signal;
 use std::cell::RefCell;
 use std::collections::VecDeque;
-
 /// A pending write operation, including the toast signal for error reporting.
 pub enum NativeOp {
     PutSession(WorkoutSession, Signal<Option<String>>),
     DeleteSession(String, Signal<Option<String>>),
     PutExercise(Exercise, Signal<Option<String>>),
 }
-
 thread_local! {
     /// (draining, pending_ops)
-    static QUEUE: RefCell<(bool, VecDeque<NativeOp>)> =
-        const { RefCell::new((false, VecDeque::new())) };
+    static QUEUE: RefCell<(bool, VecDeque<NativeOp>)> = const {
+        RefCell::new((false, VecDeque::new()))
+    };
 }
-
 /// Enqueue a write operation. If no drain is currently running, starts one.
 pub fn enqueue(op: NativeOp) {
     QUEUE.with(|q| {
@@ -36,7 +27,6 @@ pub fn enqueue(op: NativeOp) {
         }
     });
 }
-
 async fn drain() {
     loop {
         let op = QUEUE.with(|q| q.borrow_mut().1.pop_front());
@@ -67,7 +57,6 @@ async fn drain() {
                 }
             }
         }
-        // Yield to the executor to keep the UI responsive during batch writes
         tokio::task::yield_now().await;
     }
 }

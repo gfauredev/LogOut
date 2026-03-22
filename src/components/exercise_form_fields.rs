@@ -1,7 +1,6 @@
 use crate::models::{Category, Equipment, Force, Muscle};
 use dioxus::prelude::*;
 use strum::IntoEnumIterator;
-
 /// Shared form fields used by both `AddCustomExercisePage` and `EditCustomExercisePage`.
 #[component]
 pub fn ExerciseFormFields(
@@ -32,11 +31,8 @@ pub fn ExerciseFormFields(
     let mut instructions_list = instructions_list;
     let mut image_url_input = image_url_input;
     let mut images_list = images_list;
-
-    // Native-only: path to a local image file to be copied into the data directory.
     #[cfg(not(target_arch = "wasm32"))]
     let mut local_image_path_input = use_signal(String::new);
-
     let add_muscle = move |_| {
         let value = muscle_input.read().trim().to_string();
         if !value.is_empty() {
@@ -50,13 +46,11 @@ pub fn ExerciseFormFields(
             }
         }
     };
-
     let mut remove_muscle = move |muscle: Muscle| {
         let mut muscles = muscles_list.read().clone();
         muscles.retain(|m| m != &muscle);
         muscles_list.set(muscles);
     };
-
     let add_secondary_muscle = move |_| {
         let value = secondary_muscle_input.read().trim().to_string();
         if !value.is_empty() {
@@ -70,13 +64,11 @@ pub fn ExerciseFormFields(
             }
         }
     };
-
     let mut remove_secondary_muscle = move |muscle: Muscle| {
         let mut muscles = secondary_muscles_list.read().clone();
         muscles.retain(|m| m != &muscle);
         secondary_muscles_list.set(muscles);
     };
-
     let add_instruction = move |_| {
         let value = instructions_input.read().trim().to_string();
         if !value.is_empty() {
@@ -86,7 +78,6 @@ pub fn ExerciseFormFields(
             instructions_input.set(String::new());
         }
     };
-
     let mut remove_instruction = move |idx: usize| {
         let mut instructions = instructions_list.read().clone();
         if idx < instructions.len() {
@@ -94,7 +85,6 @@ pub fn ExerciseFormFields(
             instructions_list.set(instructions);
         }
     };
-
     let add_image = move |_| {
         let url = image_url_input.read().trim().to_string();
         if !url.is_empty() {
@@ -106,7 +96,6 @@ pub fn ExerciseFormFields(
             }
         }
     };
-
     let mut remove_image = move |idx: usize| {
         let mut imgs = images_list.read().clone();
         if idx < imgs.len() {
@@ -114,13 +103,6 @@ pub fn ExerciseFormFields(
             images_list.set(imgs);
         }
     };
-
-    // Web (WASM): set up a `FileReader` listener via `document::eval` that
-    // converts a picked file to a `data:` URL and pushes it into `images_list`.
-    //
-    // The listener is registered on `document` (not on the input element) so it
-    // survives component re-renders.  A `thread_local` flag ensures at most one
-    // listener is ever registered, even if the component remounts.
     #[cfg(target_arch = "wasm32")]
     use_hook(move || {
         use std::cell::Cell;
@@ -131,7 +113,6 @@ pub fn ExerciseFormFields(
             return;
         }
         LISTENER_REGISTERED.with(|r| r.set(true));
-
         let js = r#"
             (function() {
                 document.addEventListener('change', function(e) {
@@ -156,9 +137,6 @@ pub fn ExerciseFormFields(
             }
         });
     });
-
-    // Native: copy the file at the given path into the app's local images
-    // directory and store the destination path in `images_list`.
     #[cfg(not(target_arch = "wasm32"))]
     let add_local_image = move |_| {
         let path_str = local_image_path_input.read().trim().to_string();
@@ -199,9 +177,6 @@ pub fn ExerciseFormFields(
             }
         }
     };
-
-    // Build the platform-specific image-upload widget before the main rsx! block
-    // so we can use `#[cfg]` on whole statement items.
     #[cfg(target_arch = "wasm32")]
     let image_upload_widget: Element = rsx! {
         div { class: "inputs",
@@ -213,7 +188,6 @@ pub fn ExerciseFormFields(
             }
         }
     };
-
     #[cfg(not(target_arch = "wasm32"))]
     let image_upload_widget: Element = rsx! {
         div { class: "inputs",
@@ -227,7 +201,6 @@ pub fn ExerciseFormFields(
             button { class: "more", onclick: add_local_image, "📁" }
         }
     };
-
     rsx! {
         div {
             label { r#for: "exercise-name-input", "Exercise Name *" }
@@ -244,7 +217,9 @@ pub fn ExerciseFormFields(
             select {
                 value: "{category_input.read()}",
                 oninput: move |evt| {
-                    if let Ok(cat) = serde_json::from_value::<Category>(serde_json::Value::String(evt.value())) {
+                    if let Ok(cat) = serde_json::from_value::<
+                        Category,
+                    >(serde_json::Value::String(evt.value())) {
                         category_input.set(cat);
                     }
                 },
@@ -261,7 +236,9 @@ pub fn ExerciseFormFields(
                     let val = evt.value();
                     if val.is_empty() {
                         force_input.set(None);
-                    } else if let Ok(f) = serde_json::from_value::<Force>(serde_json::Value::String(val)) {
+                    } else if let Ok(f) = serde_json::from_value::<
+                        Force,
+                    >(serde_json::Value::String(val)) {
                         force_input.set(Some(f));
                     }
                 },
@@ -279,7 +256,9 @@ pub fn ExerciseFormFields(
                     let val = evt.value();
                     if val.is_empty() {
                         equipment_input.set(None);
-                    } else if let Ok(e) = serde_json::from_value::<Equipment>(serde_json::Value::String(val)) {
+                    } else if let Ok(e) = serde_json::from_value::<
+                        Equipment,
+                    >(serde_json::Value::String(val)) {
                         equipment_input.set(Some(e));
                     }
                 },
@@ -303,13 +282,20 @@ pub fn ExerciseFormFields(
                 button { class: "more", onclick: add_muscle, "+" }
             }
             if !muscles_list.read().is_empty() {
-                ul { class: "tags", for muscle in muscles_list.read().iter() {
-                    li { button { key: "{muscle}", class: "less label",
-                        onclick: {
-                            let m = *muscle;
-                            move |_| remove_muscle(m)
-                        }, "{muscle}"
-                    }}}
+                ul { class: "tags",
+                    for muscle in muscles_list.read().iter() {
+                        li {
+                            button {
+                                key: "{muscle}",
+                                class: "less label",
+                                onclick: {
+                                    let m = *muscle;
+                                    move |_| remove_muscle(m)
+                                },
+                                "{muscle}"
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -324,65 +310,80 @@ pub fn ExerciseFormFields(
                         option { value: "{muscle}", "{muscle}" }
                     }
                 }
-                button { class: "more", onclick: add_secondary_muscle, "+"}
+                button { class: "more", onclick: add_secondary_muscle, "+" }
             }
             if !secondary_muscles_list.read().is_empty() {
-                ul { class: "tags", for muscle in secondary_muscles_list.read().iter() {
-                    li { button { key: "{muscle}", class: "less label",
-                        onclick: {
-                            let m = *muscle;
-                            move |_| remove_secondary_muscle(m)
-                        }, "{muscle}"
-                    }}}
+                ul { class: "tags",
+                    for muscle in secondary_muscles_list.read().iter() {
+                        li {
+                            button {
+                                key: "{muscle}",
+                                class: "less label",
+                                onclick: {
+                                    let m = *muscle;
+                                    move |_| remove_secondary_muscle(m)
+                                },
+                                "{muscle}"
+                            }
+                        }
+                    }
                 }
             }
         }
         div {
             label { "Instructions" }
             div { class: "inputs",
-                input { r#type: "text",
+                input {
+                    r#type: "text",
                     placeholder: "Add an instruction step...",
                     value: "{instructions_input}",
                     oninput: move |evt| instructions_input.set(evt.value()),
                 }
-                button { class: "more", onclick: add_instruction, "+"}
+                button { class: "more", onclick: add_instruction, "+" }
             }
             if !instructions_list.read().is_empty() {
-                ol { for (idx, instruction) in instructions_list.read().iter().enumerate() {
-                    li { key: "{idx}",
-                        span { "{instruction}" }
-                        button { class: "del",
-                            onclick: move |_| remove_instruction(idx),
-                            "🗑️"
+                ol {
+                    for (idx , instruction) in instructions_list.read().iter().enumerate() {
+                        li { key: "{idx}",
+                            span { "{instruction}" }
+                            button {
+                                class: "del",
+                                onclick: move |_| remove_instruction(idx),
+                                "🗑️"
+                            }
                         }
-                    }}
+                    }
                 }
             }
         }
         div {
             label { "Images" }
             div { class: "inputs",
-                input { r#type: "url",
+                input {
+                    r#type: "url",
                     placeholder: "https://example.com/image.jpg",
                     value: "{image_url_input}",
                     oninput: move |evt| image_url_input.set(evt.value()),
                 }
                 button { class: "more", onclick: add_image, "+" }
             }
-            // Platform-specific upload widget (file picker on web, path input on native)
             {image_upload_widget}
             if !images_list.read().is_empty() {
-                ul { class: "tags", for (idx, url) in images_list.read().iter().enumerate() {
-                    li { key: "{idx}",
-                        button { class: "del label",
-                            onclick: move |_| remove_image(idx),
-                            "{url}"
+                ul { class: "tags",
+                    for (idx , url) in images_list.read().iter().enumerate() {
+                        li { key: "{idx}",
+                            button {
+                                class: "del label",
+                                onclick: move |_| remove_image(idx),
+                                "{url}"
+                            }
                         }
                     }
-                }}
+                }
             }
         }
-        button { class: "edit label",
+        button {
+            class: "edit label",
             onclick: move |_| on_save.call(()),
             disabled: name_input.read().trim().is_empty(),
             "💾 {save_label}"

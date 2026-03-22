@@ -8,16 +8,13 @@ use crate::models::Exercise;
 use crate::services::exercise_db;
 use crate::DbI18nSignal;
 use dioxus::prelude::*;
-
 /// Provides the exercises signal and kicks off the background load.
 /// Call once inside the root `App` component.
 pub fn provide_exercises() {
     let wrapper = use_context_provider(|| exercise_db::AllExercisesSignal(Signal::new(Vec::new())));
     let sig = wrapper.0;
     let mut i18n_sig = use_context::<DbI18nSignal>().0;
-
     spawn(async move {
-        // Fetch enum-value translations (i18n.json) and populate the context signal.
         let i18n_data = exercise_db::download_db_i18n().await;
         if !i18n_data.is_empty() {
             i18n_sig.set(i18n_data);
@@ -25,12 +22,10 @@ pub fn provide_exercises() {
         load_exercises(sig).await;
     });
 }
-
 /// Consumes the exercises signal from the Dioxus context.
 pub fn use_exercises() -> Signal<Vec<Exercise>> {
     use_context::<exercise_db::AllExercisesSignal>().0
 }
-
 /// Clears the current exercise list and immediately re-downloads from the
 /// configured URL.  Intended to be called after saving a new database URL so
 /// the app reflects the change without requiring a full reload.
@@ -42,8 +37,6 @@ pub async fn reload_exercises(mut sig: Signal<Vec<Exercise>>, mut toast: Signal<
     #[cfg(target_arch = "wasm32")]
     {
         use crate::services::storage::idb_exercises;
-        // Purge the cached exercises so a subsequent page reload does not
-        // serve stale data from the previous URL while the download runs.
         idb_exercises::clear_all_exercises().await;
         match exercise_db::download_exercises().await {
             Ok(exercises) if !exercises.is_empty() => {
@@ -75,12 +68,9 @@ pub async fn reload_exercises(mut sig: Signal<Vec<Exercise>>, mut toast: Signal<
             }
         }
     }
-
     #[cfg(not(target_arch = "wasm32"))]
     {
         use crate::services::storage::native_exercises;
-        // Purge the cached exercises so a subsequent app restart does not
-        // serve stale data from the previous URL while the download runs.
         native_exercises::clear_all_exercises();
         match exercise_db::download_exercises().await {
             Ok(exercises) if !exercises.is_empty() => {
@@ -113,30 +103,21 @@ pub async fn reload_exercises(mut sig: Signal<Vec<Exercise>>, mut toast: Signal<
         }
     }
 }
-
 #[allow(unused_mut, unused_variables)]
 async fn load_exercises(mut sig: Signal<Vec<Exercise>>) {
-    // ── Web platform (wasm32 + IndexedDB) ────────────────────────────────────
     #[cfg(target_arch = "wasm32")]
     {
         use crate::services::storage::idb_exercises;
-
         let cached = idb_exercises::get_all_exercises().await.unwrap_or_default();
         let needs_refresh = !cached.is_empty() && exercise_db::is_refresh_due();
-
         if !cached.is_empty() {
             log::info!("Loaded {} exercises from IndexedDB", cached.len());
             sig.set(cached.into_iter().map(Exercise::with_lowercase).collect());
-
             if !needs_refresh {
                 return;
             }
-
-            // Re-fetch in the background to keep exercises up to date
             log::info!("Exercise database is stale – refreshing in background");
         }
-
-        // Download from the network (first run or periodic refresh)
         match exercise_db::download_exercises().await {
             Ok(exercises) if !exercises.is_empty() => {
                 log::info!(
@@ -157,26 +138,19 @@ async fn load_exercises(mut sig: Signal<Vec<Exercise>>) {
             Err(e) => log::warn!("Failed to download exercises: {e:?}"),
         }
     }
-
-    // ── Native platform (Android / desktop) ──────────────────────────────────
     #[cfg(not(target_arch = "wasm32"))]
     {
         use crate::services::storage::native_exercises;
-
         let cached = native_exercises::get_all_exercises();
         let needs_refresh = !cached.is_empty() && exercise_db::is_refresh_due();
-
         if !cached.is_empty() {
             log::info!("Loaded {} exercises from local file", cached.len());
             sig.set(cached.into_iter().map(Exercise::with_lowercase).collect());
-
             if !needs_refresh {
                 return;
             }
-
             log::info!("Exercise database is stale – refreshing in background");
         }
-
         match exercise_db::download_exercises().await {
             Ok(exercises) if !exercises.is_empty() => {
                 log::info!(
@@ -197,7 +171,5 @@ async fn load_exercises(mut sig: Signal<Vec<Exercise>>) {
             Err(e) => log::warn!("Failed to download exercises: {e:?}"),
         }
     }
-
-    // No exercises available: database will remain empty until next launch or network becomes available
     log::warn!("No exercises available: failed to load from cache and download from API");
 }

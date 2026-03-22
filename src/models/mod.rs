@@ -3,22 +3,18 @@
 //! This module defines the core entities (Exercises, Logs, Sessions) and their
 //! supporting types (Enums, Units). All types are serialisable to JSON for
 //! persistence in `IndexedDB` or `SQLite`.
-
 pub mod enums;
 pub mod exercise;
 pub mod log;
 pub mod session;
 pub mod units;
-
 pub use enums::*;
 pub use exercise::*;
 pub use log::*;
 pub use session::*;
 pub use units::*;
-
 /// Current schema version for the workout-session data format.
 pub const DATA_VERSION: u32 = 1;
-
 /// Returns the current Unix timestamp in seconds.
 /// Cross-platform: uses `js_sys` on Web and `SystemTime` on Native.
 #[must_use]
@@ -35,7 +31,6 @@ pub fn get_current_timestamp() -> u64 {
             .as_secs()
     }
 }
-
 /// Helper for rendering timestamps as `HH:MM` or `HH:MM:SS`.
 #[must_use]
 pub fn format_time(seconds: u64) -> String {
@@ -48,7 +43,6 @@ pub fn format_time(seconds: u64) -> String {
         format!("{m:02}:{s:02}")
     }
 }
-
 /// Like [`format_time`] but accepts a signed integer so a negative countdown
 /// can be rendered with a leading `"-"`.
 #[must_use]
@@ -59,7 +53,6 @@ pub fn format_time_i64(seconds: i64) -> String {
         format_time(seconds.cast_unsigned())
     }
 }
-
 /// Shared logic for returning the CSS class and icon for an exercise type tag.
 pub(crate) fn exercise_type_tag(
     category: Category,
@@ -73,11 +66,9 @@ pub(crate) fn exercise_type_tag(
         ("tag-static", "⏱️")
     }
 }
-
 #[cfg(test)]
 mod tests {
     use super::*;
-
     #[test]
     fn format_time_boundary_values() {
         assert_eq!(format_time(1), "00:01");
@@ -87,21 +78,17 @@ mod tests {
         assert_eq!(format_time(3600), "01:00:00");
         assert_eq!(format_time(86399), "23:59:59");
     }
-
     #[test]
     fn get_current_timestamp_returns_reasonable_value() {
         let ts = get_current_timestamp();
-        // Greater than March 2024
         assert!(ts > 1_710_000_000);
     }
-
     #[test]
     fn format_time_i64_positive_delegates_to_format_time() {
         assert_eq!(format_time_i64(0), "00:00");
         assert_eq!(format_time_i64(90), "01:30");
         assert_eq!(format_time_i64(3661), "01:01:01");
     }
-
     #[test]
     fn format_time_i64_negative_prefixes_minus() {
         assert_eq!(format_time_i64(-1), "-00:01");

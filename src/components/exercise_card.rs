@@ -3,7 +3,6 @@ use crate::services::storage;
 use crate::{DbI18nSignal, Route};
 use dioxus::prelude::*;
 use dioxus_i18n::{prelude::i18n, t};
-
 /// Looks up the translation for a single enum value in the `i18n.json` data.
 ///
 /// Falls back to the English `value` string when:
@@ -30,7 +29,6 @@ fn translate_enum<'a>(db_i18n: &'a DbI18n, lang: &str, field: &str, value: &'a s
         .or_else(|| lang.split('-').next().and_then(lookup))
         .unwrap_or(value)
 }
-
 #[component]
 pub fn ExerciseCard(
     exercise: Exercise,
@@ -41,12 +39,7 @@ pub fn ExerciseCard(
     let mut show_instructions = use_signal(move || initial);
     let mut img_index = use_signal(|| 0usize);
     let image_count = exercise.images.len();
-
-    // Consume the enum-translation context provided by exercise_loader.
     let db_i18n_sig = use_context::<DbI18nSignal>().0;
-
-    // Memoize translated name and instructions so they are only recomputed when
-    // the i18n language context changes (rare) rather than on every render.
     let display_name = {
         let ex = exercise.clone();
         use_memo(move || {
@@ -61,9 +54,6 @@ pub fn ExerciseCard(
             ex.instructions_for_lang(&lang.to_string()).to_vec()
         })
     };
-
-    // Translated enum labels (category, force, equipment, level, muscles).
-    // Memoised so they are only recomputed when the language or the i18n data signal changes.
     let enum_labels = {
         let ex = exercise.clone();
         use_memo(move || {
@@ -100,7 +90,6 @@ pub fn ExerciseCard(
             )
         })
     };
-
     rsx! {
         article { key: "{exercise.id}",
             header {
@@ -112,13 +101,17 @@ pub fn ExerciseCard(
                     "{display_name}"
                 }
                 if is_custom {
-                    Link { class: "edit",
-                        to: Route::EditExercise { id: exercise.id.clone() },
+                    Link {
+                        class: "edit",
+                        to: Route::EditExercise {
+                            id: exercise.id.clone(),
+                        },
                         title: t!("exercise-edit"),
                         "✏️"
                     }
                 } else {
-                    button { class: "more",
+                    button {
+                        class: "more",
                         onclick: {
                             let exercise = exercise.clone();
                             move |_| {
@@ -141,7 +134,9 @@ pub fn ExerciseCard(
                                 let clone_id = clone.id.clone();
                                 storage::add_custom_exercise(clone);
                                 navigator()
-                                    .push(Route::EditExercise { id: clone_id });
+                                    .push(Route::EditExercise {
+                                        id: clone_id,
+                                    });
                             }
                         },
                         title: t!("exercise-clone"),
@@ -180,10 +175,6 @@ pub fn ExerciseCard(
                 if let Some(label) = &enum_labels.read().3 {
                     li { class: "level", "{label}" }
                 }
-                // {
-                //     let (tag_class, tag_label) = exercise.type_tag();
-                //     rsx! { li { class: "{tag_class}", "{tag_label}" } }
-                // }
             }
             if !exercise.primary_muscles.is_empty() {
                 ul {
@@ -202,12 +193,10 @@ pub fn ExerciseCard(
         }
     }
 }
-
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::models::DbI18nLang;
-
     fn sample_db_i18n() -> DbI18n {
         let mut lang = DbI18nLang::default();
         lang.category
@@ -220,13 +209,12 @@ mod tests {
         map.insert("fr".into(), lang);
         map
     }
-
     #[test]
     fn translate_enum_exact_match() {
         let db_i18n = sample_db_i18n();
         assert_eq!(
             translate_enum(&db_i18n, "fr", "category", "strength"),
-            "musculation"
+            "musculation",
         );
         assert_eq!(translate_enum(&db_i18n, "fr", "force", "push"), "poussée");
         assert_eq!(
@@ -242,17 +230,14 @@ mod tests {
             "pectoraux"
         );
     }
-
     #[test]
     fn translate_enum_prefix_match() {
         let db_i18n = sample_db_i18n();
-        // "fr-FR" should fall back to "fr" key
         assert_eq!(
             translate_enum(&db_i18n, "fr-FR", "category", "strength"),
-            "musculation"
+            "musculation",
         );
     }
-
     #[test]
     fn translate_enum_missing_lang_returns_original() {
         let db_i18n = sample_db_i18n();
@@ -261,23 +246,20 @@ mod tests {
             "strength"
         );
     }
-
     #[test]
     fn translate_enum_missing_key_returns_original() {
         let db_i18n = sample_db_i18n();
-        // "cardio" is not in the sample French map
         assert_eq!(
             translate_enum(&db_i18n, "fr", "category", "cardio"),
             "cardio"
         );
     }
-
     #[test]
     fn translate_enum_unknown_field_returns_original() {
         let db_i18n = sample_db_i18n();
         assert_eq!(
             translate_enum(&db_i18n, "fr", "unknown_field", "strength"),
-            "strength"
+            "strength",
         );
     }
 }

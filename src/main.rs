@@ -5,67 +5,54 @@
 //! PWA (web) and native Android / desktop platforms.
 //!
 //! [Dioxus]: https://dioxuslabs.com
-
 use dioxus::prelude::*;
 use dioxus_i18n::prelude::*;
 use unic_langid::langid;
-
 mod components;
 mod models;
 mod services;
 /// Pure utility helpers (date formatting, URL resolution, timestamp helpers).
 pub mod utils;
-
 use components::{
     AddExercise, Analytics, EditExercise, Exercises, GlobalSessionHeader, Home, More,
 };
-
 /// Global context signal for the congratulations toast shown after completing a session.
 #[derive(Clone, Copy)]
 pub struct CongratulationsSignal(pub Signal<bool>);
-
 /// Global context signal for a general-purpose toast message.
 #[derive(Clone, Copy)]
 pub struct ToastSignal(pub Signal<Option<String>>);
-
 /// Global context signal that, when `true`, shows a persistent notification-
 /// permission warning toast.  The toast prompts the user to click it in order
 /// to trigger the browser permission dialog.
 #[derive(Clone, Copy)]
 pub struct NotificationPermissionToastSignal(pub Signal<bool>);
-
 /// Global context signal used to show/hide the rest-duration input form in
 /// the active [`SessionView`].  The form is toggled by clicking the timer in
 /// the [`GlobalSessionHeader`] which lives in the layout and is shared across
 /// all pages.
 #[derive(Clone, Copy)]
 pub struct ShowRestInputSignal(pub Signal<bool>);
-
 /// Global context signal holding the configured rest duration (in seconds).
 /// Shared between [`GlobalSessionHeader`] (which reads/displays it) and the
 /// rest-duration input form that updates it.
 #[derive(Clone, Copy)]
 pub struct RestDurationSignal(pub Signal<u64>);
-
 /// Auto-dismiss delay for toasts in milliseconds.
 const TOAST_DISMISS_MS: u32 = 3_000;
-
 /// Global context signal for pre-filling the exercise list search query.
 #[derive(Clone, Copy)]
 pub struct ExerciseSearchSignal(pub Signal<Option<String>>);
-
 /// Global context signal holding a pending deep-link action that requires the
 /// exercise list to be loaded before it can be executed (e.g. creating a past
 /// session with specific exercises).
 #[derive(Clone, Copy)]
 pub struct PendingDeepLinkSignal(pub Signal<Option<utils::DeepLinkAction>>);
-
 /// Global context signal for enum-value translations loaded from `i18n.json`.
 /// Provides translated labels for category, force, equipment, level and muscle
 /// names in the user's preferred language.
 #[derive(Clone, Copy)]
 pub struct DbI18nSignal(pub Signal<models::DbI18n>);
-
 #[derive(Clone, Routable, Debug, PartialEq)]
 #[rustfmt::skip]
 enum Route {
@@ -83,14 +70,12 @@ enum Route {
     #[route("/edit-exercise/:id")]
     EditExercise { id: String },
 }
-
 /// Detects the user's preferred language from the browser/system, returning a
 /// `LanguageIdentifier`.  Falls back to English (`"en"`) when the language
 /// cannot be determined or is not one the app supports.
 fn detect_preferred_language() -> unic_langid::LanguageIdentifier {
     #[cfg(target_arch = "wasm32")]
     if let Some(lang_str) = web_sys::window().and_then(|w| w.navigator().language()) {
-        // Try the full tag (e.g. "fr-FR"), then the base language (e.g. "fr").
         if let Ok(id) = lang_str.parse() {
             return id;
         }
@@ -102,36 +87,20 @@ fn detect_preferred_language() -> unic_langid::LanguageIdentifier {
     }
     langid!("en")
 }
-
 fn main() {
-    // Initialize logger
     dioxus_logger::init(dioxus_logger::tracing::Level::INFO).expect("failed to init logger");
-
-    // Initialize Android-specific paths and channels
     #[cfg(target_os = "android")]
     {
-        // Try to get the internal data directory from the environment or system properties.
-        // Dioxus/Tao on Android typically sets some environment variables or we can
-        // rely on the JNI bridge `setDataDir` to be called by the Java side.
         services::android_notifications::setup_notification_channel();
     }
     #[cfg(all(not(target_arch = "wasm32"), not(target_os = "android")))]
-    {
-        // Desktop notifications or other setup
-    }
-
-    // Register service worker for offline image caching
+    {}
     services::service_worker::register_service_worker();
-
-    // Prevent the device screen from sleeping while the app is open
     services::wake_lock::enable_wake_lock();
-
     launch(App);
 }
-
 #[component]
 fn App() -> Element {
-    // Initialise i18n with the user's preferred language, falling back to English.
     use_init_i18n(|| {
         let preferred_lang = detect_preferred_language();
         I18nConfig::new(preferred_lang)
@@ -139,11 +108,7 @@ fn App() -> Element {
             .with_locale((langid!("fr"), include_str!("../assets/fr.ftl")))
             .with_fallback(langid!("en"))
     });
-
-    // Provide shared state signals via context
     services::storage::provide_app_state();
-    // Register a pagehide listener to flush any pending IDB writes before
-    // the browser tears down the page context (web only).
     #[cfg(target_arch = "wasm32")]
     use_hook(|| {
         services::storage::idb_queue::register_pagehide_flush();
@@ -157,10 +122,6 @@ fn App() -> Element {
     use_context_provider(|| PendingDeepLinkSignal(Signal::new(None)));
     use_context_provider(|| ShowRestInputSignal(Signal::new(false)));
     use_context_provider(|| RestDurationSignal(Signal::new(30u64)));
-
-    // Show the notification permission warning toast when permission has not yet
-    // been granted.  The toast prompts the user to click it — respecting browsers
-    // that require a user gesture before the permission dialog can be shown.
     #[cfg(all(target_arch = "wasm32", feature = "web-platform"))]
     {
         let mut notif_toast = use_context::<NotificationPermissionToastSignal>().0;
@@ -174,7 +135,6 @@ fn App() -> Element {
             }
         });
     }
-
     rsx! {
         Stylesheet { href: asset!("/assets/style.scss") }
         Router::<Route> {}
@@ -183,7 +143,6 @@ fn App() -> Element {
         NotificationPermissionToast {}
     }
 }
-
 /// Layout component rendered inside the Router context for all routes.
 ///
 /// Handles `logworkout://` deep links (and their web equivalents via `?dl_*`
@@ -201,13 +160,10 @@ fn DeepLinkLayout() -> Element {
     #[cfg(target_arch = "wasm32")]
     {
         use utils::DeepLinkAction;
-
         let nav = use_navigator();
         let exercises_sig = services::exercise_db::use_exercises();
         let mut search_signal = consume_context::<ExerciseSearchSignal>().0;
         let mut pending = consume_context::<PendingDeepLinkSignal>().0;
-
-        // ── First-mount: parse URL params and execute immediate actions ──────
         use_hook(move || {
             let Some(action) = utils::parse_web_deep_link() else {
                 return;
@@ -222,11 +178,7 @@ fn DeepLinkLayout() -> Element {
                     nav.push(Route::Exercises {});
                 }
                 DeepLinkAction::SetDbUrl(url) => {
-                    // Normalise the URL before persisting so it is always
-                    // ready to be used as a base URL (scheme + trailing slash).
                     let url = utils::normalize_db_url(&url);
-                    // Persist the new URL in localStorage immediately so that
-                    // `get_exercise_db_url()` picks it up when exercises reload.
                     if let Some(window) = web_sys::window() {
                         if let Ok(Some(storage)) = window.local_storage() {
                             if url.is_empty() || url == utils::EXERCISE_DB_BASE_URL {
@@ -237,41 +189,28 @@ fn DeepLinkLayout() -> Element {
                         }
                     }
                     services::exercise_db::clear_fetch_cache();
-                    // Immediately reload exercises so the UI reflects the new URL
                     let toast = consume_context::<ToastSignal>().0;
                     spawn(async move {
                         services::exercise_db::reload_exercises(exercises_sig, toast).await;
                     });
                 }
                 DeepLinkAction::StartSession(exercise_ids) => {
-                    // Defer validation until exercises are loaded so that
-                    // unrecognised / fabricated IDs are rejected.
                     pending.set(Some(DeepLinkAction::StartSession(exercise_ids)));
                 }
-                // Deferred: needs exercises to be loaded first
                 action @ DeepLinkAction::CreateSession(_) => {
                     pending.set(Some(action));
                 }
             }
         });
-
-        // ── Deferred: create past session once exercises are available ───────
-        //
-        // Both `exercises_sig` and `pending` are READ here so that the effect
-        // re-fires when either changes.  Using `.write().take()` for `pending`
-        // would only write (no reactive subscription), causing the effect to
-        // miss the stored action when exercises finish loading.
         use_effect(move || {
             let exercises = exercises_sig.read();
-            // Clone the pending action to release the read lock before any write
             let action = { (*pending.read()).clone() };
             let Some(action) = action else {
-                return; // nothing pending
+                return;
             };
             if exercises.is_empty() {
-                return; // exercises not loaded yet; will retry when they load
+                return;
             }
-            // Clear the pending action to avoid reprocessing on future re-runs
             pending.set(None);
             match action {
                 DeepLinkAction::CreateSession(entries) => {
@@ -279,9 +218,6 @@ fn DeepLinkLayout() -> Element {
                     services::storage::save_session(session);
                 }
                 DeepLinkAction::StartSession(exercise_ids) => {
-                    // Build a HashSet of valid exercise IDs for O(1) lookup,
-                    // then reject any fabricated or unknown IDs to prevent
-                    // deep-link data poisoning.
                     let known_ids: std::collections::HashSet<&str> =
                         exercises.iter().map(|e| e.id.as_str()).collect();
                     let valid_ids: Vec<String> = exercise_ids
@@ -293,17 +229,15 @@ fn DeepLinkLayout() -> Element {
                     services::storage::save_session(session);
                     nav.push(Route::Home {});
                 }
-                _ => {} // other actions are handled immediately in use_hook
+                _ => {}
             }
         });
     }
-
     rsx! {
         GlobalSessionHeader {}
         Outlet::<Route> {}
     }
 }
-
 /// Convert a deep-link path string such as `"/"` or `"/exercises"` to a [`Route`].
 #[cfg(target_arch = "wasm32")]
 fn path_to_route(path: &str) -> Route {
@@ -314,7 +248,6 @@ fn path_to_route(path: &str) -> Route {
         "/credits" | "credits" | "/more" | "more" => Route::More {},
         "/add-exercise" | "add-exercise" => Route::AddExercise {},
         other => {
-            // Try to parse /edit-exercise/:id
             if let Some(id) = other.strip_prefix("/edit-exercise/") {
                 Route::EditExercise { id: id.to_string() }
             } else {
@@ -323,7 +256,6 @@ fn path_to_route(path: &str) -> Route {
         }
     }
 }
-
 /// Build a completed [`models::WorkoutSession`] from deep-link entries,
 /// looking up exercise metadata (name, category, force) from the loaded list.
 ///
@@ -338,16 +270,12 @@ fn build_session_from_entries(
     exercises: &[models::Exercise],
 ) -> models::WorkoutSession {
     use models::{Category, Distance, ExerciseLog, Force, Weight, WorkoutSession};
-
-    let base_time = models::get_current_timestamp().saturating_sub(3600); // 1 h ago
+    let base_time = models::get_current_timestamp().saturating_sub(3600);
     let mut session = WorkoutSession::new();
     session.start_time = base_time;
-
     for (i, entry) in entries.iter().enumerate() {
         let start = base_time + i as u64 * 120;
         let end = start + 60;
-
-        // Look up exercise metadata; fall back to minimal defaults if not found
         let (name, category, force) = exercises
             .iter()
             .find(|e| e.id == entry.exercise_id)
@@ -355,7 +283,6 @@ fn build_session_from_entries(
                 || (entry.exercise_id.clone(), Category::Strength, None),
                 |e| (e.name.clone(), e.category, e.force),
             );
-
         #[allow(clippy::cast_possible_truncation)]
         let weight_hg = entry
             .weight_hg
@@ -366,11 +293,10 @@ fn build_session_from_entries(
             None
         };
         let distance_m = if category == Category::Cardio {
-            entry.reps.map(Distance) // reps directly as metres
+            entry.reps.map(Distance)
         } else {
             None
         };
-
         session.exercise_logs.push(ExerciseLog {
             exercise_id: entry.exercise_id.clone(),
             exercise_name: name,
@@ -383,22 +309,15 @@ fn build_session_from_entries(
             distance_m,
         });
     }
-
     session.end_time = Some(base_time + entries.len() as u64 * 120 + 60);
     session
 }
-
 /// The auto-dismiss timer lives here (always mounted) so it is never cancelled
 /// when the `SessionView` unmounts.
 #[component]
 fn CongratulationsToast() -> Element {
     let mut show = use_context::<CongratulationsSignal>().0;
-    // Each time the toast is shown a new generation is stamped.  The dismiss
-    // timer captures that generation and only hides the toast if no newer
-    // toast has replaced it in the meantime.
     let mut gen = use_signal(|| 0u32);
-
-    // Auto-dismiss: when `show` becomes true, schedule a reset after TOAST_DISMISS_MS.
     use_effect(move || {
         if *show.read() {
             let next = *gen.peek() + 1;
@@ -417,11 +336,9 @@ fn CongratulationsToast() -> Element {
             });
         }
     });
-
     if *show.read() {
         rsx! {
-            div { class: "snackbar",
-                onclick: move |_| show.set(false),
+            div { class: "snackbar", onclick: move |_| show.set(false),
                 "🎉 Great workout! Session complete!"
             }
         }
@@ -429,15 +346,11 @@ fn CongratulationsToast() -> Element {
         rsx! {}
     }
 }
-
 /// General-purpose toast component that auto-dismisses after [`TOAST_DISMISS_MS`].
 #[component]
 fn Toast() -> Element {
     let mut toast = use_context::<ToastSignal>().0;
-    // Generation counter: incremented with each new message so that a stale
-    // dismiss timer from a previous message cannot hide a newer one.
     let mut gen = use_signal(|| 0u32);
-
     use_effect(move || {
         if toast.read().is_some() {
             let next = *gen.peek() + 1;
@@ -456,20 +369,15 @@ fn Toast() -> Element {
             });
         }
     });
-
     let guard = toast.read();
     if let Some(msg) = guard.as_deref() {
         rsx! {
-            div { class: "snackbar",
-                onclick: move |_| toast.set(None),
-                "{msg}"
-            }
+            div { class: "snackbar", onclick: move |_| toast.set(None), "{msg}" }
         }
     } else {
         rsx! {}
     }
 }
-
 /// Persistent notification-permission warning toast.
 ///
 /// Shown when notification permission is `default` or `denied`.  Clicking the
@@ -490,7 +398,8 @@ fn NotificationPermissionToast() -> Element {
             _ => "⚠️ Tap here to enable notifications",
         };
         rsx! {
-            div { class: "snackbar",
+            div {
+                class: "snackbar",
                 onclick: move |_| {
                     show.set(false);
                     if let Ok(promise) = web_sys::Notification::request_permission() {
@@ -503,16 +412,13 @@ fn NotificationPermissionToast() -> Element {
             }
         }
     }
-
     #[cfg(not(all(target_arch = "wasm32", feature = "web-platform")))]
     rsx! {}
 }
-
 #[cfg(test)]
 mod tests {
     use super::*;
     use models::{Category, Exercise, Force};
-
     fn sample_exercises() -> Vec<Exercise> {
         vec![
             Exercise {
@@ -562,7 +468,6 @@ mod tests {
             },
         ]
     }
-
     #[test]
     fn build_session_from_dl_entries_strength() {
         let exercises = sample_exercises();
@@ -573,7 +478,7 @@ mod tests {
         assert_eq!(session.exercise_logs.len(), 2);
         assert_eq!(
             session.exercise_logs[0].exercise_name,
-            "Wide-Grip Barbell Bench Press"
+            "Wide-Grip Barbell Bench Press",
         );
         assert_eq!(
             session.exercise_logs[0].weight_hg,
@@ -588,7 +493,6 @@ mod tests {
         assert_eq!(session.exercise_logs[1].reps, Some(6));
         assert!(session.end_time.is_some());
     }
-
     #[test]
     fn build_session_from_dl_entries_cardio_uses_distance() {
         let exercises = sample_exercises();
@@ -598,23 +502,18 @@ mod tests {
         let log = &session.exercise_logs[0];
         assert_eq!(log.exercise_name, "Running");
         assert_eq!(log.category, Category::Cardio);
-        // Cardio: reps is reinterpreted as distance in metres directly
         assert_eq!(log.distance_m, Some(models::Distance(5)));
-        // Cardio exercises with no force should not have reps set
         assert_eq!(log.reps, None);
     }
-
     #[test]
     fn build_session_from_dl_entries_unknown_exercise_falls_back() {
         let exercises = sample_exercises();
         let entries = utils::parse_session_exercises("Unknown_Exercise:50:8");
         let session = build_session_from_entries(&entries, &exercises);
         assert_eq!(session.exercise_logs.len(), 1);
-        // Falls back to using the ID as the name
         assert_eq!(session.exercise_logs[0].exercise_name, "Unknown_Exercise");
         assert_eq!(session.exercise_logs[0].category, Category::Strength);
     }
-
     #[test]
     fn build_session_from_dl_entries_empty() {
         let exercises = sample_exercises();
@@ -623,7 +522,6 @@ mod tests {
         assert!(session.exercise_logs.is_empty());
         assert!(session.end_time.is_some());
     }
-
     #[test]
     fn build_session_from_dl_entries_duplicate_exercises() {
         let exercises = sample_exercises();
@@ -634,7 +532,7 @@ mod tests {
         assert_eq!(session.exercise_logs.len(), 3);
         assert_eq!(
             session.exercise_logs[0].exercise_name,
-            "Wide-Grip Barbell Bench Press"
+            "Wide-Grip Barbell Bench Press",
         );
         assert_eq!(
             session.exercise_logs[0].weight_hg,
@@ -642,7 +540,7 @@ mod tests {
         );
         assert_eq!(
             session.exercise_logs[1].exercise_name,
-            "Wide-Grip Barbell Bench Press"
+            "Wide-Grip Barbell Bench Press",
         );
         assert_eq!(
             session.exercise_logs[1].weight_hg,

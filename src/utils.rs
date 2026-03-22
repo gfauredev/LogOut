@@ -1,15 +1,12 @@
 /// Default base URL for the exercise database, served as a static website with
 /// proper CORS headers (`Access-Control-Allow-Origin: *`).
 pub(crate) const EXERCISE_DB_BASE_URL: &str = "https://gfauredev.github.io/free-exercise-db/";
-
 /// Base URL for exercise images, which are served from raw GitHub content
 /// (not included in release assets).
 pub(crate) const EXERCISE_IMAGES_BASE_URL: &str =
     "https://raw.githubusercontent.com/gfauredev/free-exercise-db/main/";
-
 /// localStorage / config-file key used to store a user-configured exercise database URL.
 pub(crate) const EXERCISE_DB_URL_STORAGE_KEY: &str = "exercise_db_url";
-
 /// Normalise a user-supplied exercise database URL so it is safe to use as a
 /// base URL for building file paths.
 ///
@@ -36,7 +33,6 @@ pub fn normalize_db_url(url: &str) -> String {
         format!("{url}/")
     }
 }
-
 /// Returns the effective exercise database base URL.
 /// On WASM, checks localStorage for a user-configured URL first.
 /// On native, checks the app config file.
@@ -66,7 +62,6 @@ pub fn get_exercise_db_url() -> String {
     }
     EXERCISE_DB_BASE_URL.to_string()
 }
-
 /// Returns the base URL used for exercise images.
 ///
 /// When the user has configured a custom database URL the same origin is used
@@ -98,9 +93,6 @@ pub fn get_exercise_images_base_url() -> String {
     }
     EXERCISE_IMAGES_BASE_URL.to_string()
 }
-
-// ── Deep link parsing ─────────────────────────────────────────────────────────
-
 /// A pending exercise entry parsed from a deep-link session-creation URL.
 ///
 /// `weight_hg` is stored as hectograms (multiply kg × 10); `reps` is raw.
@@ -113,7 +105,6 @@ pub struct SessionExerciseEntry {
     /// Repetitions performed, or `None` if not specified.
     pub reps: Option<u32>,
 }
-
 /// Actions that can be triggered via a `logworkout://` deep link.
 #[derive(Debug, Clone, PartialEq)]
 pub enum DeepLinkAction {
@@ -131,7 +122,6 @@ pub enum DeepLinkAction {
     /// Start a new active session with the given exercise IDs pre-queued.
     StartSession(Vec<String>),
 }
-
 /// Parse a `logworkout://` URL into a [`DeepLinkAction`], returning `None` for
 /// unrecognised or malformed links.
 ///
@@ -150,7 +140,6 @@ pub fn parse_deep_link(url: &str) -> Option<DeepLinkAction> {
     let (path, query) = rest.split_once('?').unwrap_or((rest, ""));
     parse_deep_link_path(path, query)
 }
-
 /// Parse web URL query parameters produced by a `?deeplink=logworkout://…` param
 /// or the shorthand `?dl_*` flat params.  Returns `None` when no recognised deep
 /// link parameter is present.
@@ -160,15 +149,11 @@ pub fn parse_web_deep_link() -> Option<DeepLinkAction> {
     let location = window.location();
     let search = location.search().ok()?;
     let query = search.trim_start_matches('?');
-
-    // ── Full logworkout:// link encoded as ?deeplink=… ────────────────────
     if let Some(dl) = get_query_param(query, "deeplink") {
         if let Some(action) = parse_deep_link(&dl) {
             return Some(action);
         }
     }
-
-    // ── Flat shorthand params (easier to type in YAML test files) ─────────
     if let Some(url) = get_query_param(query, "dl_db_url") {
         return Some(DeepLinkAction::SetDbUrl(url));
     }
@@ -190,10 +175,8 @@ pub fn parse_web_deep_link() -> Option<DeepLinkAction> {
             .collect();
         return Some(DeepLinkAction::StartSession(ids));
     }
-
     None
 }
-
 /// Internal: convert a path + query string from a logworkout:// URL into an action.
 fn parse_deep_link_path(path: &str, query: &str) -> Option<DeepLinkAction> {
     match path {
@@ -232,7 +215,6 @@ fn parse_deep_link_path(path: &str, query: &str) -> Option<DeepLinkAction> {
         _ => None,
     }
 }
-
 /// Parse a comma-separated list of `<id>:<weight_kg>:<reps>` exercise entries.
 /// Any field may be omitted or set to `-` to indicate "not specified".
 ///
@@ -250,7 +232,6 @@ pub fn parse_session_exercises(s: &str) -> Vec<SessionExerciseEntry> {
                 } else {
                     w.parse::<f64>().ok().and_then(|kg| {
                         let hg = (kg * 10.0).round();
-                        // Ensure the value fits in u32 (up to ~429,496,729.5 kg)
                         if (0.0..=f64::from(u32::MAX)).contains(&hg) {
                             #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
                             Some(hg as u32)
@@ -275,21 +256,18 @@ pub fn parse_session_exercises(s: &str) -> Vec<SessionExerciseEntry> {
         })
         .collect()
 }
-
 /// Look up a single parameter value from a URL query string.
 #[must_use]
 pub fn get_query_param(query: &str, name: &str) -> Option<String> {
     query.split('&').find_map(|pair| {
         let (k, v) = pair.split_once('=')?;
         if k == name {
-            // Basic percent-decoding for common characters
             Some(percent_decode(v))
         } else {
             None
         }
     })
 }
-
 /// Minimal percent-decoder that handles both ASCII and multi-byte UTF-8 sequences.
 ///
 /// Percent-encoded sequences are collected as raw bytes and decoded together so
@@ -320,7 +298,6 @@ fn percent_decode(s: &str) -> String {
     }
     String::from_utf8_lossy(&bytes).into_owned()
 }
-
 /// Map a human-readable route name (as used in `?dl_navigate=…`) to the
 /// corresponding URL path.
 #[cfg(target_arch = "wasm32")]
@@ -334,7 +311,6 @@ fn route_name_to_path(name: &str) -> String {
         other => format!("/{other}"),
     }
 }
-
 /// Format a session timestamp as a human-readable relative date string.
 #[must_use]
 pub fn format_session_date(timestamp: u64) -> String {
@@ -345,7 +321,6 @@ pub fn format_session_date(timestamp: u64) -> String {
         n => format!("{n} days ago"),
     }
 }
-
 /// Returns the number of elapsed calendar days between the local midnight of
 /// `timestamp`'s day and the local midnight of today, using system’s local TZ
 fn days_since(timestamp: u64) -> i64 {
@@ -355,9 +330,6 @@ fn days_since(timestamp: u64) -> i64 {
     #[cfg(target_arch = "wasm32")]
     let now = {
         let millis = js_sys::Date::now();
-        // js_sys::Date::get_timezone_offset() returns minutes WEST of UTC
-        // (positive for UTC-N, negative for UTC+N).  time::UtcOffset uses
-        // seconds EAST of UTC, so we negate and convert.
         let tz_offset_secs = -(js_sys::Date::new_0().get_timezone_offset() as i32) * 60;
         let offset =
             time::UtcOffset::from_whole_seconds(tz_offset_secs).unwrap_or(time::UtcOffset::UTC);
@@ -373,68 +345,53 @@ fn days_since(timestamp: u64) -> i64 {
     let ts_date = ts_dt.date();
     (now_date - ts_date).whole_days()
 }
-
 #[cfg(test)]
 mod tests {
     use super::*;
-
     fn today_midnight_local_secs() -> u64 {
         use time::OffsetDateTime;
         let now = OffsetDateTime::now_local().unwrap_or_else(|_| OffsetDateTime::now_utc());
-        // Build a datetime at local midnight for today and convert back to unix seconds.
         let midnight = now.replace_time(time::Time::MIDNIGHT);
         midnight.unix_timestamp().max(0).cast_unsigned()
     }
-
     #[test]
     fn format_session_date_today() {
-        // A timestamp within today's local day
-        let ts = today_midnight_local_secs() + 3600; // 1h into today
+        let ts = today_midnight_local_secs() + 3600;
         assert_eq!(format_session_date(ts), "Today");
     }
-
     #[test]
     fn format_session_date_yesterday() {
-        let ts = today_midnight_local_secs() - 1; // 1 second before today's midnight
+        let ts = today_midnight_local_secs() - 1;
         assert_eq!(format_session_date(ts), "Yesterday");
     }
-
     #[test]
     fn format_session_date_days_ago() {
-        let ts = today_midnight_local_secs() - 86400 * 3; // 3 days before today
+        let ts = today_midnight_local_secs() - 86400 * 3;
         assert_eq!(format_session_date(ts), "3 days ago");
     }
-
     #[test]
     fn format_session_date_beginning_of_today() {
         let ts = today_midnight_local_secs();
         assert_eq!(format_session_date(ts), "Today");
     }
-
     #[test]
     fn format_session_date_end_of_yesterday() {
         let ts = today_midnight_local_secs() - 1;
         assert_eq!(format_session_date(ts), "Yesterday");
     }
-
     #[test]
     fn format_session_date_two_days_ago() {
         let ts = today_midnight_local_secs() - 86400 * 2;
         assert_eq!(format_session_date(ts), "2 days ago");
     }
-
     #[test]
     fn days_since_uses_local_midnight_boundary() {
-        // Verify that a timestamp at local midnight counts as "today",
-        // not as "yesterday" (which UTC truncation would give for negative UTC offsets).
         let midnight = today_midnight_local_secs();
         let days = super::days_since(midnight);
         assert_eq!(days, 0, "local midnight should be day 0");
     }
-
     #[test]
     fn get_exercise_db_url_returns_default_on_native() {
-        // On non-wasm targets, get_exercise_db_url() must return the default constant.
         #[cfg(not(target_arch = "wasm32"))]
         {
             let _g = crate::services::storage::native_storage::test_lock();
@@ -442,33 +399,26 @@ mod tests {
             assert_eq!(url, super::EXERCISE_DB_BASE_URL);
         }
     }
-
     #[test]
     fn exercise_db_url_storage_key_is_stable() {
-        // The localStorage key should not change accidentally.
         assert_eq!(super::EXERCISE_DB_URL_STORAGE_KEY, "exercise_db_url");
     }
-
     #[test]
     fn exercise_db_base_url_is_github_pages() {
-        // Default URL must point to the GitHub Pages static website (CORS-friendly).
         assert!(
             super::EXERCISE_DB_BASE_URL.contains("github.io"),
             "EXERCISE_DB_BASE_URL should be a GitHub Pages URL, got: {}",
-            super::EXERCISE_DB_BASE_URL
+            super::EXERCISE_DB_BASE_URL,
         );
     }
-
     #[test]
     fn exercise_images_base_url_is_raw_github() {
-        // Images come from the raw GitHub source, not from release assets.
         assert!(
             super::EXERCISE_IMAGES_BASE_URL.contains("raw.githubusercontent.com"),
             "EXERCISE_IMAGES_BASE_URL should be a raw.githubusercontent.com URL, got: {}",
-            super::EXERCISE_IMAGES_BASE_URL
+            super::EXERCISE_IMAGES_BASE_URL,
         );
     }
-
     #[test]
     fn get_exercise_images_base_url_returns_images_url_by_default() {
         #[cfg(not(target_arch = "wasm32"))]
@@ -478,101 +428,88 @@ mod tests {
             assert_eq!(url, super::EXERCISE_IMAGES_BASE_URL);
         }
     }
-
-    // ── Deep link parsing ─────────────────────────────────────────────────────
-
     #[test]
     fn parse_deep_link_home() {
         assert_eq!(
             super::parse_deep_link("logworkout://home"),
-            Some(DeepLinkAction::Navigate("/".to_string()))
+            Some(DeepLinkAction::Navigate("/".to_string())),
         );
     }
-
     #[test]
     fn parse_deep_link_exercises_no_query() {
         assert_eq!(
             super::parse_deep_link("logworkout://exercises"),
-            Some(DeepLinkAction::Navigate("/exercises".to_string()))
+            Some(DeepLinkAction::Navigate("/exercises".to_string())),
         );
     }
-
     #[test]
     fn parse_deep_link_exercises_with_query() {
         assert_eq!(
             super::parse_deep_link("logworkout://exercises?q=bench+press"),
-            Some(DeepLinkAction::SearchExercises("bench press".to_string()))
+            Some(DeepLinkAction::SearchExercises("bench press".to_string())),
         );
     }
-
     #[test]
     fn parse_deep_link_analytics() {
         assert_eq!(
             super::parse_deep_link("logworkout://analytics"),
-            Some(DeepLinkAction::Navigate("/analytics".to_string()))
+            Some(DeepLinkAction::Navigate("/analytics".to_string())),
         );
     }
-
     #[test]
     fn parse_deep_link_credits_no_url() {
         assert_eq!(
             super::parse_deep_link("logworkout://credits"),
-            Some(DeepLinkAction::Navigate("/more".to_string()))
+            Some(DeepLinkAction::Navigate("/more".to_string())),
         );
     }
-
     #[test]
     fn parse_deep_link_more_no_url() {
         assert_eq!(
             super::parse_deep_link("logworkout://more"),
-            Some(DeepLinkAction::Navigate("/more".to_string()))
+            Some(DeepLinkAction::Navigate("/more".to_string())),
         );
     }
-
     #[test]
     fn parse_deep_link_credits_with_db_url() {
         assert_eq!(
             super::parse_deep_link("logworkout://credits?db_url=http://localhost:8080"),
             Some(DeepLinkAction::SetDbUrl(
                 "http://localhost:8080".to_string()
-            ))
+            )),
         );
     }
-
     #[test]
     fn parse_deep_link_add_exercise() {
         assert_eq!(
             super::parse_deep_link("logworkout://exercise/add"),
-            Some(DeepLinkAction::Navigate("/add-exercise".to_string()))
+            Some(DeepLinkAction::Navigate("/add-exercise".to_string())),
         );
     }
-
     #[test]
     fn parse_deep_link_session_start_no_exercises() {
         assert_eq!(
             super::parse_deep_link("logworkout://session/start"),
-            Some(DeepLinkAction::StartSession(vec![]))
+            Some(DeepLinkAction::StartSession(vec![])),
         );
     }
-
     #[test]
     fn parse_deep_link_session_start_with_exercises() {
         assert_eq!(
             super::parse_deep_link(
-                "logworkout://session/start?exercises=Bench_Press,Barbell_Squat"
+                "logworkout://session/start?exercises=Bench_Press,Barbell_Squat",
             ),
             Some(DeepLinkAction::StartSession(vec![
                 "Bench_Press".to_string(),
-                "Barbell_Squat".to_string(),
-            ]))
+                "Barbell_Squat".to_string()
+            ],),),
         );
     }
-
     #[test]
     fn parse_deep_link_session_create() {
         assert_eq!(
             super::parse_deep_link(
-                "logworkout://session/create?exercises=Bench_Press:80:10,Barbell_Squat:60:6"
+                "logworkout://session/create?exercises=Bench_Press:80:10,Barbell_Squat:60:6",
             ),
             Some(DeepLinkAction::CreateSession(vec![
                 SessionExerciseEntry {
@@ -585,10 +522,9 @@ mod tests {
                     weight_hg: Some(600),
                     reps: Some(6),
                 },
-            ]))
+            ],),),
         );
     }
-
     #[test]
     fn parse_deep_link_session_create_no_weight() {
         let result = super::parse_deep_link("logworkout://session/create?exercises=Run:-:- ");
@@ -598,30 +534,26 @@ mod tests {
         assert_eq!(entries[0].weight_hg, None);
         assert_eq!(entries[0].reps, None);
     }
-
     #[test]
     fn parse_deep_link_unknown_returns_none() {
         assert_eq!(super::parse_deep_link("logworkout://unknown/path"), None);
     }
-
     #[test]
     fn parse_deep_link_wrong_scheme_returns_none() {
         assert_eq!(super::parse_deep_link("https://example.com"), None);
     }
-
     #[test]
     fn get_query_param_basic() {
         assert_eq!(
             super::get_query_param("foo=bar&baz=qux", "foo"),
-            Some("bar".to_string())
+            Some("bar".to_string()),
         );
         assert_eq!(
             super::get_query_param("foo=bar&baz=qux", "baz"),
-            Some("qux".to_string())
+            Some("qux".to_string()),
         );
         assert_eq!(super::get_query_param("foo=bar&baz=qux", "missing"), None);
     }
-
     #[test]
     fn percent_decode_handles_common_chars() {
         assert_eq!(
@@ -631,52 +563,42 @@ mod tests {
         assert_eq!(super::percent_decode("a+b"), "a b".to_string());
         assert_eq!(
             super::percent_decode("http%3A%2F%2Flocalhost%3A8080"),
-            "http://localhost:8080".to_string()
+            "http://localhost:8080".to_string(),
         );
     }
-
     #[test]
     fn percent_decode_handles_multibyte_utf8() {
-        // %C3%A9 is the UTF-8 encoding of 'é'
         assert_eq!(super::percent_decode("%C3%A9"), "é".to_string());
     }
-
     #[test]
     fn parse_session_exercises_weight_rounding() {
-        // 77.5 kg → 775 hg (rounded)
         let entries = super::parse_session_exercises("Bench:77.5:10");
         assert_eq!(entries[0].weight_hg, Some(775));
         assert_eq!(entries[0].reps, Some(10));
     }
-
-    // ── normalize_db_url ─────────────────────────────────────────────────────
-
     #[test]
     fn normalize_db_url_empty_returns_empty() {
         assert_eq!(super::normalize_db_url(""), "");
         assert_eq!(super::normalize_db_url("   "), "");
     }
-
     #[test]
     fn normalize_db_url_adds_trailing_slash() {
         assert_eq!(
             super::normalize_db_url("https://example.com"),
-            "https://example.com/"
+            "https://example.com/",
         );
         assert_eq!(
             super::normalize_db_url("http://localhost:8080"),
-            "http://localhost:8080/"
+            "http://localhost:8080/",
         );
     }
-
     #[test]
     fn normalize_db_url_keeps_existing_trailing_slash() {
         assert_eq!(
             super::normalize_db_url("https://example.com/"),
-            "https://example.com/"
+            "https://example.com/",
         );
     }
-
     #[test]
     fn normalize_db_url_adds_https_scheme() {
         assert_eq!(
@@ -688,20 +610,18 @@ mod tests {
             "https://localhost:8080/"
         );
     }
-
     #[test]
     fn normalize_db_url_keeps_http_scheme() {
         assert_eq!(
             super::normalize_db_url("http://localhost:8080"),
-            "http://localhost:8080/"
+            "http://localhost:8080/",
         );
     }
-
     #[test]
     fn normalize_db_url_trims_whitespace() {
         assert_eq!(
             super::normalize_db_url("  https://example.com  "),
-            "https://example.com/"
+            "https://example.com/",
         );
     }
 }
