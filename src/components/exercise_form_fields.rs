@@ -139,7 +139,11 @@ pub fn ExerciseFormFields(
                 let name = val["name"].as_str().unwrap_or("image").to_string();
                 let bytes: Vec<u8> = val["data"]
                     .as_array()
-                    .map(|arr| arr.iter().filter_map(|v| v.as_u64().map(|b| b as u8)).collect())
+                    .map(|arr| {
+                        arr.iter()
+                            .filter_map(|v| v.as_u64().map(|b| b as u8))
+                            .collect()
+                    })
                     .unwrap_or_default();
                 if bytes.is_empty() {
                     continue;
