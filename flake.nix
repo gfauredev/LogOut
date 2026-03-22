@@ -369,12 +369,19 @@
           env = sharedEnvFor system;
         in
         {
-          fmt = env.pkgs.runCommand "cargo-fmt-check" { nativeBuildInputs = [ env.rustToolchain ]; } ''
-            cd ${self}
-            dx fmt --check >> $out
-            echo >> $out
-            cargo fmt --all -- --check >> $out
-          '';
+          fmt =
+            env.pkgs.runCommand "cargo-fmt-check"
+              {
+                nativeBuildInputs = env.commonNativeBuildInputs;
+                # buildInputs = env.commonBuildInputs;
+                # inherit (env) cargoArtifacts;
+              }
+              ''
+                cd ${self}
+                dx fmt --check >> $out
+                echo >> $out
+                cargo fmt --all -- --check >> $out
+              '';
           build = self.packages.${system}.default;
           clippy = env.craneLib.cargoClippy {
             inherit (env) cargoArtifacts;
