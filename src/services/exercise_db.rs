@@ -15,7 +15,7 @@ const EXERCISE_DB_REFRESH_INTERVAL_SECS: u64 = 7 * 24 * 60 * 60;
 /// Storage key used to track when exercises were last downloaded
 /// (localStorage on WASM, config file on native).
 const LAST_FETCH_KEY: &str = "exercise_db_last_fetch";
-/// Storage key used to persist the ETag returned by the last successful
+/// Storage key used to persist the `ETag` returned by the last successful
 /// `exercises.json` download (localStorage on WASM, config on native).
 const EXERCISES_ETAG_KEY: &str = "exercise_db_etag";
 /// Language codes for which per-exercise translation files are fetched and
@@ -127,7 +127,7 @@ pub fn clear_fetch_cache() {
     let _ = native_storage::remove_config_value(LAST_FETCH_KEY);
     let _ = native_storage::remove_config_value(EXERCISES_ETAG_KEY);
 }
-/// Returns the stored ETag for `exercises.json`, if any.
+/// Returns the stored `ETag` for `exercises.json`, if any.
 #[cfg(target_arch = "wasm32")]
 fn get_stored_etag() -> Option<String> {
     web_sys::window()?
@@ -136,12 +136,12 @@ fn get_stored_etag() -> Option<String> {
         .get_item(EXERCISES_ETAG_KEY)
         .ok()?
 }
-/// Returns the stored ETag for `exercises.json`, if any.
+/// Returns the stored `ETag` for `exercises.json`, if any.
 #[cfg(not(target_arch = "wasm32"))]
 fn get_stored_etag() -> Option<String> {
     crate::services::storage::native_storage::get_config_value(EXERCISES_ETAG_KEY)
 }
-/// Persists an ETag value for `exercises.json`.
+/// Persists an `ETag` value for `exercises.json`.
 #[cfg(target_arch = "wasm32")]
 fn store_etag(etag: &str) {
     let Some(window) = web_sys::window() else {
@@ -152,7 +152,7 @@ fn store_etag(etag: &str) {
     };
     let _ = storage.set_item(EXERCISES_ETAG_KEY, etag);
 }
-/// Persists an ETag value for `exercises.json`.
+/// Persists an `ETag` value for `exercises.json`.
 #[cfg(not(target_arch = "wasm32"))]
 fn store_etag(etag: &str) {
     let _ = crate::services::storage::native_storage::set_config_value(EXERCISES_ETAG_KEY, etag);
@@ -162,11 +162,11 @@ fn store_etag(etag: &str) {
 /// (e.g. `exercises.fr.json`) so that each [`Exercise::i18n`] field is
 /// populated with translated name / instructions where available.
 ///
-/// Sends `If-None-Match` with the stored ETag on each request.  On a
+/// Sends `If-None-Match` with the stored `ETag` on each request.  On a
 /// `304 Not Modified` response the server confirms the cached copy is still
 /// current and the function returns `Ok(None)` – the caller should keep
 /// using its cached exercises unchanged.  On a successful `200` the response
-/// ETag (if provided) is persisted for the next request, and the parsed
+/// `ETag` (if provided) is persisted for the next request, and the parsed
 /// exercise list is returned as `Ok(Some(exercises))`.
 ///
 /// Works on all platforms: reqwest uses the browser's `fetch` on WASM and

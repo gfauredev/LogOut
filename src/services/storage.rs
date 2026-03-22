@@ -434,19 +434,65 @@ pub(crate) mod native_storage {
     fn db_path() -> PathBuf {
         data_dir().join("log-out.db")
     }
-    /// Runs the schema DDL migration if the database is brand-new (`user_version == 0`).
+    /// Runs incremental schema migrations to bring the database up to the current version.
+    ///
+    /// | version | change |
+    /// |---------|--------|
+    /// | 0 → 2  | fresh install: create all tables with `start_time`/`end_time` generated columns and covering indices on `sessions` |
+    /// | 1 → 2  | existing install: recreate `sessions` with generated columns and indices (rename → create → copy → drop) |
     ///
     /// Separated from [`open_db`] so it can be called in tests after a manual schema
     /// reset without needing to re-create the long-lived connection.
     fn apply_migration_if_needed(conn: &Connection) -> Result<(), StorageError> {
         let schema_version: u32 = conn.query_row("PRAGMA user_version", [], |r| r.get(0))?;
         if schema_version == 0 {
+            // Fresh install: create all tables with generated columns from the start.
             conn.execute_batch(
-                "CREATE TABLE IF NOT EXISTS sessions (id TEXT PRIMARY KEY, data TEXT NOT NULL);
+                "CREATE TABLE IF NOT EXISTS sessions (
+                     id          TEXT    PRIMARY KEY,
+                     data        TEXT    NOT NULL,
+                     start_time  INTEGER GENERATED ALWAYS AS (
+                                     CASE WHEN json_valid(data)
+                                          THEN CAST(json_extract(data, '$.start_time') AS INTEGER)
+                                          ELSE NULL END
+                                 ) STORED,
+                     end_time    INTEGER GENERATED ALWAYS AS (
+                                     CASE WHEN json_valid(data)
+                                          THEN CAST(json_extract(data, '$.end_time') AS INTEGER)
+                                          ELSE NULL END
+                                 ) STORED
+                 );
+                 CREATE INDEX IF NOT EXISTS idx_sessions_end_time   ON sessions(end_time)   WHERE end_time   IS NOT NULL;
+                 CREATE INDEX IF NOT EXISTS idx_sessions_start_time ON sessions(start_time) WHERE start_time IS NOT NULL;
                  CREATE TABLE IF NOT EXISTS custom_exercises (id TEXT PRIMARY KEY, data TEXT NOT NULL);
-                 CREATE TABLE IF NOT EXISTS exercises (id TEXT PRIMARY KEY, data TEXT NOT NULL);
-                 CREATE TABLE IF NOT EXISTS config (key TEXT PRIMARY KEY, value TEXT NOT NULL);
-                 PRAGMA user_version = 1;",
+                 CREATE TABLE IF NOT EXISTS exercises         (id TEXT PRIMARY KEY, data TEXT NOT NULL);
+                 CREATE TABLE IF NOT EXISTS config            (key TEXT PRIMARY KEY, value TEXT NOT NULL);
+                 PRAGMA user_version = 2;",
+            )?;
+        }
+        if schema_version == 1 {
+            // Existing install: add generated columns to sessions via rename→create→copy→drop.
+            conn.execute_batch(
+                "ALTER TABLE sessions RENAME TO sessions_v1;
+                 CREATE TABLE sessions (
+                     id          TEXT    PRIMARY KEY,
+                     data        TEXT    NOT NULL,
+                     start_time  INTEGER GENERATED ALWAYS AS (
+                                     CASE WHEN json_valid(data)
+                                          THEN CAST(json_extract(data, '$.start_time') AS INTEGER)
+                                          ELSE NULL END
+                                 ) STORED,
+                     end_time    INTEGER GENERATED ALWAYS AS (
+                                     CASE WHEN json_valid(data)
+                                          THEN CAST(json_extract(data, '$.end_time') AS INTEGER)
+                                          ELSE NULL END
+                                 ) STORED
+                 );
+                 INSERT INTO sessions(id, data) SELECT id, data FROM sessions_v1;
+                 DROP TABLE sessions_v1;
+                 CREATE INDEX IF NOT EXISTS idx_sessions_end_time   ON sessions(end_time)   WHERE end_time   IS NOT NULL;
+                 CREATE INDEX IF NOT EXISTS idx_sessions_start_time ON sessions(start_time) WHERE start_time IS NOT NULL;
+                 PRAGMA user_version = 2;",
             )?;
         }
         Ok(())
@@ -509,6 +555,10 @@ pub(crate) mod native_storage {
     /// database-level `LIMIT` / `OFFSET` pagination to avoid loading the
     /// entire history into memory.
     ///
+    /// Uses the `end_time` and `start_time` generated columns (and their
+    /// covering indices) so `SQLite` never needs to parse JSON for filtering or
+    /// sorting.
+    ///
     /// `limit` and `offset` are clamped to `i64::MAX` before being passed to
     /// `SQLite`; in practice both will always be tiny (tens to hundreds).
     pub fn get_completed_sessions_paged(
@@ -518,8 +568,8 @@ pub(crate) mod native_storage {
         let conn = open_db();
         let mut stmt = conn.prepare(
             "SELECT data FROM sessions \
-             WHERE json_extract(data, '$.end_time') IS NOT NULL \
-             ORDER BY json_extract(data, '$.start_time') DESC \
+             WHERE end_time IS NOT NULL \
+             ORDER BY start_time DESC \
              LIMIT ?1 OFFSET ?2",
         )?;
         let limit_i64 = i64::try_from(limit).unwrap_or(i64::MAX);
@@ -948,6 +998,43 @@ mod tests {
             native_storage::get_all(native_storage::STORE_SESSIONS).unwrap();
         assert!(loaded.iter().any(|s| s.id == session.id));
         native_storage::delete_item(native_storage::STORE_SESSIONS, &session.id).unwrap();
+    }
+    /// Verify that the v1→v2 migration (adding generated columns to an existing
+    /// sessions table) preserves data and leaves the paged query working.
+    #[test]
+    fn schema_migration_v1_to_v2_preserves_data() {
+        let _g = lock();
+        let db_path = native_storage::data_dir().join("log-out.db");
+        // Force the database into schema version 1 by recreating sessions without
+        // generated columns, copying any live rows, then setting user_version = 1.
+        {
+            let conn = rusqlite::Connection::open(&db_path).unwrap();
+            conn.execute_batch(
+                "DROP TABLE IF EXISTS sessions;
+                 DROP TABLE IF EXISTS sessions_v1;
+                 CREATE TABLE sessions (id TEXT PRIMARY KEY, data TEXT NOT NULL);
+                 INSERT INTO sessions(id, data)
+                     VALUES ('v1_s1', '{\"id\":\"v1_s1\",\"start_time\":1000,\"end_time\":2000,\
+                              \"exercise_logs\":[],\"version\":1,\"pending_exercise_ids\":[]}');
+                 PRAGMA user_version = 1;",
+            )
+            .unwrap();
+        }
+        native_storage::apply_migration_for_testing().expect("v1→v2 migration must succeed");
+        let page = native_storage::get_completed_sessions_paged(10, 0)
+            .expect("paged query must work after v1→v2 migration");
+        assert!(
+            page.iter().any(|s| s.id == "v1_s1"),
+            "row inserted before migration must survive v1→v2"
+        );
+        {
+            let conn = rusqlite::Connection::open(&db_path).unwrap();
+            conn.execute(
+                "DELETE FROM sessions WHERE id = ?1",
+                rusqlite::params!["v1_s1"],
+            )
+            .unwrap();
+        }
     }
     /// Insert a row with invalid JSON directly into `SQLite` and verify that
     /// `get_all` silently skips it rather than returning an error.
