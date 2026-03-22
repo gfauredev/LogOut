@@ -321,8 +321,10 @@ pub fn SessionView() -> Element {
             #[cfg(target_arch = "wasm32")]
             gloo_timers::future::TimeoutFuture::new(SEARCH_DEBOUNCE_MS).await;
             #[cfg(not(target_arch = "wasm32"))]
-            tokio::time::sleep(std::time::Duration::from_millis(u64::from(SEARCH_DEBOUNCE_MS)))
-                .await;
+            tokio::time::sleep(std::time::Duration::from_millis(u64::from(
+                SEARCH_DEBOUNCE_MS,
+            )))
+            .await;
             if *debounce_gen.peek() == cur_gen {
                 debounced_query.set(q);
             }

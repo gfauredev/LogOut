@@ -122,7 +122,7 @@ pub fn Analytics() -> Element {
             .filter_map(|(i, (metric, opt_id))| opt_id.as_ref().map(|id| (i, *metric, id.clone())))
             .map(|(i, metric, exercise_id)| {
                 let mut points = Vec::new();
-        for session in &sessions {
+                for session in &sessions {
                     for log in &session.exercise_logs {
                         if log.exercise_id == exercise_id {
                             if let Some(value) = metric.extract_value(log) {

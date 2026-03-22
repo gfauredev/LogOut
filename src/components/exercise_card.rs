@@ -59,16 +59,16 @@ fn resolve_image_key(key: &str) -> Option<String> {
         return Some(format!("file://{}", path.display()));
     }
     let base_url = crate::utils::get_exercise_images_base_url();
-    Some(format!("{base_url}{}{key}", crate::models::EXERCISES_IMAGE_SUB_PATH))
+    Some(format!(
+        "{base_url}{}{key}",
+        crate::models::EXERCISES_IMAGE_SUB_PATH
+    ))
 }
 /// Renders a single exercise image, handling both regular URLs and `idb:`-prefixed
 /// keys that require async loading from `IndexedDB` on web.  Clicking cycles through
 /// multiple images when more than one is available.
 #[component]
-fn ExerciseImage(
-    images: Vec<String>,
-    display_name: String,
-) -> Element {
+fn ExerciseImage(images: Vec<String>, display_name: String) -> Element {
     let mut img_index = use_signal(|| 0usize);
     let image_count = images.len();
     let images_for_sync = images.clone();

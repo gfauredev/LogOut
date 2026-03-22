@@ -66,8 +66,10 @@ async fn load_storage_data() {
         let mut toast = consume_context::<ToastSignal>().0;
         match native_storage::get_all::<WorkoutSession>(native_storage::STORE_SESSIONS) {
             Ok(sessions) => {
-                let active: Vec<WorkoutSession> =
-                    sessions.into_iter().filter(WorkoutSession::is_active).collect();
+                let active: Vec<WorkoutSession> = sessions
+                    .into_iter()
+                    .filter(WorkoutSession::is_active)
+                    .collect();
                 if !active.is_empty() {
                     log::info!("Loaded {} active sessions from storage", active.len());
                     sessions_sig.set(active);

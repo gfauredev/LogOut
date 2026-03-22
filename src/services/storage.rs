@@ -323,13 +323,12 @@ pub mod idb_images {
         let uint8_array = Uint8Array::from(byte_vec.as_slice());
         let parts = js_sys::Array::new();
         parts.push(&uint8_array.buffer());
-        let blob =
-            web_sys::Blob::new_with_u8_array_sequence_and_options(&parts, &{
-                let opts = web_sys::BlobPropertyBag::new();
-                opts.set_type("image/*");
-                opts
-            })
-            .ok()?;
+        let blob = web_sys::Blob::new_with_u8_array_sequence_and_options(&parts, &{
+            let opts = web_sys::BlobPropertyBag::new();
+            opts.set_type("image/*");
+            opts
+        })
+        .ok()?;
         Url::create_object_url_with_blob(&blob).ok()
     }
 }
