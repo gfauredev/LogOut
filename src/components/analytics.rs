@@ -94,7 +94,7 @@ pub fn Analytics() -> Element {
         let sessions = res.as_deref().unwrap_or(&[]);
         let mut maps: [std::collections::HashMap<String, String>; 4] =
             std::array::from_fn(|_| std::collections::HashMap::new());
-        for session in sessions.iter() {
+        for session in sessions {
             for log in &session.exercise_logs {
                 if log.weight_hg.is_some() {
                     maps[0].insert(log.exercise_id.clone(), log.exercise_name.clone());
@@ -122,7 +122,7 @@ pub fn Analytics() -> Element {
             .filter_map(|(i, (metric, opt_id))| opt_id.as_ref().map(|id| (i, *metric, id.clone())))
             .map(|(i, metric, exercise_id)| {
                 let mut points = Vec::new();
-                for session in sessions.iter() {
+        for session in &sessions {
                     for log in &session.exercise_logs {
                         if log.exercise_id == exercise_id {
                             if let Some(value) = metric.extract_value(log) {

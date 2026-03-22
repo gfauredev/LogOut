@@ -5,9 +5,18 @@ use crate::models::{
     get_current_timestamp, parse_distance_km, parse_weight_kg, Category, ExerciseLog, Force,
     WorkoutSession,
 };
+use crate::services::exercise_db::{
+    detect_filter_suggestions, exercise_matches_filters, SearchFilter,
+};
 use crate::services::{exercise_db, storage};
 use crate::{RestDurationSignal, Route};
 use dioxus::prelude::*;
+/// Maximum number of simultaneously active hard filters in the session search.
+const MAX_FILTERS: usize = 4;
+/// Debounce delay in milliseconds before re-running the expensive exercise filter.
+const SEARCH_DEBOUNCE_MS: u32 = 200;
+/// Maximum exercises shown when only attribute filters are active and there is no text query.
+const MAX_FILTER_ONLY_RESULTS: usize = 20;
 /// Prefill the weight / reps / distance inputs from the last recorded log for
 /// `exercise_id`, or clear them if no prior log exists.
 fn prefill_inputs_from_last_log(
@@ -276,6 +285,9 @@ pub fn SessionView() -> Element {
             .unwrap_or_else(WorkoutSession::new)
     });
     let mut search_query = use_signal(String::new);
+    let mut debounced_query = use_signal(String::new);
+    let mut debounce_gen = use_signal(|| 0u64);
+    let mut active_filters: Signal<Vec<SearchFilter>> = use_signal(Vec::new);
     let mut current_exercise_id = use_signal(move || {
         sessions
             .read()
@@ -297,29 +309,94 @@ pub fn SessionView() -> Element {
     let custom_exercises = storage::use_custom_exercises();
     let all_exercises = exercise_db::use_exercises();
     let pending_ids = use_memo(move || session.read().pending_exercise_ids.clone());
-    let search_results = use_memo(move || {
+    // Debounce: update `debounced_query` only after SEARCH_DEBOUNCE_MS of inactivity.
+    use_effect(move || {
+        let q = search_query.read().clone();
+        let cur_gen = {
+            let mut g = debounce_gen.write();
+            *g += 1;
+            *g
+        };
+        spawn(async move {
+            #[cfg(target_arch = "wasm32")]
+            gloo_timers::future::TimeoutFuture::new(SEARCH_DEBOUNCE_MS).await;
+            #[cfg(not(target_arch = "wasm32"))]
+            tokio::time::sleep(std::time::Duration::from_millis(u64::from(SEARCH_DEBOUNCE_MS)))
+                .await;
+            if *debounce_gen.peek() == cur_gen {
+                debounced_query.set(q);
+            }
+        });
+    });
+    let filter_suggestions = use_memo(move || {
         let query = search_query.read();
         if query.is_empty() {
-            vec![]
-        } else {
-            let mut results: Vec<(String, String, Category)> = Vec::new();
-            let mut seen_ids = std::collections::HashSet::new();
-            let custom = custom_exercises.read();
-            let custom_results = exercise_db::search_exercises(&custom, &query);
+            return Vec::new();
+        }
+        let current = active_filters.read();
+        detect_filter_suggestions(&query)
+            .into_iter()
+            .filter(|s| !current.contains(s))
+            .collect::<Vec<_>>()
+    });
+    // Step 1: filter both exercise pools by active chips (re-runs only when chips change).
+    let filter_pool = use_memo(move || {
+        let custom = custom_exercises.read();
+        let all = all_exercises.read();
+        let filters = active_filters.read();
+        if filters.is_empty() {
+            return (custom.clone(), all.clone());
+        }
+        let filtered_custom: Vec<_> = custom
+            .iter()
+            .filter(|e| exercise_matches_filters(e, &filters))
+            .cloned()
+            .collect();
+        let filtered_all: Vec<_> = all
+            .iter()
+            .filter(|e| exercise_matches_filters(e, &filters))
+            .cloned()
+            .collect();
+        (filtered_custom, filtered_all)
+    });
+    // Step 2: text-search within the pre-filtered pool (re-runs on debounced keystrokes).
+    let search_results = use_memo(move || {
+        let query = debounced_query.read();
+        let has_query = !query.is_empty();
+        let has_filters = !active_filters.read().is_empty();
+        if !has_query && !has_filters {
+            return vec![];
+        }
+        let (custom_pool, all_pool) = filter_pool();
+        let mut results: Vec<(String, String, Category)> = Vec::new();
+        let mut seen_ids = std::collections::HashSet::new();
+        if has_query {
+            let custom_results = exercise_db::search_exercises(&custom_pool, &query);
             for ex in custom_results {
                 if seen_ids.insert(ex.id.clone()) {
                     results.push((ex.id.clone(), ex.name.clone(), ex.category));
                 }
             }
-            let all = all_exercises.read();
-            let db_results = exercise_db::search_exercises(&all, &query);
+            let db_results = exercise_db::search_exercises(&all_pool, &query);
             for ex in db_results.into_iter().take(10) {
                 if seen_ids.insert(ex.id.clone()) {
                     results.push((ex.id.clone(), ex.name.clone(), ex.category));
                 }
             }
-            results
+        } else {
+            // Filters only, no text query – show all matching exercises (capped for performance).
+            for ex in &custom_pool {
+                if seen_ids.insert(ex.id.clone()) {
+                    results.push((ex.id.clone(), ex.name.clone(), ex.category));
+                }
+            }
+            for ex in all_pool.iter().take(MAX_FILTER_ONLY_RESULTS) {
+                if seen_ids.insert(ex.id.clone()) {
+                    results.push((ex.id.clone(), ex.name.clone(), ex.category));
+                }
+            }
         }
+        results
     });
     let mut start_exercise = move |exercise_id: String| {
         prefill_inputs_from_last_log(&exercise_id, weight_input, reps_input, distance_input);
@@ -327,6 +404,8 @@ pub fn SessionView() -> Element {
         let exercise_start = get_current_timestamp();
         current_exercise_start.set(Some(exercise_start));
         search_query.set(String::new());
+        debounced_query.set(String::new());
+        active_filters.write().clear();
         duration_bell_rung.set(false);
         let mut current_session = session.read().clone();
         current_session.rest_start_time = None;
@@ -432,6 +511,8 @@ pub fn SessionView() -> Element {
                         current_exercise_id.set(Some(exercise_id.clone()));
                         current_exercise_start.set(Some(pending_start));
                         search_query.set(String::new());
+                        debounced_query.set(String::new());
+                        active_filters.write().clear();
                         duration_bell_rung.set(false);
                     },
                 }
@@ -449,6 +530,44 @@ pub fn SessionView() -> Element {
                         to: Route::AddExercise {},
                         title: "Add Custom Exercise",
                         "+"
+                    }
+                }
+                if !active_filters.read().is_empty() {
+                    div { class: "filter-chips",
+                        for (i , filter) in active_filters.read().iter().enumerate() {
+                            button {
+                                class: "filter-chip active",
+                                title: "Remove filter",
+                                onclick: move |_| {
+                                    let mut filters = active_filters.write();
+                                    if i < filters.len() {
+                                        filters.remove(i);
+                                    }
+                                },
+                                "{filter.label()} ✕"
+                            }
+                        }
+                    }
+                }
+                if !filter_suggestions.read().is_empty() {
+                    div { class: "filter-chips",
+                        for suggestion in filter_suggestions.read().iter() {
+                            if active_filters.read().len() < MAX_FILTERS {
+                                button {
+                                    class: "filter-chip suggestion",
+                                    title: "Add filter",
+                                    onclick: {
+                                        let suggestion = suggestion.clone();
+                                        move |_| {
+                                            active_filters.write().push(suggestion.clone());
+                                            search_query.set(String::new());
+                                            debounced_query.set(String::new());
+                                        }
+                                    },
+                                    "🔍 {suggestion.label()}"
+                                }
+                            }
+                        }
                     }
                 }
                 if !search_results().is_empty() {

@@ -29,6 +29,99 @@ fn translate_enum<'a>(db_i18n: &'a DbI18n, lang: &str, field: &str, value: &'a s
         .or_else(|| lang.split('-').next().and_then(lookup))
         .unwrap_or(value)
 }
+/// Resolves a raw image key from `Exercise::images` to a displayable URL, or
+/// returns `None` for `idb:` keys (which require async loading on web).
+///
+/// Recognised formats:
+/// - Absolute URL schemes (`http://`, `https://`, `blob:`, `data:`, `file://`)
+/// - Absolute filesystem paths (starting with `/`)
+/// - `local:filename` on native → resolved to `data_dir()/images/filename` as a `file://` URL
+/// - `idb:key` → `None` (caller must use `idb_images::get_image_blob_url` asynchronously)
+/// - Relative DB path (e.g. `Squat/0.jpg`) → prefixed with `EXERCISES_IMAGE_BASE_URL`
+fn resolve_image_key(key: &str) -> Option<String> {
+    if key.starts_with("idb:") {
+        return None;
+    }
+    if key.starts_with("http://")
+        || key.starts_with("https://")
+        || key.starts_with("blob:")
+        || key.starts_with("data:")
+        || key.starts_with("file://")
+        || key.starts_with('/')
+    {
+        return Some(key.to_owned());
+    }
+    #[cfg(not(target_arch = "wasm32"))]
+    if let Some(filename) = key.strip_prefix("local:") {
+        let path = crate::services::storage::native_storage::data_dir()
+            .join("images")
+            .join(filename);
+        return Some(format!("file://{}", path.display()));
+    }
+    let base_url = crate::utils::get_exercise_images_base_url();
+    Some(format!("{base_url}{}{key}", crate::models::EXERCISES_IMAGE_SUB_PATH))
+}
+/// Renders a single exercise image, handling both regular URLs and `idb:`-prefixed
+/// keys that require async loading from `IndexedDB` on web.  Clicking cycles through
+/// multiple images when more than one is available.
+#[component]
+fn ExerciseImage(
+    images: Vec<String>,
+    display_name: String,
+) -> Element {
+    let mut img_index = use_signal(|| 0usize);
+    let image_count = images.len();
+    let images_for_sync = images.clone();
+    // Synchronous URL via the shared resolver (covers all non-idb: keys).
+    let sync_url = use_memo(move || {
+        let key = images_for_sync.get(*img_index.read())?;
+        resolve_image_key(key)
+    });
+    // Async blob URL for `idb:`-prefixed keys (web only).
+    #[cfg(target_arch = "wasm32")]
+    let idb_url = {
+        let images_for_idb = images.clone();
+        use_resource(move || async move {
+            let key = images_for_idb.get(*img_index.read())?.clone();
+            let image_key = key.strip_prefix("idb:")?;
+            crate::services::storage::idb_images::get_image_blob_url(image_key).await
+        })
+    };
+    let display_url: Option<String> = {
+        #[cfg(target_arch = "wasm32")]
+        {
+            let is_idb = images
+                .get(*img_index.read())
+                .map_or(false, |k| k.starts_with("idb:"));
+            if is_idb {
+                idb_url.read().as_ref().and_then(|r| r.clone())
+            } else {
+                sync_url.read().clone()
+            }
+        }
+        #[cfg(not(target_arch = "wasm32"))]
+        {
+            sync_url.read().clone()
+        }
+    };
+    if let Some(url) = display_url {
+        rsx! {
+            img {
+                src: "{url}",
+                alt: "{display_name}",
+                loading: "lazy",
+                onclick: move |_| {
+                    if image_count > 1 {
+                        let next = (*img_index.read() + 1) % image_count;
+                        img_index.set(next);
+                    }
+                },
+            }
+        }
+    } else {
+        rsx! {}
+    }
+}
 #[component]
 pub fn ExerciseCard(
     exercise: Exercise,
@@ -37,8 +130,6 @@ pub fn ExerciseCard(
 ) -> Element {
     let initial = show_instructions_initial.unwrap_or(false);
     let mut show_instructions = use_signal(move || initial);
-    let mut img_index = use_signal(|| 0usize);
-    let image_count = exercise.images.len();
     let db_i18n_sig = use_context::<DbI18nSignal>().0;
     let display_name = {
         let ex = exercise.clone();
@@ -151,17 +242,10 @@ pub fn ExerciseCard(
                     }
                 }
             }
-            if let Some(image_url) = exercise.get_image_url(*img_index.read()) {
-                img {
-                    src: "{image_url}",
-                    alt: "{display_name}",
-                    loading: "lazy",
-                    onclick: move |_| {
-                        if image_count > 1 {
-                            let next = (*img_index.read() + 1) % image_count;
-                            img_index.set(next);
-                        }
-                    },
+            if !exercise.images.is_empty() {
+                ExerciseImage {
+                    images: exercise.images.clone(),
+                    display_name: display_name.read().clone(),
                 }
             }
             ul {

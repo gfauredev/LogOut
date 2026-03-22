@@ -61,17 +61,20 @@ pub(crate) mod idb {
     use rexie::{ObjectStore, Rexie, TransactionMode};
     use wasm_bindgen::JsValue;
     const DB_NAME: &str = "log_out_db";
-    const DB_VERSION: u32 = 2;
+    const DB_VERSION: u32 = 3;
     pub const STORE_SESSIONS: &str = "sessions";
     pub const STORE_CUSTOM_EXERCISES: &str = "custom_exercises";
     pub const STORE_EXERCISES: &str = "exercises";
+    /// Dedicated object store for binary image data (key: UUID string, value: `Uint8Array`).
+    pub const STORE_IMAGES: &str = "images";
     /// Open (or create) the IndexedDB database via rexie.
-    async fn open_db() -> Result<Rexie, rexie::Error> {
+    pub(super) async fn open_db() -> Result<Rexie, rexie::Error> {
         Rexie::builder(DB_NAME)
             .version(DB_VERSION)
             .add_object_store(ObjectStore::new(STORE_SESSIONS).key_path("id"))
             .add_object_store(ObjectStore::new(STORE_CUSTOM_EXERCISES).key_path("id"))
             .add_object_store(ObjectStore::new(STORE_EXERCISES).key_path("id"))
+            .add_object_store(ObjectStore::new(STORE_IMAGES))
             .build()
             .await
     }
@@ -267,6 +270,67 @@ pub mod idb_exercises {
         if let Err(e) = idb::clear_all(idb::STORE_EXERCISES).await {
             log::error!("Failed to clear exercises from IndexedDB: {e}");
         }
+    }
+}
+/// `IndexedDB`-backed binary image storage for the web platform.
+///
+/// Images are stored as raw bytes under a stable UUID key.  Only the UUID is
+/// written into [`Exercise::images`], keeping the JSON metadata small.  The
+/// actual bytes are fetched here on demand – only when an exercise card is
+/// rendered – and turned into a short-lived `blob:` URL for the `<img>` tag.
+#[cfg(target_arch = "wasm32")]
+pub mod idb_images {
+    use js_sys::{ArrayBuffer, Uint8Array};
+    use rexie::TransactionMode;
+    use wasm_bindgen::JsValue;
+    use web_sys::Url;
+    /// Persist `bytes` under `image_key` in the `images` object store.
+    pub async fn store_image(image_key: &str, bytes: &[u8]) -> Result<(), String> {
+        let db = super::idb::open_db().await.map_err(|e| format!("{e}"))?;
+        let tx = db
+            .transaction(&[super::idb::STORE_IMAGES], TransactionMode::ReadWrite)
+            .map_err(|e| format!("{e}"))?;
+        let store = tx
+            .store(super::idb::STORE_IMAGES)
+            .map_err(|e| format!("{e}"))?;
+        let arr = Uint8Array::from(bytes);
+        let key = JsValue::from_str(image_key);
+        store
+            .put(&arr.into(), Some(&key))
+            .await
+            .map_err(|e| format!("{e}"))?;
+        tx.done().await.map_err(|e| format!("{e}"))?;
+        Ok(())
+    }
+    /// Load the bytes stored under `image_key` and return a `blob:` URL that can be
+    /// used directly in an `<img src>` attribute.  Returns `None` when the key
+    /// is not found.  The caller is responsible for calling
+    /// `URL.revokeObjectURL` when the URL is no longer needed.
+    pub async fn get_image_blob_url(image_key: &str) -> Option<String> {
+        let db = super::idb::open_db().await.ok()?;
+        let tx = db
+            .transaction(&[super::idb::STORE_IMAGES], TransactionMode::ReadOnly)
+            .ok()?;
+        let store = tx.store(super::idb::STORE_IMAGES).ok()?;
+        let key = JsValue::from_str(image_key);
+        let value = store.get(&key).await.ok()??;
+        if value.is_undefined() || value.is_null() {
+            return None;
+        }
+        let array_buffer = ArrayBuffer::from(value);
+        let bytes = Uint8Array::new(&array_buffer);
+        let byte_vec: Vec<u8> = bytes.to_vec();
+        let uint8_array = Uint8Array::from(byte_vec.as_slice());
+        let parts = js_sys::Array::new();
+        parts.push(&uint8_array.buffer());
+        let blob =
+            web_sys::Blob::new_with_u8_array_sequence_and_options(&parts, &{
+                let opts = web_sys::BlobPropertyBag::new();
+                opts.set_type("image/*");
+                opts
+            })
+            .ok()?;
+        Url::create_object_url_with_blob(&blob).ok()
     }
 }
 /// File-backed exercise storage for native platforms (Android / desktop).

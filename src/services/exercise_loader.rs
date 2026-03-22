@@ -6,7 +6,7 @@
 /// Dioxus virtual-DOM.
 use crate::models::Exercise;
 use crate::services::exercise_db;
-use crate::DbI18nSignal;
+use crate::{DbI18nSignal, ToastSignal};
 use dioxus::prelude::*;
 /// Provides the exercises signal and kicks off the background load.
 /// Call once inside the root `App` component.
@@ -14,10 +14,19 @@ pub fn provide_exercises() {
     let wrapper = use_context_provider(|| exercise_db::AllExercisesSignal(Signal::new(Vec::new())));
     let sig = wrapper.0;
     let mut i18n_sig = use_context::<DbI18nSignal>().0;
+    let mut toast = use_context::<ToastSignal>().0;
     spawn(async move {
-        let i18n_data = exercise_db::download_db_i18n().await;
-        if !i18n_data.is_empty() {
-            i18n_sig.set(i18n_data);
+        match exercise_db::download_db_i18n().await {
+            Ok(i18n_data) if !i18n_data.is_empty() => {
+                i18n_sig.set(i18n_data);
+            }
+            Ok(_) => {
+                // Empty i18n map is normal for offline mode; app falls back to English labels.
+            }
+            Err(e) => {
+                log::warn!("Failed to download i18n data: {e}");
+                toast.set(Some(format!("⚠️ Failed to load i18n data: {e}")));
+            }
         }
         load_exercises(sig).await;
     });
