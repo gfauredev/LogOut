@@ -108,13 +108,8 @@ fn App() -> Element {
             .with_locale((langid!("fr"), include_str!("../assets/fr.ftl")))
             .with_fallback(langid!("en"))
     });
-    services::storage::provide_app_state();
-    #[cfg(target_arch = "wasm32")]
-    use_hook(|| {
-        services::storage::idb_queue::register_pagehide_flush();
-    });
+    // Provide all contexts before any service that may consume them.
     use_context_provider(|| DbI18nSignal(Signal::new(models::DbI18n::default())));
-    services::exercise_db::provide_exercises();
     use_context_provider(|| CongratulationsSignal(Signal::new(false)));
     use_context_provider(|| ToastSignal(Signal::new(None)));
     use_context_provider(|| NotificationPermissionToastSignal(Signal::new(false)));
@@ -122,6 +117,13 @@ fn App() -> Element {
     use_context_provider(|| PendingDeepLinkSignal(Signal::new(None)));
     use_context_provider(|| ShowRestInputSignal(Signal::new(false)));
     use_context_provider(|| RestDurationSignal(Signal::new(30u64)));
+    // Services that consume contexts (must run after context providers above).
+    services::storage::provide_app_state();
+    #[cfg(target_arch = "wasm32")]
+    use_hook(|| {
+        services::storage::idb_queue::register_pagehide_flush();
+    });
+    services::exercise_db::provide_exercises();
     #[cfg(all(target_arch = "wasm32", feature = "web-platform"))]
     {
         let mut notif_toast = use_context::<NotificationPermissionToastSignal>().0;
