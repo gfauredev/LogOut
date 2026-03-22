@@ -284,8 +284,11 @@
           default = env.pkgs.symlinkJoin {
             name = "logout-all";
             paths = [
-              self.packages.${system}.web
               self.packages.${system}.pages
+              self.packages.${system}.pagesServer
+              self.packages.${system}.pagesE2eTester
+              self.packages.${system}.androidBuilder
+              self.packages.${system}.androidE2eTester
             ];
           };
         }
@@ -372,6 +375,7 @@
             echo >> $out
             cargo fmt --all -- --check >> $out
           '';
+          build = self.packages.${system}.default;
           clippy = env.craneLib.cargoClippy {
             inherit (env) cargoArtifacts;
             pname = "logout";

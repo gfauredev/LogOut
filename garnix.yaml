@@ -1,7 +1,7 @@
 builds:
 - include:
-  - packages.x86_64-linux.*
-  - devShells.*.*
+  - packages.x86_64-linux.default
+  - devShells.*.default
   - checks.x86_64-linux.*
-- exclude:
-  - packages.x86_64-linux.web # For local testing only
+# - exclude:
+#   - packages.x86_64-linux.web # For local testing only
