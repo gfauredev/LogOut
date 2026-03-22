@@ -2,7 +2,6 @@ use crate::components::exercise_form_fields::ExerciseFormFields;
 use crate::models::{get_current_timestamp, Category, Equipment, Exercise, Force, Muscle};
 use crate::services::storage;
 use dioxus::prelude::*;
-
 #[component]
 pub fn AddExercise() -> Element {
     let name_input = use_signal(String::new);
@@ -17,18 +16,14 @@ pub fn AddExercise() -> Element {
     let instructions_list = use_signal(Vec::<String>::new);
     let image_url_input = use_signal(String::new);
     let images_list = use_signal(Vec::<String>::new);
-
     let sessions = storage::use_sessions();
-
     let save_exercise = move |()| {
         let name = name_input.read().trim().to_string();
         if name.is_empty() {
             return;
         }
-
         let timestamp = get_current_timestamp();
         let name_lower = name.to_lowercase();
-
         let exercise = Exercise {
             id: format!("custom_{timestamp}"),
             name,
@@ -44,11 +39,8 @@ pub fn AddExercise() -> Element {
             images: images_list.read().clone(),
             i18n: None,
         };
-
         let exercise_id = exercise.id.clone();
         storage::add_custom_exercise(exercise);
-
-        // If an active session exists, directly start the new exercise in it
         let active = sessions.read().iter().find(|s| s.is_active()).cloned();
         if let Some(mut active_session) = active {
             let start = get_current_timestamp();
@@ -61,13 +53,14 @@ pub fn AddExercise() -> Element {
             navigator().go_back();
         }
     };
-
     rsx! {
         header {
             h1 { "Add Exercise" }
-            button { class: "back",
+            button {
+                class: "back",
                 onclick: move |_| navigator().go_back(),
-                title: "Cancel", "❌"
+                title: "Cancel",
+                "❌"
             }
         }
         main { class: "edit",

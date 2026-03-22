@@ -11,7 +11,6 @@ pub mod home;
 pub mod more;
 mod session_exercise_form;
 mod session_timers;
-
 pub use active_session::{GlobalSessionHeader, SessionView};
 pub use add_exercise::AddExercise;
 pub use analytics::Analytics;

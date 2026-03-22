@@ -1,10 +1,8 @@
 use crate::models::{format_time, format_time_i64, get_current_timestamp};
 use dioxus::prelude::*;
-
 /// Timer tick interval in milliseconds
 #[cfg(target_arch = "wasm32")]
 const TIMER_TICK_MS: u32 = 1_000;
-
 /// Send a notification using the Web Notifications API via the active service
 /// worker registration. Using the service-worker path instead of `new
 /// Notification()` is required on mobile browsers (Android Chrome) to fire
@@ -13,17 +11,14 @@ const TIMER_TICK_MS: u32 = 1_000;
 #[cfg(target_arch = "wasm32")]
 pub(super) fn send_notification(is_duration_bell: bool) {
     use web_sys::{NotificationOptions, NotificationPermission};
-
     if web_sys::Notification::permission() != NotificationPermission::Granted {
         return;
     }
-
     let (title, body) = if is_duration_bell {
         ("Duration reached", "Target exercise duration reached!")
     } else {
         ("Rest over", "Time to start your next set!")
     };
-
     let title = title.to_string();
     let opts = NotificationOptions::new();
     opts.set_body(body);
@@ -32,12 +27,8 @@ pub(super) fn send_notification(is_duration_bell: bool) {
     } else {
         "logout-rest"
     });
-    // Vibrate is only honoured by service-worker notifications on mobile.
     let vibrate = serde_wasm_bindgen::to_value(&[200u32, 100, 200]).unwrap();
     opts.set_vibrate(&vibrate);
-
-    // Prefer service-worker showNotification (works on mobile); fall back to
-    // direct Notification API when no service worker is registered.
     wasm_bindgen_futures::spawn_local(async move {
         if let Some(window) = web_sys::window() {
             let sw = window.navigator().service_worker();
@@ -54,16 +45,9 @@ pub(super) fn send_notification(is_duration_bell: bool) {
                 }
             }
         }
-        // Fallback: direct Notification API (desktop / no service worker)
         let _ = web_sys::Notification::new_with_options(&title, &opts);
     });
 }
-
-// ── Isolated timer components ──────────────────────────────────────────────
-// Each component owns its own tick coroutine so that only the timer display
-// re-renders every second, preventing unnecessary re-renders of the main
-// session form (input fields, exercise list, etc.).
-
 /// Renders the session elapsed time, updating every second.
 #[component]
 pub(super) fn SessionDurationDisplay(
@@ -73,14 +57,9 @@ pub(super) fn SessionDurationDisplay(
 ) -> Element {
     let mut now_tick = use_signal(get_current_timestamp);
     use_coroutine(move |_: UnboundedReceiver<()>| async move {
-        // Avoid running the periodic tick loop when the session is not active
-        // or when it is currently paused. In those states, the displayed time
-        // is frozen or zeroed, so updating `now_tick` would not change the UI
-        // but would still wake the task every second.
         if !session_is_active || paused_at.is_some() {
             return;
         }
-
         loop {
             #[cfg(target_arch = "wasm32")]
             gloo_timers::future::TimeoutFuture::new(TIMER_TICK_MS).await;
@@ -89,7 +68,6 @@ pub(super) fn SessionDurationDisplay(
             now_tick.set(get_current_timestamp());
         }
     });
-    // When paused, freeze the displayed time at the moment of pausing.
     let effective_now = paused_at.unwrap_or_else(|| *now_tick.read());
     let duration = if session_is_active {
         effective_now.saturating_sub(session_start_time)
@@ -98,7 +76,6 @@ pub(super) fn SessionDurationDisplay(
     };
     rsx! { "{format_time(duration)}" }
 }
-
 /// Renders the rest timer inside the session header.
 ///
 /// Behaviour:
@@ -119,10 +96,7 @@ pub(super) fn RestTimerDisplay(
 ) -> Element {
     let mut now_tick = use_signal(get_current_timestamp);
     let mut bell_count = use_signal(|| 0u64);
-    // Track the last seen start_time so we can reset bell_count when a new
-    // rest period begins (start_time changes to a different value).
     let mut last_seen_start = use_signal(|| start_time);
-
     use_coroutine(move |_: UnboundedReceiver<()>| async move {
         loop {
             #[cfg(target_arch = "wasm32")]
@@ -132,26 +106,18 @@ pub(super) fn RestTimerDisplay(
             now_tick.set(get_current_timestamp());
         }
     });
-
-    // Reset bell count whenever a new rest period begins.
     if *last_seen_start.read() != start_time {
         last_seen_start.set(start_time);
         bell_count.set(0);
     }
-
     let Some(start) = start_time else {
-        // Not resting: display the configured rest duration as a reference.
         return rsx! {
             div { class: "rest-timer", "🛋️ {format_time(rest_duration)}" }
         };
     };
-
-    // When paused, freeze the displayed time at the moment of pausing.
     let effective_now = paused_at.unwrap_or_else(|| *now_tick.read());
     let elapsed = effective_now.saturating_sub(start);
     let rd = rest_duration;
-
-    // Fire bell at each completed rest interval.
     if rd > 0 && elapsed > 0 {
         let intervals = elapsed / rd;
         let prev_count = *bell_count.read();
@@ -161,17 +127,14 @@ pub(super) fn RestTimerDisplay(
             send_notification(false);
         }
     }
-
     let remaining = rd.cast_signed() - elapsed.cast_signed();
     let exceeded = remaining <= 0;
     rsx! {
-        div {
-            class: if exceeded { "rest-timer exceeded" } else { "rest-timer" },
+        div { class: if exceeded { "rest-timer exceeded" } else { "rest-timer" },
             "🛋️ {format_time_i64(remaining)}"
         }
     }
 }
-
 /// Renders the exercise elapsed timer and fires a notification when the
 /// target duration from the last log is reached.
 #[component]
@@ -191,16 +154,12 @@ pub(super) fn ExerciseElapsedTimer(
             now_tick.set(get_current_timestamp());
         }
     });
-
-    // When paused, freeze the displayed time at the moment of pausing.
     let effective_now = paused_at.unwrap_or_else(|| *now_tick.read());
     let elapsed = if let Some(start) = exercise_start {
         effective_now.saturating_sub(start)
     } else {
         0
     };
-
-    // Fire duration bell once when the previous exercise duration is reached
     if !*duration_bell_rung.read() {
         if let Some(dur) = last_duration {
             if dur > 0 && elapsed >= dur {
@@ -210,11 +169,9 @@ pub(super) fn ExerciseElapsedTimer(
             }
         }
     }
-
     let timer_reached = last_duration.is_some_and(|d| d > 0 && elapsed >= d);
     rsx! {
-        div {
-            class: if timer_reached { "exercise-timer reached" } else { "exercise-timer" },
+        div { class: if timer_reached { "exercise-timer reached" } else { "exercise-timer" },
             "⏱ {format_time(elapsed)}"
         }
     }

@@ -1,11 +1,9 @@
+use super::session_timers::ExerciseElapsedTimer;
 use crate::models::{
     format_time, parse_distance_km, parse_weight_kg, Category, ExerciseLog, Force,
 };
 use crate::services::{exercise_db, storage};
 use dioxus::prelude::*;
-
-use super::session_timers::ExerciseElapsedTimer;
-
 /// Shared exercise input form used both for performing a new set and for
 /// editing a completed log entry.
 ///
@@ -30,44 +28,43 @@ pub(super) fn ExerciseInputForm(
     let mut weight_input = weight_input;
     let mut reps_input = reps_input;
     let mut distance_input = distance_input;
-
     let show_reps = force.is_some_and(Force::has_reps);
     let is_cardio = category == Category::Cardio;
-
     let bests = storage::get_exercise_bests(&exercise_id);
-
     let weight = weight_input.read();
     let weight_invalid = !weight.is_empty() && parse_weight_kg(&weight).is_none();
     let reps = reps_input.read();
     let reps_invalid = !reps.is_empty() && reps.parse::<u32>().map(|r| r == 0).unwrap_or(true);
     let dist = distance_input.read();
     let distance_invalid = !dist.is_empty() && parse_distance_km(&dist).is_none();
-
     let weight_valid = weight.is_empty() || parse_weight_kg(&weight).is_some();
     let reps_valid = !show_reps || reps.parse::<u32>().map(|r| r > 0).unwrap_or(false);
     let distance_valid = !is_cardio || parse_distance_km(&dist).is_some();
     let complete_disabled = !weight_valid || !reps_valid || !distance_valid;
-
     rsx! {
-        // Previous duration + all-time best duration
         if last_duration.is_some() || bests.duration.is_some() {
             div { class: "duration-row",
                 if let Some(dur) = last_duration {
-                    div { label { "⏳" } time { "{format_time(dur)}" } }
+                    div {
+                        label { "⏳" }
+                        time { "{format_time(dur)}" }
+                    }
                 }
                 if let Some(best) = bests.duration {
                     if last_duration.is_none_or(|prev| best > prev) {
-                        div {label { "🏆" } time { "{format_time(best)}" } }
+                        div {
+                            label { "🏆" }
+                            time { "{format_time(best)}" }
+                        }
                     }
                 }
             }
         }
-        // Input grid: label | − | value | + | ATH
         div { class: "exercise-inputs-grid",
-            // Weight row
             div { class: "input-row",
                 label { "Weight" }
-                button { class: "less",
+                button {
+                    class: "less",
                     r#type: "button",
                     tabindex: -1,
                     onclick: move |_| {
@@ -86,7 +83,8 @@ pub(super) fn ExerciseInputForm(
                     oninput: move |evt| weight_input.set(evt.value()),
                     class: if weight_invalid { "invalid" } else { "" },
                 }
-                button { class: "more",
+                button {
+                    class: "more",
                     r#type: "button",
                     tabindex: -1,
                     onclick: move |_| {
@@ -96,13 +94,16 @@ pub(super) fn ExerciseInputForm(
                     "+"
                 }
                 if let Some(best) = bests.weight_hg {
-                    span { "{best}" } } else { span {} }
+                    span { "{best}" }
+                } else {
+                    span {}
+                }
             }
-            // Distance row (cardio only)
             if is_cardio {
                 div { class: "input-row",
                     label { "Distance" }
-                    button { class: "less",
+                    button {
+                        class: "less",
                         r#type: "button",
                         tabindex: -1,
                         onclick: move |_| {
@@ -121,7 +122,8 @@ pub(super) fn ExerciseInputForm(
                         oninput: move |evt| distance_input.set(evt.value()),
                         class: if distance_invalid { "invalid" } else { "" },
                     }
-                    button { class: "more",
+                    button {
+                        class: "more",
                         r#type: "button",
                         tabindex: -1,
                         onclick: move |_| {
@@ -131,14 +133,17 @@ pub(super) fn ExerciseInputForm(
                         "+"
                     }
                     if let Some(best) = bests.distance_m {
-                        span { "{best}" } } else { span {} }
+                        span { "{best}" }
+                    } else {
+                        span {}
+                    }
                 }
             }
-            // Reps row (strength / push / pull)
             if show_reps {
                 div { class: "input-row",
                     label { "Reps" }
-                    button { class: "less",
+                    button {
+                        class: "less",
                         r#type: "button",
                         tabindex: -1,
                         onclick: move |_| {
@@ -157,7 +162,8 @@ pub(super) fn ExerciseInputForm(
                         oninput: move |evt| reps_input.set(evt.value()),
                         class: if reps_invalid { "invalid" } else { "" },
                     }
-                    button { class: "more",
+                    button {
+                        class: "more",
                         r#type: "button",
                         tabindex: -1,
                         onclick: move |_| {
@@ -175,19 +181,17 @@ pub(super) fn ExerciseInputForm(
             }
         }
         footer {
-            button { class: "save",
+            button {
+                class: "save",
                 onclick: move |_| on_complete.call(()),
                 disabled: complete_disabled,
-                title: "Complete Exercise", "💾"
+                title: "Complete Exercise",
+                "💾"
             }
-            button { class: "back",
-                onclick: move |_| on_cancel.call(()),
-                "❌"
-            }
+            button { class: "back", onclick: move |_| on_cancel.call(()), "❌" }
         }
     }
 }
-
 /// The active exercise input form.
 ///
 /// Renders the exercise name, optional elapsed timer and previous/ATH
@@ -216,7 +220,6 @@ pub(super) fn ExerciseFormPanel(
 ) -> Element {
     let all_exercises = exercise_db::use_exercises();
     let custom_exercises = storage::use_custom_exercises();
-
     let (exercise_name, category, force) = {
         let all = all_exercises.read();
         let custom = custom_exercises.read();
@@ -226,15 +229,11 @@ pub(super) fn ExerciseFormPanel(
             ("Unknown".to_string(), Category::Strength, None)
         }
     };
-
     let show_reps = force.is_some_and(Force::has_reps);
     let is_cardio = category == Category::Cardio;
     let last_log = storage::get_last_exercise_log(&exercise_id);
     let last_duration = last_log.as_ref().and_then(ExerciseLog::duration_seconds);
-
-    // Secondary static timer: shown when exercise has no reps and no distance
     let show_static_timer = !show_reps && !is_cardio;
-
     rsx! {
         article {
             header {

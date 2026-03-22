@@ -11,15 +11,10 @@
 //! All Dioxus reactive state (signals, context helpers, mutation functions) lives
 //! in the sibling [`app_state`](super::app_state) module and is re-exported here
 //! for backward compatibility.
-
-// ── Re-exports of Dioxus context / mutation helpers ──────────────────────────
-// These live in `app_state` to keep that module free of storage backend code and
-// to keep this module free of Dioxus hooks so its storage logic is unit-testable.
 pub use super::app_state::{
     add_custom_exercise, delete_session, get_exercise_bests, get_last_exercise_log,
     provide_app_state, save_session, update_custom_exercise, use_custom_exercises, use_sessions,
 };
-
 /// Load a page of completed sessions, sorted by `start_time` descending.
 ///
 /// On native platforms, executes a SQL query with `LIMIT`/`OFFSET` so only
@@ -31,8 +26,6 @@ pub use super::app_state::{
 /// indices which would add schema-migration complexity.
 ///
 /// Returns an empty `Vec` and logs an error when storage access fails.
-// On native (non-wasm32) the body has no `.await` because SQLite is synchronous;
-// the function must still be `async` so callers can `.await` it uniformly.
 #[cfg_attr(not(target_arch = "wasm32"), allow(clippy::unused_async))]
 pub async fn load_completed_sessions_page(
     limit: usize,
@@ -63,19 +56,15 @@ pub async fn load_completed_sessions_page(
         }
     }
 }
-
 #[cfg(target_arch = "wasm32")]
 pub(crate) mod idb {
     use rexie::{ObjectStore, Rexie, TransactionMode};
     use wasm_bindgen::JsValue;
-
     const DB_NAME: &str = "log_out_db";
     const DB_VERSION: u32 = 2;
-
     pub const STORE_SESSIONS: &str = "sessions";
     pub const STORE_CUSTOM_EXERCISES: &str = "custom_exercises";
     pub const STORE_EXERCISES: &str = "exercises";
-
     /// Open (or create) the IndexedDB database via rexie.
     async fn open_db() -> Result<Rexie, rexie::Error> {
         Rexie::builder(DB_NAME)
@@ -86,7 +75,6 @@ pub(crate) mod idb {
             .build()
             .await
     }
-
     /// Put a single serialisable item into a store (upsert by key).
     pub async fn put_item<T: serde::Serialize>(store_name: &str, item: &T) -> Result<(), String> {
         let db = open_db().await.map_err(|e| format!("{e}"))?;
@@ -99,7 +87,6 @@ pub(crate) mod idb {
         tx.done().await.map_err(|e| format!("{e}"))?;
         Ok(())
     }
-
     /// Put many serialisable items into a store in a single transaction.
     /// More efficient than calling [`put_item`] in a loop because only one
     /// database connection and one transaction are opened.
@@ -116,7 +103,6 @@ pub(crate) mod idb {
         tx.done().await.map_err(|e| format!("{e}"))?;
         Ok(())
     }
-
     /// Delete an item from a store by its key.
     pub async fn delete_item(store_name: &str, key: &str) -> Result<(), String> {
         let db = open_db().await.map_err(|e| format!("{e}"))?;
@@ -131,7 +117,6 @@ pub(crate) mod idb {
         tx.done().await.map_err(|e| format!("{e}"))?;
         Ok(())
     }
-
     /// Remove all items from a store.
     pub async fn clear_all(store_name: &str) -> Result<(), String> {
         let db = open_db().await.map_err(|e| format!("{e}"))?;
@@ -143,7 +128,6 @@ pub(crate) mod idb {
         tx.done().await.map_err(|e| format!("{e}"))?;
         Ok(())
     }
-
     /// Load all items from a store.
     pub async fn get_all<T: serde::de::DeserializeOwned>(
         store_name: &str,
@@ -157,24 +141,18 @@ pub(crate) mod idb {
             .get_all(None, None)
             .await
             .map_err(|e| format!("{e}"))?;
-
         let mut items = Vec::new();
         for (i, js_val) in js_values.into_iter().enumerate() {
             match serde_wasm_bindgen::from_value::<T>(js_val) {
                 Ok(item) => items.push(item),
-                Err(e) => log::warn!("Skipping corrupt IndexedDB entry at index {i}: {e}"),
+                Err(e) => {
+                    log::warn!("Skipping corrupt IndexedDB entry at index {i}: {e}")
+                }
             }
         }
         Ok(items)
     }
 }
-
-// Async write queue for IndexedDB (wasm32 only)
-//
-// Serialises all write operations (put / delete) so that concurrent callers
-// never open competing read-write transactions on the same object store, which
-// IndexedDB would otherwise serialise at the browser level anyway but could
-// cause transaction aborts under some circumstances
 #[cfg(target_arch = "wasm32")]
 pub(crate) mod idb_queue {
     use super::idb;
@@ -183,21 +161,19 @@ pub(crate) mod idb_queue {
     use dioxus::signals::Signal;
     use std::cell::RefCell;
     use std::collections::VecDeque;
-
     /// A pending write operation, including the toast signal for error reporting.
     pub enum IdbOp {
         PutSession(WorkoutSession, Signal<Option<String>>),
         DeleteSession(String, Signal<Option<String>>),
         PutExercise(Exercise, Signal<Option<String>>),
-        // DeleteExercise(String, Signal<Option<String>>), // Not supported for now
     }
-
     thread_local! {
         /// (draining, pending_ops)
-        static QUEUE: RefCell<(bool, VecDeque<IdbOp>)> =
-            RefCell::new((false, VecDeque::new()));
+        static QUEUE: RefCell<(bool, VecDeque<IdbOp>)> = RefCell::new((
+            false,
+            VecDeque::new(),
+        ));
     }
-
     /// Enqueue a write operation.  If no drain is currently running, starts one.
     pub fn enqueue(op: IdbOp) {
         QUEUE.with(|q| {
@@ -209,7 +185,6 @@ pub(crate) mod idb_queue {
             }
         });
     }
-
     /// Drain all pending queue items immediately.
     ///
     /// Intended to be called from a `pagehide` / `beforeunload` handler so that
@@ -223,10 +198,8 @@ pub(crate) mod idb_queue {
                 q.borrow_mut().0 = true;
                 wasm_bindgen_futures::spawn_local(drain());
             }
-            // If a drain is already running it will process all pending items.
         });
     }
-
     async fn drain() {
         loop {
             let op = QUEUE.with(|q| q.borrow_mut().1.pop_front());
@@ -256,7 +229,6 @@ pub(crate) mod idb_queue {
             }
         }
     }
-
     /// Register a `pagehide` event listener that flushes any remaining queued
     /// writes before the browser may terminate the page.
     ///
@@ -265,43 +237,31 @@ pub(crate) mod idb_queue {
     pub fn register_pagehide_flush() {
         use wasm_bindgen::prelude::Closure;
         use wasm_bindgen::JsCast as _;
-
         let closure: Closure<dyn Fn()> = Closure::wrap(Box::new(|| {
             flush();
         }));
-
         if let Some(window) = web_sys::window() {
             let _ = window
                 .add_event_listener_with_callback("pagehide", closure.as_ref().unchecked_ref());
         }
-
-        // Leak the closure so it stays alive for the page lifetime.
         closure.forget();
     }
 }
-
-// ──────────────────────────────────────────
-// Exercise storage helpers (used by exercise_db)
-// ──────────────────────────────────────────
-
 /// IndexedDB-backed exercise storage for the web platform.
 #[cfg(target_arch = "wasm32")]
 pub mod idb_exercises {
     use super::idb;
     use crate::models::Exercise;
-
     /// Retrieve all cached exercises from the IndexedDB exercises store.
     pub async fn get_all_exercises() -> Result<Vec<Exercise>, String> {
         idb::get_all::<Exercise>(idb::STORE_EXERCISES).await
     }
-
     /// Persist `exercises` to the IndexedDB exercises store in a single transaction.
     pub async fn store_all_exercises(exercises: &[Exercise]) {
         if let Err(e) = idb::put_all(idb::STORE_EXERCISES, exercises).await {
             log::error!("Failed to store exercises in IndexedDB: {e}");
         }
     }
-
     /// Remove all cached exercises from the IndexedDB exercises store.
     pub async fn clear_all_exercises() {
         if let Err(e) = idb::clear_all(idb::STORE_EXERCISES).await {
@@ -309,45 +269,31 @@ pub mod idb_exercises {
         }
     }
 }
-
 /// File-backed exercise storage for native platforms (Android / desktop).
 #[cfg(not(target_arch = "wasm32"))]
 pub mod native_exercises {
     use super::native_storage;
     use crate::models::Exercise;
-
     /// Retrieve all cached exercises from the `SQLite` exercises store.
     pub fn get_all_exercises() -> Vec<Exercise> {
         native_storage::get_all::<Exercise>(native_storage::STORE_EXERCISES).unwrap_or_default()
     }
-
     /// Persist `exercises` to the `SQLite` exercises store.
     pub fn store_all_exercises(exercises: &[Exercise]) {
         if let Err(e) = native_storage::store_all(native_storage::STORE_EXERCISES, exercises) {
             log::error!("Failed to store exercises: {e}");
         }
     }
-
     /// Remove all cached exercises from the `SQLite` exercises store.
     pub fn clear_all_exercises() {
-        // store_all with an empty slice performs DELETE FROM … then commits.
         if let Err(e) = native_storage::store_all::<Exercise>(native_storage::STORE_EXERCISES, &[])
         {
             log::error!("Failed to clear exercises: {e}");
         }
     }
 }
-
-// Re-export the async write queue for SQLite so that callers using the path
-// `storage::native_queue` continue to work after the module was moved to its
-// own file at `services::native_queue`.
 #[cfg(not(target_arch = "wasm32"))]
 pub(crate) use super::native_queue;
-
-// ──────────────────────────────────────────
-// Native SQLite-based storage (non-wasm platforms: Android / desktop)
-// ──────────────────────────────────────────
-
 /// `SQLite`-backed storage for Android and desktop builds.
 ///
 /// A single `log-out.db` `SQLite` database file is kept inside the app-
@@ -362,10 +308,8 @@ pub(crate) mod native_storage {
     use rusqlite::{params, Connection};
     use serde::{de::DeserializeOwned, Serialize};
     use std::path::PathBuf;
-
     #[cfg(target_os = "android")]
     static ANDROID_DATA_DIR: std::sync::OnceLock<String> = std::sync::OnceLock::new();
-
     #[cfg(target_os = "android")]
     #[no_mangle]
     pub extern "C" fn Java_dev_dioxus_main_MainActivity_setDataDir(
@@ -379,11 +323,9 @@ pub(crate) mod native_storage {
             .into();
         let _ = ANDROID_DATA_DIR.set(dir);
     }
-
     pub const STORE_SESSIONS: &str = "sessions";
     pub const STORE_CUSTOM_EXERCISES: &str = "custom_exercises";
     pub const STORE_EXERCISES: &str = "exercises";
-
     /// Structured error type for native (`SQLite`) storage operations.
     #[derive(Debug, thiserror::Error)]
     pub enum StorageError {
@@ -400,7 +342,6 @@ pub(crate) mod native_storage {
         #[error("IO error: {0}")]
         Io(#[from] std::io::Error),
     }
-
     /// Returns a static SQL table name for a known store, or
     /// `Err(StorageError::UnknownStore)` for an unrecognised name.
     ///
@@ -415,7 +356,6 @@ pub(crate) mod native_storage {
             other => Err(StorageError::UnknownStore(other.to_string())),
         }
     }
-
     /// Returns the application data directory, creating it if necessary.
     pub fn data_dir() -> PathBuf {
         #[cfg(target_os = "android")]
@@ -428,11 +368,9 @@ pub(crate) mod native_storage {
             .unwrap_or_else(|| PathBuf::from("."))
             .join("log-out")
     }
-
     fn db_path() -> PathBuf {
         data_dir().join("log-out.db")
     }
-
     /// Runs the schema DDL migration if the database is brand-new (`user_version == 0`).
     ///
     /// Separated from [`open_db`] so it can be called in tests after a manual schema
@@ -450,7 +388,6 @@ pub(crate) mod native_storage {
         }
         Ok(())
     }
-
     /// Returns a mutex guard for the long-lived `SQLite` connection.
     ///
     /// The connection is opened **once** via [`std::sync::OnceLock`] and reused for the
@@ -463,7 +400,6 @@ pub(crate) mod native_storage {
     /// file cannot be opened.  These are considered fatal, unrecoverable errors.
     fn open_db() -> std::sync::MutexGuard<'static, Connection> {
         static DB: std::sync::OnceLock<std::sync::Mutex<Connection>> = std::sync::OnceLock::new();
-
         let mutex = DB.get_or_init(|| {
             std::fs::create_dir_all(data_dir()).expect("open_db: failed to create data directory");
             let conn =
@@ -471,12 +407,10 @@ pub(crate) mod native_storage {
             apply_migration_if_needed(&conn).expect("open_db: failed to apply schema migration");
             std::sync::Mutex::new(conn)
         });
-
         mutex
             .lock()
             .unwrap_or_else(std::sync::PoisonError::into_inner)
     }
-
     /// Re-applies the schema migration using the shared long-lived connection.
     ///
     /// Only available in tests.  Use this after manually dropping tables to simulate
@@ -486,7 +420,6 @@ pub(crate) mod native_storage {
         let conn = open_db();
         apply_migration_if_needed(&conn)
     }
-
     /// Reads all items from a store, deserialising each row's JSON `data` column.
     pub fn get_all<T: DeserializeOwned>(store_name: &str) -> Result<Vec<T>, StorageError> {
         let table = store_table(store_name)?;
@@ -495,7 +428,6 @@ pub(crate) mod native_storage {
             "sessions" => "SELECT data FROM sessions",
             "custom_exercises" => "SELECT data FROM custom_exercises",
             "exercises" => "SELECT data FROM exercises",
-            // store_table only returns the three values above; this is dead code.
             _ => unreachable!("store_table returns a known table name"),
         };
         let mut stmt = conn.prepare(query)?;
@@ -510,7 +442,6 @@ pub(crate) mod native_storage {
             .collect();
         Ok(items)
     }
-
     /// Reads completed sessions ordered by `start_time` descending, with
     /// database-level `LIMIT` / `OFFSET` pagination to avoid loading the
     /// entire history into memory.
@@ -543,7 +474,6 @@ pub(crate) mod native_storage {
             .collect();
         Ok(items)
     }
-
     /// Replaces the entire contents of a store with `items` in a single transaction.
     pub fn store_all<T: Serialize>(store_name: &str, items: &[T]) -> Result<(), StorageError> {
         let table = store_table(store_name)?;
@@ -577,7 +507,6 @@ pub(crate) mod native_storage {
         tx.commit()?;
         Ok(())
     }
-
     /// Upserts one item (identified by `id`) into a store.
     pub fn put_item<T: Serialize>(
         store_name: &str,
@@ -598,7 +527,6 @@ pub(crate) mod native_storage {
         conn.execute(insert_sql, params![id, data])?;
         Ok(())
     }
-
     /// Deletes the item with `id` from a store (no-op if absent).
     pub fn delete_item(store_name: &str, id: &str) -> Result<(), StorageError> {
         let table = store_table(store_name)?;
@@ -612,9 +540,6 @@ pub(crate) mod native_storage {
         conn.execute(delete_sql, params![id])?;
         Ok(())
     }
-
-    // ── Config (key/value pairs) ──────────────────────────────────────────────
-
     /// Returns the string value for `key`, or `None` if absent.
     pub fn get_config_value(key: &str) -> Option<String> {
         let conn = open_db();
@@ -625,7 +550,6 @@ pub(crate) mod native_storage {
         )
         .ok()
     }
-
     /// Sets `key` to `value`.  Passing an empty `value` removes the key.
     pub fn set_config_value(key: &str, value: &str) -> Result<(), StorageError> {
         let conn = open_db();
@@ -639,12 +563,10 @@ pub(crate) mod native_storage {
         }
         Ok(())
     }
-
     /// Removes `key` from the config (no-op if absent).
     pub fn remove_config_value(key: &str) -> Result<(), StorageError> {
         set_config_value(key, "")
     }
-
     /// Global mutex that serialises all tests touching native storage.
     ///
     /// Tests in any module that read or write native-storage config or data
@@ -658,33 +580,25 @@ pub(crate) mod native_storage {
         m.lock().unwrap_or_else(std::sync::PoisonError::into_inner)
     }
 }
-
-// ──────────────────────────────────────────
-// Unit tests for native_storage and native_exercises
-// ──────────────────────────────────────────
-
 #[cfg(test)]
 #[cfg(not(target_arch = "wasm32"))]
 mod tests {
     use super::native_exercises;
     use super::native_storage;
     use crate::models::{Category, Exercise, ExerciseLog, Force, WorkoutSession, DATA_VERSION};
-
     /// All tests that touch native storage must hold this guard.
     fn lock() -> std::sync::MutexGuard<'static, ()> {
         native_storage::test_lock()
     }
-
     #[test]
     fn validate_store_accepts_known_stores() {
         let _g = lock();
-        assert!(native_storage::get_all::<WorkoutSession>(native_storage::STORE_SESSIONS).is_ok());
+        assert!(native_storage::get_all::<WorkoutSession>(native_storage::STORE_SESSIONS).is_ok(),);
         assert!(
-            native_storage::get_all::<Exercise>(native_storage::STORE_CUSTOM_EXERCISES).is_ok()
+            native_storage::get_all::<Exercise>(native_storage::STORE_CUSTOM_EXERCISES).is_ok(),
         );
-        assert!(native_storage::get_all::<Exercise>(native_storage::STORE_EXERCISES).is_ok());
+        assert!(native_storage::get_all::<Exercise>(native_storage::STORE_EXERCISES).is_ok(),);
     }
-
     #[test]
     fn validate_store_rejects_unknown_store() {
         let _g = lock();
@@ -695,12 +609,9 @@ mod tests {
                 result.unwrap_err(),
                 native_storage::StorageError::UnknownStore(_)
             ),
-            "expected StorageError::UnknownStore for an unknown store name"
+            "expected StorageError::UnknownStore for an unknown store name",
         );
     }
-
-    // ── data_dir ──────────────────────────────────────────────────────────────
-
     #[test]
     fn data_dir_returns_a_path() {
         let _g = lock();
@@ -708,9 +619,6 @@ mod tests {
         assert!(p.to_str().is_some());
         assert!(p.ends_with("log-out"));
     }
-
-    // ── put_item / get_all / delete_item ─────────────────────────────────────
-
     #[test]
     fn put_and_get_session() {
         let _g = lock();
@@ -731,12 +639,10 @@ mod tests {
             native_storage::get_all(native_storage::STORE_SESSIONS).unwrap();
         assert!(
             loaded.iter().any(|s| s.id == session.id),
-            "saved session must be present in get_all"
+            "saved session must be present in get_all",
         );
-        // Clean up
         native_storage::delete_item(native_storage::STORE_SESSIONS, &session.id).unwrap();
     }
-
     #[test]
     fn put_item_overwrites_existing() {
         let _g = lock();
@@ -779,10 +685,8 @@ mod tests {
             found[0].start_time, 2_000,
             "record must contain the latest values"
         );
-        // Clean up
         native_storage::delete_item(native_storage::STORE_SESSIONS, id).unwrap();
     }
-
     #[test]
     fn delete_item_removes_session() {
         let _g = lock();
@@ -805,41 +709,31 @@ mod tests {
             native_storage::get_all(native_storage::STORE_SESSIONS).unwrap();
         assert!(
             !loaded.iter().any(|s| s.id == id),
-            "deleted session must not appear in get_all"
+            "deleted session must not appear in get_all",
         );
     }
-
     #[test]
     fn delete_item_nonexistent_is_noop() {
         let _g = lock();
-        // Deleting a key that doesn't exist must not return an error.
         assert!(
-            native_storage::delete_item(native_storage::STORE_SESSIONS, "nonexistent_id").is_ok()
+            native_storage::delete_item(native_storage::STORE_SESSIONS, "nonexistent_id").is_ok(),
         );
     }
-
-    // ── store_all ─────────────────────────────────────────────────────────────
-
     #[test]
     fn store_all_replaces_existing_records() {
         let _g = lock();
         let ex1 = make_exercise("store_all_ex1", "Exercise One");
         let ex2 = make_exercise("store_all_ex2", "Exercise Two");
         let ex3 = make_exercise("store_all_ex3", "Exercise Three");
-
         native_storage::store_all(native_storage::STORE_EXERCISES, &[ex1, ex2]).unwrap();
         native_storage::store_all(native_storage::STORE_EXERCISES, std::slice::from_ref(&ex3))
             .unwrap();
-
         let loaded: Vec<Exercise> =
             native_storage::get_all(native_storage::STORE_EXERCISES).unwrap();
-        // Only ex3 should remain – store_all deletes and replaces.
         assert_eq!(loaded.len(), 1);
         assert_eq!(loaded[0].id, ex3.id);
-        // Clean up
         native_storage::store_all::<Exercise>(native_storage::STORE_EXERCISES, &[]).unwrap();
     }
-
     #[test]
     fn store_all_empty_clears_store() {
         let _g = lock();
@@ -850,9 +744,6 @@ mod tests {
             native_storage::get_all(native_storage::STORE_EXERCISES).unwrap();
         assert!(loaded.is_empty(), "store must be empty after store_all([])");
     }
-
-    // ── config key/value ─────────────────────────────────────────────────────
-
     #[test]
     fn config_set_get_remove() {
         let _g = lock();
@@ -862,26 +753,22 @@ mod tests {
         native_storage::remove_config_value(key).unwrap();
         assert_eq!(native_storage::get_config_value(key), None);
     }
-
     #[test]
     fn config_set_empty_value_removes_key() {
         let _g = lock();
         let key = "test_config_empty";
         native_storage::set_config_value(key, "value").unwrap();
-        // Setting to "" is equivalent to remove.
         native_storage::set_config_value(key, "").unwrap();
         assert_eq!(native_storage::get_config_value(key), None);
     }
-
     #[test]
     fn config_get_absent_key_returns_none() {
         let _g = lock();
         assert_eq!(
             native_storage::get_config_value("definitely_not_present_key_xyz"),
-            None
+            None,
         );
     }
-
     #[test]
     fn config_overwrite_existing_value() {
         let _g = lock();
@@ -889,12 +776,8 @@ mod tests {
         native_storage::set_config_value(key, "first").unwrap();
         native_storage::set_config_value(key, "second").unwrap();
         assert_eq!(native_storage::get_config_value(key), Some("second".into()));
-        // Clean up
         native_storage::remove_config_value(key).unwrap();
     }
-
-    // ── native_exercises ─────────────────────────────────────────────────────
-
     #[test]
     fn native_exercises_store_and_retrieve() {
         let _g = lock();
@@ -907,10 +790,8 @@ mod tests {
         assert_eq!(loaded.len(), 2);
         assert!(loaded.iter().any(|e| e.id == "ne_ex1"));
         assert!(loaded.iter().any(|e| e.id == "ne_ex2"));
-        // Clean up
         native_exercises::store_all_exercises(&[]);
     }
-
     #[test]
     fn native_exercises_get_all_returns_empty_when_store_empty() {
         let _g = lock();
@@ -918,9 +799,6 @@ mod tests {
         let loaded = native_exercises::get_all_exercises();
         assert!(loaded.is_empty());
     }
-
-    // ── find_last_exercise_log (pure helper) ──────────────────────────────────
-
     #[test]
     fn find_last_exercise_log_returns_most_recent_completed() {
         use super::super::app_state::find_last_exercise_log;
@@ -932,10 +810,8 @@ mod tests {
         ];
         let found = find_last_exercise_log(&sessions, "run");
         assert!(found.is_some());
-        // Should find log2 (most recent) because sessions are iterated in reverse.
         assert_eq!(found.unwrap().start_time, log2.start_time);
     }
-
     #[test]
     fn find_last_exercise_log_skips_incomplete_logs() {
         use super::super::app_state::find_last_exercise_log;
@@ -946,14 +822,12 @@ mod tests {
         assert!(found.is_some());
         assert_eq!(found.unwrap().start_time, complete.start_time);
     }
-
     #[test]
     fn find_last_exercise_log_returns_none_when_not_found() {
         use super::super::app_state::find_last_exercise_log;
         let sessions: Vec<WorkoutSession> = vec![];
         assert!(find_last_exercise_log(&sessions, "bench_press").is_none());
     }
-
     #[test]
     fn find_last_exercise_log_returns_none_when_no_matching_id() {
         use super::super::app_state::find_last_exercise_log;
@@ -961,9 +835,6 @@ mod tests {
         let sessions = vec![make_session("s1", vec![log])];
         assert!(find_last_exercise_log(&sessions, "deadlift").is_none());
     }
-
-    // ── schema migration ─────────────────────────────────────────────────────
-
     /// Verify that the schema migration creates all required tables and leaves
     /// them in a usable state.
     ///
@@ -975,14 +846,8 @@ mod tests {
     #[test]
     fn schema_migration_runs_on_fresh_database() {
         let _g = lock();
-        // Ensure the OnceLock connection is initialized before we try to
-        // reset the schema.
         native_storage::get_all::<WorkoutSession>(native_storage::STORE_SESSIONS).ok();
-        // Drop all tables and reset user_version using the shared connection.
         {
-            // Open a temporary connection only to reset the schema version and
-            // drop tables; the shared OnceLock connection will re-apply the
-            // migration below.
             let db_path = native_storage::data_dir().join("log-out.db");
             if db_path.exists() {
                 let conn = rusqlite::Connection::open(&db_path).unwrap();
@@ -996,11 +861,8 @@ mod tests {
                 .unwrap();
             }
         }
-        // Re-apply the migration through the shared connection so that the
-        // tables are recreated without opening a new connection object.
         native_storage::apply_migration_for_testing()
             .expect("schema migration must succeed on fresh DB");
-        // Confirm the tables are usable after migration.
         let result = native_storage::get_all::<WorkoutSession>(native_storage::STORE_SESSIONS);
         assert!(
             result.is_ok(),
@@ -1024,18 +886,13 @@ mod tests {
         assert!(loaded.iter().any(|s| s.id == session.id));
         native_storage::delete_item(native_storage::STORE_SESSIONS, &session.id).unwrap();
     }
-
-    // ── get_all skips corrupt rows ────────────────────────────────────────────
-
     /// Insert a row with invalid JSON directly into `SQLite` and verify that
     /// `get_all` silently skips it rather than returning an error.
     #[test]
     fn get_all_skips_corrupt_rows() {
         let _g = lock();
         let db_path = native_storage::data_dir().join("log-out.db");
-        // Ensure the DB exists (open_db creates it if absent).
         native_storage::get_all::<WorkoutSession>(native_storage::STORE_SESSIONS).unwrap();
-        // Insert a corrupt (non-JSON) row directly via rusqlite.
         {
             let conn = rusqlite::Connection::open(&db_path).unwrap();
             conn.execute(
@@ -1044,16 +901,14 @@ mod tests {
             )
             .unwrap();
         }
-        // get_all must return Ok and silently skip the corrupt row.
         let result: Result<Vec<WorkoutSession>, _> =
             native_storage::get_all(native_storage::STORE_SESSIONS);
         assert!(result.is_ok(), "get_all must not error on corrupt rows");
         let loaded = result.unwrap();
         assert!(
             !loaded.iter().any(|s| s.id == "corrupt_row_id"),
-            "corrupt row must be skipped"
+            "corrupt row must be skipped",
         );
-        // Clean up.
         {
             let conn = rusqlite::Connection::open(&db_path).unwrap();
             conn.execute(
@@ -1063,16 +918,13 @@ mod tests {
             .unwrap();
         }
     }
-
-    // ── get_completed_sessions_paged ──────────────────────────────────────────
-
     #[test]
     fn completed_sessions_paged_returns_only_completed() {
         let _g = lock();
         let active = WorkoutSession {
             id: "paged_active".into(),
             start_time: 5_000,
-            end_time: None, // active
+            end_time: None,
             exercise_logs: vec![],
             version: DATA_VERSION,
             pending_exercise_ids: vec![],
@@ -1084,7 +936,7 @@ mod tests {
         let done = WorkoutSession {
             id: "paged_done".into(),
             start_time: 4_000,
-            end_time: Some(5_000), // completed
+            end_time: Some(5_000),
             exercise_logs: vec![],
             version: DATA_VERSION,
             pending_exercise_ids: vec![],
@@ -1095,7 +947,6 @@ mod tests {
         };
         native_storage::put_item(native_storage::STORE_SESSIONS, &active.id, &active).unwrap();
         native_storage::put_item(native_storage::STORE_SESSIONS, &done.id, &done).unwrap();
-
         let page = native_storage::get_completed_sessions_paged(10, 0).expect("paged query failed");
         assert!(
             page.iter().any(|s| s.id == done.id),
@@ -1103,18 +954,14 @@ mod tests {
         );
         assert!(
             !page.iter().any(|s| s.id == active.id),
-            "active session must be excluded"
+            "active session must be excluded",
         );
-
-        // Clean up
         native_storage::delete_item(native_storage::STORE_SESSIONS, &active.id).unwrap();
         native_storage::delete_item(native_storage::STORE_SESSIONS, &done.id).unwrap();
     }
-
     #[test]
     fn completed_sessions_paged_respects_limit_and_offset() {
         let _g = lock();
-        // Insert 5 completed sessions with distinct start times
         let ids: Vec<String> = (1u64..=5).map(|i| format!("paged_limit_s{i}")).collect();
         for (i, id) in ids.iter().enumerate() {
             let s = WorkoutSession {
@@ -1131,27 +978,20 @@ mod tests {
             };
             native_storage::put_item(native_storage::STORE_SESSIONS, &s.id, &s).unwrap();
         }
-
         let page1 =
             native_storage::get_completed_sessions_paged(2, 0).expect("page 1 query failed");
         assert_eq!(page1.len(), 2, "limit 2 must return 2 sessions");
-
         let page2 =
             native_storage::get_completed_sessions_paged(2, 2).expect("page 2 query failed");
         assert_eq!(page2.len(), 2, "offset 2 must skip first 2 sessions");
-
-        // Verify descending order: page 1 should have higher start_times than page 2
         assert!(
             page1[0].start_time > page2[0].start_time,
-            "results must be ordered newest-first"
+            "results must be ordered newest-first",
         );
-
-        // Clean up
         for id in &ids {
             native_storage::delete_item(native_storage::STORE_SESSIONS, id).unwrap();
         }
     }
-
     fn make_exercise(id: &str, name: &str) -> Exercise {
         Exercise {
             id: id.into(),
@@ -1169,7 +1009,6 @@ mod tests {
             i18n: None,
         }
     }
-
     fn make_session(id: &str, logs: Vec<ExerciseLog>) -> WorkoutSession {
         WorkoutSession {
             id: id.into(),
@@ -1184,7 +1023,6 @@ mod tests {
             paused_at: None,
         }
     }
-
     fn make_exercise_log(exercise_id: &str, start: u64, end: Option<u64>) -> ExerciseLog {
         ExerciseLog {
             exercise_id: exercise_id.into(),

@@ -1,5 +1,4 @@
 use serde::{Deserialize, Serialize};
-
 /// Exercise category (e.g. strength, cardio).
 #[derive(
     Debug,
@@ -32,7 +31,6 @@ pub enum Category {
     #[serde(rename = "strongman")]
     Strongman,
 }
-
 /// The primary muscular force direction of an exercise.
 #[derive(
     Debug,
@@ -56,14 +54,12 @@ pub enum Force {
     #[serde(rename = "static")]
     Static,
 }
-
 impl Force {
     /// Returns true if reps are applicable for this force type.
     pub fn has_reps(self) -> bool {
         matches!(self, Self::Pull | Self::Push)
     }
 }
-
 /// The difficulty level of an exercise.
 #[derive(
     Debug,
@@ -87,7 +83,6 @@ pub enum Level {
     #[serde(rename = "expert")]
     Expert,
 }
-
 /// Whether an exercise is compound (multi-joint) or isolation (single-joint).
 #[derive(
     Debug,
@@ -109,7 +104,6 @@ pub enum Mechanic {
     #[serde(rename = "isolation")]
     Isolation,
 }
-
 /// The primary equipment required to perform an exercise.
 #[derive(
     Debug,
@@ -156,7 +150,6 @@ pub enum Equipment {
     #[serde(rename = "other")]
     Other,
 }
-
 /// A muscle or muscle group targeted by an exercise.
 #[derive(
     Debug,
@@ -210,12 +203,10 @@ pub enum Muscle {
     #[serde(rename = "triceps")]
     Triceps,
 }
-
 #[cfg(test)]
 mod tests {
     use super::*;
     use strum::IntoEnumIterator;
-
     #[test]
     fn category_round_trip() {
         let json = serde_json::to_string(&Category::OlympicWeightlifting).unwrap();
@@ -223,7 +214,6 @@ mod tests {
         let back: Category = serde_json::from_str(&json).unwrap();
         assert_eq!(back, Category::OlympicWeightlifting);
     }
-
     #[test]
     fn equipment_round_trip() {
         let json = serde_json::to_string(&Equipment::BodyOnly).unwrap();
@@ -231,7 +221,6 @@ mod tests {
         let back: Equipment = serde_json::from_str(&json).unwrap();
         assert_eq!(back, Equipment::BodyOnly);
     }
-
     #[test]
     fn muscle_round_trip() {
         let json = serde_json::to_string(&Muscle::LowerBack).unwrap();
@@ -239,14 +228,12 @@ mod tests {
         let back: Muscle = serde_json::from_str(&json).unwrap();
         assert_eq!(back, Muscle::LowerBack);
     }
-
     #[test]
     fn force_has_reps() {
         assert!(Force::Push.has_reps());
         assert!(Force::Pull.has_reps());
         assert!(!Force::Static.has_reps());
     }
-
     #[test]
     fn category_display_all_variants() {
         assert_eq!(Category::Cardio.to_string(), "cardio");
@@ -260,27 +247,23 @@ mod tests {
         assert_eq!(Category::Stretching.to_string(), "stretching");
         assert_eq!(Category::Strongman.to_string(), "strongman");
     }
-
     #[test]
     fn force_display_all_variants() {
         assert_eq!(Force::Pull.to_string(), "pull");
         assert_eq!(Force::Push.to_string(), "push");
         assert_eq!(Force::Static.to_string(), "static");
     }
-
     #[test]
     fn level_display_all_variants() {
         assert_eq!(Level::Beginner.to_string(), "beginner");
         assert_eq!(Level::Intermediate.to_string(), "intermediate");
         assert_eq!(Level::Expert.to_string(), "expert");
     }
-
     #[test]
     fn mechanic_display_all_variants() {
         assert_eq!(Mechanic::Compound.to_string(), "compound");
         assert_eq!(Mechanic::Isolation.to_string(), "isolation");
     }
-
     #[test]
     fn equipment_display_all_variants() {
         assert_eq!(Equipment::Bands.to_string(), "bands");
@@ -296,7 +279,6 @@ mod tests {
         assert_eq!(Equipment::MedicineBall.to_string(), "medicine ball");
         assert_eq!(Equipment::Other.to_string(), "other");
     }
-
     #[test]
     fn muscle_display_all_variants() {
         assert_eq!(Muscle::Abdominals.to_string(), "abdominals");
@@ -317,27 +299,22 @@ mod tests {
         assert_eq!(Muscle::Traps.to_string(), "traps");
         assert_eq!(Muscle::Triceps.to_string(), "triceps");
     }
-
     #[test]
     fn category_all_contains_every_variant() {
         assert_eq!(Category::iter().count(), 7);
     }
-
     #[test]
     fn force_all_contains_every_variant() {
         assert_eq!(Force::iter().count(), 3);
     }
-
     #[test]
     fn equipment_all_contains_every_variant() {
         assert_eq!(Equipment::iter().count(), 12);
     }
-
     #[test]
     fn muscle_all_contains_every_variant() {
         assert_eq!(Muscle::iter().count(), 17);
     }
-
     #[test]
     fn all_categories_serde_round_trip() {
         for cat in Category::iter() {
@@ -346,7 +323,6 @@ mod tests {
             assert_eq!(back, cat);
         }
     }
-
     #[test]
     fn all_forces_serde_round_trip() {
         for f in Force::iter() {
@@ -355,7 +331,6 @@ mod tests {
             assert_eq!(back, f);
         }
     }
-
     #[test]
     fn all_equipment_serde_round_trip() {
         for eq in Equipment::iter() {
@@ -364,7 +339,6 @@ mod tests {
             assert_eq!(back, eq);
         }
     }
-
     #[test]
     fn all_muscles_serde_round_trip() {
         for m in Muscle::iter() {
@@ -373,7 +347,6 @@ mod tests {
             assert_eq!(back, m);
         }
     }
-
     #[test]
     fn level_serde_round_trip() {
         for level in [Level::Beginner, Level::Intermediate, Level::Expert] {
@@ -382,7 +355,6 @@ mod tests {
             assert_eq!(back, level);
         }
     }
-
     #[test]
     fn mechanic_serde_round_trip() {
         for mech in [Mechanic::Compound, Mechanic::Isolation] {
@@ -391,7 +363,6 @@ mod tests {
             assert_eq!(back, mech);
         }
     }
-
     #[test]
     fn level_all_contains_every_variant() {
         assert_eq!(Level::iter().count(), 3);
@@ -399,7 +370,6 @@ mod tests {
         assert!(Level::iter().any(|l| l == Level::Intermediate));
         assert!(Level::iter().any(|l| l == Level::Expert));
     }
-
     #[test]
     fn mechanic_all_contains_every_variant() {
         assert_eq!(Mechanic::iter().count(), 2);

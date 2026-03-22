@@ -2,7 +2,6 @@ use crate::components::{ActiveTab, BottomNav};
 use crate::models::ExerciseLog;
 use crate::services::storage;
 use dioxus::prelude::*;
-
 #[derive(Clone, Copy, PartialEq, Debug)]
 pub enum Metric {
     Weight,
@@ -10,7 +9,6 @@ pub enum Metric {
     Distance,
     Duration,
 }
-
 impl Metric {
     /// Returns the index of this metric in the `available_by_metric` array.
     fn to_index(self) -> usize {
@@ -21,7 +19,6 @@ impl Metric {
             Metric::Duration => 3,
         }
     }
-
     #[allow(clippy::cast_precision_loss)]
     fn extract_value(self, log: &ExerciseLog) -> Option<f64> {
         match self {
@@ -32,7 +29,6 @@ impl Metric {
         }
     }
 }
-
 /// Determine the most adapted display unit for a metric based on the actual
 /// data values, so the Y-axis stays in a readable range.
 /// Returns `(short_unit, scale_factor)` where `scale_factor` is applied to
@@ -48,7 +44,6 @@ fn adapt_metric_unit(metric: Metric, values: &[f64]) -> (&'static str, f64) {
     match metric {
         Metric::Weight => ("kg", 1.0),
         Metric::Reps => ("reps", 1.0),
-        // Raw values are in km; switch to metres when avg < 1 km (keeps 0.0–999.9)
         Metric::Distance => {
             if avg < 1.0 {
                 ("m", 1000.0)
@@ -56,7 +51,6 @@ fn adapt_metric_unit(metric: Metric, values: &[f64]) -> (&'static str, f64) {
                 ("km", 1.0)
             }
         }
-        // Raw values are in minutes; switch to seconds (< 3 min) or hours (≥ 180 min)
         Metric::Duration => {
             if avg < 3.0 {
                 ("s", 60.0)
@@ -68,34 +62,17 @@ fn adapt_metric_unit(metric: Metric, values: &[f64]) -> (&'static str, f64) {
         }
     }
 }
-
 const COLORS: [&str; 8] = [
-    "#3498db", // blue  (force / cardio)
-    "#e74c3c", // red   (primary muscle / strength)
-    "#2ecc71", // green (secondary muscle)
-    "#9b59b6", // purple (equipment)
-    "#e67e22", // orange (category)
-    "#f1c40f", // yellow (level)
-    "#16a085", // teal   (static)
-    "#e91e63", // pink
+    "#3498db", "#e74c3c", "#2ecc71", "#9b59b6", "#e67e22", "#f1c40f", "#16a085", "#e91e63",
 ];
-
 /// A single metric–exercise data series:
 /// (original slot index, display name, metric, timestamped values).
 type SeriesData = Vec<(usize, String, Metric, Vec<(f64, f64)>)>;
-
 #[component]
 pub fn Analytics() -> Element {
-    // Each slot holds a (metric, optional exercise_id) pair.  A slot becomes
-    // visible only once the preceding slot has an exercise selected.
     let mut selected_pairs: Signal<Vec<(Metric, Option<String>)>> =
         use_signal(|| vec![(Metric::Weight, None); 8]);
-
-    // Load all completed sessions lazily when the Analytics page is opened.
-    // The sessions signal only holds active sessions (startup-loaded), so we
-    // fetch the full history from storage here.
     let sessions_resource = use_resource(move || async move {
-        // Load pages until all sessions are fetched.
         let mut all: Vec<crate::models::WorkoutSession> = Vec::new();
         let mut offset = 0usize;
         let page_size = 500usize;
@@ -110,13 +87,8 @@ pub fn Analytics() -> Element {
         }
         all
     });
-
     let sessions: Vec<crate::models::WorkoutSession> =
         sessions_resource.read().as_deref().unwrap_or(&[]).to_vec();
-
-    // Pre-compute the sorted list of available exercises for each metric so
-    // that we can look them up cheaply while rendering the selectors.
-    // Index 0 → Weight, 1 → Reps, 2 → Distance, 3 → Duration
     let available_by_metric = use_memo(move || {
         let res = sessions_resource.read();
         let sessions = res.as_deref().unwrap_or(&[]);
@@ -133,7 +105,6 @@ pub fn Analytics() -> Element {
                 if log.distance_m.is_some() {
                     maps[2].insert(log.exercise_id.clone(), log.exercise_name.clone());
                 }
-                // Duration is always trackable
                 maps[3].insert(log.exercise_id.clone(), log.exercise_name.clone());
             }
         }
@@ -143,9 +114,6 @@ pub fn Analytics() -> Element {
             v
         })
     });
-
-    // Collect data points for each fully-specified (metric, exercise) pair.
-    // Each entry carries the slot index so ChartView assigns the right colour.
     let chart_data: SeriesData = {
         selected_pairs
             .read()
@@ -154,7 +122,6 @@ pub fn Analytics() -> Element {
             .filter_map(|(i, (metric, opt_id))| opt_id.as_ref().map(|id| (i, *metric, id.clone())))
             .map(|(i, metric, exercise_id)| {
                 let mut points = Vec::new();
-
                 for session in sessions.iter() {
                     for log in &session.exercise_logs {
                         if log.exercise_id == exercise_id {
@@ -165,22 +132,17 @@ pub fn Analytics() -> Element {
                         }
                     }
                 }
-
                 points.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap_or(std::cmp::Ordering::Equal));
-
-                // Look up a display name from available_by_metric
                 let metric_idx = metric.to_index();
                 let exercise_name = available_by_metric
                     .read()
                     .get(metric_idx)
                     .and_then(|list| list.iter().find(|(id, _)| id == &exercise_id))
                     .map_or_else(|| exercise_id.clone(), |(_, name)| name.clone());
-
                 (i, exercise_name, metric, points)
             })
             .collect()
     };
-
     rsx! {
         header {
             h1 { "📊 Analytics" }
@@ -189,33 +151,27 @@ pub fn Analytics() -> Element {
             for i in 0..8 {
                 {
                     let pairs = selected_pairs.read().clone();
-                    // A slot is visible when it is the first slot, or the
-                    // preceding slot already has an exercise selected.
                     let is_visible = i == 0
                         || pairs.get(i - 1).is_some_and(|(_, opt_id)| opt_id.is_some());
                     if is_visible {
                         let (current_metric, current_exercise) = pairs[i].clone();
-                        // Filter out exercises already paired with the same metric
-                        // in any other slot, to prevent duplicate series.
-                        let exercises_for_slot: Vec<_> =
-                            available_by_metric.read()[current_metric.to_index()]
-                                .iter()
-                                .filter(|(id, _)| {
-                                    !pairs.iter().enumerate().any(|(j, (m, opt_id))| {
-                                        j != i
-                                            && *m == current_metric
+                        let exercises_for_slot: Vec<_> = available_by_metric
+                            .read()[current_metric.to_index()]
+                            .iter()
+                            .filter(|(id, _)| {
+                                !pairs
+                                    .iter()
+                                    .enumerate()
+                                    .any(|(j, (m, opt_id))| {
+                                        j != i && *m == current_metric
                                             && opt_id.as_deref() == Some(id.as_str())
                                     })
-                                })
-                                .cloned()
-                                .collect();
+                            })
+                            .cloned()
+                            .collect();
                         Some(rsx! {
-                            div {
-                                key: "{i}",
-                                class: "exercise-selector",
-                                div {
-                                    style: "background: {COLORS[i]};",
-                                }
+                            div { key: "{i}", class: "exercise-selector",
+                                div { style: "background: {COLORS[i]};" }
                                 select {
                                     value: "{current_metric:?}",
                                     onchange: move |evt| {
@@ -226,7 +182,6 @@ pub fn Analytics() -> Element {
                                             "Duration" => Metric::Duration,
                                             _ => Metric::Weight,
                                         };
-                                        // Clear exercise when the metric changes
                                         pairs[i].1 = None;
                                     },
                                     option { value: "Weight", "Weight (kg)" }
@@ -242,7 +197,7 @@ pub fn Analytics() -> Element {
                                         pairs[i].1 = if value.is_empty() { None } else { Some(value) };
                                     },
                                     option { value: "", "-- Select Exercise --" }
-                                    for (id, name) in exercises_for_slot.iter() {
+                                    for (id , name) in exercises_for_slot.iter() {
                                         option { value: "{id}", "{name}" }
                                     }
                                 }
@@ -255,46 +210,46 @@ pub fn Analytics() -> Element {
             }
         }
         main { class: "analytics",
-            if chart_data.is_empty() || chart_data.iter().all(|(_, _, _, points)| points.is_empty()) {
+            if chart_data.is_empty()
+                || chart_data.iter().all(|(_, _, _, points)| points.is_empty())
+            {
                 p { "Select exercises to view analytics" }
             } else {
-                ChartView {
-                    data: chart_data,
-                    colors: COLORS.to_vec(),
-                }
+                ChartView { data: chart_data, colors: COLORS.to_vec() }
             }
         }
         BottomNav { active_tab: ActiveTab::Analytics }
     }
 }
-
+const SVG_COORD: &str = r#"
+    const svg = document.querySelector("main.analytics svg");
+    const pt = svg.createSVGPoint();
+    const coords = await dioxus.recv();
+    pt.x = coords[0];
+    pt.y = coords[1];
+    const svgPt = pt.matrixTransform(svg.getScreenCTM().inverse());
+    dioxus.send([svgPt.x, svgPt.y]);
+"#;
 #[component]
 fn ChartView(data: SeriesData, colors: Vec<&'static str>) -> Element {
-    // Internal state: timestamp of the clicked cursor (None = no cursor shown).
     let mut cursor_ts: Signal<Option<f64>> = use_signal(|| None);
-
     let width = 600.0_f64;
     let height = 400.0_f64;
-    let axis_slot = 55.0_f64; // horizontal space reserved per Y-axis
-    let top_pad = 30.0_f64; // above chart top (for unit labels)
-    let bottom_pad = 28.0_f64; // below chart bottom (for x-axis dates)
+    let axis_slot = 55.0_f64;
+    let top_pad = 30.0_f64;
+    let bottom_pad = 28.0_f64;
     let right_pad = 10.0_f64;
-
-    // ── Collect distinct metrics (only those that have data points) ──────────
     let mut distinct_metrics: Vec<Metric> = Vec::new();
     for (_, _, metric, pts) in &data {
         if !pts.is_empty() && !distinct_metrics.contains(metric) {
             distinct_metrics.push(*metric);
         }
     }
-
     #[allow(clippy::cast_precision_loss)]
     let n_axes = distinct_metrics.len().max(1) as f64;
     let left_pad = axis_slot * n_axes;
     let chart_width = (width - left_pad - right_pad).max(50.0);
     let chart_height = height - top_pad - bottom_pad;
-
-    // ── Global X range ───────────────────────────────────────────────────────
     let mut min_x = f64::INFINITY;
     let mut max_x = f64::NEG_INFINITY;
     for (_, _, _, pts) in &data {
@@ -303,7 +258,6 @@ fn ChartView(data: SeriesData, colors: Vec<&'static str>) -> Element {
             max_x = max_x.max(*x);
         }
     }
-
     let scale_x = move |x: f64| -> f64 {
         if (max_x - min_x).abs() < f64::EPSILON {
             left_pad + chart_width / 2.0
@@ -311,10 +265,6 @@ fn ChartView(data: SeriesData, colors: Vec<&'static str>) -> Element {
             left_pad + (x - min_x) / (max_x - min_x) * chart_width
         }
     };
-
-    // ── Per-axis precomputed data ────────────────────────────────────────────
-    // For each distinct metric: (unit, scale_factor, min_y, max_y, x_pos)
-    // Axes are drawn in a neutral colour (not series colour) to avoid confusion.
     let axes: Vec<(&'static str, f64, f64, f64, f64)> = distinct_metrics
         .iter()
         .enumerate()
@@ -340,8 +290,6 @@ fn ChartView(data: SeriesData, colors: Vec<&'static str>) -> Element {
             (unit, scale, min_y, max_y, x_pos)
         })
         .collect();
-
-    // Inline helper: SVG y coordinate for a display value on a given axis
     let y_svg = |y_display: f64, axis_idx: usize| -> f64 {
         let (_, _, min_y, max_y, _) = axes[axis_idx];
         if (max_y - min_y).abs() < f64::EPSILON {
@@ -350,13 +298,10 @@ fn ChartView(data: SeriesData, colors: Vec<&'static str>) -> Element {
             top_pad + chart_height - (y_display - min_y) / (max_y - min_y) * chart_height
         }
     };
-
     let format_date = |ts: f64| -> String {
         #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
         crate::utils::format_session_date(ts as u64)
     };
-
-    // ── Cursor values: for each series find the nearest point to cursor_ts ──
     let cursor_values: Vec<(usize, String, f64, &'static str)> = if let Some(ts) = *cursor_ts.read()
     {
         data.iter()
@@ -378,15 +323,12 @@ fn ChartView(data: SeriesData, colors: Vec<&'static str>) -> Element {
     } else {
         Vec::new()
     };
-
     rsx! {
         svg {
             width: "100%",
             height: "auto",
             view_box: "0 0 {width} {height}",
             style: "cursor: crosshair;",
-
-            // X-axis baseline
             line {
                 x1: "{left_pad}",
                 y1: "{top_pad + chart_height}",
@@ -395,11 +337,8 @@ fn ChartView(data: SeriesData, colors: Vec<&'static str>) -> Element {
                 stroke: "#555",
                 stroke_width: "1",
             }
-
-            // ── Y-axes (one per distinct metric, neutral colour) ──────────────
-            for (axis_idx, (unit, _scale, min_y, max_y, x_pos)) in axes.iter().enumerate() {
+            for (axis_idx , (unit , _scale , min_y , max_y , x_pos)) in axes.iter().enumerate() {
                 g { key: "axis_{axis_idx}",
-                    // Axis line
                     line {
                         x1: "{x_pos}",
                         y1: "{top_pad}",
@@ -409,7 +348,6 @@ fn ChartView(data: SeriesData, colors: Vec<&'static str>) -> Element {
                         stroke_width: "1",
                         stroke_opacity: "0.7",
                     }
-                    // Unit label on top of the axis (short, no rotation)
                     text {
                         x: "{x_pos}",
                         y: "{top_pad - 6.0}",
@@ -419,7 +357,6 @@ fn ChartView(data: SeriesData, colors: Vec<&'static str>) -> Element {
                         fill: "#aaa",
                         "{unit}"
                     }
-                    // 5 tick marks + numeric labels
                     for tick in 0..5_usize {
                         {
                             #[allow(clippy::cast_precision_loss)]
@@ -450,8 +387,6 @@ fn ChartView(data: SeriesData, colors: Vec<&'static str>) -> Element {
                     }
                 }
             }
-
-            // ── X-axis date labels ───────────────────────────────────────────
             {
                 let num_labels = 4
                     .min(data.iter().map(|(_, _, _, p)| p.len()).max().unwrap_or(0))
@@ -460,8 +395,7 @@ fn ChartView(data: SeriesData, colors: Vec<&'static str>) -> Element {
                     for i in 0..num_labels {
                         {
                             #[allow(clippy::cast_precision_loss)]
-                            let x_val =
-                                min_x + (max_x - min_x) * (i as f64 / (num_labels - 1) as f64);
+                            let x_val = min_x + (max_x - min_x) * (i as f64 / (num_labels - 1) as f64);
                             let sx = scale_x(x_val);
                             rsx! {
                                 g { key: "xlabel_{i}",
@@ -479,15 +413,11 @@ fn ChartView(data: SeriesData, colors: Vec<&'static str>) -> Element {
                     }
                 }
             }
-
-            // ── Plot lines + dots per series ─────────────────────────────────
-            for (slot_idx, _, metric, points) in data.iter() {
+            for (slot_idx , _ , metric , points) in data.iter() {
                 {
-                    let axis_idx_opt =
-                        distinct_metrics.iter().position(|m| m == metric);
+                    let axis_idx_opt = distinct_metrics.iter().position(|m| m == metric);
                     if let Some(axis_idx) = axis_idx_opt {
                         let (_, scale, _, _, _) = axes[axis_idx];
-                        // Colour is determined by the original slot position.
                         let color = *colors.get(*slot_idx).unwrap_or(&"#ccc");
                         if points.len() >= 2 {
                             let path_d = points
@@ -514,7 +444,7 @@ fn ChartView(data: SeriesData, colors: Vec<&'static str>) -> Element {
                                         stroke_linecap: "round",
                                         stroke_linejoin: "round",
                                     }
-                                    for (x, y) in points.iter() {
+                                    for (x , y) in points.iter() {
                                         circle {
                                             cx: "{scale_x(*x)}",
                                             cy: "{y_svg(y * scale, axis_idx)}",
@@ -547,9 +477,7 @@ fn ChartView(data: SeriesData, colors: Vec<&'static str>) -> Element {
                     }
                 }
             }
-
-            // ── Legend ───────────────────────────────────────────────────────
-            for (legend_idx, (slot_idx, exercise_name, metric, _)) in data.iter().enumerate() {
+            for (legend_idx , (slot_idx , exercise_name , metric , _)) in data.iter().enumerate() {
                 {
                     if distinct_metrics.contains(metric) {
                         #[allow(clippy::cast_precision_loss)]
@@ -577,8 +505,6 @@ fn ChartView(data: SeriesData, colors: Vec<&'static str>) -> Element {
                     }
                 }
             }
-
-            // ── Cursor vertical line ─────────────────────────────────────────
             if let Some(ts) = *cursor_ts.read() {
                 {
                     let cx = scale_x(ts);
@@ -597,8 +523,6 @@ fn ChartView(data: SeriesData, colors: Vec<&'static str>) -> Element {
                     }
                 }
             }
-
-            // ── Transparent click-capture rectangle ──────────────────────────
             rect {
                 x: "{left_pad}",
                 y: "{top_pad}",
@@ -613,20 +537,13 @@ fn ChartView(data: SeriesData, colors: Vec<&'static str>) -> Element {
                     let mx = min_x;
                     let dx = max_x - min_x;
                     spawn(async move {
-                        let mut ev = dioxus::prelude::document::eval(r#"
-                            const svg = document.querySelector("main.analytics svg");
-                            const pt = svg.createSVGPoint();
-                            const coords = await dioxus.recv();
-                            pt.x = coords[0];
-                            pt.y = coords[1];
-                            const svgPt = pt.matrixTransform(svg.getScreenCTM().inverse());
-                            dioxus.send([svgPt.x, svgPt.y]);
-                        "#);
+                        let mut ev = dioxus::prelude::document::eval(SVG_COORD);
                         if ev.send(serde_json::json!([client_x, client_y])).is_ok() {
                             if let Ok(result) = ev.recv::<serde_json::Value>().await {
                                 if let Some(arr) = result.as_array() {
-                                    if let Some(svg_x) =
-                                        arr.first().and_then(serde_json::Value::as_f64)
+                                    if let Some(svg_x) = arr
+                                        .first()
+                                        .and_then(serde_json::Value::as_f64)
                                     {
                                         let frac = (svg_x - lp) / cw;
                                         if (0.0..=1.0).contains(&frac) {
@@ -642,11 +559,9 @@ fn ChartView(data: SeriesData, colors: Vec<&'static str>) -> Element {
                 },
             }
         }
-
-        // ── Cursor values displayed below the chart ───────────────────────────
         if !cursor_values.is_empty() {
             div { class: "cursor-values",
-                for (slot_idx, name, value, unit) in cursor_values.iter() {
+                for (slot_idx , name , value , unit) in cursor_values.iter() {
                     div { class: "cursor-value-row",
                         span {
                             class: "cursor-swatch",

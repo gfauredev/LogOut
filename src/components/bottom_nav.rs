@@ -1,6 +1,5 @@
 use crate::Route;
 use dioxus::prelude::*;
-
 #[derive(Clone, PartialEq)]
 pub enum ActiveTab {
     Exercises,
@@ -8,7 +7,6 @@ pub enum ActiveTab {
     Analytics,
     More,
 }
-
 #[component]
 pub fn BottomNav(active_tab: ActiveTab) -> Element {
     rsx! {
