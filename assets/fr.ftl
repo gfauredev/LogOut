@@ -11,7 +11,7 @@ start-new-workout = Nouvelle séance
 
 ## Page des exercices
 browse-exercises = { $count } exercices disponibles
-search-placeholder = Chercher exercices, muscles ou catégories…
+search-placeholder = Rechercher des exercices par noms ou attributs
 add-exercise = Ajouter un exercice personnalisé
 filter-add = Activer le filtre
 filter-remove = Supprimer le filtre
