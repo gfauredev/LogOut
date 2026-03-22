@@ -20,8 +20,7 @@ lang: en
 - [Code Conventions & Contributing](#code-conventions-contributing)
 - [Continuous Integration (CI)](#continuous-integration-ci)
 - [Continuous Deployment (CD)](#continuous-deployment-cd)
-- [Nightly Deep Checks](#nightly-deep-checks)
-- [TODO](#todo)
+- [Weekly Deep Checks](#weekly-deep-checks)
 
 <!--toc:end-->
 
@@ -73,36 +72,41 @@ LogOut/
 
 ## Tooling & Dependencies
 
-| Role                                                                            | Library     |
-| ------------------------------------------------------------------------------- | ----------- |
-| Main UI framework for building reactive components with a Rust-native DSL       | [Dioxus]    |
-| Serialization and deserialization framework for all data models and persistence | [Serde]     |
-| Local-first browser storage for workouts and custom exercises (via [Rexie])     | [IndexedDB] |
-| Native-first storage for workout data on Android/Linux (via [Rusqlite])         | [SQLite]    |
+| Purpose                                                  | Library    |
+| -------------------------------------------------------- | ---------- |
+| Main UI reactive framework                               | [Dioxus]   |
+| (De)Serialization, data models and persistence           | [Serde]    |
+| PWA Workouts and custom exercises storage ([IndexedDB])  | [Rexie]    |
+| Native Workouts and custom exercises storage ( [SQLite]) | [Rusqlite] |
+| Asynchronous HTTP client                                 | [Reqwest]  |
+| Date and time manipulation (UTC/Local offsets)           | [Time]     |
+| Async runtime for the native application target.         | [Tokio]    |
+| Bindings to browser APIs (Service Worker…)               | [Web-sys]  |
 
-| Role                                                                           | Library   |
-| ------------------------------------------------------------------------------ | --------- |
-| Asynchronous HTTP client for loading exercise data and external assets         | [Reqwest] |
-| Type-safe date and time manipulation (UTC/Local offsets)                       | [Time]    |
-| Async runtime for the native application target.                               | [Tokio]   |
-| Low-level bindings to browser APIs (Service Worker, Notifications, Visibility) | [Web-sys] |
+| Purpose                       | Tool                                         |
+| ----------------------------- | -------------------------------------------- |
+| Rust compilation              | [rustc]                                      |
+| Build system                  | [Cargo]                                      |
+| Dependencies and environment  | [Nix]                                        |
+| Versionning and collaboration | [Git] hosted on GitHub                       |
+| Unit tests                    | [Cargo test]                                 |
+| End-to-end tests (PWA)        | [Maestro] (beta web)                         |
+| End-to-end tests (Android)    | [Maestro]                                    |
+| Code coverage                 | [cargo-llvm-cov]                             |
+| Rust language assistance      | [rust-analyzer] (LSP)                        |
+| Documentation from code       | [rustdoc]                                    |
+| Rust formatting               | [rustfmt] and [dx] fmt                       |
+| Rust quality control          | [Clippy]                                     |
+| Rust debugging                | [lldb]                                       |
+| Code edition                  | Allows modern Rust dev ([Helix], [VS Code]…) |
 
-| Function                      | Tool                   |
-| ----------------------------- | ---------------------- |
-| Rust compilation              | [rustc]                |
-| Build system                  | [Cargo]                |
-| Dependencies and environment  | [Nix]                  |
-| Versionning and collaboration | [Git] hosted on GitHub |
-| Unit tests                    | [Cargo test]           |
-| End-to-end tests (PWA)        | [Maestro] (beta web)   |
-| End-to-end tests (Android)    | [Maestro]              |
-| Code coverage                 | [cargo-llvm-cov]       |
-| Rust language assistance      | [rust-analyzer] (LSP)  |
-| Documentation from code       | [rustdoc]              |
-| Rust formatting               | [rustfmt]              |
-| Rust quality control          | [Clippy]               |
-| Rust debugging                | [lldb]                 |
-| Code edition                  | [Helix], [VS Code] …   |
+| Purpose             | Methodology            |
+| ------------------- | ---------------------- |
+| Project versionning | [SemVer]               |
+| Commit messages     | [Conventional Commits] |
+| Branching model     | [GitHub Flow]          |
+| Changes submission  | GitHub Pull Requests   |
+| Issue tracking      | GitHub Issues          |
 
 ## Building & Running
 
@@ -208,12 +212,15 @@ checks that run every Sunday at midnight on the `main` branch.
 [cargo test]: https://doc.rust-lang.org/cargo/commands/cargo-test.html
 [cargo-llvm-cov]: https://github.com/taiki-e/cargo-llvm-cov
 [Clippy]: https://github.com/rust-lang/rust-clippy
+[Conventional Commits]: https://www.conventionalcommits.org
 [Dioxus]: https://dioxuslabs.com
+[dx]: https://dioxuslabs.com
 [direnv]: https://direnv.net
 [`direnv`]: https://direnv.net
 [free-exercise-db]: https://github.com/yuhonas/free-exercise-db
 [Guilhem Fauré]: https://www.guilhemfau.re
 [Git]: https://git-scm.com
+[GitHub Flow]: https://githubflow.github.io
 [Helix]: https://helix-editor.com
 [lcov]: https://github.com/linux-test-project/lcov
 [lldb]: https://lldb.llvm.org
