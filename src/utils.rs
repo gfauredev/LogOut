@@ -358,10 +358,9 @@ fn days_since(timestamp: u64) -> i64 {
         // js_sys::Date::get_timezone_offset() returns minutes WEST of UTC
         // (positive for UTC-N, negative for UTC+N).  time::UtcOffset uses
         // seconds EAST of UTC, so we negate and convert.
-        let tz_offset_secs =
-            -(js_sys::Date::new_0().get_timezone_offset() as i32) * 60;
-        let offset = time::UtcOffset::from_whole_seconds(tz_offset_secs)
-            .unwrap_or(time::UtcOffset::UTC);
+        let tz_offset_secs = -(js_sys::Date::new_0().get_timezone_offset() as i32) * 60;
+        let offset =
+            time::UtcOffset::from_whole_seconds(tz_offset_secs).unwrap_or(time::UtcOffset::UTC);
         OffsetDateTime::from_unix_timestamp_nanos((millis as i128) * 1_000_000)
             .unwrap_or(OffsetDateTime::now_utc())
             .to_offset(offset)

@@ -111,11 +111,8 @@ pub fn Analytics() -> Element {
         all
     });
 
-    let sessions: Vec<crate::models::WorkoutSession> = sessions_resource
-        .read()
-        .as_deref()
-        .unwrap_or(&[])
-        .to_vec();
+    let sessions: Vec<crate::models::WorkoutSession> =
+        sessions_resource.read().as_deref().unwrap_or(&[]).to_vec();
 
     // Pre-compute the sorted list of available exercises for each metric so
     // that we can look them up cheaply while rendering the selectors.

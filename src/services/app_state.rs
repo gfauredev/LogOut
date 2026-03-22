@@ -142,12 +142,14 @@ pub fn save_session(session: WorkoutSession) {
         let mut cache_sig = consume_context::<Signal<BestsCache>>();
         let mut cache = cache_sig.write();
         for log in &session.exercise_logs {
-            let entry = cache.entry(log.exercise_id.clone()).or_insert(ExerciseBests {
-                weight_hg: None,
-                reps: None,
-                distance_m: None,
-                duration: None,
-            });
+            let entry = cache
+                .entry(log.exercise_id.clone())
+                .or_insert(ExerciseBests {
+                    weight_hg: None,
+                    reps: None,
+                    distance_m: None,
+                    duration: None,
+                });
             merge_log_into_bests(entry, log);
         }
     }
@@ -329,7 +331,13 @@ fn merge_log_into_bests(bests: &mut ExerciseBests, log: &ExerciseLog) {
     if let Some(w) = log.weight_hg {
         bests.weight_hg = Some(match bests.weight_hg {
             None => w,
-            Some(prev) => if w.0 > prev.0 { w } else { prev },
+            Some(prev) => {
+                if w.0 > prev.0 {
+                    w
+                } else {
+                    prev
+                }
+            }
         });
     }
     if let Some(r) = log.reps {
@@ -341,7 +349,13 @@ fn merge_log_into_bests(bests: &mut ExerciseBests, log: &ExerciseLog) {
     if let Some(d) = log.distance_m {
         bests.distance_m = Some(match bests.distance_m {
             None => d,
-            Some(prev) => if d.0 > prev.0 { d } else { prev },
+            Some(prev) => {
+                if d.0 > prev.0 {
+                    d
+                } else {
+                    prev
+                }
+            }
         });
     }
     if let Some(dur) = log.duration_seconds() {
@@ -382,6 +396,8 @@ pub fn get_exercise_bests(exercise_id: &str) -> ExerciseBests {
         }
     }
     // Store in cache before returning.
-    cache_sig.write().insert(exercise_id.to_owned(), bests.clone());
+    cache_sig
+        .write()
+        .insert(exercise_id.to_owned(), bests.clone());
     bests
 }
