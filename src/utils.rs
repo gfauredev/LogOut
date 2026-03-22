@@ -268,35 +268,16 @@ pub fn get_query_param(query: &str, name: &str) -> Option<String> {
         }
     })
 }
-/// Minimal percent-decoder that handles both ASCII and multi-byte UTF-8 sequences.
-///
-/// Percent-encoded sequences are collected as raw bytes and decoded together so
-/// that multi-byte UTF-8 characters (e.g. `%C3%A9` → `é`) are handled correctly.
-/// `+` is treated as a space (application/x-www-form-urlencoded convention).
+/// Percent-decodes a URL query-parameter value using the standardised
+/// `percent-encoding` crate.  `+` is treated as a space per the
+/// `application/x-www-form-urlencoded` convention.
 fn percent_decode(s: &str) -> String {
-    let mut bytes: Vec<u8> = Vec::with_capacity(s.len());
-    let mut chars = s.chars().peekable();
-    while let Some(c) = chars.next() {
-        if c == '%' {
-            let h1 = chars.next().unwrap_or('0');
-            let h2 = chars.next().unwrap_or('0');
-            let hex = format!("{h1}{h2}");
-            if let Ok(byte) = u8::from_str_radix(&hex, 16) {
-                bytes.push(byte);
-            } else {
-                bytes.push(b'%');
-                let mut buf = [0u8; 4];
-                bytes.extend_from_slice(h1.encode_utf8(&mut buf).as_bytes());
-                bytes.extend_from_slice(h2.encode_utf8(&mut buf).as_bytes());
-            }
-        } else if c == '+' {
-            bytes.push(b' ');
-        } else {
-            let mut buf = [0u8; 4];
-            bytes.extend_from_slice(c.encode_utf8(&mut buf).as_bytes());
-        }
-    }
-    String::from_utf8_lossy(&bytes).into_owned()
+    // Replace `+` with `%20` before decoding so the standard decoder treats
+    // it as a space, matching the `application/x-www-form-urlencoded` convention.
+    let s = s.replace('+', "%20");
+    percent_encoding::percent_decode_str(&s)
+        .decode_utf8_lossy()
+        .into_owned()
 }
 /// Map a human-readable route name (as used in `?dl_navigate=…`) to the
 /// corresponding URL path.
