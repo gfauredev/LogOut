@@ -353,10 +353,7 @@ fn score_exercise(
 ///
 /// Results are sorted by relevance: exact / near-exact name matches appear
 /// first, followed by prefix / token matches.
-pub fn search_exercises<'a>(
-    exercises: &'a [Exercise],
-    query: &str,
-) -> Vec<&'a Exercise> {
+pub fn search_exercises<'a>(exercises: &'a [Exercise], query: &str) -> Vec<&'a Exercise> {
     let query_lower = query.to_lowercase();
     let query_norm = normalize_for_search(query);
     // Split query into individual tokens for multi-word search: each token must
