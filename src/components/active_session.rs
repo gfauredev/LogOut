@@ -4,7 +4,7 @@ use crate::models::{
     WorkoutSession,
 };
 use crate::services::{exercise_db, storage};
-use crate::{DbI18nSignal, RestDurationSignal, Route};
+use crate::{RestDurationSignal, Route};
 use dioxus::prelude::*;
 
 use super::session_exercise_form::ExerciseFormPanel;
@@ -319,7 +319,6 @@ pub fn SessionView() -> Element {
 
     let custom_exercises = storage::use_custom_exercises();
     let all_exercises = exercise_db::use_exercises();
-    let db_i18n_sig = use_context::<DbI18nSignal>().0;
 
     // Reactive snapshot of pending exercise IDs – avoids multiple session.read() calls in the template
     let pending_ids = use_memo(move || session.read().pending_exercise_ids.clone());
@@ -333,11 +332,8 @@ pub fn SessionView() -> Element {
             let mut seen_ids = std::collections::HashSet::new();
 
             // Add custom exercises first (they have priority over DB exercises).
-            // Use unified search_exercises so muscle/category/etc. are all searchable.
             let custom = custom_exercises.read();
-            let db_i18n = db_i18n_sig.read();
-            let db_i18n_ref = Some(&*db_i18n).filter(|m| !m.is_empty());
-            let custom_results = exercise_db::search_exercises(&custom, &query, db_i18n_ref);
+            let custom_results = exercise_db::search_exercises(&custom, &query);
             for ex in custom_results {
                 if seen_ids.insert(ex.id.clone()) {
                     results.push((ex.id.clone(), ex.name.clone(), ex.category));
@@ -346,7 +342,7 @@ pub fn SessionView() -> Element {
 
             // Add DB exercises, skipping any IDs already added from custom exercises
             let all = all_exercises.read();
-            let db_results = exercise_db::search_exercises(&all, &query, db_i18n_ref);
+            let db_results = exercise_db::search_exercises(&all, &query);
             for ex in db_results.into_iter().take(10) {
                 if seen_ids.insert(ex.id.clone()) {
                     results.push((ex.id.clone(), ex.name.clone(), ex.category));

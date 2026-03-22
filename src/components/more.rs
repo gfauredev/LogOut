@@ -80,19 +80,37 @@ pub fn More() -> Element {
     };
 
     let export_sessions = move |_| {
-        let data = sessions.read().clone();
-        match serde_json::to_string_pretty(&data) {
-            Ok(json) => {
-                #[cfg(target_arch = "wasm32")]
-                trigger_download("sessions.json", &json);
-                #[cfg(not(target_arch = "wasm32"))]
-                log::info!("Export sessions (native): {}", json.len());
+        let mut t = toast;
+        spawn(async move {
+            // Load all sessions from storage for export (active + completed).
+            // Active sessions are exported directly from the in-memory signal.
+            let active = sessions.peek().clone();
+            let mut all = active;
+            // Load completed sessions page by page.
+            let mut offset = 0usize;
+            let page_size = 500usize;
+            loop {
+                let page = storage::load_completed_sessions_page(page_size, offset).await;
+                let fetched = page.len();
+                all.extend(page);
+                if fetched < page_size {
+                    break;
+                }
+                offset += fetched;
             }
-            Err(e) => {
-                let mut t = toast;
-                t.set(Some(format!("⚠️ Export failed: {e}")));
+            all.sort_by(|a, b| a.start_time.cmp(&b.start_time));
+            match serde_json::to_string_pretty(&all) {
+                Ok(json) => {
+                    #[cfg(target_arch = "wasm32")]
+                    trigger_download("sessions.json", &json);
+                    #[cfg(not(target_arch = "wasm32"))]
+                    log::info!("Export sessions (native): {}", json.len());
+                }
+                Err(e) => {
+                    t.set(Some(format!("⚠️ Export failed: {e}")));
+                }
             }
-        }
+        });
     };
 
     // ── Import handlers ───────────────────────────────────────────────────────
