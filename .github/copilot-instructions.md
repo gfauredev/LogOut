@@ -1,9 +1,11 @@
-Check out the README and other documentation material.
+Check out the README and other documentation material. Respect coding
+conventions or guidelines you found, especially about processes.
 
-Respect coding conventions or guidelines you found, especially about processes.
+This project uses a development environment, defined in `flake.nix`: run a
+command with all the needed dependencies and tools with `nix develop`.
 
-This project uses a development environment, defined in `flake.nix`, providing
-all the dependencies and tools needed for development. Enter it with
-`nix develop`.
-
-Use Conventional Commits (1.0.0) and Semantic Versioning (2.0.0).
+Stick to modern Rust best practices and idiomatic patterns. Only produce the
+most efficient and optimized code possible and report on suboptimal code you
+notice. Ensure `dx build`, `cargo test` and
+`cargo clippy --all-targets -- -W clippy::all -W clippy::pedantic` succeed
+without any warnings after your edits, actually try to running them.
