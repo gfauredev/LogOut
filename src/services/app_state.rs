@@ -29,6 +29,9 @@ pub fn use_sessions() -> Signal<Vec<WorkoutSession>> {
 pub fn use_custom_exercises() -> Signal<Vec<Arc<Exercise>>> {
     consume_context::<Signal<Vec<Arc<Exercise>>>>()
 }
+// On the native (non-wasm32) target the storage calls are synchronous so
+// the function body contains no `await` expressions.  On wasm32 it does.
+#[allow(clippy::unused_async)]
 async fn load_storage_data(
     mut sessions_sig: Signal<Vec<WorkoutSession>>,
     mut custom_sig: Signal<Vec<Arc<Exercise>>>,

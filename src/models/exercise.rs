@@ -200,6 +200,11 @@ impl Exercise {
         exercise_type_tag(self.category, self.force)
     }
 }
+impl AsRef<Exercise> for Exercise {
+    fn as_ref(&self) -> &Exercise {
+        self
+    }
+}
 #[cfg(test)]
 mod tests {
     use super::*;
