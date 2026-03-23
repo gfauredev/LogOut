@@ -35,24 +35,21 @@ pub fn use_custom_exercises() -> Signal<Vec<Arc<Exercise>>> {
 async fn load_storage_data(
     mut sessions_sig: Signal<Vec<WorkoutSession>>,
     mut custom_sig: Signal<Vec<Arc<Exercise>>>,
-    mut toast: Signal<Option<String>>,
+    mut toast: Signal<std::collections::VecDeque<String>>,
 ) {
     #[cfg(target_arch = "wasm32")]
     {
         use super::storage::idb;
         match idb::get_all::<WorkoutSession>(idb::STORE_SESSIONS).await {
-            Ok(sessions) => {
-                let active: Vec<WorkoutSession> =
-                    sessions.into_iter().filter(|s| s.is_active()).collect();
-                if !active.is_empty() {
-                    info!("Loaded {} active sessions from IndexedDB", active.len());
-                    sessions_sig.set(active);
-                }
+            Ok(sessions) if !sessions.is_empty() => {
+                info!("Loaded {} sessions from IndexedDB", sessions.len());
+                sessions_sig.set(sessions);
             }
             Err(e) => {
                 error!("Failed to load sessions from IndexedDB: {e}");
-                toast.set(Some(format!("⚠️ Failed to load sessions: {e}")));
+                toast.write().push_back(format!("⚠️ Failed to load sessions: {e}"));
             }
+            _ => {}
         }
         match idb::get_all::<Exercise>(idb::STORE_CUSTOM_EXERCISES).await {
             Ok(custom) if !custom.is_empty() => {
@@ -61,7 +58,7 @@ async fn load_storage_data(
             }
             Err(e) => {
                 error!("Failed to load custom exercises from IndexedDB: {e}");
-                toast.set(Some(format!("⚠️ Failed to load custom exercises: {e}")));
+                toast.write().push_back(format!("⚠️ Failed to load custom exercises: {e}"));
             }
             _ => {}
         }
@@ -70,20 +67,15 @@ async fn load_storage_data(
     {
         use super::storage::native_storage;
         match native_storage::get_all::<WorkoutSession>(native_storage::STORE_SESSIONS) {
-            Ok(sessions) => {
-                let active: Vec<WorkoutSession> = sessions
-                    .into_iter()
-                    .filter(WorkoutSession::is_active)
-                    .collect();
-                if !active.is_empty() {
-                    log::info!("Loaded {} active sessions from storage", active.len());
-                    sessions_sig.set(active);
-                }
+            Ok(sessions) if !sessions.is_empty() => {
+                log::info!("Loaded {} sessions from storage", sessions.len());
+                sessions_sig.set(sessions);
             }
             Err(e) => {
                 log::error!("Failed to load sessions: {e}");
-                toast.set(Some(format!("⚠️ Failed to load sessions: {e}")));
+                toast.write().push_back(format!("⚠️ Failed to load sessions: {e}"));
             }
+            _ => {}
         }
         match native_storage::get_all::<Exercise>(native_storage::STORE_CUSTOM_EXERCISES) {
             Ok(custom) if !custom.is_empty() => {
@@ -92,7 +84,7 @@ async fn load_storage_data(
             }
             Err(e) => {
                 log::error!("Failed to load custom exercises: {e}");
-                toast.set(Some(format!("⚠️ Failed to load custom exercises: {e}")));
+                toast.write().push_back(format!("⚠️ Failed to load custom exercises: {e}"));
             }
             _ => {}
         }

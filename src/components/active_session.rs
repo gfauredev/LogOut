@@ -11,6 +11,7 @@ use crate::services::exercise_db::{
 use crate::services::{exercise_db, storage};
 use crate::{RestDurationSignal, Route};
 use dioxus::prelude::*;
+use futures_channel::mpsc::UnboundedReceiver;
 /// Maximum number of simultaneously active hard filters in the session search.
 const MAX_FILTERS: usize = 4;
 /// Debounce delay in milliseconds before re-running the expensive exercise filter.
@@ -286,7 +287,6 @@ pub fn SessionView() -> Element {
     });
     let mut search_query = use_signal(String::new);
     let mut debounced_query = use_signal(String::new);
-    let mut debounce_gen = use_signal(|| 0u64);
     let mut active_filters: Signal<Vec<SearchFilter>> = use_signal(Vec::new);
     let current_exercise_id = use_memo(move || session.read().current_exercise_id.clone());
     let current_exercise_start = use_memo(move || session.read().current_exercise_start);
@@ -297,26 +297,45 @@ pub fn SessionView() -> Element {
     let custom_exercises = storage::use_custom_exercises();
     let all_exercises = exercise_db::use_exercises();
     let pending_ids = use_memo(move || session.read().pending_exercise_ids.clone());
-    // Debounce: update `debounced_query` only after SEARCH_DEBOUNCE_MS of inactivity.
-    use_effect(move || {
-        let q = search_query.read().clone();
-        let cur_gen = {
-            let mut g = debounce_gen.write();
-            *g += 1;
-            *g
-        };
-        spawn(async move {
-            #[cfg(target_arch = "wasm32")]
-            gloo_timers::future::TimeoutFuture::new(SEARCH_DEBOUNCE_MS).await;
-            #[cfg(not(target_arch = "wasm32"))]
-            tokio::time::sleep(std::time::Duration::from_millis(u64::from(
-                SEARCH_DEBOUNCE_MS,
-            )))
-            .await;
-            if *debounce_gen.peek() == cur_gen {
-                debounced_query.set(q);
+    // Debounce coroutine: one long-running task that restarts its timer on each
+    // incoming keystroke, so typing never accumulates N sleeping futures.
+    let debounce_handle = use_coroutine(move |mut rx: UnboundedReceiver<String>| async move {
+        use futures_util::StreamExt as _;
+        while let Some(q) = rx.next().await {
+            let mut latest = q;
+            while let Ok(q) = rx.try_recv() {
+                latest = q;
             }
-        });
+            #[cfg(not(target_arch = "wasm32"))]
+            loop {
+                match tokio::time::timeout(
+                    std::time::Duration::from_millis(u64::from(SEARCH_DEBOUNCE_MS)),
+                    rx.next(),
+                )
+                .await
+                {
+                    Err(_) => break,
+                    Ok(None) => return,
+                    Ok(Some(q)) => {
+                        latest = q;
+                        while let Ok(q) = rx.try_recv() {
+                            latest = q;
+                        }
+                    }
+                }
+            }
+            #[cfg(target_arch = "wasm32")]
+            {
+                gloo_timers::future::TimeoutFuture::new(SEARCH_DEBOUNCE_MS).await;
+                while let Ok(q) = rx.try_recv() {
+                    latest = q;
+                }
+            }
+            debounced_query.set(latest);
+        }
+    });
+    use_effect(move || {
+        debounce_handle.send(search_query.read().clone());
     });
     let filter_suggestions = use_memo(move || {
         let query = search_query.read();

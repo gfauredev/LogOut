@@ -65,7 +65,7 @@ pub fn CompletedExerciseLog(
                         onclick: move |_| {
                             let mut current_session = session.read().clone();
                             current_session.exercise_logs.remove(idx);
-                            storage::save_session(current_session.clone());
+                            storage::save_session(current_session);
                         },
                         "🗑️"
                     }

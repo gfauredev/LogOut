@@ -26,7 +26,7 @@ pub fn provide_exercises() {
             }
             Err(e) => {
                 log::warn!("Failed to download i18n data: {e}");
-                toast.set(Some(format!("⚠️ Failed to load i18n data: {e}")));
+                toast.write().push_back(format!("⚠️ Failed to load i18n data: {e}"));
             }
         }
         load_exercises(sig).await;
@@ -45,7 +45,7 @@ pub fn use_exercises() -> Signal<Vec<Arc<Exercise>>> {
 /// user knows the URL change did not take effect.
 pub async fn reload_exercises(
     mut sig: Signal<Vec<Arc<Exercise>>>,
-    mut toast: Signal<Option<String>>,
+    mut toast: Signal<std::collections::VecDeque<String>>,
 ) {
     #[cfg(target_arch = "wasm32")]
     {
@@ -65,25 +65,27 @@ pub async fn reload_exercises(
                         .map(|e| Arc::new(Exercise::with_lowercase(e)))
                         .collect(),
                 );
-                toast.set(Some(
-                    "💾 Exercise database reloaded successfully".to_string(),
-                ));
+                toast
+                    .write()
+                    .push_back("💾 Exercise database reloaded successfully".to_string());
             }
             Ok(Some(_)) => {
                 log::warn!("Reloaded exercises file was empty");
-                toast.set(Some(
-                    "⚠️ exercises.json was empty — check the database URL".to_string(),
-                ));
+                toast
+                    .write()
+                    .push_back("⚠️ exercises.json was empty — check the database URL".to_string());
             }
             Ok(None) => {
                 log::info!("exercises.json unchanged (304) — no reload needed");
-                toast.set(Some(
-                    "ℹ️ Exercise database is already up to date".to_string(),
-                ));
+                toast
+                    .write()
+                    .push_back("ℹ️ Exercise database is already up to date".to_string());
             }
             Err(e) => {
                 log::warn!("Failed to reload exercises: {e:?}");
-                toast.set(Some(format!("❌ Failed to reload exercises: {e}")));
+                toast
+                    .write()
+                    .push_back(format!("❌ Failed to reload exercises: {e}"));
             }
         }
     }
@@ -105,25 +107,27 @@ pub async fn reload_exercises(
                         .map(|e| Arc::new(Exercise::with_lowercase(e)))
                         .collect(),
                 );
-                toast.set(Some(
-                    "💾 Exercise database reloaded successfully".to_string(),
-                ));
+                toast
+                    .write()
+                    .push_back("💾 Exercise database reloaded successfully".to_string());
             }
             Ok(Some(_)) => {
                 log::warn!("Reloaded exercises file was empty");
-                toast.set(Some(
-                    "⚠️ exercises.json was empty — check the database URL".to_string(),
-                ));
+                toast
+                    .write()
+                    .push_back("⚠️ exercises.json was empty — check the database URL".to_string());
             }
             Ok(None) => {
                 log::info!("exercises.json unchanged (304) — no reload needed");
-                toast.set(Some(
-                    "ℹ️ Exercise database is already up to date".to_string(),
-                ));
+                toast
+                    .write()
+                    .push_back("ℹ️ Exercise database is already up to date".to_string());
             }
             Err(e) => {
                 log::warn!("Failed to reload exercises: {e:?}");
-                toast.set(Some(format!("❌ Failed to reload exercises: {e}")));
+                toast
+                    .write()
+                    .push_back(format!("❌ Failed to reload exercises: {e}"));
             }
         }
     }

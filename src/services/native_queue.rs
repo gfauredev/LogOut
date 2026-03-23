@@ -6,9 +6,9 @@ use std::cell::RefCell;
 use std::collections::VecDeque;
 /// A pending write operation, including the toast signal for error reporting.
 pub enum NativeOp {
-    PutSession(WorkoutSession, Signal<Option<String>>),
-    DeleteSession(String, Signal<Option<String>>),
-    PutExercise(Exercise, Signal<Option<String>>),
+    PutSession(WorkoutSession, Signal<std::collections::VecDeque<String>>),
+    DeleteSession(String, Signal<std::collections::VecDeque<String>>),
+    PutExercise(Exercise, Signal<std::collections::VecDeque<String>>),
 }
 thread_local! {
     /// (draining, pending_ops)
@@ -36,24 +36,75 @@ async fn drain() {
                 break;
             }
             Some(NativeOp::PutSession(s, mut toast)) => {
-                if let Err(e) = native_storage::put_item(native_storage::STORE_SESSIONS, &s.id, &s)
-                {
-                    log::error!("Native queue: failed to put session {}: {e}", s.id);
-                    toast.set(Some(format!("⚠️ Failed to save session: {e}")));
+                let id = s.id.clone();
+                let result = tokio::task::spawn_blocking(move || {
+                    native_storage::put_item(native_storage::STORE_SESSIONS, &s.id, &s)
+                })
+                .await;
+                match result {
+                    Ok(Err(e)) => {
+                        log::error!("Native queue: failed to put session {id}: {e}");
+                        toast.write().push_back(format!("⚠️ Failed to save session: {e}"));
+                    }
+                    Err(e) => {
+                        log::error!("Native queue: spawn_blocking panicked for session {id}: {e}");
+                        toast
+                            .write()
+                            .push_back("⚠️ Failed to save session (internal error)".into());
+                    }
+                    Ok(Ok(())) => {}
                 }
             }
             Some(NativeOp::DeleteSession(id, mut toast)) => {
-                if let Err(e) = native_storage::delete_item(native_storage::STORE_SESSIONS, &id) {
-                    log::error!("Native queue: failed to delete session {id}: {e}");
-                    toast.set(Some(format!("⚠️ Failed to delete session: {e}")));
+                let id2 = id.clone();
+                let result = tokio::task::spawn_blocking(move || {
+                    native_storage::delete_item(native_storage::STORE_SESSIONS, &id)
+                })
+                .await;
+                match result {
+                    Ok(Err(e)) => {
+                        log::error!("Native queue: failed to delete session {id2}: {e}");
+                        toast
+                            .write()
+                            .push_back(format!("⚠️ Failed to delete session: {e}"));
+                    }
+                    Err(e) => {
+                        log::error!(
+                            "Native queue: spawn_blocking panicked for delete {id2}: {e}"
+                        );
+                        toast
+                            .write()
+                            .push_back("⚠️ Failed to delete session (internal error)".into());
+                    }
+                    Ok(Ok(())) => {}
                 }
             }
             Some(NativeOp::PutExercise(ex, mut toast)) => {
-                if let Err(e) =
-                    native_storage::put_item(native_storage::STORE_CUSTOM_EXERCISES, &ex.id, &ex)
-                {
-                    log::error!("Native queue: failed to put exercise {}: {e}", ex.id);
-                    toast.set(Some(format!("⚠️ Failed to save exercise: {e}")));
+                let ex_id = ex.id.clone();
+                let result = tokio::task::spawn_blocking(move || {
+                    native_storage::put_item(
+                        native_storage::STORE_CUSTOM_EXERCISES,
+                        &ex.id,
+                        &ex,
+                    )
+                })
+                .await;
+                match result {
+                    Ok(Err(e)) => {
+                        log::error!("Native queue: failed to put exercise {ex_id}: {e}");
+                        toast
+                            .write()
+                            .push_back(format!("⚠️ Failed to save exercise: {e}"));
+                    }
+                    Err(e) => {
+                        log::error!(
+                            "Native queue: spawn_blocking panicked for exercise {ex_id}: {e}"
+                        );
+                        toast
+                            .write()
+                            .push_back("⚠️ Failed to save exercise (internal error)".into());
+                    }
+                    Ok(Ok(())) => {}
                 }
             }
         }

@@ -168,9 +168,9 @@ pub(crate) mod idb_queue {
     use std::collections::VecDeque;
     /// A pending write operation, including the toast signal for error reporting.
     pub enum IdbOp {
-        PutSession(WorkoutSession, Signal<Option<String>>),
-        DeleteSession(String, Signal<Option<String>>),
-        PutExercise(Exercise, Signal<Option<String>>),
+        PutSession(WorkoutSession, Signal<std::collections::VecDeque<String>>),
+        DeleteSession(String, Signal<std::collections::VecDeque<String>>),
+        PutExercise(Exercise, Signal<std::collections::VecDeque<String>>),
     }
     thread_local! {
         /// (draining, pending_ops)
@@ -216,19 +216,19 @@ pub(crate) mod idb_queue {
                 Some(IdbOp::PutSession(s, mut toast)) => {
                     if let Err(e) = idb::put_item(idb::STORE_SESSIONS, &s).await {
                         log::error!("IDB queue: failed to put session {}: {e}", s.id);
-                        toast.set(Some(format!("⚠️ Failed to save session: {e}")));
+                        toast.write().push_back(format!("⚠️ Failed to save session: {e}"));
                     }
                 }
                 Some(IdbOp::DeleteSession(id, mut toast)) => {
                     if let Err(e) = idb::delete_item(idb::STORE_SESSIONS, &id).await {
                         log::error!("IDB queue: failed to delete session {id}: {e}");
-                        toast.set(Some(format!("⚠️ Failed to delete session: {e}")));
+                        toast.write().push_back(format!("⚠️ Failed to delete session: {e}"));
                     }
                 }
                 Some(IdbOp::PutExercise(ex, mut toast)) => {
                     if let Err(e) = idb::put_item(idb::STORE_CUSTOM_EXERCISES, &ex).await {
                         log::error!("IDB queue: failed to put exercise {}: {e}", ex.id);
-                        toast.set(Some(format!("⚠️ Failed to save exercise: {e}")));
+                        toast.write().push_back(format!("⚠️ Failed to save exercise: {e}"));
                     }
                 }
             }

@@ -19,9 +19,12 @@ use components::{
 /// Global context signal for the congratulations toast shown after completing a session.
 #[derive(Clone, Copy)]
 pub struct CongratulationsSignal(pub Signal<bool>);
-/// Global context signal for a general-purpose toast message.
+/// Global context signal for a general-purpose toast message queue.
+///
+/// Use `push_toast` to enqueue a new message so rapid successive messages are
+/// not immediately overwritten but displayed in turn.
 #[derive(Clone, Copy)]
-pub struct ToastSignal(pub Signal<Option<String>>);
+pub struct ToastSignal(pub Signal<std::collections::VecDeque<String>>);
 /// Global context signal that, when `true`, shows a persistent notification-
 /// permission warning toast.  The toast prompts the user to click it in order
 /// to trigger the browser permission dialog.
@@ -111,7 +114,7 @@ fn App() -> Element {
     // Provide all contexts before any service that may consume them.
     use_context_provider(|| DbI18nSignal(Signal::new(models::DbI18n::default())));
     use_context_provider(|| CongratulationsSignal(Signal::new(false)));
-    use_context_provider(|| ToastSignal(Signal::new(None)));
+    use_context_provider(|| ToastSignal(Signal::new(std::collections::VecDeque::new())));
     use_context_provider(|| NotificationPermissionToastSignal(Signal::new(false)));
     use_context_provider(|| ExerciseSearchSignal(Signal::new(None)));
     use_context_provider(|| PendingDeepLinkSignal(Signal::new(None)));
@@ -358,12 +361,16 @@ fn CongratulationsToast() -> Element {
     }
 }
 /// General-purpose toast component that auto-dismisses after [`TOAST_DISMISS_MS`].
+///
+/// Messages are displayed one at a time from a FIFO queue so that rapid
+/// successive calls to `push_toast` are not lost — each message gets its
+/// own display slot.
 #[component]
 fn Toast() -> Element {
     let mut toast = use_context::<ToastSignal>().0;
     let mut gen = use_signal(|| 0u32);
     use_effect(move || {
-        if toast.read().is_some() {
+        if !toast.read().is_empty() {
             let next = *gen.peek() + 1;
             gen.set(next);
             spawn(async move {
@@ -375,15 +382,22 @@ fn Toast() -> Element {
                 )))
                 .await;
                 if *gen.peek() == next {
-                    toast.set(None);
+                    toast.write().pop_front();
                 }
             });
         }
     });
     let guard = toast.read();
-    if let Some(msg) = guard.as_deref() {
+    if let Some(msg) = guard.front() {
+        let msg = msg.clone();
         rsx! {
-            div { class: "snackbar", onclick: move |_| toast.set(None), "{msg}" }
+            div {
+                class: "snackbar",
+                onclick: move |_| {
+                    toast.write().pop_front();
+                },
+                "{msg}"
+            }
         }
     } else {
         rsx! {}

@@ -7,6 +7,7 @@ use crate::services::{exercise_db, storage};
 use crate::{ExerciseSearchSignal, Route};
 use dioxus::prelude::*;
 use dioxus_i18n::t;
+use futures_channel::mpsc::UnboundedReceiver;
 use std::sync::Arc;
 /// Maximum number of simultaneously active hard filters.
 const MAX_FILTERS: usize = 4;
@@ -27,7 +28,6 @@ pub fn Exercises() -> Element {
     // Debounced query – only updated `SEARCH_DEBOUNCE_MS` after the user stops typing.
     // Used for the expensive exercise-scoring memo so typing stays responsive.
     let mut debounced_query = use_signal(String::new);
-    let mut debounce_gen = use_signal(|| 0u64);
     let mut visible_count = use_signal(|| PAGE_SIZE);
     let mut active_filters: Signal<Vec<SearchFilter>> = use_signal(Vec::new);
     let mut search_signal = use_context::<ExerciseSearchSignal>().0;
@@ -39,27 +39,53 @@ pub fn Exercises() -> Element {
             search_signal.set(None);
         }
     });
-    // Debounce: update `debounced_query` only after SEARCH_DEBOUNCE_MS of inactivity.
-    use_effect(move || {
-        let q = search_query.read().clone();
-        let cur_gen = {
-            let mut g = debounce_gen.write();
-            *g += 1;
-            *g
-        };
-        spawn(async move {
-            #[cfg(target_arch = "wasm32")]
-            gloo_timers::future::TimeoutFuture::new(SEARCH_DEBOUNCE_MS).await;
-            #[cfg(not(target_arch = "wasm32"))]
-            tokio::time::sleep(std::time::Duration::from_millis(u64::from(
-                SEARCH_DEBOUNCE_MS,
-            )))
-            .await;
-            if *debounce_gen.peek() == cur_gen {
-                debounced_query.set(q);
-                visible_count.set(PAGE_SIZE);
+    // Debounce coroutine: one long-running task that restarts its timer on each
+    // incoming keystroke, so typing never accumulates N sleeping futures.
+    let debounce_handle = use_coroutine(move |mut rx: UnboundedReceiver<String>| async move {
+        use futures_util::StreamExt as _;
+        while let Some(q) = rx.next().await {
+            // Drain any already-buffered updates to avoid stale intermediate results.
+            let mut latest = q;
+            while let Ok(q) = rx.try_recv() {
+                latest = q;
             }
-        });
+            // Wait for the debounce period, restarting the timer if a new message
+            // arrives on native (tokio::time::timeout). On wasm we drain after sleeping.
+            #[cfg(not(target_arch = "wasm32"))]
+            loop {
+                match tokio::time::timeout(
+                    std::time::Duration::from_millis(u64::from(SEARCH_DEBOUNCE_MS)),
+                    rx.next(),
+                )
+                .await
+                {
+                    // Timeout elapsed with no new input – debounce period is over.
+                    Err(_) => break,
+                    // Channel closed – stop the coroutine.
+                    Ok(None) => return,
+                    // New input arrived – update latest and restart the timer.
+                    Ok(Some(q)) => {
+                        latest = q;
+                        while let Ok(q) = rx.try_recv() {
+                            latest = q;
+                        }
+                    }
+                }
+            }
+            #[cfg(target_arch = "wasm32")]
+            {
+                gloo_timers::future::TimeoutFuture::new(SEARCH_DEBOUNCE_MS).await;
+                while let Ok(q) = rx.try_recv() {
+                    latest = q;
+                }
+            }
+            debounced_query.set(latest);
+            visible_count.set(PAGE_SIZE);
+        }
+    });
+    // Send every raw keystroke to the debounce coroutine.
+    use_effect(move || {
+        debounce_handle.send(search_query.read().clone());
     });
     let active_session_ids = use_memo(move || {
         let mut ids = std::collections::HashSet::new();
