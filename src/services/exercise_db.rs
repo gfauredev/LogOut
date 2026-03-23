@@ -381,8 +381,7 @@ where
     let mut scored: Vec<(u32, &E)> = exercises
         .iter()
         .filter_map(|exercise| {
-            let score =
-                score_exercise(exercise.as_ref(), &query_lower, &query_norm, &tokens);
+            let score = score_exercise(exercise.as_ref(), &query_lower, &query_norm, &tokens);
             if score > 0 {
                 Some((score, exercise))
             } else {

@@ -216,7 +216,7 @@ fn DeepLinkLayout() -> Element {
             pending.set(None);
             match action {
                 DeepLinkAction::CreateSession(entries) => {
-                    let session = build_session_from_entries(&entries, &exercises);
+                    let session = build_session_from_entries(&entries, &*exercises);
                     services::storage::save_session(session);
                 }
                 DeepLinkAction::StartSession(exercise_ids) => {
@@ -267,10 +267,13 @@ fn path_to_route(path: &str) -> Route {
 /// deep-link params typically encode a distance rather than a repetition count.
 /// Strength and static exercises use `reps` directly.
 #[cfg_attr(not(target_arch = "wasm32"), allow(dead_code))]
-fn build_session_from_entries(
+fn build_session_from_entries<E>(
     entries: &[utils::SessionExerciseEntry],
-    exercises: &[models::Exercise],
-) -> models::WorkoutSession {
+    exercises: &[E],
+) -> models::WorkoutSession
+where
+    E: AsRef<models::Exercise>,
+{
     use models::{Category, Distance, ExerciseLog, Force, Weight, WorkoutSession};
     let base_time = models::get_current_timestamp().saturating_sub(3600);
     let mut session = WorkoutSession::new();
@@ -280,10 +283,16 @@ fn build_session_from_entries(
         let end = start + 60;
         let (name, category, force) = exercises
             .iter()
-            .find(|e| e.id == entry.exercise_id)
+            .find(|e| e.as_ref().id == entry.exercise_id)
             .map_or_else(
                 || (entry.exercise_id.clone(), Category::Strength, None),
-                |e| (e.name.clone(), e.category, e.force),
+                |e| {
+                    (
+                        e.as_ref().name.clone(),
+                        e.as_ref().category,
+                        e.as_ref().force,
+                    )
+                },
             );
         #[allow(clippy::cast_possible_truncation)]
         let weight_hg = entry

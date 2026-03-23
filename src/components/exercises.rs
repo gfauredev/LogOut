@@ -13,6 +13,7 @@ const MAX_FILTERS: usize = 4;
 /// Number of exercises loaded per scroll increment.
 const PAGE_SIZE: usize = 20;
 /// Pixels from the bottom of the page at which an auto-pagination is triggered.
+#[cfg(target_arch = "wasm32")]
 const SCROLL_THRESHOLD_PX: u32 = 300;
 /// Debounce delay in milliseconds before re-running the expensive exercise filter.
 const SEARCH_DEBOUNCE_MS: u32 = 200;
@@ -168,8 +169,7 @@ pub fn Exercises() -> Element {
             let client_height = f64::from(el.client_height());
             let scroll_height = f64::from(el.scroll_height());
             if scroll_height > 0.0
-                && scroll_top + client_height
-                    >= scroll_height - f64::from(SCROLL_THRESHOLD_PX)
+                && scroll_top + client_height >= scroll_height - f64::from(SCROLL_THRESHOLD_PX)
             {
                 let cur = *visible_count.peek();
                 let total = exercises.peek().len();
@@ -178,8 +178,7 @@ pub fn Exercises() -> Element {
                 }
             }
         }));
-        let func: js_sys::Function =
-            closure.as_ref().unchecked_ref::<js_sys::Function>().clone();
+        let func: js_sys::Function = closure.as_ref().unchecked_ref::<js_sys::Function>().clone();
         if let Some(window) = web_sys::window() {
             let _ = window.add_event_listener_with_callback("scroll", &func);
         }
@@ -194,8 +193,7 @@ pub fn Exercises() -> Element {
         impl Drop for ScrollGuard {
             fn drop(&mut self) {
                 if let Some(window) = web_sys::window() {
-                    let _ =
-                        window.remove_event_listener_with_callback("scroll", &self.func);
+                    let _ = window.remove_event_listener_with_callback("scroll", &self.func);
                 }
             }
         }
