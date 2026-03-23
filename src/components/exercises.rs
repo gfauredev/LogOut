@@ -7,6 +7,7 @@ use crate::services::{exercise_db, storage};
 use crate::{ExerciseSearchSignal, Route};
 use dioxus::prelude::*;
 use dioxus_i18n::t;
+use std::sync::Arc;
 /// Maximum number of simultaneously active hard filters.
 const MAX_FILTERS: usize = 4;
 /// Number of exercises loaded per scroll increment.
@@ -94,14 +95,14 @@ pub fn Exercises() -> Element {
         if filters.is_empty() {
             return (all.clone(), custom.clone());
         }
-        let filtered_all: Vec<Exercise> = all
+        let filtered_all: Vec<Arc<Exercise>> = all
             .iter()
-            .filter(|e| exercise_matches_filters(e, &filters))
+            .filter(|e| exercise_matches_filters(e.as_ref(), &filters))
             .cloned()
             .collect();
-        let filtered_custom: Vec<Exercise> = custom
+        let filtered_custom: Vec<Arc<Exercise>> = custom
             .iter()
-            .filter(|e| exercise_matches_filters(e, &filters))
+            .filter(|e| exercise_matches_filters(e.as_ref(), &filters))
             .cloned()
             .collect();
         (filtered_all, filtered_custom)
@@ -148,33 +149,57 @@ pub fn Exercises() -> Element {
         }
         results
     });
-    use_hook(move || {
-        let js = format!(
-            r"
-            (function() {{
-                const handler = function() {{
-                    var el = document.documentElement;
-                    var scrollTop = window.scrollY || el.scrollTop || 0;
-                    var clientHeight = el.clientHeight || window.innerHeight || 0;
-                    var scrollHeight = el.scrollHeight || 0;
-                    if (scrollHeight > 0 && scrollTop + clientHeight >= scrollHeight - {SCROLL_THRESHOLD_PX}) {{
-                        dioxus.send(true);
-                    }}
-                }};
-                window.onscroll = handler;
-            }})()
-            ",
-        );
-        spawn(async move {
-            let mut eval = dioxus::prelude::document::eval(&js);
-            while eval.recv::<bool>().await.is_ok() {
+    #[cfg(target_arch = "wasm32")]
+    let _scroll_guard = use_hook(move || {
+        use std::rc::Rc;
+        use wasm_bindgen::prelude::Closure;
+        use wasm_bindgen::JsCast as _;
+        let closure: Closure<dyn FnMut()> = Closure::wrap(Box::new(move || {
+            let Some(window) = web_sys::window() else {
+                return;
+            };
+            let Some(document) = window.document() else {
+                return;
+            };
+            let Some(el) = document.document_element() else {
+                return;
+            };
+            let scroll_top = window.scroll_y().unwrap_or(0.0);
+            let client_height = f64::from(el.client_height());
+            let scroll_height = f64::from(el.scroll_height());
+            if scroll_height > 0.0
+                && scroll_top + client_height
+                    >= scroll_height - f64::from(SCROLL_THRESHOLD_PX)
+            {
                 let cur = *visible_count.peek();
                 let total = exercises.peek().len();
                 if cur < total {
                     visible_count.set(cur + PAGE_SIZE);
                 }
             }
-        });
+        }));
+        let func: js_sys::Function =
+            closure.as_ref().unchecked_ref::<js_sys::Function>().clone();
+        if let Some(window) = web_sys::window() {
+            let _ = window.add_event_listener_with_callback("scroll", &func);
+        }
+        /// Drop guard that removes the scroll event listener when the `Exercises`
+        /// component unmounts, preventing a JS interop memory leak.
+        struct ScrollGuard {
+            /// Keeps the underlying JS function alive until the listener is removed.
+            #[allow(dead_code)]
+            closure: Closure<dyn FnMut()>,
+            func: js_sys::Function,
+        }
+        impl Drop for ScrollGuard {
+            fn drop(&mut self) {
+                if let Some(window) = web_sys::window() {
+                    let _ =
+                        window.remove_event_listener_with_callback("scroll", &self.func);
+                }
+            }
+        }
+        Rc::new(ScrollGuard { closure, func })
     });
     let visible_items = use_memo(move || {
         let active_ids = active_session_ids();

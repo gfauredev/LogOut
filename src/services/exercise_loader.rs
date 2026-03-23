@@ -8,6 +8,7 @@ use crate::models::Exercise;
 use crate::services::exercise_db;
 use crate::{DbI18nSignal, ToastSignal};
 use dioxus::prelude::*;
+use std::sync::Arc;
 /// Provides the exercises signal and kicks off the background load.
 /// Call once inside the root `App` component.
 pub fn provide_exercises() {
@@ -32,7 +33,7 @@ pub fn provide_exercises() {
     });
 }
 /// Consumes the exercises signal from the Dioxus context.
-pub fn use_exercises() -> Signal<Vec<Exercise>> {
+pub fn use_exercises() -> Signal<Vec<Arc<Exercise>>> {
     use_context::<exercise_db::AllExercisesSignal>().0
 }
 /// Clears the current exercise list and immediately re-downloads from the
@@ -42,7 +43,10 @@ pub fn use_exercises() -> Signal<Vec<Exercise>> {
 /// On success the toast shows a confirmation message; on error (network,
 /// empty response, JSON parse) it shows an appropriate error message so the
 /// user knows the URL change did not take effect.
-pub async fn reload_exercises(mut sig: Signal<Vec<Exercise>>, mut toast: Signal<Option<String>>) {
+pub async fn reload_exercises(
+    mut sig: Signal<Vec<Arc<Exercise>>>,
+    mut toast: Signal<Option<String>>,
+) {
     #[cfg(target_arch = "wasm32")]
     {
         use crate::services::storage::idb_exercises;
@@ -58,7 +62,7 @@ pub async fn reload_exercises(mut sig: Signal<Vec<Exercise>>, mut toast: Signal<
                 sig.set(
                     exercises
                         .into_iter()
-                        .map(Exercise::with_lowercase)
+                        .map(|e| Arc::new(Exercise::with_lowercase(e)))
                         .collect(),
                 );
                 toast.set(Some(
@@ -98,7 +102,7 @@ pub async fn reload_exercises(mut sig: Signal<Vec<Exercise>>, mut toast: Signal<
                 sig.set(
                     exercises
                         .into_iter()
-                        .map(Exercise::with_lowercase)
+                        .map(|e| Arc::new(Exercise::with_lowercase(e)))
                         .collect(),
                 );
                 toast.set(Some(
@@ -125,7 +129,7 @@ pub async fn reload_exercises(mut sig: Signal<Vec<Exercise>>, mut toast: Signal<
     }
 }
 #[allow(unused_mut, unused_variables)]
-async fn load_exercises(mut sig: Signal<Vec<Exercise>>) {
+async fn load_exercises(mut sig: Signal<Vec<Arc<Exercise>>>) {
     #[cfg(target_arch = "wasm32")]
     {
         use crate::services::storage::idb_exercises;
@@ -133,7 +137,12 @@ async fn load_exercises(mut sig: Signal<Vec<Exercise>>) {
         let needs_refresh = !cached.is_empty() && exercise_db::is_refresh_due();
         if !cached.is_empty() {
             log::info!("Loaded {} exercises from IndexedDB", cached.len());
-            sig.set(cached.into_iter().map(Exercise::with_lowercase).collect());
+            sig.set(
+                cached
+                    .into_iter()
+                    .map(|e| Arc::new(Exercise::with_lowercase(e)))
+                    .collect(),
+            );
             if !needs_refresh {
                 return;
             }
@@ -150,7 +159,7 @@ async fn load_exercises(mut sig: Signal<Vec<Exercise>>) {
                 sig.set(
                     exercises
                         .into_iter()
-                        .map(Exercise::with_lowercase)
+                        .map(|e| Arc::new(Exercise::with_lowercase(e)))
                         .collect(),
                 );
                 return;
@@ -172,7 +181,12 @@ async fn load_exercises(mut sig: Signal<Vec<Exercise>>) {
         let needs_refresh = !cached.is_empty() && exercise_db::is_refresh_due();
         if !cached.is_empty() {
             log::info!("Loaded {} exercises from local file", cached.len());
-            sig.set(cached.into_iter().map(Exercise::with_lowercase).collect());
+            sig.set(
+                cached
+                    .into_iter()
+                    .map(|e| Arc::new(Exercise::with_lowercase(e)))
+                    .collect(),
+            );
             if !needs_refresh {
                 return;
             }
@@ -189,7 +203,7 @@ async fn load_exercises(mut sig: Signal<Vec<Exercise>>) {
                 sig.set(
                     exercises
                         .into_iter()
-                        .map(Exercise::with_lowercase)
+                        .map(|e| Arc::new(Exercise::with_lowercase(e)))
                         .collect(),
                 );
                 return;

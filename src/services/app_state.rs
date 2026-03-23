@@ -11,29 +11,32 @@ use crate::ToastSignal;
 use dioxus::prelude::*;
 #[cfg(target_arch = "wasm32")]
 use log::{error, info};
+use std::sync::Arc;
 /// Provide the shared workout-session and custom-exercise signals at the top of
 /// the component tree.  Call exactly once inside the root `App` component.
 pub fn provide_app_state() {
-    use_context_provider(|| Signal::new(Vec::<WorkoutSession>::new()));
-    use_context_provider(|| Signal::new(Vec::<Exercise>::new()));
+    let sessions_sig = use_context_provider(|| Signal::new(Vec::<WorkoutSession>::new()));
+    let custom_sig = use_context_provider(|| Signal::new(Vec::<Arc<Exercise>>::new()));
     use_context_provider(|| Signal::new(BestsCache::new()));
-    use_resource(load_storage_data);
+    let toast = consume_context::<ToastSignal>().0;
+    use_resource(move || load_storage_data(sessions_sig, custom_sig, toast));
 }
 /// Obtain the reactive sessions signal from the Dioxus context.
 pub fn use_sessions() -> Signal<Vec<WorkoutSession>> {
     consume_context::<Signal<Vec<WorkoutSession>>>()
 }
 /// Obtain the reactive custom-exercises signal from the Dioxus context.
-pub fn use_custom_exercises() -> Signal<Vec<Exercise>> {
-    consume_context::<Signal<Vec<Exercise>>>()
+pub fn use_custom_exercises() -> Signal<Vec<Arc<Exercise>>> {
+    consume_context::<Signal<Vec<Arc<Exercise>>>>()
 }
-async fn load_storage_data() {
+async fn load_storage_data(
+    mut sessions_sig: Signal<Vec<WorkoutSession>>,
+    mut custom_sig: Signal<Vec<Arc<Exercise>>>,
+    mut toast: Signal<Option<String>>,
+) {
     #[cfg(target_arch = "wasm32")]
     {
         use super::storage::idb;
-        let mut sessions_sig = use_sessions();
-        let mut custom_sig = use_custom_exercises();
-        let mut toast = consume_context::<ToastSignal>().0;
         match idb::get_all::<WorkoutSession>(idb::STORE_SESSIONS).await {
             Ok(sessions) => {
                 let active: Vec<WorkoutSession> =
@@ -51,7 +54,7 @@ async fn load_storage_data() {
         match idb::get_all::<Exercise>(idb::STORE_CUSTOM_EXERCISES).await {
             Ok(custom) if !custom.is_empty() => {
                 info!("Loaded {} custom exercises from IndexedDB", custom.len());
-                custom_sig.set(custom);
+                custom_sig.set(custom.into_iter().map(Arc::new).collect());
             }
             Err(e) => {
                 error!("Failed to load custom exercises from IndexedDB: {e}");
@@ -63,9 +66,6 @@ async fn load_storage_data() {
     #[cfg(not(target_arch = "wasm32"))]
     {
         use super::storage::native_storage;
-        let mut sessions_sig = use_sessions();
-        let mut custom_sig = use_custom_exercises();
-        let mut toast = consume_context::<ToastSignal>().0;
         match native_storage::get_all::<WorkoutSession>(native_storage::STORE_SESSIONS) {
             Ok(sessions) => {
                 let active: Vec<WorkoutSession> = sessions
@@ -85,7 +85,7 @@ async fn load_storage_data() {
         match native_storage::get_all::<Exercise>(native_storage::STORE_CUSTOM_EXERCISES) {
             Ok(custom) if !custom.is_empty() => {
                 log::info!("Loaded {} custom exercises from storage", custom.len());
-                custom_sig.set(custom);
+                custom_sig.set(custom.into_iter().map(Arc::new).collect());
             }
             Err(e) => {
                 log::error!("Failed to load custom exercises: {e}");
@@ -100,29 +100,44 @@ async fn load_storage_data() {
 /// If a session with the same `id` already exists in the signal it is replaced;
 /// otherwise the session is appended.  The persistence write is fire-and-forget
 /// (errors are surfaced via the toast signal).
+///
+/// When an already-completed session is **updated** (edited), all of its
+/// exercise entries are evicted from `BestsCache` before the new values are
+/// merged in.  This prevents a stale `max()` from locking in a typo value.
 pub fn save_session(session: WorkoutSession) {
     let mut sig = use_sessions();
+    let is_update;
     {
         let mut sessions = sig.write();
         if let Some(pos) = sessions.iter().position(|s| s.id == session.id) {
             sessions[pos] = session.clone();
+            is_update = true;
         } else {
             sessions.push(session.clone());
+            is_update = false;
         }
     }
     if !session.is_active() {
         let mut cache_sig = consume_context::<Signal<BestsCache>>();
         let mut cache = cache_sig.write();
-        for log in &session.exercise_logs {
-            let entry = cache
-                .entry(log.exercise_id.clone())
-                .or_insert(ExerciseBests {
-                    weight_hg: None,
-                    reps: None,
-                    distance_m: None,
-                    duration: None,
-                });
-            merge_log_into_bests(entry, log);
+        if is_update {
+            // Evict stale entries so the next access recomputes from scratch.
+            for log in &session.exercise_logs {
+                cache.remove(&log.exercise_id);
+            }
+        } else {
+            // First-time completion: merge incrementally (avoids a full rescan).
+            for log in &session.exercise_logs {
+                let entry = cache
+                    .entry(log.exercise_id.clone())
+                    .or_insert(ExerciseBests {
+                        weight_hg: None,
+                        reps: None,
+                        distance_m: None,
+                        duration: None,
+                    });
+                merge_log_into_bests(entry, log);
+            }
         }
     }
     #[cfg(target_arch = "wasm32")]
@@ -252,7 +267,7 @@ pub fn start_pending_exercise_in_session(exercise_id: String, exercise_start: u6
 /// Append `exercise` to the custom-exercises signal and persist it to the backend.
 pub fn add_custom_exercise(exercise: Exercise) {
     let mut sig = use_custom_exercises();
-    sig.write().push(exercise.clone());
+    sig.write().push(Arc::new(exercise.clone()));
     #[cfg(target_arch = "wasm32")]
     {
         use super::storage::idb_queue;
@@ -272,7 +287,7 @@ pub fn update_custom_exercise(exercise: Exercise) {
     {
         let mut exercises = sig.write();
         if let Some(pos) = exercises.iter().position(|e| e.id == exercise.id) {
-            exercises[pos] = exercise.clone();
+            exercises[pos] = Arc::new(exercise.clone());
         }
     }
     #[cfg(target_arch = "wasm32")]
