@@ -2763,6 +2763,8 @@ dependencies = [
  "dioxus-i18n",
  "dioxus-logger",
  "dirs",
+ "futures-channel",
+ "futures-util",
  "gloo-timers",
  "jni 0.21.1",
  "js-sys",

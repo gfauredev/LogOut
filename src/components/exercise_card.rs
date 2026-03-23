@@ -54,10 +54,52 @@ fn resolve_image_key(key: &str) -> Option<String> {
     }
     #[cfg(not(target_arch = "wasm32"))]
     if let Some(filename) = key.strip_prefix("local:") {
+        use percent_encoding::{utf8_percent_encode, CONTROLS};
+        // Encodes characters that are unsafe in URL path segments while preserving
+        // all chars that are valid in paths (slashes are kept by encoding each
+        // component separately).
+        const PATH_SEGMENT: &percent_encoding::AsciiSet = &CONTROLS
+            .add(b' ')
+            .add(b'"')
+            .add(b'#')
+            .add(b'%')
+            .add(b'<')
+            .add(b'>')
+            .add(b'?')
+            .add(b'[')
+            .add(b'\\')
+            .add(b']')
+            .add(b'^')
+            .add(b'`')
+            .add(b'{')
+            .add(b'|')
+            .add(b'}');
         let path = crate::services::storage::native_storage::data_dir()
             .join("images")
             .join(filename);
-        return Some(format!("file://{}", path.display()));
+        let encoded = path
+            .components()
+            .fold(String::new(), |mut acc, c| {
+                use std::path::Component;
+                match c {
+                    Component::Prefix(p) => {
+                        acc.push_str(&p.as_os_str().to_string_lossy());
+                    }
+                    Component::RootDir => acc.push('/'),
+                    Component::Normal(seg) => {
+                        if !acc.is_empty() && !acc.ends_with('/') {
+                            acc.push('/');
+                        }
+                        acc.push_str(
+                            &utf8_percent_encode(&seg.to_string_lossy(), PATH_SEGMENT)
+                                .to_string(),
+                        );
+                    }
+                    _ => {}
+                }
+                acc
+            });
+        return Some(format!("file://{encoded}"));
     }
     let base_url = crate::utils::get_exercise_images_base_url();
     Some(format!(
@@ -91,6 +133,29 @@ fn ExerciseImage(images: Vec<String>, display_name: String) -> Element {
             }
         })
     };
+    // Revoke stale `blob:` URLs when the resource produces a new value or the
+    // component is unmounted, to avoid leaking object-URL memory.
+    #[cfg(target_arch = "wasm32")]
+    let prev_blob_url: Signal<Option<String>> = use_signal(|| None);
+    #[cfg(target_arch = "wasm32")]
+    {
+        let mut slot = prev_blob_url;
+        use_effect(move || {
+            let new_url: Option<String> = idb_url.read().as_ref().and_then(|r| r.clone());
+            let mut s = slot.write();
+            if let Some(old) = s.as_deref() {
+                if Some(old) != new_url.as_deref() {
+                    let _ = web_sys::Url::revoke_object_url(old);
+                }
+            }
+            *s = new_url;
+        });
+        use_drop(move || {
+            if let Some(url) = slot.peek().as_deref() {
+                let _ = web_sys::Url::revoke_object_url(url);
+            }
+        });
+    }
     let display_url: Option<String> = {
         #[cfg(target_arch = "wasm32")]
         {

@@ -60,7 +60,7 @@ pub fn More() -> Element {
             }
             Err(e) => {
                 let mut t = toast;
-                t.set(Some(format!("⚠️ Export failed: {e}")));
+                t.write().push_back(format!("⚠️ Export failed: {e}"));
             }
         }
     };
@@ -89,7 +89,7 @@ pub fn More() -> Element {
                     log::info!("Export sessions (native): {}", json.len());
                 }
                 Err(e) => {
-                    t.set(Some(format!("⚠️ Export failed: {e}")));
+                    t.write().push_back(format!("⚠️ Export failed: {e}"));
                 }
             }
         });
@@ -98,7 +98,7 @@ pub fn More() -> Element {
         let mut t = toast;
         match serde_json::from_str::<Vec<crate::models::WorkoutSession>>(&json) {
             Err(e) => {
-                t.set(Some(format!("⚠️ Invalid sessions JSON: {e}")));
+                t.write().push_back(format!("⚠️ Invalid sessions JSON: {e}"));
             }
             Ok(imported) => {
                 let existing_ids: Vec<String> =
@@ -112,9 +112,9 @@ pub fn More() -> Element {
                     }
                 }
                 if refused > 0 {
-                    t.set(Some(format!(
+                    t.write().push_back(format!(
                         "⚠️ {refused} session(s) refused: ID already exists",
-                    )));
+                    ));
                 }
             }
         }
@@ -123,7 +123,7 @@ pub fn More() -> Element {
         let mut t = toast;
         match serde_json::from_str::<Vec<Exercise>>(&json) {
             Err(e) => {
-                t.set(Some(format!("⚠️ Invalid exercises JSON: {e}")));
+                t.write().push_back(format!("⚠️ Invalid exercises JSON: {e}"));
             }
             Ok(imported) => {
                 let db = all_exercises.read();
@@ -146,9 +146,9 @@ pub fn More() -> Element {
                     storage::add_custom_exercise(exercise);
                 }
                 if refused > 0 {
-                    t.set(Some(format!(
+                    t.write().push_back(format!(
                         "⚠️ {refused} exercise(s) refused: built-in ID conflict",
-                    )));
+                    ));
                 }
                 if !to_confirm.is_empty() {
                     exercises_to_confirm.set(to_confirm);

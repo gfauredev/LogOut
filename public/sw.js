@@ -17,7 +17,7 @@
 // Blitz doesn't have a JavaScript engine, so Service Worker functionality is disabled
 // via feature flags. The app works perfectly fine without offline caching.
 
-const CACHE_VERSION = 'v2';
+const CACHE_VERSION = 'v3';
 const APP_CACHE_NAME = 'logout-app-' + CACHE_VERSION;
 const IMAGE_CACHE_NAME = 'workout-images-v1';
 const IMAGE_BASE_URL = 'https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/';
@@ -26,6 +26,8 @@ const IMAGE_BASE_URL = 'https://raw.githubusercontent.com/yuhonas/free-exercise-
 const APP_SHELL_URLS = [
   './',
   './manifest.json',
+  './wasm/log-out.js',
+  './wasm/log-out_bg.wasm',
 ];
 
 // Install event - pre-cache the app shell
