@@ -141,6 +141,32 @@ fn App() -> Element {
         });
     }
     rsx! {
+        document::Meta { charset: "UTF-8" }
+        document::Meta {
+            name: "viewport",
+            content: "width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no",
+        }
+        document::Meta { name: "mobile-web-app-capable", content: "yes" }
+        document::Meta { name: "mobile-web-app-status-bar-style", content: "black" }
+        document::Meta { name: "theme-color", content: "#000000" }
+        document::Link {
+            href: asset!("/assets/favicon-32x32.png"),
+            rel: "icon",
+            r#type: "image/png",
+            sizes: "32x32",
+        }
+        document::Link {
+            href: asset!("/assets/favicon-16x16.png"),
+            rel: "icon",
+            r#type: "image/png",
+            sizes: "16x16",
+        }
+        document::Link {
+            href: asset!("/assets/favicon.ico"),
+            rel: "icon",
+            r#type: "image/x-icon",
+        }
+        document::Link { href: asset!("/assets/manifest.json"), rel: "manifest" }
         Stylesheet { href: asset!("/assets/style.scss") }
         Router::<Route> {}
         CongratulationsToast {}

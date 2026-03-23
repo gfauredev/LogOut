@@ -2,52 +2,34 @@
 <html lang="en">
 
 <head>
-  <base href="{base_path}">
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <meta name="mobile-web-app-capable" content="yes">
-  <meta name="mobile-web-app-status-bar-style" content="black">
-  <meta name="theme-color" content="#000000">
-  <meta name="description" content="{app_title}">
-  <link rel="icon" type="image/png" sizes="32x32" href="favicon-32x32.png">
-  <link rel="icon" type="image/png" sizes="16x16" href="favicon-16x16.png">
-  <link rel="icon" type="image/x-icon" href="favicon.ico">
-  <link rel="manifest" href="manifest.json">
+  <meta name="description" content="{long_description}">
   <title>{app_title}</title>
   <script>
     // Restore the original URL after a 404-redirect from GitHub Pages
     (function () {
-      const redirect = new URLSearchParams(window.location.search).get('redirect');
-      if (redirect) {
+      const redir = new URLSearchParams(window.location.search).get('redirect');
+      if (redir) {
         // Remove trailing slash from pathname, then join with redirect path
         const base = window.location.pathname.replace(/\/$/, '');
-        const url = base + '/' + redirect.replace(/^\//, '');
+        const url = base + '/' + redir.replace(/^\//, '');
         window.history.replaceState(null, '', url);
       }
     }());
     // Pre-seed exercise DB URL from deep-link query param before WASM starts.
     // The Dioxus router may replace the URL (stripping query params) before the
-    // Rust use_hook can read them, so we persist dl_db_url to localStorage here.
+    // Rust use_hook can read them, so we persist dl_db_url to localStorage here
     (function () {
-      const dbUrl = new URLSearchParams(window.location.search).get('dl_db_url');
-      if (dbUrl) {
-        const normalized = dbUrl.endsWith('/') ? dbUrl : dbUrl + '/';
+      const db = new URLSearchParams(window.location.search).get('dl_db_url');
+      if (db) {
+        const normalized = db.endsWith('/') ? db : db + '/';
         localStorage.setItem('exercise_db_url', normalized);
         localStorage.removeItem('exercise_db_last_fetch');
       }
     }());
   </script>
   <style>
-    * {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
-    }
-
     body {
-      background: black;
-      color: white;
-      font-family: system-ui, sans-serif;
+      background: var(--void, black);
       min-height: 100vh;
     }
   </style>

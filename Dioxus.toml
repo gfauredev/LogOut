@@ -26,7 +26,7 @@ long_description = "A simple, efficient and cross-platform workout logging appli
 
 [web.app]
 title = "LogOut - Workout Logger"
-base_path = "/"
+# base_path = "/"
 
 [web.watcher]
 # watch_path = [""]

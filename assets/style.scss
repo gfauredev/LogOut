@@ -1,6 +1,7 @@
 // CSS entry point, Colors, Dimensions, Layout
 :root {
   // Structure Colors
+  --void: black;
   --article: #121212;
   --separation: #333;
   // Text Colors
@@ -44,8 +45,8 @@
 }
 
 body {
-  background: black;
-  color: var(--primary);
+  background: var(--void, black);
+  color: var(--primary, white);
   font-family: system-ui, sans-serif;
   min-height: 100vh;
 }
