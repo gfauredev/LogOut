@@ -198,8 +198,8 @@ async fn load_storage_data(
 ///   accurately.
 pub fn save_session(session: WorkoutSession) {
     let mut sig = use_sessions();
-    let previous: Option<WorkoutSession>;
-    let is_update: bool;
+    let previous;
+    let is_update;
     {
         let mut sessions = sig.write();
         if let Some(pos) = sessions.iter().position(|s| s.id == session.id) {
