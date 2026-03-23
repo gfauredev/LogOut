@@ -2,14 +2,15 @@ use crate::models::{
     Category, DbI18n, Equipment, Exercise, ExerciseI18n, ExerciseLangEntry, Force, Level, Muscle,
 };
 use dioxus::prelude::*;
+use std::sync::Arc;
 /// Newtype wrapper for the exercise-database signal so its `TypeId` is distinct
-/// from the `Signal<Vec<Exercise>>` used by `storage::provide_app_state` for
+/// from the `Signal<Vec<Arc<Exercise>>>` used by `storage::provide_app_state` for
 /// custom exercises.  Without this wrapper both `use_context_provider` calls in
 /// `App` would share the same context slot, causing both signals to point at the
-/// same `Signal<Vec<Exercise>>` and leading to doubled counts, missing DB
+/// same `Signal<Vec<Arc<Exercise>>>` and leading to doubled counts, missing DB
 /// exercises, and all exercises being treated as custom.
 #[derive(Clone, Copy)]
-pub(crate) struct AllExercisesSignal(pub(crate) Signal<Vec<Exercise>>);
+pub(crate) struct AllExercisesSignal(pub(crate) Signal<Vec<Arc<Exercise>>>);
 /// Number of seconds between automatic exercise database refreshes (7 days).
 const EXERCISE_DB_REFRESH_INTERVAL_SECS: u64 = 7 * 24 * 60 * 60;
 /// Storage key used to track when exercises were last downloaded
@@ -363,7 +364,13 @@ fn score_exercise(
 ///
 /// Results are sorted by relevance: exact / near-exact name matches appear
 /// first, followed by prefix / token matches.
-pub fn search_exercises<'a>(exercises: &'a [Exercise], query: &str) -> Vec<&'a Exercise> {
+///
+/// Works with any element type that dereferences to [`Exercise`] (e.g. plain
+/// `Exercise` in tests, `Arc<Exercise>` in production signals).
+pub fn search_exercises<'a, E>(exercises: &'a [E], query: &str) -> Vec<&'a E>
+where
+    E: AsRef<Exercise>,
+{
     let query_lower = query.to_lowercase();
     let query_norm = normalize_for_search(query);
     let tokens: Vec<String> = query_lower
@@ -371,10 +378,11 @@ pub fn search_exercises<'a>(exercises: &'a [Exercise], query: &str) -> Vec<&'a E
         .map(normalize_for_search)
         .filter(|t| t.chars().any(char::is_alphanumeric))
         .collect();
-    let mut scored: Vec<(u32, &Exercise)> = exercises
+    let mut scored: Vec<(u32, &E)> = exercises
         .iter()
         .filter_map(|exercise| {
-            let score = score_exercise(exercise, &query_lower, &query_norm, &tokens);
+            let score =
+                score_exercise(exercise.as_ref(), &query_lower, &query_norm, &tokens);
             if score > 0 {
                 Some((score, exercise))
             } else {
@@ -497,17 +505,26 @@ pub fn detect_filter_suggestions(query: &str) -> Vec<SearchFilter> {
     }
     suggestions
 }
-pub fn get_exercise_by_id<'a>(exercises: &'a [Exercise], id: &str) -> Option<&'a Exercise> {
-    exercises.iter().find(|e| e.id == id)
+/// Looks up an exercise by ID in a slice.
+///
+/// Works with any element type that dereferences to [`Exercise`] (e.g. plain
+/// `Exercise` in tests, `Arc<Exercise>` in production signals).
+pub fn get_exercise_by_id<'a, E>(exercises: &'a [E], id: &str) -> Option<&'a E>
+where
+    E: AsRef<Exercise>,
+{
+    exercises.iter().find(|e| e.as_ref().id == id)
 }
 /// Resolves an exercise by ID: checks the main DB slice first, then falls back
 /// to the custom-exercises slice.  Centralises the lookup logic used across
 /// multiple components.
-pub fn resolve_exercise<'a>(
-    db: &'a [Exercise],
-    custom: &'a [Exercise],
-    id: &str,
-) -> Option<&'a Exercise> {
+///
+/// Works with any element type that dereferences to [`Exercise`] (e.g. plain
+/// `Exercise` in tests, `Arc<Exercise>` in production signals).
+pub fn resolve_exercise<'a, E>(db: &'a [E], custom: &'a [E], id: &str) -> Option<&'a E>
+where
+    E: AsRef<Exercise>,
+{
     get_exercise_by_id(db, id).or_else(|| get_exercise_by_id(custom, id))
 }
 #[cfg(test)]

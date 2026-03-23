@@ -339,12 +339,12 @@ pub fn SessionView() -> Element {
         }
         let filtered_custom: Vec<_> = custom
             .iter()
-            .filter(|e| exercise_matches_filters(e, &filters))
+            .filter(|e| exercise_matches_filters(e.as_ref(), &filters))
             .cloned()
             .collect();
         let filtered_all: Vec<_> = all
             .iter()
-            .filter(|e| exercise_matches_filters(e, &filters))
+            .filter(|e| exercise_matches_filters(e.as_ref(), &filters))
             .cloned()
             .collect();
         (filtered_custom, filtered_all)

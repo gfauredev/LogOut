@@ -3,6 +3,7 @@ use crate::services::storage;
 use crate::{DbI18nSignal, Route};
 use dioxus::prelude::*;
 use dioxus_i18n::{prelude::i18n, t};
+use std::sync::Arc;
 /// Looks up the translation for a single enum value in the `i18n.json` data.
 ///
 /// Falls back to the English `value` string when:
@@ -127,7 +128,7 @@ fn ExerciseImage(images: Vec<String>, display_name: String) -> Element {
 }
 #[component]
 pub fn ExerciseCard(
-    exercise: Exercise,
+    exercise: Arc<Exercise>,
     is_custom: bool,
     show_instructions_initial: Option<bool>,
 ) -> Element {
