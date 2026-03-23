@@ -304,7 +304,7 @@
           program = "${self.packages.${system}.webE2eTester}/bin/logout-web-e2e-tester";
           meta.description = "Run Maestro E2E tests against PWA";
         };
-        android = {
+        androidBuild = {
           type = "app";
           program = "${self.packages.${system}.androidBuilder}/bin/logout-android-builder";
           meta.description = "Build and sign Android APK";
