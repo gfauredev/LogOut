@@ -288,20 +288,8 @@ pub fn SessionView() -> Element {
     let mut debounced_query = use_signal(String::new);
     let mut debounce_gen = use_signal(|| 0u64);
     let mut active_filters: Signal<Vec<SearchFilter>> = use_signal(Vec::new);
-    let mut current_exercise_id = use_signal(move || {
-        sessions
-            .read()
-            .iter()
-            .find(|s| s.is_active())
-            .and_then(|s| s.current_exercise_id.clone())
-    });
-    let mut current_exercise_start = use_signal(move || {
-        sessions
-            .read()
-            .iter()
-            .find(|s| s.is_active())
-            .and_then(|s| s.current_exercise_start)
-    });
+    let current_exercise_id = use_memo(move || session.read().current_exercise_id.clone());
+    let current_exercise_start = use_memo(move || session.read().current_exercise_start);
     let mut weight_input = use_signal(String::new);
     let mut reps_input = use_signal(String::new);
     let mut distance_input = use_signal(String::new);
@@ -402,29 +390,18 @@ pub fn SessionView() -> Element {
     });
     let mut start_exercise = move |exercise_id: String| {
         prefill_inputs_from_last_log(&exercise_id, weight_input, reps_input, distance_input);
-        current_exercise_id.set(Some(exercise_id.clone()));
         let exercise_start = get_current_timestamp();
-        current_exercise_start.set(Some(exercise_start));
         search_query.set(String::new());
         debounced_query.set(String::new());
         active_filters.write().clear();
         duration_bell_rung.set(false);
-        let mut current_session = session.read().clone();
-        current_session.rest_start_time = None;
-        current_session.current_exercise_id = Some(exercise_id.clone());
-        current_session.current_exercise_start = Some(exercise_start);
-        storage::save_session(current_session);
+        storage::begin_exercise_in_session(exercise_id, exercise_start);
     };
     let complete_exercise = move |()| {
-        let exercise_id = match current_exercise_id.read().as_ref() {
-            Some(id) => id.clone(),
-            None => return,
+        let Some(exercise_id) = current_exercise_id() else {
+            return;
         };
-        let start_time = match current_exercise_start.read().as_ref() {
-            Some(time) => *time,
-            None => get_current_timestamp(),
-        };
-        let mut current_session = session.read().clone();
+        let start_time = current_exercise_start().unwrap_or_else(get_current_timestamp);
         let (exercise_name, category, force) = {
             let all = all_exercises.read();
             let custom = custom_exercises.read();
@@ -457,33 +434,21 @@ pub fn SessionView() -> Element {
             distance_m,
             force,
         };
-        current_session.exercise_logs.push(log);
-        let rest_start = get_current_timestamp();
-        current_session.rest_start_time = Some(rest_start);
-        current_session.current_exercise_id = None;
-        current_session.current_exercise_start = None;
-        storage::save_session(current_session);
-        current_exercise_id.set(None);
-        current_exercise_start.set(None);
+        storage::append_exercise_log(log);
         weight_input.set(String::new());
         reps_input.set(String::new());
         distance_input.set(String::new());
         duration_bell_rung.set(false);
     };
     let cancel_exercise = move |()| {
-        current_exercise_id.set(None);
-        current_exercise_start.set(None);
         weight_input.set(String::new());
         reps_input.set(String::new());
         distance_input.set(String::new());
-        let mut current_session = session.read().clone();
-        current_session.current_exercise_id = None;
-        current_session.current_exercise_start = None;
-        storage::save_session(current_session);
+        storage::cancel_exercise_in_session();
     };
     rsx! {
         main { class: "session",
-            if current_exercise_id.read().is_none() && !pending_ids().is_empty() {
+            if current_exercise_id().is_none() && !pending_ids().is_empty() {
                 PendingExercisesSection {
                     pending_ids: pending_ids(),
                     on_start: move |exercise_id: String| {
@@ -493,33 +458,16 @@ pub fn SessionView() -> Element {
                             reps_input,
                             distance_input,
                         );
-                        let mut current_session = session.read().clone();
-                        let mut removed = false;
-                        current_session
-                            .pending_exercise_ids
-                            .retain(|x| {
-                                if !removed && x == &exercise_id {
-                                    removed = true;
-                                    false
-                                } else {
-                                    true
-                                }
-                            });
                         let pending_start = get_current_timestamp();
-                        current_session.rest_start_time = None;
-                        current_session.current_exercise_id = Some(exercise_id.clone());
-                        current_session.current_exercise_start = Some(pending_start);
-                        storage::save_session(current_session);
-                        current_exercise_id.set(Some(exercise_id.clone()));
-                        current_exercise_start.set(Some(pending_start));
                         search_query.set(String::new());
                         debounced_query.set(String::new());
                         active_filters.write().clear();
                         duration_bell_rung.set(false);
+                        storage::start_pending_exercise_in_session(exercise_id, pending_start);
                     },
                 }
             }
-            if current_exercise_id.read().is_none() {
+            if current_exercise_id().is_none() {
                 div { class: "inputs",
                     input {
                         r#type: "text",
@@ -584,7 +532,7 @@ pub fn SessionView() -> Element {
                         }
                     }
                 }
-            } else if let Some(exercise_id) = current_exercise_id.read().as_ref().cloned() {
+            } else if let Some(exercise_id) = current_exercise_id() {
                 ExerciseFormPanel {
                     exercise_id,
                     weight_input,
@@ -600,7 +548,7 @@ pub fn SessionView() -> Element {
             if !session.read().exercise_logs.is_empty() {
                 CompletedExercisesSection {
                     session,
-                    no_exercise_active: current_exercise_id.read().is_none(),
+                    no_exercise_active: current_exercise_id().is_none(),
                     on_replay: move |exercise_id: String| start_exercise(exercise_id),
                 }
             }

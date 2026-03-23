@@ -12,8 +12,10 @@
 //! in the sibling [`app_state`](super::app_state) module and is re-exported here
 //! for backward compatibility.
 pub use super::app_state::{
-    add_custom_exercise, delete_session, get_exercise_bests, get_last_exercise_log,
-    provide_app_state, save_session, update_custom_exercise, use_custom_exercises, use_sessions,
+    add_custom_exercise, append_exercise_log, begin_exercise_in_session,
+    cancel_exercise_in_session, delete_session, get_exercise_bests, get_last_exercise_log,
+    provide_app_state, save_session, start_pending_exercise_in_session, update_custom_exercise,
+    use_custom_exercises, use_sessions,
 };
 /// Load a page of completed sessions, sorted by `start_time` descending.
 ///
@@ -380,10 +382,13 @@ pub(crate) mod native_storage {
         _class: jni::objects::JClass,
         data_dir: jni::objects::JString,
     ) {
-        let dir: String = env
-            .get_string(&data_dir)
-            .expect("Couldn't get java string!")
-            .into();
+        let dir: String = match env.get_string(&data_dir) {
+            Ok(s) => s.into(),
+            Err(e) => {
+                log::error!("setDataDir: failed to read Java data_dir string: {e:?}");
+                return;
+            }
+        };
         let _ = ANDROID_DATA_DIR.set(dir);
     }
     pub const STORE_SESSIONS: &str = "sessions";
@@ -411,6 +416,11 @@ pub(crate) mod native_storage {
     /// Using this function for all table-name resolution ensures that no
     /// dynamic string can ever reach a SQL statement, eliminating table-name
     /// injection as a risk regardless of call order.
+    ///
+    /// The return type is `&'static str`, which means the value is always one
+    /// of a fixed set of compile-time string literals — never arbitrary
+    /// user-controlled input.  Interpolating this value into a SQL string is
+    /// therefore safe, equivalent in risk to writing the table name directly.
     fn store_table(store_name: &str) -> Result<&'static str, StorageError> {
         match store_name {
             STORE_SESSIONS => Ok("sessions"),
@@ -533,13 +543,8 @@ pub(crate) mod native_storage {
     pub fn get_all<T: DeserializeOwned>(store_name: &str) -> Result<Vec<T>, StorageError> {
         let table = store_table(store_name)?;
         let conn = open_db();
-        let query = match table {
-            "sessions" => "SELECT data FROM sessions",
-            "custom_exercises" => "SELECT data FROM custom_exercises",
-            "exercises" => "SELECT data FROM exercises",
-            _ => unreachable!("store_table returns a known table name"),
-        };
-        let mut stmt = conn.prepare(query)?;
+        let query = format!("SELECT data FROM {table}");
+        let mut stmt = conn.prepare(&query)?;
         let items = stmt
             .query_map([], |row| row.get::<_, String>(0))?
             .filter_map(Result::ok)
@@ -588,25 +593,16 @@ pub(crate) mod native_storage {
         Ok(items)
     }
     /// Replaces the entire contents of a store with `items` in a single transaction.
+    ///
+    /// Uses a RAII `Transaction` guard so that the database is automatically
+    /// rolled back if an error or panic occurs before `commit()`.
     pub fn store_all<T: Serialize>(store_name: &str, items: &[T]) -> Result<(), StorageError> {
         let table = store_table(store_name)?;
-        let conn = open_db();
-        let tx = conn.unchecked_transaction()?;
-        let delete_sql = match table {
-            "sessions" => "DELETE FROM sessions",
-            "custom_exercises" => "DELETE FROM custom_exercises",
-            "exercises" => "DELETE FROM exercises",
-            _ => unreachable!("store_table returns a known table name"),
-        };
-        tx.execute(delete_sql, [])?;
-        let insert_sql = match table {
-            "sessions" => "INSERT OR REPLACE INTO sessions (id, data) VALUES (?1, ?2)",
-            "custom_exercises" => {
-                "INSERT OR REPLACE INTO custom_exercises (id, data) VALUES (?1, ?2)"
-            }
-            "exercises" => "INSERT OR REPLACE INTO exercises (id, data) VALUES (?1, ?2)",
-            _ => unreachable!("store_table returns a known table name"),
-        };
+        let mut conn = open_db();
+        let tx = conn.transaction()?;
+        let delete_sql = format!("DELETE FROM {table}");
+        tx.execute(&delete_sql, [])?;
+        let insert_sql = format!("INSERT OR REPLACE INTO {table} (id, data) VALUES (?1, ?2)");
         for item in items {
             let val = serde_json::to_value(item)?;
             let id = val
@@ -615,7 +611,7 @@ pub(crate) mod native_storage {
                 .unwrap_or("")
                 .to_string();
             let data = serde_json::to_string(item)?;
-            tx.execute(insert_sql, params![id, data])?;
+            tx.execute(&insert_sql, params![id, data])?;
         }
         tx.commit()?;
         Ok(())
@@ -629,28 +625,16 @@ pub(crate) mod native_storage {
         let table = store_table(store_name)?;
         let conn = open_db();
         let data = serde_json::to_string(item)?;
-        let insert_sql = match table {
-            "sessions" => "INSERT OR REPLACE INTO sessions (id, data) VALUES (?1, ?2)",
-            "custom_exercises" => {
-                "INSERT OR REPLACE INTO custom_exercises (id, data) VALUES (?1, ?2)"
-            }
-            "exercises" => "INSERT OR REPLACE INTO exercises (id, data) VALUES (?1, ?2)",
-            _ => unreachable!("store_table returns a known table name"),
-        };
-        conn.execute(insert_sql, params![id, data])?;
+        let insert_sql = format!("INSERT OR REPLACE INTO {table} (id, data) VALUES (?1, ?2)");
+        conn.execute(&insert_sql, params![id, data])?;
         Ok(())
     }
     /// Deletes the item with `id` from a store (no-op if absent).
     pub fn delete_item(store_name: &str, id: &str) -> Result<(), StorageError> {
         let table = store_table(store_name)?;
         let conn = open_db();
-        let delete_sql = match table {
-            "sessions" => "DELETE FROM sessions WHERE id = ?1",
-            "custom_exercises" => "DELETE FROM custom_exercises WHERE id = ?1",
-            "exercises" => "DELETE FROM exercises WHERE id = ?1",
-            _ => unreachable!("store_table returns a known table name"),
-        };
-        conn.execute(delete_sql, params![id])?;
+        let delete_sql = format!("DELETE FROM {table} WHERE id = ?1");
+        conn.execute(&delete_sql, params![id])?;
         Ok(())
     }
     /// Returns the string value for `key`, or `None` if absent.
@@ -691,6 +675,60 @@ pub(crate) mod native_storage {
         static LOCK: std::sync::OnceLock<std::sync::Mutex<()>> = std::sync::OnceLock::new();
         let m = LOCK.get_or_init(|| std::sync::Mutex::new(()));
         m.lock().unwrap_or_else(std::sync::PoisonError::into_inner)
+    }
+}
+/// Trait that abstracts synchronous key-value storage operations.
+///
+/// Both the `get_all` / `put_item` / `delete_item` / `store_all` family of
+/// operations on the native (`SQLite`) backend implement this interface.
+/// Defining a shared trait decouples business logic from the concrete backend
+/// and makes the storage layer straightforward to substitute in tests or to
+/// extend with new implementations in the future.
+///
+/// The web (`IndexedDB`) backend is inherently asynchronous and therefore does
+/// not implement this synchronous trait; it exposes an equivalent async API
+/// through the [`idb`] module.
+#[cfg(not(target_arch = "wasm32"))]
+#[allow(dead_code)]
+pub trait StorageProvider {
+    /// The error type returned by all operations on this provider.
+    type Error: std::fmt::Display + std::fmt::Debug;
+    /// Load all items from `store_name`, skipping rows that fail to deserialise.
+    fn get_all<T: serde::de::DeserializeOwned>(store_name: &str) -> Result<Vec<T>, Self::Error>;
+    /// Upsert one item (identified by `id`) into `store_name`.
+    fn put_item<T: serde::Serialize>(
+        store_name: &str,
+        id: &str,
+        item: &T,
+    ) -> Result<(), Self::Error>;
+    /// Delete the item with `id` from `store_name` (no-op if absent).
+    fn delete_item(store_name: &str, id: &str) -> Result<(), Self::Error>;
+    /// Replace all items in `store_name` with `items` in a single transaction.
+    fn store_all<T: serde::Serialize>(store_name: &str, items: &[T]) -> Result<(), Self::Error>;
+}
+/// Zero-size marker type that binds [`StorageProvider`] to the `SQLite`
+/// backend exposed by [`native_storage`].
+#[cfg(not(target_arch = "wasm32"))]
+#[allow(dead_code)]
+pub struct NativeStorage;
+#[cfg(not(target_arch = "wasm32"))]
+impl StorageProvider for NativeStorage {
+    type Error = native_storage::StorageError;
+    fn get_all<T: serde::de::DeserializeOwned>(store_name: &str) -> Result<Vec<T>, Self::Error> {
+        native_storage::get_all(store_name)
+    }
+    fn put_item<T: serde::Serialize>(
+        store_name: &str,
+        id: &str,
+        item: &T,
+    ) -> Result<(), Self::Error> {
+        native_storage::put_item(store_name, id, item)
+    }
+    fn delete_item(store_name: &str, id: &str) -> Result<(), Self::Error> {
+        native_storage::delete_item(store_name, id)
+    }
+    fn store_all<T: serde::Serialize>(store_name: &str, items: &[T]) -> Result<(), Self::Error> {
+        native_storage::store_all(store_name, items)
     }
 }
 #[cfg(test)]

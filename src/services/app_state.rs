@@ -4,7 +4,9 @@
 //! read/write it.  The underlying storage is handled by the sibling
 //! [`storage`](super::storage) module; this module just wires the Dioxus
 //! reactive primitives to those backends.
-use crate::models::{Distance, Exercise, ExerciseLog, Weight, WorkoutSession};
+use crate::models::{
+    get_current_timestamp, Distance, Exercise, ExerciseLog, Weight, WorkoutSession,
+};
 use crate::ToastSignal;
 use dioxus::prelude::*;
 #[cfg(target_arch = "wasm32")]
@@ -172,6 +174,80 @@ pub fn delete_session(id: &str) {
         let toast = consume_context::<ToastSignal>().0;
         native_queue::enqueue(native_queue::NativeOp::DeleteSession(id, toast));
     }
+}
+/// Mark `exercise_id` as the active exercise in the current session.
+///
+/// Clears the rest timer, sets `current_exercise_id` and
+/// `current_exercise_start` on the active session, then persists.
+/// No-op when there is no active session.
+pub fn begin_exercise_in_session(exercise_id: String, exercise_start: u64) {
+    let sig = use_sessions();
+    let Some(session) = sig.read().iter().find(|s| s.is_active()).cloned() else {
+        return;
+    };
+    let mut updated = session;
+    updated.rest_start_time = None;
+    updated.current_exercise_id = Some(exercise_id);
+    updated.current_exercise_start = Some(exercise_start);
+    save_session(updated);
+}
+/// Append a completed exercise log to the active session and start the rest timer.
+///
+/// Pushes `log` onto the session's `exercise_logs`, records the current time
+/// as `rest_start_time`, and clears `current_exercise_id` /
+/// `current_exercise_start`, then persists.  No-op when there is no active
+/// session.
+pub fn append_exercise_log(log: ExerciseLog) {
+    let sig = use_sessions();
+    let Some(session) = sig.read().iter().find(|s| s.is_active()).cloned() else {
+        return;
+    };
+    let mut updated = session;
+    updated.exercise_logs.push(log);
+    updated.rest_start_time = Some(get_current_timestamp());
+    updated.current_exercise_id = None;
+    updated.current_exercise_start = None;
+    save_session(updated);
+}
+/// Discard the in-progress exercise in the active session (no log is written).
+///
+/// Clears `current_exercise_id` and `current_exercise_start` on the active
+/// session, then persists.  No-op when there is no active session.
+pub fn cancel_exercise_in_session() {
+    let sig = use_sessions();
+    let Some(session) = sig.read().iter().find(|s| s.is_active()).cloned() else {
+        return;
+    };
+    let mut updated = session;
+    updated.current_exercise_id = None;
+    updated.current_exercise_start = None;
+    save_session(updated);
+}
+/// Remove `exercise_id` from the pending list and make it the active exercise.
+///
+/// Only the **first** occurrence of `exercise_id` in `pending_exercise_ids` is
+/// removed (FIFO order).  Clears the rest timer, sets `current_exercise_id`
+/// and `current_exercise_start`, then persists.  No-op when there is no
+/// active session.
+pub fn start_pending_exercise_in_session(exercise_id: String, exercise_start: u64) {
+    let sig = use_sessions();
+    let Some(session) = sig.read().iter().find(|s| s.is_active()).cloned() else {
+        return;
+    };
+    let mut updated = session;
+    let mut removed = false;
+    updated.pending_exercise_ids.retain(|x| {
+        if !removed && x == &exercise_id {
+            removed = true;
+            false
+        } else {
+            true
+        }
+    });
+    updated.rest_start_time = None;
+    updated.current_exercise_id = Some(exercise_id);
+    updated.current_exercise_start = Some(exercise_start);
+    save_session(updated);
 }
 /// Append `exercise` to the custom-exercises signal and persist it to the backend.
 pub fn add_custom_exercise(exercise: Exercise) {
