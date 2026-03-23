@@ -14,16 +14,3 @@ title = "LogOut - Workout Logger"
 [web.watcher]
 reload_html = true
 index_on_404 = true
-
-[android]
-theme = "Theme.AppCompat.NoActionBar"
-targets = ["aarch64-linux-android"] #, "x86_64-linux-android"]
-
-# [bundle.android]
-# min_sdk_version = 21
-# target_sdk_version = 36
-
-# [bundle.android.permissions]
-# "android.permission.INTERNET" = true
-# "android.permission.ACCESS_NETWORK_STATE" = true
-# "android.permission.POST_NOTIFICATIONS" = true
