@@ -211,7 +211,7 @@
             };
         in
         {
-          web = mkWebPackage { };
+          web = mkWebPackage { basePath = "LogOut"; }; # Needed for GitHub Pages
           server = env.pkgs.writeShellApplication {
             name = "logout-serve";
             runtimeInputs = [ env.pkgs.python3 ];

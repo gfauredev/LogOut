@@ -39,37 +39,24 @@ A simple, efficient and cross-platform workout logging application with
 
 The project follows a modular Rust structure for a Dioxus application:
 
-<!-- TODO Update file structure -->
-
 ```text
 LogOut/
-├ src/
-│ ├ main.rs  App entry point, routing (Dioxus Router), global state management
-│ ├ models/  Data models (Exercise, WorkoutSession, Enums) and unit-safe types
-│ ├ services/      Business logic and persistence layers
-│ │ ├ storage.rs   Unified storage interface (IndexedDB Web, SQLite native)
-│ │ ├ exercise_db.rs      Exercise library management and search logic
-│ │ ├ exercise_loader.rs  Logic for loading exercise data from JSON
-│ │ ├ wake_lock.rs        Keeps the screen on during active workout sessions
-│ │ └ service_worker.rs   Integration logic for the PWA service worker
-│ ├ components/           Functional Dioxus UI components
-│ │ ├ active_session.rs   Complex "Active Session" view with timers and logging
-│ │ ├ home.rs             Main landing page with session history
-│ │ ├ analytics.rs        Progress tracking with interactive charts
-│ │ └ …                   Other modular UI components (BottomNav, ExerciseCard…)
-│ └ utils.rs   Pure, side-effect-free utility functions (format, timestamps…)
-├ maestro/          Maestro end-to-end tests
-│ ├ web/            Web browser PWA tests (order-independent, each self-contained)
-│ │ └ _flows/       Reusable subflows (navigation, session setup, etc.)
-│ └ android/        Android native app
-├ public/           PWA static assets required by the browser
-│ ├ manifest.json   Web app manifest for PWA installation
-│ ├ sw.js           JavaScript Service Worker for PWA
-│ └ 404.html        Fallback page for single-page app routing
-├ assets/       Application-wide static assets (SCSS…)
 ├ Cargo.toml    Rust manifest (dependencies, features, targets)
 ├ Dioxus.toml   Configuration for Dioxus CLI (build, serve, platform options)
-└ flake.nix     Nix flake for reproducible development environments
+├ STORIES.md    User stories, serve as a basis for end-to-end tests
+├ android/      Android native app static assets and configuration files
+├ assets/       Application-wide static assets
+├ flake.nix     Nix flake: reproducible development environment, builds, checks
+├ maestro/      Maestro end-to-end tests (order-independent, self-contained)
+│ ├ android/    Android native app tests
+│ └ web/        Web browser PWA tests
+├ public/       PWA static assets required by the browser
+└ src/
+  ├ main.rs     App entry point, routing (Dioxus Router), global state 
+  ├ utils.rs    Pure, side-effect-free utility functions (format, timestamps…)
+  ├ models/     Data models (Exercise, WorkoutSession, Enums), unit-safe types
+  ├ services/   Business logic and persistence layers
+  └ components/ Functional Dioxus UI components
 ```
 
 ## Tooling & Dependencies
