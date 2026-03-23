@@ -1,11 +1,12 @@
 [application]
 name = "LogOut"
-default_platform = "web"
+# android_manifest = "android/AndroidManifest.xml.hbs" # TODO Remove hbs
+# android_main_activity = "android/MainActivity.kt.hbs" # TODO Remove hbs
+# android_min_sdk_version = 33
 
 [bundle]
-name = "LogOut"
 identifier = "com.gfaure.logout"
-publisher = "gfaure"
+publisher = "Guilhem Fauré"
 icon = ["logo.png"]
 
 [web.app]
