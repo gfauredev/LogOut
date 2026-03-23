@@ -47,7 +47,9 @@ async fn load_storage_data(
             }
             Err(e) => {
                 error!("Failed to load sessions from IndexedDB: {e}");
-                toast.write().push_back(format!("⚠️ Failed to load sessions: {e}"));
+                toast
+                    .write()
+                    .push_back(format!("⚠️ Failed to load sessions: {e}"));
             }
             _ => {}
         }
@@ -58,7 +60,9 @@ async fn load_storage_data(
             }
             Err(e) => {
                 error!("Failed to load custom exercises from IndexedDB: {e}");
-                toast.write().push_back(format!("⚠️ Failed to load custom exercises: {e}"));
+                toast
+                    .write()
+                    .push_back(format!("⚠️ Failed to load custom exercises: {e}"));
             }
             _ => {}
         }
@@ -73,7 +77,9 @@ async fn load_storage_data(
             }
             Err(e) => {
                 log::error!("Failed to load sessions: {e}");
-                toast.write().push_back(format!("⚠️ Failed to load sessions: {e}"));
+                toast
+                    .write()
+                    .push_back(format!("⚠️ Failed to load sessions: {e}"));
             }
             _ => {}
         }
@@ -84,7 +90,9 @@ async fn load_storage_data(
             }
             Err(e) => {
                 log::error!("Failed to load custom exercises: {e}");
-                toast.write().push_back(format!("⚠️ Failed to load custom exercises: {e}"));
+                toast
+                    .write()
+                    .push_back(format!("⚠️ Failed to load custom exercises: {e}"));
             }
             _ => {}
         }

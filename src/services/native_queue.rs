@@ -44,7 +44,9 @@ async fn drain() {
                 match result {
                     Ok(Err(e)) => {
                         log::error!("Native queue: failed to put session {id}: {e}");
-                        toast.write().push_back(format!("⚠️ Failed to save session: {e}"));
+                        toast
+                            .write()
+                            .push_back(format!("⚠️ Failed to save session: {e}"));
                     }
                     Err(e) => {
                         log::error!("Native queue: spawn_blocking panicked for session {id}: {e}");
@@ -69,9 +71,7 @@ async fn drain() {
                             .push_back(format!("⚠️ Failed to delete session: {e}"));
                     }
                     Err(e) => {
-                        log::error!(
-                            "Native queue: spawn_blocking panicked for delete {id2}: {e}"
-                        );
+                        log::error!("Native queue: spawn_blocking panicked for delete {id2}: {e}");
                         toast
                             .write()
                             .push_back("⚠️ Failed to delete session (internal error)".into());
@@ -82,11 +82,7 @@ async fn drain() {
             Some(NativeOp::PutExercise(ex, mut toast)) => {
                 let ex_id = ex.id.clone();
                 let result = tokio::task::spawn_blocking(move || {
-                    native_storage::put_item(
-                        native_storage::STORE_CUSTOM_EXERCISES,
-                        &ex.id,
-                        &ex,
-                    )
+                    native_storage::put_item(native_storage::STORE_CUSTOM_EXERCISES, &ex.id, &ex)
                 })
                 .await;
                 match result {

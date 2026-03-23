@@ -98,7 +98,8 @@ pub fn More() -> Element {
         let mut t = toast;
         match serde_json::from_str::<Vec<crate::models::WorkoutSession>>(&json) {
             Err(e) => {
-                t.write().push_back(format!("⚠️ Invalid sessions JSON: {e}"));
+                t.write()
+                    .push_back(format!("⚠️ Invalid sessions JSON: {e}"));
             }
             Ok(imported) => {
                 let existing_ids: Vec<String> =
@@ -123,7 +124,8 @@ pub fn More() -> Element {
         let mut t = toast;
         match serde_json::from_str::<Vec<Exercise>>(&json) {
             Err(e) => {
-                t.write().push_back(format!("⚠️ Invalid exercises JSON: {e}"));
+                t.write()
+                    .push_back(format!("⚠️ Invalid exercises JSON: {e}"));
             }
             Ok(imported) => {
                 let db = all_exercises.read();

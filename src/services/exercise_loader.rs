@@ -26,7 +26,9 @@ pub fn provide_exercises() {
             }
             Err(e) => {
                 log::warn!("Failed to download i18n data: {e}");
-                toast.write().push_back(format!("⚠️ Failed to load i18n data: {e}"));
+                toast
+                    .write()
+                    .push_back(format!("⚠️ Failed to load i18n data: {e}"));
             }
         }
         load_exercises(sig).await;

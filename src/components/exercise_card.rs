@@ -77,28 +77,25 @@ fn resolve_image_key(key: &str) -> Option<String> {
         let path = crate::services::storage::native_storage::data_dir()
             .join("images")
             .join(filename);
-        let encoded = path
-            .components()
-            .fold(String::new(), |mut acc, c| {
-                use std::path::Component;
-                match c {
-                    Component::Prefix(p) => {
-                        acc.push_str(&p.as_os_str().to_string_lossy());
-                    }
-                    Component::RootDir => acc.push('/'),
-                    Component::Normal(seg) => {
-                        if !acc.is_empty() && !acc.ends_with('/') {
-                            acc.push('/');
-                        }
-                        acc.push_str(
-                            &utf8_percent_encode(&seg.to_string_lossy(), PATH_SEGMENT)
-                                .to_string(),
-                        );
-                    }
-                    _ => {}
+        let encoded = path.components().fold(String::new(), |mut acc, c| {
+            use std::path::Component;
+            match c {
+                Component::Prefix(p) => {
+                    acc.push_str(&p.as_os_str().to_string_lossy());
                 }
-                acc
-            });
+                Component::RootDir => acc.push('/'),
+                Component::Normal(seg) => {
+                    if !acc.is_empty() && !acc.ends_with('/') {
+                        acc.push('/');
+                    }
+                    acc.push_str(
+                        &utf8_percent_encode(&seg.to_string_lossy(), PATH_SEGMENT).to_string(),
+                    );
+                }
+                _ => {}
+            }
+            acc
+        });
         return Some(format!("file://{encoded}"));
     }
     let base_url = crate::utils::get_exercise_images_base_url();

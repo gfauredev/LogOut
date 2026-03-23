@@ -1,7 +1,5 @@
 builds:
-# - include:
-#   - packages.x86_64-linux.*
-#   - devShells.*.default
-#   - checks.x86_64-linux.*
-- exclude:
-  - "*.*.*" # TEMP Eliminate fails because I’ve run out of minutes
+  include:
+  - packages.x86_64-linux.*
+  - devShells.*.default
+  - checks.x86_64-linux.*
