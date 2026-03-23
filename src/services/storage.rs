@@ -95,16 +95,28 @@ pub(crate) mod idb {
     /// Put many serialisable items into a store in a single transaction.
     /// More efficient than calling [`put_item`] in a loop because only one
     /// database connection and one transaction are opened.
+    ///
+    /// All individual `put` requests are issued concurrently within the same
+    /// transaction via [`futures_util::future::try_join_all`] so the browser can
+    /// pipeline them instead of waiting for each one before issuing the next.
     pub async fn put_all<T: serde::Serialize>(store_name: &str, items: &[T]) -> Result<(), String> {
         let db = open_db().await.map_err(|e| format!("{e}"))?;
         let tx = db
             .transaction(&[store_name], TransactionMode::ReadWrite)
             .map_err(|e| format!("{e}"))?;
         let store = tx.store(store_name).map_err(|e| format!("{e}"))?;
-        for item in items {
-            let js_val = serde_wasm_bindgen::to_value(item).map_err(|e| format!("{e}"))?;
-            store.put(&js_val, None).await.map_err(|e| format!("{e}"))?;
-        }
+        // Serialise all values first, then issue all puts concurrently.
+        let js_values: Vec<_> = items
+            .iter()
+            .map(|item| serde_wasm_bindgen::to_value(item).map_err(|e| format!("{e}")))
+            .collect::<Result<_, _>>()?;
+        let put_futs: Vec<_> = js_values
+            .iter()
+            .map(|js_val| store.put(js_val, None))
+            .collect();
+        futures_util::future::try_join_all(put_futs)
+            .await
+            .map_err(|e| format!("{e}"))?;
         tx.done().await.map_err(|e| format!("{e}"))?;
         Ok(())
     }
@@ -168,8 +180,25 @@ pub(crate) mod idb_queue {
     use std::collections::VecDeque;
     /// A pending write operation, including the toast signal for error reporting.
     pub enum IdbOp {
-        PutSession(WorkoutSession, Signal<std::collections::VecDeque<String>>),
-        DeleteSession(String, Signal<std::collections::VecDeque<String>>),
+        /// Upsert a session.  On write failure the sessions signal is reverted to
+        /// `previous` (the value before the optimistic update).
+        PutSession {
+            session: WorkoutSession,
+            toast: Signal<std::collections::VecDeque<String>>,
+            sessions_sig: Signal<Vec<WorkoutSession>>,
+            /// `None` means the session was newly inserted; reverting removes it.
+            /// `Some(old)` means it was an update; reverting restores `old`.
+            previous: Option<WorkoutSession>,
+        },
+        /// Delete a session by ID.  On failure the sessions signal is restored
+        /// using `snapshot` (if the session was present in the signal).
+        DeleteSession {
+            id: String,
+            toast: Signal<std::collections::VecDeque<String>>,
+            sessions_sig: Signal<Vec<WorkoutSession>>,
+            /// The session that was removed from the signal, for revert on failure.
+            snapshot: Option<WorkoutSession>,
+        },
         PutExercise(Exercise, Signal<std::collections::VecDeque<String>>),
     }
     thread_local! {
@@ -213,20 +242,45 @@ pub(crate) mod idb_queue {
                     QUEUE.with(|q| q.borrow_mut().0 = false);
                     break;
                 }
-                Some(IdbOp::PutSession(s, mut toast)) => {
+                Some(IdbOp::PutSession {
+                    session: s,
+                    mut toast,
+                    mut sessions_sig,
+                    previous,
+                }) => {
                     if let Err(e) = idb::put_item(idb::STORE_SESSIONS, &s).await {
                         log::error!("IDB queue: failed to put session {}: {e}", s.id);
                         toast
                             .write()
                             .push_back(format!("⚠️ Failed to save session: {e}"));
+                        // Revert the optimistic signal update.
+                        let mut sessions = sessions_sig.write();
+                        match previous {
+                            None => sessions.retain(|x| x.id != s.id),
+                            Some(old) => {
+                                if let Some(pos) = sessions.iter().position(|x| x.id == s.id) {
+                                    sessions[pos] = old;
+                                }
+                            }
+                        }
                     }
                 }
-                Some(IdbOp::DeleteSession(id, mut toast)) => {
+                Some(IdbOp::DeleteSession {
+                    id,
+                    mut toast,
+                    mut sessions_sig,
+                    snapshot,
+                }) => {
                     if let Err(e) = idb::delete_item(idb::STORE_SESSIONS, &id).await {
                         log::error!("IDB queue: failed to delete session {id}: {e}");
                         toast
                             .write()
                             .push_back(format!("⚠️ Failed to delete session: {e}"));
+                        // Revert: re-insert the session into the signal if we
+                        // had a snapshot of it.
+                        if let Some(session) = snapshot {
+                            sessions_sig.write().push(session);
+                        }
                     }
                 }
                 Some(IdbOp::PutExercise(ex, mut toast)) => {
@@ -600,37 +654,52 @@ pub(crate) mod native_storage {
     }
     /// Replaces the entire contents of a store with `items` in a single transaction.
     ///
+    /// JSON serialisation is performed **before** the `SQLite` mutex is acquired so
+    /// that expensive serialisation work never blocks other threads waiting for the
+    /// lock.
+    ///
     /// Uses a RAII `Transaction` guard so that the database is automatically
     /// rolled back if an error or panic occurs before `commit()`.
     pub fn store_all<T: Serialize>(store_name: &str, items: &[T]) -> Result<(), StorageError> {
         let table = store_table(store_name)?;
+        // Serialise every item to (id, JSON) *before* acquiring the database mutex.
+        let rows: Vec<(String, String)> = items
+            .iter()
+            .map(|item| {
+                let val = serde_json::to_value(item)?;
+                let id = val
+                    .get("id")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("")
+                    .to_string();
+                let data = serde_json::to_string(item)?;
+                Ok((id, data))
+            })
+            .collect::<Result<_, serde_json::Error>>()?;
         let mut conn = open_db();
         let tx = conn.transaction()?;
         let delete_sql = format!("DELETE FROM {table}");
         tx.execute(&delete_sql, [])?;
         let insert_sql = format!("INSERT OR REPLACE INTO {table} (id, data) VALUES (?1, ?2)");
-        for item in items {
-            let val = serde_json::to_value(item)?;
-            let id = val
-                .get("id")
-                .and_then(|v| v.as_str())
-                .unwrap_or("")
-                .to_string();
-            let data = serde_json::to_string(item)?;
+        for (id, data) in &rows {
             tx.execute(&insert_sql, params![id, data])?;
         }
         tx.commit()?;
         Ok(())
     }
     /// Upserts one item (identified by `id`) into a store.
+    ///
+    /// JSON serialisation is performed **before** the `SQLite` mutex is acquired so
+    /// that serialisation work never blocks other threads waiting for the lock.
     pub fn put_item<T: Serialize>(
         store_name: &str,
         id: &str,
         item: &T,
     ) -> Result<(), StorageError> {
         let table = store_table(store_name)?;
-        let conn = open_db();
+        // Serialise outside the lock to keep the critical section minimal.
         let data = serde_json::to_string(item)?;
+        let conn = open_db();
         let insert_sql = format!("INSERT OR REPLACE INTO {table} (id, data) VALUES (?1, ?2)");
         conn.execute(&insert_sql, params![id, data])?;
         Ok(())
