@@ -79,16 +79,19 @@
             cargo-deny
             cargo-llvm-cov
             cargo-mutants
-            chromedriver
             dioxus-cli
             wasm-bindgen-cli_0_2_114
-            maestro
             patchelf
             pkg-config
             rustToolchain
+            unzip
+          ];
+          webTestInputs = with pkgs; [
+            curl
+            chromedriver
+            maestro
             selenium-manager
             ungoogled-chromium
-            unzip
           ];
           commonBuildInputs = [
             pkgs.openssl
@@ -153,6 +156,7 @@
             androidComposition
             commonNativeBuildInputs
             androidNativeBuildInputs
+            webTestInputs
             commonBuildInputs
             ;
         };
@@ -162,14 +166,15 @@
         system:
         let
           env = sharedEnvFor system;
-          mkWebPackage =
+          mkLogOut =
             {
-              basePath ? "/",
+              basePath ? "LogOut", # Needed for GitHub Pages
+              platform ? "web",
             }:
             env.craneLib.buildPackage {
               cargoArtifacts = env.cargoArtifactsWeb;
               src = env.filteredSrc;
-              pname = "logout-web";
+              pname = "logout-${platform}";
               version = env.projectVersion;
               nativeBuildInputs = env.commonNativeBuildInputs;
               buildInputs = env.commonBuildInputs;
@@ -178,8 +183,9 @@
                 export XDG_DATA_HOME=$HOME/.local/share
                 mkdir -p $HOME
                 export CARGO_TARGET_DIR=target
-                dx build --web --release --base-path ${env.pkgs.lib.escapeShellArg basePath}
+                dx build --${platform} --release --base-path ${env.pkgs.lib.escapeShellArg basePath}
               '';
+              # TODO Retreive path from build output "🚀 path=…"
               installPhase = ''
                 mkdir -p $out
                 cp -r target/dx/log-out/release/web/public/${
@@ -216,20 +222,11 @@
             };
         in
         {
-          web = mkWebPackage { basePath = "LogOut"; }; # Needed for GitHub Pages
-          server = env.pkgs.writeShellApplication {
-            name = "logout-serve";
-            runtimeInputs = [ env.pkgs.python3 ];
-            text = ''
-              python3 -m http.server -d "${self.packages.${system}.web}" 8080
-            '';
-          };
+          web = mkLogOut { };
+          server = mkLogOut { platform = "server"; };
           webE2eTester = env.pkgs.writeShellApplication {
             name = "logout-web-e2e-tester";
-            runtimeInputs = with env.pkgs; [
-              curl
-              chromedriver
-              maestro
+            runtimeInputs = env.webTestInputs ++ [
               chromiumWrapper
             ];
             text = ''
@@ -251,6 +248,7 @@
           androidE2eTester = env.pkgs.writeShellApplication {
             name = "logout-android-e2e-tester";
             runtimeInputs = [ env.pkgs.maestro ];
+            # TODO Android emulator…
             text = ''
               maestro test --headless "${self}/maestro/android"
             '';
@@ -296,7 +294,7 @@
       apps = forAllSystems (system: rec {
         web = {
           type = "app";
-          program = "${self.packages.${system}.server}/bin/logout-web";
+          program = "${self.packages.${system}.server}/bin/logout-server";
           meta.description = "Serve PWA";
         };
         webTest = {
@@ -325,7 +323,7 @@
           default = env.pkgs.mkShell {
             packages = with env.pkgs; [
               # biome sass scss-lint python3 strace
-              cachix
+              cachix # Nix binary cache
               taplo # TOML LSP
               typescript-language-server # TS LSP
               vscode-langservers-extracted # HTML/CSS/JS(ON)
