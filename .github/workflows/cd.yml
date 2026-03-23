@@ -49,7 +49,7 @@ jobs:
         repo-token: ${{ secrets.GITHUB_TOKEN }}
         fail-on-no-checks: false
         allowed-conclusions: success,failure,cancelled,skipped,timed_out,neutral
-    - run: nix build -o dist
+    - run: nix build .#web -o dist
     - uses: actions/upload-pages-artifact@v4
       with: { path: ./dist/LogOut }
     - uses: actions/deploy-pages@v4
