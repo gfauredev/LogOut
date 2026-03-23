@@ -1,17 +1,34 @@
 [application]
 name = "LogOut"
-# android_manifest = "android/AndroidManifest.xml.hbs" # TODO Remove hbs
-# android_main_activity = "android/MainActivity.kt.hbs" # TODO Remove hbs
+# asset_dir = ""
+# out_dir = ""
+# public_dir = ""
+# tailwind_input = ""
+# tailwind_output = ""
+# ios_info_plist = ""
+# macos_info_plist = ""
+# ios_entitlements = ""
+# macos_entitlements = ""
+# android_manifest = "android/AndroidManifest.xml"
+# android_main_activity = "android/MainActivity.kt"
 # android_min_sdk_version = 33
 
 [bundle]
 identifier = "com.gfaure.logout"
 publisher = "Guilhem Fauré"
 icon = ["logo.png"]
+# resources = [""]
+copyright = "Copyright 2026 Guilhem Fauré"
+category = "Sports"
+short_description = "Workout Logger"
+long_description = "A simple, efficient and cross-platform workout logging application with 800+ exercises built-in, by Guilhem Fauré"
+# external_bin = [""]
 
 [web.app]
 title = "LogOut - Workout Logger"
+base_path = "/"
 
 [web.watcher]
+# watch_path = [""]
 reload_html = true
 index_on_404 = true

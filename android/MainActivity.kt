@@ -1,8 +1,4 @@
 package dev.dioxus.main;
-
-// need to re-export buildconfig down from the parent
-import {{application_id}}.BuildConfig;
+import com.gfaure.logout.BuildConfig;
 typealias BuildConfig = BuildConfig;
-
-
 class MainActivity : WryActivity()
