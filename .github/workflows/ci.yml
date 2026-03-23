@@ -98,9 +98,9 @@ jobs:
           extra-substituters = https://cache.garnix.io
           extra-trusted-public-keys = cache.garnix.io:CTFPyKSLcx5RMJKfLo5EEPUObbA78b0YQ2DTCJXqr9g=
     - uses: DeterminateSystems/magic-nix-cache-action@v13
-    - name: Start pages server
+    - name: Start web app server
       run: |
-        nix run .#pages &
+        nix run &
         timeout 60 bash -c 'until curl -sf http://localhost:8080/LogOut/ > /dev/null 2>&1; do sleep 1; done'
     - uses: treosh/lighthouse-ci-action@v12
       with:
@@ -162,7 +162,7 @@ jobs:
       run: sudo apt-get remove -y google-chrome-stable || true
     - run: |
         set -o pipefail
-        nix run .#pagesE2eTest |& tee maestro_console.log
+        nix run .#webTest |& tee maestro_console.log
     - if: failure() && github.event_name == 'pull_request'
       env:
         CLOUD_NAME: ${{ secrets.CLOUDINARY_CLOUD_NAME }}

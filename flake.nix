@@ -212,16 +212,15 @@
         in
         {
           web = mkWebPackage { };
-          pages = mkWebPackage { basePath = "LogOut"; };
-          pagesServer = env.pkgs.writeShellApplication {
-            name = "logout-pages";
+          server = env.pkgs.writeShellApplication {
+            name = "logout-serve";
             runtimeInputs = [ env.pkgs.python3 ];
             text = ''
-              python3 -m http.server -d "${self.packages.${system}.pages}" 8080
+              python3 -m http.server -d "${self.packages.${system}.web}" 8080
             '';
           };
-          pagesE2eTester = env.pkgs.writeShellApplication {
-            name = "logout-pages-e2e-tester";
+          webE2eTester = env.pkgs.writeShellApplication {
+            name = "logout-web-e2e-tester";
             runtimeInputs = with env.pkgs; [
               curl
               chromedriver
@@ -239,8 +238,8 @@
                 fi
               }
               trap cleanup EXIT
-              # Serve the pages package at http://localhost:8080/LogOut/
-              ${self.apps.${system}.pages.program} &
+              # Serve the web package at http://localhost:8080/LogOut/
+              ${self.apps.${system}.web.program} &
               SERVER_PID=$!
               # Wait until the server is ready (max 60 seconds)
               timeout 60 bash -c 'until curl -sf http://localhost:8080/LogOut/ > /dev/null 2>&1; do sleep 1; done'
@@ -284,9 +283,9 @@
           default = env.pkgs.symlinkJoin {
             name = "logout-all";
             paths = [
-              self.packages.${system}.pages
-              self.packages.${system}.pagesServer
-              self.packages.${system}.pagesE2eTester
+              self.packages.${system}.web
+              self.packages.${system}.server
+              self.packages.${system}.webE2eTester
               self.packages.${system}.androidBuilder
               self.packages.${system}.androidE2eTester
             ];
@@ -294,27 +293,27 @@
         }
       );
       apps = forAllSystems (system: rec {
-        pages = {
+        web = {
           type = "app";
-          program = "${self.packages.${system}.pagesServer}/bin/logout-pages";
+          program = "${self.packages.${system}.server}/bin/logout-web";
           meta.description = "Serve PWA";
         };
-        pagesE2eTest = {
+        webTest = {
           type = "app";
-          program = "${self.packages.${system}.pagesE2eTester}/bin/logout-pages-e2e-tester";
+          program = "${self.packages.${system}.webE2eTester}/bin/logout-web-e2e-tester";
           meta.description = "Run Maestro E2E tests against PWA";
         };
-        androidBuild = {
+        android = {
           type = "app";
           program = "${self.packages.${system}.androidBuilder}/bin/logout-android-builder";
           meta.description = "Build and sign Android APK";
         };
-        androidE2eTest = {
+        androidTest = {
           type = "app";
           program = "${self.packages.${system}.androidE2eTester}/bin/logout-android-e2e-tester";
           meta.description = "Run Maestro E2E tests against Android App";
         };
-        default = pages;
+        default = web;
       });
       devShells = forAllSystems (
         system:
