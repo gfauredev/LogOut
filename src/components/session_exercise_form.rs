@@ -208,7 +208,7 @@ pub(super) fn ExerciseFormPanel(
     /// Reactive distance input (km as a string).
     distance_input: Signal<String>,
     /// Timestamp when the current exercise started.
-    current_exercise_start: Signal<Option<u64>>,
+    current_exercise_start: ReadSignal<Option<u64>>,
     /// Tracks whether the duration bell has fired for this exercise.
     duration_bell_rung: Signal<bool>,
     /// Timestamp when the session was paused; `None` when running.
