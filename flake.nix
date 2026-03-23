@@ -223,7 +223,7 @@
         in
         {
           web = mkLogOut { };
-          server = mkLogOut { platform = "server"; };
+          server = mkLogOut { platform = "server"; }; # FIXME dioxus-liveview
           webE2eTester = env.pkgs.writeShellApplication {
             name = "logout-web-e2e-tester";
             runtimeInputs = env.webTestInputs ++ [
@@ -283,7 +283,7 @@
             name = "logout-all";
             paths = [
               self.packages.${system}.web
-              self.packages.${system}.server
+              # self.packages.${system}.server
               self.packages.${system}.webE2eTester
               self.packages.${system}.androidBuilder
               self.packages.${system}.androidE2eTester
@@ -322,10 +322,11 @@
         {
           default = env.pkgs.mkShell {
             packages = with env.pkgs; [
-              # biome sass scss-lint python3 strace
+              # biome python3 sass scss-lint strace
               cachix # Nix binary cache
+              kotlin-language-server # Kotlin LSP
               taplo # TOML LSP
-              typescript-language-server # TS LSP
+              typescript-language-server # TypeScript LSP
               vscode-langservers-extracted # HTML/CSS/JS(ON)
               yaml-language-server # YAML LSP
             ];
