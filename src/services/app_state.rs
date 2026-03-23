@@ -17,9 +17,9 @@ use std::sync::Arc;
 pub fn provide_app_state() {
     let sessions_sig = use_context_provider(|| Signal::new(Vec::<WorkoutSession>::new()));
     let custom_sig = use_context_provider(|| Signal::new(Vec::<Arc<Exercise>>::new()));
-    use_context_provider(|| Signal::new(BestsCache::new()));
+    let cache_sig = use_context_provider(|| Signal::new(BestsCache::new()));
     let toast = consume_context::<ToastSignal>().0;
-    use_resource(move || load_storage_data(sessions_sig, custom_sig, toast));
+    use_resource(move || load_storage_data(sessions_sig, custom_sig, cache_sig, toast));
 }
 /// Obtain the reactive sessions signal from the Dioxus context.
 pub fn use_sessions() -> Signal<Vec<WorkoutSession>> {
@@ -29,21 +29,63 @@ pub fn use_sessions() -> Signal<Vec<WorkoutSession>> {
 pub fn use_custom_exercises() -> Signal<Vec<Arc<Exercise>>> {
     consume_context::<Signal<Vec<Arc<Exercise>>>>()
 }
-// On the native (non-wasm32) target the storage calls are synchronous so
-// the function body contains no `await` expressions.  On wasm32 it does.
-#[allow(clippy::unused_async)]
+/// Load initial data from storage into the app signals.
+///
+/// Only **active** sessions are placed into the sessions signal; completed
+/// sessions are accessed on demand through the pagination API
+/// ([`super::storage::load_completed_sessions_page`]).  This avoids loading
+/// the entire workout history into memory at startup.
+///
+/// The [`BestsCache`] is pre-populated in the same pass so that the first
+/// call to [`get_exercise_bests`] for any exercise returns an immediately
+/// correct value without scanning the sessions signal.
+///
+/// On the native target both blocking DB reads are wrapped in
+/// [`tokio::task::spawn_blocking`] so they do not stall the async runtime.
+/// On the web target the two `IndexedDB` reads are issued concurrently via
+/// [`futures_util::future::join`].
+#[allow(clippy::too_many_lines)]
 async fn load_storage_data(
     mut sessions_sig: Signal<Vec<WorkoutSession>>,
     mut custom_sig: Signal<Vec<Arc<Exercise>>>,
+    mut cache_sig: Signal<BestsCache>,
     mut toast: Signal<std::collections::VecDeque<String>>,
 ) {
     #[cfg(target_arch = "wasm32")]
     {
         use super::storage::idb;
-        match idb::get_all::<WorkoutSession>(idb::STORE_SESSIONS).await {
-            Ok(sessions) if !sessions.is_empty() => {
-                info!("Loaded {} sessions from IndexedDB", sessions.len());
-                sessions_sig.set(sessions);
+        use futures_util::future::join;
+        // Issue both IDB reads concurrently — no need to wait for sessions
+        // before starting the custom-exercises fetch.
+        let (sessions_result, custom_result) = join(
+            idb::get_all::<WorkoutSession>(idb::STORE_SESSIONS),
+            idb::get_all::<Exercise>(idb::STORE_CUSTOM_EXERCISES),
+        )
+        .await;
+        match sessions_result {
+            Ok(sessions) => {
+                // Single pass: separate active from completed and build the
+                // BestsCache without keeping completed sessions in memory.
+                let mut cache = BestsCache::new();
+                let mut active = Vec::new();
+                for session in sessions {
+                    if session.is_active() {
+                        active.push(session);
+                    } else {
+                        for log in &session.exercise_logs {
+                            let entry = cache.entry(log.exercise_id.clone()).or_default();
+                            merge_log_into_bests(entry, log);
+                        }
+                    }
+                }
+                info!(
+                    "Startup: {} active session(s); bests cache populated",
+                    active.len()
+                );
+                if !active.is_empty() {
+                    sessions_sig.set(active);
+                }
+                cache_sig.set(cache);
             }
             Err(e) => {
                 error!("Failed to load sessions from IndexedDB: {e}");
@@ -51,9 +93,8 @@ async fn load_storage_data(
                     .write()
                     .push_back(format!("⚠️ Failed to load sessions: {e}"));
             }
-            _ => {}
         }
-        match idb::get_all::<Exercise>(idb::STORE_CUSTOM_EXERCISES).await {
+        match custom_result {
             Ok(custom) if !custom.is_empty() => {
                 info!("Loaded {} custom exercises from IndexedDB", custom.len());
                 custom_sig.set(custom.into_iter().map(Arc::new).collect());
@@ -70,29 +111,71 @@ async fn load_storage_data(
     #[cfg(not(target_arch = "wasm32"))]
     {
         use super::storage::native_storage;
-        match native_storage::get_all::<WorkoutSession>(native_storage::STORE_SESSIONS) {
-            Ok(sessions) if !sessions.is_empty() => {
-                log::info!("Loaded {} sessions from storage", sessions.len());
-                sessions_sig.set(sessions);
+        // Run both blocking reads concurrently; neither depends on the other.
+        let (sessions_result, custom_result) = futures_util::future::join(
+            tokio::task::spawn_blocking(|| {
+                native_storage::get_all::<WorkoutSession>(native_storage::STORE_SESSIONS)
+            }),
+            tokio::task::spawn_blocking(|| {
+                native_storage::get_all::<Exercise>(native_storage::STORE_CUSTOM_EXERCISES)
+            }),
+        )
+        .await;
+        match sessions_result {
+            Ok(Ok(sessions)) => {
+                let sessions: Vec<WorkoutSession> = sessions;
+                log::info!(
+                    "Startup: loaded {} session(s) from storage; computing bests",
+                    sessions.len()
+                );
+                // Single pass: separate active sessions and build the BestsCache.
+                let mut cache = BestsCache::new();
+                let mut active = Vec::new();
+                for session in sessions {
+                    if session.is_active() {
+                        active.push(session);
+                    } else {
+                        for log in &session.exercise_logs {
+                            let entry = cache.entry(log.exercise_id.clone()).or_default();
+                            merge_log_into_bests(entry, log);
+                        }
+                    }
+                }
+                if !active.is_empty() {
+                    sessions_sig.set(active);
+                }
+                cache_sig.set(cache);
             }
-            Err(e) => {
+            Ok(Err(e)) => {
                 log::error!("Failed to load sessions: {e}");
                 toast
                     .write()
                     .push_back(format!("⚠️ Failed to load sessions: {e}"));
             }
-            _ => {}
+            Err(e) => {
+                log::error!("spawn_blocking panicked loading sessions: {e}");
+                toast
+                    .write()
+                    .push_back("⚠️ Failed to load sessions (internal error)".into());
+            }
         }
-        match native_storage::get_all::<Exercise>(native_storage::STORE_CUSTOM_EXERCISES) {
-            Ok(custom) if !custom.is_empty() => {
+        match custom_result {
+            Ok(Ok(custom)) if !custom.is_empty() => {
+                let custom: Vec<Exercise> = custom;
                 log::info!("Loaded {} custom exercises from storage", custom.len());
                 custom_sig.set(custom.into_iter().map(Arc::new).collect());
             }
-            Err(e) => {
+            Ok(Err(e)) => {
                 log::error!("Failed to load custom exercises: {e}");
                 toast
                     .write()
                     .push_back(format!("⚠️ Failed to load custom exercises: {e}"));
+            }
+            Err(e) => {
+                log::error!("spawn_blocking panicked loading custom exercises: {e}");
+                toast
+                    .write()
+                    .push_back("⚠️ Failed to load custom exercises (internal error)".into());
             }
             _ => {}
         }
@@ -101,44 +184,51 @@ async fn load_storage_data(
 /// Upsert `session` into the in-memory signal, then persist it to the backend.
 ///
 /// If a session with the same `id` already exists in the signal it is replaced;
-/// otherwise the session is appended.  The persistence write is fire-and-forget
-/// (errors are surfaced via the toast signal).
+/// otherwise the session is appended.
 ///
-/// When an already-completed session is **updated** (edited), all of its
-/// exercise entries are evicted from `BestsCache` before the new values are
-/// merged in.  This prevents a stale `max()` from locking in a typo value.
+/// **Optimistic update**: the signal is mutated immediately before the write
+/// is confirmed.  If the background write fails the signal is reverted to its
+/// previous state and an error toast is shown.
+///
+/// **`BestsCache` maintenance**:
+/// * When a session is **completed for the first time**, its logs are merged
+///   incrementally so the cache stays up-to-date without a storage query.
+/// * When an **existing completed session is updated**, the affected entries
+///   are evicted and a background task re-reads storage to recompute them
+///   accurately.
 pub fn save_session(session: WorkoutSession) {
     let mut sig = use_sessions();
-    let is_update;
+    let previous: Option<WorkoutSession>;
+    let is_update: bool;
     {
         let mut sessions = sig.write();
         if let Some(pos) = sessions.iter().position(|s| s.id == session.id) {
+            previous = Some(sessions[pos].clone());
             sessions[pos] = session.clone();
             is_update = true;
         } else {
+            previous = None;
             sessions.push(session.clone());
             is_update = false;
         }
     }
     if !session.is_active() {
         let mut cache_sig = consume_context::<Signal<BestsCache>>();
-        let mut cache = cache_sig.write();
         if is_update {
-            // Evict stale entries so the next access recomputes from scratch.
-            for log in &session.exercise_logs {
-                cache.remove(&log.exercise_id);
-            }
+            // Evict the stale entries and schedule a background recompute from
+            // storage.  This avoids an O(N) synchronous re-scan of all sessions.
+            let exercise_ids: Vec<String> = session
+                .exercise_logs
+                .iter()
+                .map(|l| l.exercise_id.clone())
+                .collect();
+            recompute_bests_for_exercises(exercise_ids, cache_sig);
         } else {
-            // First-time completion: merge incrementally (avoids a full rescan).
+            // First-time completion: merge the new logs into the cache
+            // incrementally — no storage round-trip required.
+            let mut cache = cache_sig.write();
             for log in &session.exercise_logs {
-                let entry = cache
-                    .entry(log.exercise_id.clone())
-                    .or_insert(ExerciseBests {
-                        weight_hg: None,
-                        reps: None,
-                        distance_m: None,
-                        duration: None,
-                    });
+                let entry = cache.entry(log.exercise_id.clone()).or_default();
                 merge_log_into_bests(entry, log);
             }
         }
@@ -147,22 +237,41 @@ pub fn save_session(session: WorkoutSession) {
     {
         use super::storage::idb_queue;
         let toast = consume_context::<ToastSignal>().0;
-        idb_queue::enqueue(idb_queue::IdbOp::PutSession(session, toast));
+        idb_queue::enqueue(idb_queue::IdbOp::PutSession {
+            session,
+            toast,
+            sessions_sig: sig,
+            previous,
+        });
     }
     #[cfg(not(target_arch = "wasm32"))]
     {
         use super::storage::native_queue;
         let toast = consume_context::<ToastSignal>().0;
-        native_queue::enqueue(native_queue::NativeOp::PutSession(session, toast));
+        native_queue::enqueue(native_queue::NativeOp::PutSession {
+            session,
+            toast,
+            sessions_sig: sig,
+            previous,
+        });
     }
 }
 /// Remove the session with `id` from the in-memory signal and from the backend.
+///
+/// **Optimistic update**: the session is removed from the signal before the
+/// backend delete is confirmed.  On failure the signal is restored and a toast
+/// is shown.
+///
+/// If the deleted session's exercise logs are present in the in-memory signal
+/// the affected [`BestsCache`] entries are refreshed via a targeted background
+/// query.  Otherwise the entire cache is rebuilt from storage so no stale
+/// personal-record values remain after deletion.
 pub fn delete_session(id: &str) {
     let mut sig = use_sessions();
-    let exercise_ids: Vec<String> = sig
-        .read()
-        .iter()
-        .find(|s| s.id == id)
+    // Capture the full session for potential revert and for exercise_id lookup.
+    let snapshot: Option<WorkoutSession> = sig.read().iter().find(|s| s.id == id).cloned();
+    let exercise_ids: Vec<String> = snapshot
+        .as_ref()
         .map(|s| {
             s.exercise_logs
                 .iter()
@@ -171,26 +280,38 @@ pub fn delete_session(id: &str) {
         })
         .unwrap_or_default();
     sig.write().retain(|s| s.id != id);
-    if !exercise_ids.is_empty() {
-        let mut cache_sig = consume_context::<Signal<BestsCache>>();
-        let mut cache = cache_sig.write();
-        for ex_id in &exercise_ids {
-            cache.remove(ex_id);
-        }
+    let cache_sig = consume_context::<Signal<BestsCache>>();
+    if exercise_ids.is_empty() {
+        // The session was not in the in-memory signal (historical completed
+        // session) — we don't know which exercises are affected, so rebuild
+        // the entire cache from storage.
+        recompute_all_bests(cache_sig);
+    } else {
+        recompute_bests_for_exercises(exercise_ids, cache_sig);
     }
     #[cfg(target_arch = "wasm32")]
     {
         use super::storage::idb_queue;
         let id = id.to_owned();
         let toast = consume_context::<ToastSignal>().0;
-        idb_queue::enqueue(idb_queue::IdbOp::DeleteSession(id, toast));
+        idb_queue::enqueue(idb_queue::IdbOp::DeleteSession {
+            id,
+            toast,
+            sessions_sig: sig,
+            snapshot,
+        });
     }
     #[cfg(not(target_arch = "wasm32"))]
     {
         use super::storage::native_queue;
         let id = id.to_owned();
         let toast = consume_context::<ToastSignal>().0;
-        native_queue::enqueue(native_queue::NativeOp::DeleteSession(id, toast));
+        native_queue::enqueue(native_queue::NativeOp::DeleteSession {
+            id,
+            toast,
+            sessions_sig: sig,
+            snapshot,
+        });
     }
 }
 /// Mark `exercise_id` as the active exercise in the current session.
@@ -335,7 +456,7 @@ pub(crate) fn find_last_exercise_log<'a>(
 }
 /// All-time best (personal record) values for a specific exercise, derived by
 /// scanning every completed log across all stored sessions.
-#[derive(Clone)]
+#[derive(Clone, Default)]
 pub struct ExerciseBests {
     /// Heaviest weight ever lifted for this exercise.
     pub weight_hg: Option<Weight>,
@@ -348,20 +469,19 @@ pub struct ExerciseBests {
 }
 /// In-memory cache of per-exercise all-time bests, maintained incrementally.
 ///
-/// The cache is populated lazily: on the first call to [`get_exercise_bests`]
-/// for a given `exercise_id` the entire sessions signal is scanned once and
-/// the result is stored here.  Subsequent calls return the cached value
-/// without touching the sessions signal.
+/// The cache is **fully populated at startup** by scanning all completed
+/// sessions once during [`load_storage_data`].  Subsequent calls to
+/// [`get_exercise_bests`] are always O(1) cache lookups.
 ///
-/// When a session is **completed** (saved with `is_active() == false`) the
-/// relevant exercise entries are updated incrementally from the new session
-/// only, avoiding a full rescan.
+/// When a session is **completed for the first time** the new logs are merged
+/// in directly (O(logs)), keeping the cache correct without a storage round-trip.
 ///
-/// When a session is **deleted** the cache entries for every exercise in that
-/// session are evicted so they are recomputed from scratch on the next access.
-type BestsCache = std::collections::HashMap<String, ExerciseBests>;
+/// When a session is **deleted** or **updated** the affected entries are evicted
+/// and a background async task recomputes them from storage, so the
+/// synchronous hot path is never blocked by an O(N) scan.
+pub(crate) type BestsCache = std::collections::HashMap<String, ExerciseBests>;
 /// Merge one exercise log's values into an existing best, updating it in place.
-fn merge_log_into_bests(bests: &mut ExerciseBests, log: &ExerciseLog) {
+pub(crate) fn merge_log_into_bests(bests: &mut ExerciseBests, log: &ExerciseLog) {
     if !log.is_complete() {
         return;
     }
@@ -404,34 +524,163 @@ fn merge_log_into_bests(bests: &mut ExerciseBests, log: &ExerciseLog) {
 }
 /// Returns the all-time personal bests for `exercise_id`.
 ///
-/// On the first call for a given exercise the bests are computed by scanning
-/// all completed logs in the sessions signal and the result is cached.
-/// Subsequent calls return the cached value in O(1).
+/// Always O(1): reads directly from the [`BestsCache`] that was populated at
+/// startup and kept up-to-date by [`save_session`] / [`delete_session`].
+/// Returns an empty [`ExerciseBests`] when no completed logs exist yet (e.g.
+/// during the brief window while a background recompute is in flight).
 pub fn get_exercise_bests(exercise_id: &str) -> ExerciseBests {
-    let mut cache_sig = consume_context::<Signal<BestsCache>>();
+    let cache_sig = consume_context::<Signal<BestsCache>>();
+    let cached = cache_sig.read().get(exercise_id).cloned();
+    cached.unwrap_or_default()
+}
+/// Evict the cache entries for `exercise_ids` and schedule a background task
+/// that re-reads storage and reinserts accurate values.
+///
+/// This is the targeted version used after an in-place session **update**:
+/// only the exercises present in the edited session need to be refreshed.
+pub(crate) fn recompute_bests_for_exercises(
+    exercise_ids: Vec<String>,
+    mut cache_sig: Signal<BestsCache>,
+) {
+    // Evict the stale entries immediately so the next read returns the
+    // default (rather than a permanently wrong cached value) while the
+    // background recompute is in flight.
     {
-        let cache = cache_sig.read();
-        if let Some(cached) = cache.get(exercise_id) {
-            return cached.clone();
+        let mut cache = cache_sig.write();
+        for id in &exercise_ids {
+            cache.remove(id);
         }
     }
-    let sessions = use_sessions();
-    let sessions = sessions.read();
-    let mut bests = ExerciseBests {
-        weight_hg: None,
-        reps: None,
-        distance_m: None,
-        duration: None,
-    };
-    for session in sessions.iter() {
-        for log in &session.exercise_logs {
-            if log.exercise_id == exercise_id {
-                merge_log_into_bests(&mut bests, log);
+    #[cfg(target_arch = "wasm32")]
+    {
+        use super::storage::idb;
+        wasm_bindgen_futures::spawn_local(async move {
+            match idb::get_all::<WorkoutSession>(idb::STORE_SESSIONS).await {
+                Ok(sessions) => {
+                    let id_set: std::collections::HashSet<&str> =
+                        exercise_ids.iter().map(String::as_str).collect();
+                    let mut new_bests = BestsCache::new();
+                    for session in &sessions {
+                        if !session.is_active() {
+                            for log in &session.exercise_logs {
+                                if id_set.contains(log.exercise_id.as_str()) {
+                                    let entry =
+                                        new_bests.entry(log.exercise_id.clone()).or_default();
+                                    merge_log_into_bests(entry, log);
+                                }
+                            }
+                        }
+                    }
+                    let mut cache = cache_sig.write();
+                    for ex_id in &exercise_ids {
+                        let bests = new_bests.remove(ex_id).unwrap_or_default();
+                        cache.insert(ex_id.clone(), bests);
+                    }
+                }
+                Err(e) => {
+                    log::error!("Failed to recompute bests for exercises: {e}");
+                }
             }
-        }
+        });
     }
-    cache_sig
-        .write()
-        .insert(exercise_id.to_owned(), bests.clone());
-    bests
+    #[cfg(not(target_arch = "wasm32"))]
+    {
+        use super::storage::native_storage;
+        dioxus::prelude::spawn(async move {
+            match tokio::task::spawn_blocking(move || {
+                let sessions =
+                    native_storage::get_all::<WorkoutSession>(native_storage::STORE_SESSIONS)?;
+                let id_set: std::collections::HashSet<String> = exercise_ids.into_iter().collect();
+                let mut new_bests = BestsCache::new();
+                for session in &sessions {
+                    if !session.is_active() {
+                        for log in &session.exercise_logs {
+                            if id_set.contains(&log.exercise_id) {
+                                let entry = new_bests.entry(log.exercise_id.clone()).or_default();
+                                merge_log_into_bests(entry, log);
+                            }
+                        }
+                    }
+                }
+                Ok::<_, native_storage::StorageError>((id_set, new_bests))
+            })
+            .await
+            {
+                Ok(Ok((id_set, new_bests))) => {
+                    let mut cache = cache_sig.write();
+                    for ex_id in &id_set {
+                        let bests = new_bests.get(ex_id).cloned().unwrap_or_default();
+                        cache.insert(ex_id.clone(), bests);
+                    }
+                }
+                Ok(Err(e)) => {
+                    log::error!("Failed to recompute bests: {e}");
+                }
+                Err(e) => {
+                    log::error!("spawn_blocking panicked for bests recompute: {e}");
+                }
+            }
+        });
+    }
+}
+/// Clear the entire [`BestsCache`] and rebuild it from storage in a background task.
+///
+/// Used when a **historical completed session** is deleted and the affected
+/// exercise IDs are not available in the in-memory signal.  The full rebuild
+/// is O(N) but executes asynchronously, so it never blocks the UI.
+pub(crate) fn recompute_all_bests(mut cache_sig: Signal<BestsCache>) {
+    cache_sig.write().clear();
+    #[cfg(target_arch = "wasm32")]
+    {
+        use super::storage::idb;
+        wasm_bindgen_futures::spawn_local(async move {
+            match idb::get_all::<WorkoutSession>(idb::STORE_SESSIONS).await {
+                Ok(sessions) => {
+                    let mut new_cache = BestsCache::new();
+                    for session in &sessions {
+                        if !session.is_active() {
+                            for log in &session.exercise_logs {
+                                let entry = new_cache.entry(log.exercise_id.clone()).or_default();
+                                merge_log_into_bests(entry, log);
+                            }
+                        }
+                    }
+                    cache_sig.set(new_cache);
+                }
+                Err(e) => {
+                    log::error!("Failed to rebuild bests cache: {e}");
+                }
+            }
+        });
+    }
+    #[cfg(not(target_arch = "wasm32"))]
+    {
+        use super::storage::native_storage;
+        dioxus::prelude::spawn(async move {
+            match tokio::task::spawn_blocking(|| {
+                native_storage::get_all::<WorkoutSession>(native_storage::STORE_SESSIONS)
+            })
+            .await
+            {
+                Ok(Ok(sessions)) => {
+                    let mut new_cache = BestsCache::new();
+                    for session in &sessions {
+                        if !session.is_active() {
+                            for log in &session.exercise_logs {
+                                let entry = new_cache.entry(log.exercise_id.clone()).or_default();
+                                merge_log_into_bests(entry, log);
+                            }
+                        }
+                    }
+                    cache_sig.set(new_cache);
+                }
+                Ok(Err(e)) => {
+                    log::error!("Failed to rebuild bests cache: {e}");
+                }
+                Err(e) => {
+                    log::error!("spawn_blocking panicked for bests cache rebuild: {e}");
+                }
+            }
+        });
+    }
 }
