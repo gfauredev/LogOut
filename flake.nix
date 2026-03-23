@@ -1,5 +1,5 @@
 {
-  description = "LogOut dev envs";
+  description = "LogOut full development system & tooling";
   nixConfig = {
     extra-substituters = [
       "https://cache.garnix.io"
@@ -16,9 +16,7 @@
       url = "github:oxalica/rust-overlay";
       inputs.nixpkgs.follows = "nixpkgs";
     };
-    crane = {
-      url = "github:ipetkov/crane";
-    };
+    crane.url = "github:ipetkov/crane";
   };
   outputs =
     {
@@ -66,6 +64,15 @@
             rustc = rustToolchain;
           };
           craneLib = (crane.mkLib pkgs).overrideToolchain rustToolchain;
+          assetFilter =
+            path: type:
+            builtins.match ".*(/public/.*|/assets/.*|Dioxus\\.toml|index\\.html|logo\\.png|schema2\\.json)$" path
+            != null;
+          sourceFilter = path: type: (assetFilter path type) || (craneLib.filterCargoSources path type);
+          filteredSrc = pkgs.lib.cleanSourceWith {
+            src = craneLib.path ./.;
+            filter = sourceFilter;
+          };
           commonNativeBuildInputs = with pkgs; [
             binaryen
             cargo-binutils
@@ -90,10 +97,18 @@
             pkgs.darwin.apple_sdk.frameworks.Security
             pkgs.darwin.apple_sdk.frameworks.SystemConfiguration
           ];
-          cargoArtifacts = craneLib.buildDepsOnly {
-            src = craneLib.cleanCargoSource (craneLib.path ./.);
+          cargoArtifactsHost = craneLib.buildDepsOnly {
+            src = filteredSrc;
             nativeBuildInputs = commonNativeBuildInputs;
             buildInputs = commonBuildInputs;
+            doCheck = false;
+          };
+          cargoArtifactsWeb = craneLib.buildDepsOnly {
+            src = filteredSrc;
+            cargoExtraArgs = "--target wasm32-unknown-unknown";
+            nativeBuildInputs = commonNativeBuildInputs;
+            buildInputs = commonBuildInputs;
+            doCheck = false;
           };
           androidComposition = pkgs.androidenv.composeAndroidPackages {
             platformVersions = [
@@ -101,15 +116,15 @@
               "34"
               "35"
               "36"
-            ]; # Target latest Android
+            ];
             buildToolsVersions = [
               "34.0.0"
               "35.0.0"
               "36.0.0"
             ];
             includeNDK = true;
-            includeEmulator = false; # Clean up unused
-            includeSystemImages = false; # Clean up unused
+            includeEmulator = false;
+            includeSystemImages = false;
             abiVersions = [
               "arm64-v8a"
               "x86_64"
@@ -132,7 +147,9 @@
             rustToolchain
             rustPlatform
             craneLib
-            cargoArtifacts
+            filteredSrc
+            cargoArtifactsHost
+            cargoArtifactsWeb
             androidComposition
             commonNativeBuildInputs
             androidNativeBuildInputs
@@ -150,10 +167,10 @@
               basePath ? "/",
             }:
             env.craneLib.buildPackage {
-              inherit (env) cargoArtifacts;
+              cargoArtifacts = env.cargoArtifactsWeb;
+              src = env.filteredSrc;
               pname = "logout-web";
               version = env.projectVersion;
-              src = env.craneLib.path ./.;
               nativeBuildInputs = env.commonNativeBuildInputs;
               buildInputs = env.commonBuildInputs;
               buildPhase = ''
@@ -166,14 +183,11 @@
               installPhase = ''
                 mkdir -p $out
                 cp -r target/dx/log-out/release/web/public/${
-                  # Let me break a line
                   if basePath == "/" then "* $out/" else " $out/${basePath}"
                 }
               '';
               doCheck = false;
             };
-          # --no-sandbox on non-NixOS CI runners where SUID sandbox
-          # binary is absent, named so chromedriver finds via PATH
           chromiumWrapper = env.pkgs.writeShellScriptBin "google-chrome" ''
             exec "${env.pkgs.ungoogled-chromium}/bin/chromium" --no-sandbox "$@"
           '';
@@ -186,21 +200,12 @@
               runtimeInputs = env.commonNativeBuildInputs ++ env.androidNativeBuildInputs;
               # LD_LIBRARY_PATH = with env.pkgs; lib.makeLibraryPath [ stdenv.cc.cc.lib zlib ];
               text = ''
-                unset ANDROID_SDK_ROOT # Set in GitHub Runners conflict with Home
+                unset ANDROID_SDK_ROOT # Conflicts with Home in GitHub Runners
                 export ANDROID_HOME="${env.androidComposition.androidsdk}/libexec/android-sdk"
                 export ANDROID_NDK_HOME="${env.androidComposition.ndk-bundle}/libexec/android-sdk/ndk-bundle"
                 export GRADLE_USER_HOME="''${GRADLE_USER_HOME:-$PWD/.gradle}" 
                 export HOME="''${HOME:-$TMPDIR}"
-                # Patch aapt2 if in gradle cache or target dir (Android on Nix)
-                # find "$GRADLE_USER_HOME/caches" "$PWD/target" -name aapt2 -type f -executable 2>/dev/null | while read -r aapt2; do
-                #   if ! patchelf --print-interpreter "$aapt2" >/dev/null 2>&1 || [[ "$(patchelf --print-interpreter "$aapt2")" == /lib* ]]; then
-                #     echo "🔧 Patching aapt2 at $aapt2"
-                #     chmod +x "$aapt2" # Just in case
-                #     patchelf --set-interpreter "$(cat $NIX_CC/nix-support/dynamic-linker)" "$aapt2" || true
-                #     patchelf --set-rpath "$LD_LIBRARY_PATH" "$aapt2" || true
-                #   fi
-                # done
-                echo "💪 LogOut Build Environment Ready"
+                echo "🤖 LogOut Build Environment Ready"
                 echo "- Rust $(rustc --version)"
                 echo "- Dioxus CLI $(dx --version)"
                 echo "- Android SDK $ANDROID_HOME"
@@ -228,8 +233,6 @@
               chromiumWrapper
             ];
             text = ''
-              # Tell Selenium Manager to use the nixpkgs Chromium wrapper instead of
-              # detecting the system Chrome via hardcoded paths (e.g. /usr/bin/google-chrome)
               export SE_CHROME_PATH="${chromiumWrapper}/bin/google-chrome"
               SERVER_PID=""
               cleanup() {
@@ -238,10 +241,8 @@
                 fi
               }
               trap cleanup EXIT
-              # Serve the web package at http://localhost:8080/LogOut/
               ${self.apps.${system}.web.program} &
               SERVER_PID=$!
-              # Wait until the server is ready (max 60 seconds)
               timeout 60 bash -c 'until curl -sf http://localhost:8080/LogOut/ > /dev/null 2>&1; do sleep 1; done'
               maestro test --headless "${self}/maestro/web"
             '';
@@ -342,18 +343,17 @@
                 zlib
               ];
             shellHook = ''
-              unset ANDROID_SDK_ROOT # Set in GitHub Runners conflict with Home
+              unset ANDROID_SDK_ROOT # Conflicts with Home in GitHub Runners
               export SE_CACHE_PATH="$PWD/.selenium"
-              # Patch aapt2 if in gradle cache or target dir (Android on Nix)
               find "$GRADLE_USER_HOME/caches" "$PWD/target" -name aapt2 -type f -executable 2>/dev/null | while read -r aapt2; do
                 if ! patchelf --print-interpreter "$aapt2" >/dev/null 2>&1 || [[ "$(patchelf --print-interpreter "$aapt2")" == /lib* ]]; then
                   echo "🔧 Patching aapt2 at $aapt2"
-                  chmod +x "$aapt2" # Just in case
+                  chmod +x "$aapt2" 
                   patchelf --set-interpreter "$(cat $NIX_CC/nix-support/dynamic-linker)" "$aapt2" || true
                   patchelf --set-rpath "$LD_LIBRARY_PATH" "$aapt2" || true
                 fi
               done
-              echo "💪 LogOut Dev Environment Ready"
+              echo "✅ LogOut Dev Environment Ready"
               echo "- Rust $(rustc --version)"
               echo "- Dioxus CLI $(dx --version)"
               echo "- Android SDK $ANDROID_HOME"
@@ -372,8 +372,6 @@
             env.pkgs.runCommand "cargo-fmt-check"
               {
                 nativeBuildInputs = env.commonNativeBuildInputs;
-                # buildInputs = env.commonBuildInputs;
-                # inherit (env) cargoArtifacts;
               }
               ''
                 cd ${self}
@@ -383,19 +381,19 @@
               '';
           build = self.packages.${system}.default;
           clippy = env.craneLib.cargoClippy {
-            inherit (env) cargoArtifacts;
-            pname = "logout";
+            cargoArtifacts = env.cargoArtifactsHost;
+            src = env.filteredSrc;
+            pname = "logout"; # -clippy auto added by craneLib.cargoClippy
             version = env.projectVersion;
-            src = env.craneLib.path ./.;
             nativeBuildInputs = env.commonNativeBuildInputs;
             buildInputs = env.commonBuildInputs;
             cargoClippyExtraArgs = "--all-targets -- -D warnings -W clippy::all -W clippy::pedantic";
           };
           coverage = env.craneLib.buildPackage {
-            inherit (env) cargoArtifacts;
+            cargoArtifacts = env.cargoArtifactsHost;
+            src = env.filteredSrc;
             pname = "logout-coverage";
             version = env.projectVersion;
-            src = env.craneLib.path ./.;
             nativeBuildInputs = env.commonNativeBuildInputs ++ [ env.pkgs.lcov ];
             buildInputs = env.commonBuildInputs;
             buildPhase = ''
