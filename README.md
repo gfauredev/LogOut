@@ -39,6 +39,8 @@ A simple, efficient and cross-platform workout logging application with
 
 The project follows a modular Rust structure for a Dioxus application:
 
+<!-- TODO Update file structure -->
+
 ```text
 LogOut/
 ├ src/
@@ -104,6 +106,7 @@ LogOut/
 | ------------------- | ---------------------- |
 | Project versionning | [SemVer]               |
 | Commit messages     | [Conventional Commits] |
+| Branch naming       | [Conventional Branch]  |
 | Branching model     | [GitHub Flow]          |
 | Changes submission  | GitHub Pull Requests   |
 | Issue tracking      | GitHub Issues          |
@@ -139,24 +142,72 @@ To build for Android as APK, run
 dx build --android --release --target aarch64-linux-android
 ```
 
-Dioxus `0.7` don’t yet supports signing (it does, but keys have to be in clear
-in Dioxus.toml) the APK and adding icon(s) to it. So two scripts allow that.
-
-Run `.script/android-sign.sh` to generate a signed `release-signed.apk` APK.
+> Dioxus `0.7` don’t yet supports signing (it does, but keys have to be in clear
+> in `Dioxus.toml`) the APK, so we use `.script/android-sign.sh`.
 
 ## Code Conventions & Contributing
 
-- Functions, structs… must be documented with `rustdoc`
-  - To generate and open the documentation `cargo doc --open`
-- Every change must pass through a PR
-- PRs must pass [CI checks](#continuous-integration-ci) to be merged
-- Simple, flat structures are always preffered, do not nest if not necessary
-  - Especially in HTML, a node with only one child can be replaced by it
-- Keep the HTML structure as simple as possible
-- Class-light styling mainly based on HTML semantic hierarchy
-- Same CSS rules for similarly looking components, don’t overcomplicate
-- Never hardcode values (except 0, 1, 100%), use clearly named constants
-- Always ensure that all lints, end-to-end and unit tests pass
+- **Decouple Business Logic from Platform Specificities:** Isolate core domain
+  logic from underlying infrastructure (storage, OS integrations, UI frameworks,
+  and network)
+  - Abstract these boundaries behind traits or interfaces to keep the
+    application testable and portable
+- **Enforce a Single Source of Truth:** Never duplicate state
+  - Derive component or local state directly from a centralized global state to
+    prevent UI desynchronization
+    - Confine all state mutations to atomic, centralized functions
+- **Bind External Resources to Strict Lifecycles (RAII):** Guarantee cleanup for
+  all external resources—such as DOM event listeners, database transactions, and
+  browser object URLs—by tying their lifecycles directly to object scope
+- **Respect Async Boundaries and the Main Thread:** Treat the UI thread as
+  "sacred"
+  - Strictly offload synchronous, I/O-heavy, or CPU-bound operations to
+    background threads
+  - Ensure state is passed safely across async boundaries, and use cancellable
+    primitives instead of hanging tasks
+- **Optimize for Lazy Evaluation and Memory Efficiency:** Assume datasets will
+  grow large
+  - Defer loading heavy data, historical records, and binary assets until the
+    exact moment they are needed
+  - Use reference counting (`Rc`/`Arc`) for heavy objects in memory to avoid
+    expensive deep copies
+- **Design for Graceful Failure at System Boundaries:** Anticipate failure
+  whenever interacting with the network, file system, or foreign functions (FFI)
+  - Handle errors explicitly without crashing the app, surface them gracefully
+    to the user via managed queues, and never swallow them silently
+- **Minimize and Optimize I/O:** Treat every disk read and network request as
+  expensive
+  - Leverage HTTP caching, precache foundational application assets, strictly
+    normalize data (e.g., separating binary blobs from JSON metadata), and
+    optimize database queries to avoid full scans
+- **Rely on Explicit Invalidation over Implicit Merges:** When source data is
+  modified, explicitly clear and recalculate the affected caches
+  - Avoid implicit merge strategies that can trap stale data or user errors
+- **Leverage Battle-Tested Abstractions:** Avoid the "Not Invented Here"
+  syndrome
+  - Use standardized, widely adopted crates/libraries for solved problems (URL
+    encoding, timezone parsing, unit conversion) rather than writing custom
+    implementations
+- Avoid "magic" hardcoded values, use clearly named constants
+  - Except where it really makes sense, like usually 0, 1, 100%…
+- Properly **document** what you do (functions, structs… with `rustdoc`)
+- Avoid nesting, avoid complexity; generally, avoid things with only one child
+- **Style** class-light, mainly based on semantic hierarchy and types
+- Ensure code is properly formatted with `dx fmt` and `cargo fmt --all`
+- Ensure code compiles with `dx build` plus eventual platform flags
+- Ensure all unit tests `cargo test` pass without warning
+- **No** `cargo clippy -- -D warnings -W clippy::all -W clippy::pedantic` warns
+- Ensure all end-to-end tests `maestro test` (`--headless`) pass
+
+1. Before writing any code, **open an issue** to discuss it with the maintainers
+2. Use [Conventional Commits] like branch names:
+   - `feat/my-new-feature`
+   - `fix/my-bug-fix`
+   - `refactor/my-consequent-refactor`
+   - …
+3. Open a **Pull Request (PR)** as soon as your code compiles and checks
+4. Fulfill the **PR** template checks before marking it ready for review
+5. Fix your code if it don’t pass [CI checks](#continuous-integration-ci)
 
 ## Continuous Integration (CI)
 
@@ -213,6 +264,7 @@ checks that run every Sunday at midnight on the `main` branch.
 [cargo-llvm-cov]: https://github.com/taiki-e/cargo-llvm-cov
 [Clippy]: https://github.com/rust-lang/rust-clippy
 [Conventional Commits]: https://www.conventionalcommits.org
+[Conventional Branch]: https://conventional-branch.github.io
 [Dioxus]: https://dioxuslabs.com
 [dx]: https://dioxuslabs.com
 [direnv]: https://direnv.net
