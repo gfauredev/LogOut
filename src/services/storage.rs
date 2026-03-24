@@ -17,54 +17,6 @@ pub use super::app_state::{
     provide_app_state, save_session, start_pending_exercise_in_session, update_custom_exercise,
     use_custom_exercises, use_sessions,
 };
-/// Load a page of completed sessions, sorted by `start_time` descending.
-///
-/// On native platforms, executes a SQL query with `LIMIT`/`OFFSET` so only
-/// the requested rows are transferred from the database, avoiding the need to
-/// load, clone, and sort the entire history in memory.
-///
-/// On the web platform, all sessions are retrieved from `IndexedDB`, then
-/// filtered, sorted, and sliced — true cursor-based pagination requires IDB
-/// indices which would add schema-migration complexity.
-///
-/// Returns an empty `Vec` and logs an error when storage access fails.
-pub async fn load_completed_sessions_page(
-    limit: usize,
-    offset: usize,
-) -> Vec<crate::models::WorkoutSession> {
-    #[cfg(target_arch = "wasm32")]
-    {
-        match idb::get_all::<crate::models::WorkoutSession>(idb::STORE_SESSIONS).await {
-            Ok(mut sessions) => {
-                sessions.retain(|s| !s.is_active());
-                sessions.sort_by(|a, b| b.start_time.cmp(&a.start_time));
-                sessions.into_iter().skip(offset).take(limit).collect()
-            }
-            Err(e) => {
-                log::error!("Failed to load sessions from IDB: {e}");
-                vec![]
-            }
-        }
-    }
-    #[cfg(not(target_arch = "wasm32"))]
-    {
-        match tokio::task::spawn_blocking(move || {
-            native_storage::get_completed_sessions_paged(limit, offset)
-        })
-        .await
-        {
-            Ok(Ok(sessions)) => sessions,
-            Ok(Err(e)) => {
-                log::error!("Failed to load completed sessions: {e}");
-                vec![]
-            }
-            Err(e) => {
-                log::error!("spawn_blocking panicked loading completed sessions: {e}");
-                vec![]
-            }
-        }
-    }
-}
 /// Aggregated per-exercise personal-record values returned by
 /// [`compute_all_bests_rows`] and [`compute_bests_rows_for_exercises`].
 ///
@@ -83,73 +35,112 @@ pub struct BestsRow {
     /// Maximum set duration (seconds) across all completed logs.
     pub max_duration_s: Option<u64>,
 }
+/// Unified error type returned by all async storage read operations.
+///
+/// Wraps platform-specific errors (`IndexedDB` on `wasm32`, `SQLite` on native)
+/// as a human-readable message so callers need no platform-specific `match`
+/// arms.
+#[derive(Debug, thiserror::Error)]
+pub enum StorageError {
+    /// The underlying storage backend returned an error.
+    #[error("{0}")]
+    Backend(String),
+    /// A blocking background task panicked (native platforms only).
+    #[error("Background task panicked: {0}")]
+    TaskPanic(String),
+}
+#[cfg(target_arch = "wasm32")]
+impl From<idb::IdbError> for StorageError {
+    fn from(e: idb::IdbError) -> Self {
+        StorageError::Backend(e.to_string())
+    }
+}
+#[cfg(not(target_arch = "wasm32"))]
+impl From<native_storage::StorageError> for StorageError {
+    fn from(e: native_storage::StorageError) -> Self {
+        StorageError::Backend(e.to_string())
+    }
+}
+/// Unified async interface implemented by both the `IndexedDB` (web) and `SQLite`
+/// (native) storage backends.
+///
+/// Dispatch happens through [`platform_storage()`], keeping the public API
+/// functions free of `#[cfg(target_arch = "wasm32")]` branching.  Business
+/// logic is therefore decoupled from the platform-specific storage layer.
+pub trait AsyncStorageProvider {
+    /// Load a page of completed sessions, sorted by `start_time` descending.
+    async fn load_completed_sessions_page(
+        &self,
+        limit: usize,
+        offset: usize,
+    ) -> Result<Vec<crate::models::WorkoutSession>, StorageError>;
+    /// Load all active (in-progress) sessions.
+    async fn load_active_sessions(
+        &self,
+    ) -> Result<Vec<crate::models::WorkoutSession>, StorageError>;
+    /// Load all custom exercises.
+    async fn load_custom_exercises(&self) -> Result<Vec<crate::models::Exercise>, StorageError>;
+    /// Compute per-exercise all-time bests across every completed session.
+    async fn compute_all_bests_rows(&self) -> Result<Vec<BestsRow>, StorageError>;
+    /// Compute per-exercise all-time bests restricted to the given IDs.
+    async fn compute_bests_rows_for_exercises(
+        &self,
+        exercise_ids: Vec<String>,
+    ) -> Result<Vec<BestsRow>, StorageError>;
+}
+/// Returns the platform-specific storage backend.
+///
+/// Selection is made at compile time: [`IdbStorage`] on `wasm32` and
+/// [`NativeStorage`] on native.  Keeping the `#[cfg]` dispatch in this single
+/// private helper allows every public API function to remain free of inline
+/// conditional compilation.
+#[cfg(target_arch = "wasm32")]
+#[inline]
+fn platform_storage() -> IdbStorage {
+    IdbStorage
+}
+#[cfg(not(target_arch = "wasm32"))]
+#[inline]
+fn platform_storage() -> NativeStorage {
+    NativeStorage
+}
+/// Load a page of completed sessions, sorted by `start_time` descending.
+///
+/// On native platforms, executes a SQL query with `LIMIT`/`OFFSET` so only
+/// the requested rows are transferred from the database, avoiding the need to
+/// load, clone, and sort the entire history in memory.
+///
+/// On the web platform, all sessions are retrieved from `IndexedDB`, then
+/// filtered, sorted, and sliced — true cursor-based pagination requires IDB
+/// indices which would add schema-migration complexity.
+///
+/// Returns `Err` when storage access fails, allowing the UI to surface the
+/// error appropriately.
+pub async fn load_completed_sessions_page(
+    limit: usize,
+    offset: usize,
+) -> Result<Vec<crate::models::WorkoutSession>, StorageError> {
+    platform_storage()
+        .load_completed_sessions_page(limit, offset)
+        .await
+}
 /// Load only the **active** (in-progress) sessions from storage.
 ///
 /// On native this issues `SELECT … WHERE end_time IS NULL`, so completed
 /// sessions are never deserialised.  On wasm all sessions are fetched from
 /// `IndexedDB` and completed ones are discarded immediately.
 ///
-/// Errors are logged; an empty `Vec` is returned on failure.
-pub async fn load_active_sessions() -> Vec<crate::models::WorkoutSession> {
-    #[cfg(target_arch = "wasm32")]
-    {
-        match idb::get_all::<crate::models::WorkoutSession>(idb::STORE_SESSIONS).await {
-            Ok(sessions) => sessions.into_iter().filter(|s| s.is_active()).collect(),
-            Err(e) => {
-                log::error!("Failed to load active sessions from IndexedDB: {e}");
-                vec![]
-            }
-        }
-    }
-    #[cfg(not(target_arch = "wasm32"))]
-    {
-        match tokio::task::spawn_blocking(native_storage::get_active_sessions).await {
-            Ok(Ok(sessions)) => sessions,
-            Ok(Err(e)) => {
-                log::error!("Failed to load active sessions: {e}");
-                vec![]
-            }
-            Err(e) => {
-                log::error!("spawn_blocking panicked loading active sessions: {e}");
-                vec![]
-            }
-        }
-    }
+/// Returns `Err` when storage access fails, allowing the UI to surface the
+/// error appropriately.
+pub async fn load_active_sessions() -> Result<Vec<crate::models::WorkoutSession>, StorageError> {
+    platform_storage().load_active_sessions().await
 }
 /// Load all custom exercises from storage.
 ///
-/// Errors are logged; an empty `Vec` is returned on failure.
-pub async fn load_custom_exercises() -> Vec<crate::models::Exercise> {
-    #[cfg(target_arch = "wasm32")]
-    {
-        match idb::get_all::<crate::models::Exercise>(idb::STORE_CUSTOM_EXERCISES).await {
-            Ok(exercises) => exercises,
-            Err(e) => {
-                log::error!("Failed to load custom exercises from IndexedDB: {e}");
-                vec![]
-            }
-        }
-    }
-    #[cfg(not(target_arch = "wasm32"))]
-    {
-        match tokio::task::spawn_blocking(|| {
-            native_storage::get_all::<crate::models::Exercise>(
-                native_storage::STORE_CUSTOM_EXERCISES,
-            )
-        })
-        .await
-        {
-            Ok(Ok(exercises)) => exercises,
-            Ok(Err(e)) => {
-                log::error!("Failed to load custom exercises: {e}");
-                vec![]
-            }
-            Err(e) => {
-                log::error!("spawn_blocking panicked loading custom exercises: {e}");
-                vec![]
-            }
-        }
-    }
+/// Returns `Err` when storage access fails, allowing the UI to surface the
+/// error appropriately.
+pub async fn load_custom_exercises() -> Result<Vec<crate::models::Exercise>, StorageError> {
+    platform_storage().load_custom_exercises().await
 }
 /// Compute per-exercise all-time bests across every **completed** session.
 ///
@@ -157,66 +148,23 @@ pub async fn load_custom_exercises() -> Vec<crate::models::Exercise> {
 /// is ever deserialised into Rust structs.  On wasm all sessions are fetched
 /// from `IndexedDB` and aggregated in memory (SQL is not available there).
 ///
-/// Errors are logged; an empty `Vec` is returned on failure.
-pub async fn compute_all_bests_rows() -> Vec<BestsRow> {
-    #[cfg(target_arch = "wasm32")]
-    {
-        match idb::get_all::<crate::models::WorkoutSession>(idb::STORE_SESSIONS).await {
-            Ok(sessions) => bests_rows_from_sessions(&sessions),
-            Err(e) => {
-                log::error!("Failed to load sessions for bests computation: {e}");
-                vec![]
-            }
-        }
-    }
-    #[cfg(not(target_arch = "wasm32"))]
-    {
-        match tokio::task::spawn_blocking(native_storage::compute_bests_rows).await {
-            Ok(Ok(rows)) => rows,
-            Ok(Err(e)) => {
-                log::error!("Failed to compute bests from storage: {e}");
-                vec![]
-            }
-            Err(e) => {
-                log::error!("spawn_blocking panicked computing bests: {e}");
-                vec![]
-            }
-        }
-    }
+/// Returns `Err` when storage access fails.
+pub async fn compute_all_bests_rows() -> Result<Vec<BestsRow>, StorageError> {
+    platform_storage().compute_all_bests_rows().await
 }
 /// Compute per-exercise all-time bests restricted to the given `exercise_ids`.
 ///
 /// On native this passes the IDs directly to the SQL query so only the
 /// requested exercises are aggregated.  On wasm all sessions are loaded and
 /// filtered in memory.
-pub async fn compute_bests_rows_for_exercises(exercise_ids: Vec<String>) -> Vec<BestsRow> {
-    #[cfg(target_arch = "wasm32")]
-    {
-        let id_set: std::collections::HashSet<String> = exercise_ids.into_iter().collect();
-        compute_all_bests_rows()
-            .await
-            .into_iter()
-            .filter(|row| id_set.contains(&row.exercise_id))
-            .collect()
-    }
-    #[cfg(not(target_arch = "wasm32"))]
-    {
-        match tokio::task::spawn_blocking(move || {
-            native_storage::compute_bests_rows_for(&exercise_ids)
-        })
+///
+/// Returns `Err` when storage access fails.
+pub async fn compute_bests_rows_for_exercises(
+    exercise_ids: Vec<String>,
+) -> Result<Vec<BestsRow>, StorageError> {
+    platform_storage()
+        .compute_bests_rows_for_exercises(exercise_ids)
         .await
-        {
-            Ok(Ok(rows)) => rows,
-            Ok(Err(e)) => {
-                log::error!("Failed to compute bests for exercises: {e}");
-                vec![]
-            }
-            Err(e) => {
-                log::error!("spawn_blocking panicked computing bests for exercises: {e}");
-                vec![]
-            }
-        }
-    }
 }
 /// Aggregate per-exercise bests from an in-memory session slice (wasm helper).
 #[cfg(target_arch = "wasm32")]
@@ -371,6 +319,14 @@ pub(crate) mod idb {
     /// More efficient than calling [`put_item`] in a loop because only one
     /// database connection and one transaction are opened.
     ///
+    /// Serialisation is performed in chunks of [`PUT_ALL_CHUNK_SIZE`] items,
+    /// yielding to the browser's macro-task queue between each chunk via a
+    /// zero-delay `setTimeout`.  This prevents large datasets (e.g. 800+
+    /// exercises) from synchronously blocking the UI thread during the
+    /// serialisation phase.  The IndexedDB transaction is opened only after
+    /// all serialisation is complete so the yield points cannot cause the
+    /// transaction to auto-commit prematurely.
+    ///
     /// All individual `put` requests are issued concurrently within the same
     /// transaction via [`futures_util::future::try_join_all`] so the browser can
     /// pipeline them instead of waiting for each one before issuing the next.
@@ -378,14 +334,22 @@ pub(crate) mod idb {
         store_name: &str,
         items: &[T],
     ) -> Result<(), IdbError> {
+        /// Number of items to serialise per chunk before yielding.
+        const PUT_ALL_CHUNK_SIZE: usize = 50;
+        // Serialise in chunks, yielding to the macro-task queue between each
+        // chunk so the browser can paint frames and handle input events.
+        // The transaction is opened only after all serialisation completes so
+        // that the yield points never risk triggering an early auto-commit.
+        let mut js_values = Vec::with_capacity(items.len());
+        for chunk in items.chunks(PUT_ALL_CHUNK_SIZE) {
+            for item in chunk {
+                js_values.push(serde_wasm_bindgen::to_value(item)?);
+            }
+            gloo_timers::future::TimeoutFuture::new(0).await;
+        }
         let db = open_db().await?;
         let tx = db.transaction(&[store_name], TransactionMode::ReadWrite)?;
         let store = tx.store(store_name)?;
-        // Serialise all values first, then issue all puts concurrently.
-        let js_values: Vec<_> = items
-            .iter()
-            .map(serde_wasm_bindgen::to_value)
-            .collect::<Result<_, _>>()?;
         let put_futs: Vec<_> = js_values
             .iter()
             .map(|js_val| store.put(js_val, None))
@@ -430,6 +394,49 @@ pub(crate) mod idb {
             }
         }
         Ok(items)
+    }
+}
+/// Zero-size marker type that binds [`AsyncStorageProvider`] to the
+/// `IndexedDB` backend exposed by [`idb`].
+#[cfg(target_arch = "wasm32")]
+pub struct IdbStorage;
+/// [`AsyncStorageProvider`] implementation for the `IndexedDB` (wasm32) backend.
+#[cfg(target_arch = "wasm32")]
+impl AsyncStorageProvider for IdbStorage {
+    async fn load_completed_sessions_page(
+        &self,
+        limit: usize,
+        offset: usize,
+    ) -> Result<Vec<crate::models::WorkoutSession>, StorageError> {
+        let mut sessions =
+            idb::get_all::<crate::models::WorkoutSession>(idb::STORE_SESSIONS).await?;
+        sessions.retain(|s| !s.is_active());
+        sessions.sort_by(|a, b| b.start_time.cmp(&a.start_time));
+        Ok(sessions.into_iter().skip(offset).take(limit).collect())
+    }
+    async fn load_active_sessions(
+        &self,
+    ) -> Result<Vec<crate::models::WorkoutSession>, StorageError> {
+        let sessions = idb::get_all::<crate::models::WorkoutSession>(idb::STORE_SESSIONS).await?;
+        Ok(sessions.into_iter().filter(|s| s.is_active()).collect())
+    }
+    async fn load_custom_exercises(&self) -> Result<Vec<crate::models::Exercise>, StorageError> {
+        Ok(idb::get_all::<crate::models::Exercise>(idb::STORE_CUSTOM_EXERCISES).await?)
+    }
+    async fn compute_all_bests_rows(&self) -> Result<Vec<BestsRow>, StorageError> {
+        let sessions = idb::get_all::<crate::models::WorkoutSession>(idb::STORE_SESSIONS).await?;
+        Ok(bests_rows_from_sessions(&sessions))
+    }
+    async fn compute_bests_rows_for_exercises(
+        &self,
+        exercise_ids: Vec<String>,
+    ) -> Result<Vec<BestsRow>, StorageError> {
+        let id_set: std::collections::HashSet<String> = exercise_ids.into_iter().collect();
+        let all = self.compute_all_bests_rows().await?;
+        Ok(all
+            .into_iter()
+            .filter(|row| id_set.contains(&row.exercise_id))
+            .collect())
     }
 }
 #[cfg(target_arch = "wasm32")]
@@ -1162,6 +1169,58 @@ impl StorageProvider for NativeStorage {
     }
     fn store_all<T: serde::Serialize>(store_name: &str, items: &[T]) -> Result<(), Self::Error> {
         native_storage::store_all(store_name, items)
+    }
+}
+/// [`AsyncStorageProvider`] implementation for the `SQLite` (native) backend.
+///
+/// Each method spawns a blocking task via [`tokio::task::spawn_blocking`] so
+/// that the synchronous `SQLite` operations never block the async runtime.
+#[cfg(not(target_arch = "wasm32"))]
+impl AsyncStorageProvider for NativeStorage {
+    async fn load_completed_sessions_page(
+        &self,
+        limit: usize,
+        offset: usize,
+    ) -> Result<Vec<crate::models::WorkoutSession>, StorageError> {
+        tokio::task::spawn_blocking(move || {
+            native_storage::get_completed_sessions_paged(limit, offset)
+        })
+        .await
+        .map_err(|e| StorageError::TaskPanic(e.to_string()))?
+        .map_err(StorageError::from)
+    }
+    async fn load_active_sessions(
+        &self,
+    ) -> Result<Vec<crate::models::WorkoutSession>, StorageError> {
+        tokio::task::spawn_blocking(native_storage::get_active_sessions)
+            .await
+            .map_err(|e| StorageError::TaskPanic(e.to_string()))?
+            .map_err(StorageError::from)
+    }
+    async fn load_custom_exercises(&self) -> Result<Vec<crate::models::Exercise>, StorageError> {
+        tokio::task::spawn_blocking(|| {
+            native_storage::get_all::<crate::models::Exercise>(
+                native_storage::STORE_CUSTOM_EXERCISES,
+            )
+        })
+        .await
+        .map_err(|e| StorageError::TaskPanic(e.to_string()))?
+        .map_err(StorageError::from)
+    }
+    async fn compute_all_bests_rows(&self) -> Result<Vec<BestsRow>, StorageError> {
+        tokio::task::spawn_blocking(native_storage::compute_bests_rows)
+            .await
+            .map_err(|e| StorageError::TaskPanic(e.to_string()))?
+            .map_err(StorageError::from)
+    }
+    async fn compute_bests_rows_for_exercises(
+        &self,
+        exercise_ids: Vec<String>,
+    ) -> Result<Vec<BestsRow>, StorageError> {
+        tokio::task::spawn_blocking(move || native_storage::compute_bests_rows_for(&exercise_ids))
+            .await
+            .map_err(|e| StorageError::TaskPanic(e.to_string()))?
+            .map_err(StorageError::from)
     }
 }
 #[cfg(test)]

@@ -72,13 +72,21 @@ pub fn More() -> Element {
             let mut offset = 0usize;
             let page_size = 500usize;
             loop {
-                let page = storage::load_completed_sessions_page(page_size, offset).await;
-                let fetched = page.len();
-                all.extend(page);
-                if fetched < page_size {
-                    break;
+                match storage::load_completed_sessions_page(page_size, offset).await {
+                    Ok(page) => {
+                        let fetched = page.len();
+                        all.extend(page);
+                        if fetched < page_size {
+                            break;
+                        }
+                        offset += fetched;
+                    }
+                    Err(e) => {
+                        t.write()
+                            .push_back(format!("⚠️ Failed to export sessions: {e}"));
+                        return;
+                    }
                 }
-                offset += fetched;
             }
             all.sort_by(|a, b| a.start_time.cmp(&b.start_time));
             match serde_json::to_string_pretty(&all) {

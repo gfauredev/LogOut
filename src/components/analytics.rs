@@ -77,13 +77,20 @@ pub fn Analytics() -> Element {
         let mut offset = 0usize;
         let page_size = 500usize;
         loop {
-            let page = storage::load_completed_sessions_page(page_size, offset).await;
-            let fetched = page.len();
-            all.extend(page);
-            if fetched < page_size {
-                break;
+            match storage::load_completed_sessions_page(page_size, offset).await {
+                Ok(page) => {
+                    let fetched = page.len();
+                    all.extend(page);
+                    if fetched < page_size {
+                        break;
+                    }
+                    offset += fetched;
+                }
+                Err(e) => {
+                    log::error!("Failed to load sessions page for analytics: {e}");
+                    break;
+                }
             }
-            offset += fetched;
         }
         all
     });
