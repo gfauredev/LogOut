@@ -197,16 +197,19 @@
               '';
               # Retrieve server binary from the architecture-specific target dir that dx uses.
               installPhase =
-                if platform == "server" then ''
-                  mkdir -p $out/bin
-                  serverBin=$(find target -maxdepth 5 -name "log-out" -type f -path "*/server-release/*" | head -1)
-                  cp "$serverBin" $out/bin/logout-server
-                '' else ''
-                  mkdir -p $out
-                  cp -r target/dx/log-out/release/web/public/${
-                    if basePath == "/" then "* $out/" else " $out/${basePath}"
-                  }
-                '';
+                if platform == "server" then
+                  ''
+                    mkdir -p $out/bin
+                    serverBin=$(find target -maxdepth 5 -name "log-out" -type f -path "*/server-release/*" | head -1)
+                    cp "$serverBin" $out/bin/logout-server
+                  ''
+                else
+                  ''
+                    mkdir -p $out
+                    cp -r target/dx/log-out/release/web/public/${
+                      if basePath == "/" then "* $out/" else " $out/${basePath}"
+                    }
+                  '';
               doCheck = false;
             };
           chromiumWrapper = env.pkgs.writeShellScriptBin "google-chrome" ''

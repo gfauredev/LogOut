@@ -248,6 +248,7 @@ fn CompletedExercisesSection(
     rsx! {
         section { // class: "exercises",
 
+
             h3 { "Completed Exercises" }
             if no_exercise_active {
                 if let Some((next_id, next_name)) = suggestion_label() {
