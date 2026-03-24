@@ -45,17 +45,43 @@ async fn load_storage_data(
     mut sessions_sig: Signal<Vec<WorkoutSession>>,
     mut custom_sig: Signal<Vec<Arc<Exercise>>>,
     mut cache_sig: Signal<BestsCache>,
-    toast: Signal<std::collections::VecDeque<String>>,
+    mut toast: Signal<std::collections::VecDeque<String>>,
 ) {
     use super::storage;
     use futures_util::future::join3;
-    let _ = toast; // errors are logged by the storage layer
-    let (active, bests_rows, custom) = join3(
+    let (active_res, bests_res, custom_res) = join3(
         storage::load_active_sessions(),
         storage::compute_all_bests_rows(),
         storage::load_custom_exercises(),
     )
     .await;
+    let active = match active_res {
+        Ok(v) => v,
+        Err(e) => {
+            log::error!("Failed to load active sessions: {e}");
+            toast
+                .write()
+                .push_back(format!("⚠️ Failed to load sessions: {e}"));
+            vec![]
+        }
+    };
+    let bests_rows = match bests_res {
+        Ok(v) => v,
+        Err(e) => {
+            log::error!("Failed to compute exercise bests: {e}");
+            vec![]
+        }
+    };
+    let custom = match custom_res {
+        Ok(v) => v,
+        Err(e) => {
+            log::error!("Failed to load custom exercises: {e}");
+            toast
+                .write()
+                .push_back(format!("⚠️ Failed to load custom exercises: {e}"));
+            vec![]
+        }
+    };
     log::info!(
         "Startup: {} active session(s); {} exercise bests loaded; {} custom exercise(s)",
         active.len(),
@@ -422,10 +448,16 @@ pub(crate) fn recompute_bests_for_exercises(
         }
     }
     dioxus::prelude::spawn(async move {
-        let rows = super::storage::compute_bests_rows_for_exercises(exercise_ids).await;
-        let mut cache = cache_sig.write();
-        for row in rows {
-            cache.insert(row.exercise_id.clone(), exercise_bests_from_row(&row));
+        match super::storage::compute_bests_rows_for_exercises(exercise_ids).await {
+            Ok(rows) => {
+                let mut cache = cache_sig.write();
+                for row in rows {
+                    cache.insert(row.exercise_id.clone(), exercise_bests_from_row(&row));
+                }
+            }
+            Err(e) => {
+                log::error!("Failed to recompute bests for exercises: {e}");
+            }
         }
     });
 }
@@ -437,8 +469,14 @@ pub(crate) fn recompute_bests_for_exercises(
 pub(crate) fn recompute_all_bests(mut cache_sig: Signal<BestsCache>) {
     cache_sig.write().clear();
     dioxus::prelude::spawn(async move {
-        let rows = super::storage::compute_all_bests_rows().await;
-        cache_sig.set(bests_rows_to_cache(rows));
+        match super::storage::compute_all_bests_rows().await {
+            Ok(rows) => {
+                cache_sig.set(bests_rows_to_cache(rows));
+            }
+            Err(e) => {
+                log::error!("Failed to recompute all bests: {e}");
+            }
+        }
     });
 }
 /// Convert a storage [`BestsRow`] into the in-memory [`ExerciseBests`] representation.

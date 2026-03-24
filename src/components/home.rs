@@ -18,11 +18,17 @@ pub fn Home() -> Element {
     use_hook(|| {
         is_loading.set(true);
         spawn(async move {
-            let page = storage::load_completed_sessions_page(PAGE_SIZE, 0).await;
-            let len = page.len();
-            completed_sessions.set(page);
-            sessions_loaded_offset.set(len);
-            all_loaded.set(len < PAGE_SIZE);
+            match storage::load_completed_sessions_page(PAGE_SIZE, 0).await {
+                Ok(page) => {
+                    let len = page.len();
+                    completed_sessions.set(page);
+                    sessions_loaded_offset.set(len);
+                    all_loaded.set(len < PAGE_SIZE);
+                }
+                Err(e) => {
+                    log::error!("Failed to load completed sessions: {e}");
+                }
+            }
             is_loading.set(false);
         });
     });
@@ -281,14 +287,21 @@ fn InfiniteScrollSentinel(
                             is_loading.set(true);
                             let off = *sessions_loaded_offset.peek();
                             wasm_bindgen_futures::spawn_local(async move {
-                                let next = crate::services::storage::load_completed_sessions_page(
+                                match crate::services::storage::load_completed_sessions_page(
                                     PAGE_SIZE, off,
                                 )
-                                .await;
-                                let len = next.len();
-                                completed_sessions.write().extend(next);
-                                sessions_loaded_offset.set(off + len);
-                                all_loaded.set(len < PAGE_SIZE);
+                                .await
+                                {
+                                    Ok(next) => {
+                                        let len = next.len();
+                                        completed_sessions.write().extend(next);
+                                        sessions_loaded_offset.set(off + len);
+                                        all_loaded.set(len < PAGE_SIZE);
+                                    }
+                                    Err(e) => {
+                                        log::error!("Failed to load next sessions page: {e}");
+                                    }
+                                }
                                 is_loading.set(false);
                             });
                             break;
