@@ -1,5 +1,8 @@
 use super::session_exercise_form::ExerciseInputForm;
-use crate::models::{format_time, parse_distance_km, parse_duration_seconds, parse_weight_kg, Category, ExerciseLog, Force, WorkoutSession};
+use crate::models::{
+    format_time, parse_distance_km, parse_duration_seconds, parse_weight_kg, Category, ExerciseLog,
+    Force, WorkoutSession,
+};
 use crate::services::storage;
 use dioxus::prelude::*;
 /// A single completed exercise log entry with inline edit support.
@@ -34,11 +37,7 @@ pub fn CompletedExerciseLog(
                     .map(|d| format!("{:.2}", f64::from(d.0) / 1000.0))
                     .unwrap_or_default(),
             );
-            edit_time_input.set(
-                log.duration_seconds()
-                    .map(format_time)
-                    .unwrap_or_default(),
-            );
+            edit_time_input.set(log.duration_seconds().map(format_time).unwrap_or_default());
             is_editing.set(true);
         }
     };

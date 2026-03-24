@@ -1,7 +1,7 @@
 use super::session_timers::ExerciseElapsedTimer;
 use crate::models::{
-    format_time, parse_distance_km, parse_duration_seconds, parse_weight_kg, Category,
-    ExerciseLog, Force,
+    format_time, parse_distance_km, parse_duration_seconds, parse_weight_kg, Category, ExerciseLog,
+    Force,
 };
 use crate::services::{exercise_db, storage};
 use dioxus::prelude::*;
@@ -76,8 +76,7 @@ pub(super) fn ExerciseInputForm(
                             tabindex: -1,
                             onclick: move |_| {
                                 if let Some(mut ti) = time_input {
-                                    let secs =
-                                        parse_duration_seconds(&ti.read()).unwrap_or(0);
+                                    let secs = parse_duration_seconds(&ti.read()).unwrap_or(0);
                                     ti.set(format_time(secs.saturating_sub(5)));
                                 }
                             },
@@ -107,8 +106,7 @@ pub(super) fn ExerciseInputForm(
                             tabindex: -1,
                             onclick: move |_| {
                                 if let Some(mut ti) = time_input {
-                                    let secs =
-                                        parse_duration_seconds(&ti.read()).unwrap_or(0);
+                                    let secs = parse_duration_seconds(&ti.read()).unwrap_or(0);
                                     ti.set(format_time(secs + 5));
                                 }
                             },
