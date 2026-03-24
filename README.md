@@ -34,6 +34,8 @@ A simple, efficient and cross-platform workout logging application with
 - 📊 Track your progress over time on several metrics and exercises in analytics
 - 📱 Responsive design, ergonomic navigation, local-first, performant
 
+![home](.screenshot/home.png)&nbsp;![search](.screenshot/search.png)&nbsp;![analytics](.screenshot/analytics.png)
+
 ## Project Structure
 
 The project follows a modular [Rust] structure for a [Dioxus] application:
@@ -102,11 +104,11 @@ LogOut/
 The project uses [Nix] to download all (proper versions of) required
 dependencies, configure the development environment (shell) and build the
 application, reproducibly. The [Nix] environment and tooling is defined in
-[`flake.nix`](./flake.nix), enable it with `nix develop` or automatically with
-an allowed [`.envrc`](./.envrc) and [`direnv`] (recommended):
+[`flake.nix`](flake.nix), enable it with `nix develop` or automatically with an
+allowed [`.envrc`](.envrc) and [`direnv`] (recommended):
 
 For release builds, we prefer pure reproducible `nix build`, but for development
-speed, it is recommended to use the hot-reloading `dx serve`.
+speed, it is recommended to use the hot-reloading `dx serve` ([PWA] by default).
 
 ### Android Native APK
 
@@ -215,7 +217,7 @@ Follow this contribution process, based on [GitHub Flow], [Conventional Branch]:
 pass through a pull-request (PR), and every below check (that runs on pushes on
 PRs) must pass (for some, at a certain level) for it to be merged into `main`.
 
-- Run isolated in Garnix via (`flake.nix`)[./flake.nix], for every push on PR
+- Run isolated in Garnix via (`flake.nix`)[flake.nix], for every push on PR
   - Check if the code is properly **formated** `cargo fmt --all -- --check`
   - **Lint** `cargo clippy -- -D warnings -W clippy::all -W clippy::pedantic`
   - **Unit test** while measuring **coverage** with `cargo llvm-cov`
@@ -277,6 +279,7 @@ checks that run every Sunday at midnight on the `main` branch.
 [llvm-cov]: https://llvm.org/docs/CommandGuide/llvm-cov.html
 [Maestro]: https://maestro.dev
 [Nix]: https://nixos.org
+[pwa]: https://developer.mozilla.org/en-US/docs/Web/Progressive_web_apps
 [rust-analyzer]: https://rust-analyzer.github.io
 [rust]: https://www.rust-lang.org
 [rustc]: https://doc.rust-lang.org/rustc
