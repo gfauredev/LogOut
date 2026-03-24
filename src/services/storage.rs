@@ -65,6 +65,263 @@ pub async fn load_completed_sessions_page(
         }
     }
 }
+/// Aggregated per-exercise personal-record values returned by
+/// [`compute_all_bests_rows`] and [`compute_bests_rows_for_exercises`].
+///
+/// Raw numeric types match the storage representation so callers can build
+/// [`crate::services::app_state::ExerciseBests`] values without an extra
+/// conversion step.
+pub struct BestsRow {
+    /// The exercise this row describes.
+    pub exercise_id: String,
+    /// Maximum `weight_hg` (hectograms) across all completed logs.
+    pub max_weight_hg: Option<u16>,
+    /// Maximum repetition count across all completed logs.
+    pub max_reps: Option<u32>,
+    /// Maximum `distance_m` (metres) across all completed logs.
+    pub max_distance_m: Option<u32>,
+    /// Maximum set duration (seconds) across all completed logs.
+    pub max_duration_s: Option<u64>,
+}
+/// Load only the **active** (in-progress) sessions from storage.
+///
+/// On native this issues `SELECT … WHERE end_time IS NULL`, so completed
+/// sessions are never deserialised.  On wasm all sessions are fetched from
+/// `IndexedDB` and completed ones are discarded immediately.
+///
+/// Errors are logged; an empty `Vec` is returned on failure.
+pub async fn load_active_sessions() -> Vec<crate::models::WorkoutSession> {
+    #[cfg(target_arch = "wasm32")]
+    {
+        match idb::get_all::<crate::models::WorkoutSession>(idb::STORE_SESSIONS).await {
+            Ok(sessions) => sessions.into_iter().filter(|s| s.is_active()).collect(),
+            Err(e) => {
+                log::error!("Failed to load active sessions from IndexedDB: {e}");
+                vec![]
+            }
+        }
+    }
+    #[cfg(not(target_arch = "wasm32"))]
+    {
+        match tokio::task::spawn_blocking(native_storage::get_active_sessions).await {
+            Ok(Ok(sessions)) => sessions,
+            Ok(Err(e)) => {
+                log::error!("Failed to load active sessions: {e}");
+                vec![]
+            }
+            Err(e) => {
+                log::error!("spawn_blocking panicked loading active sessions: {e}");
+                vec![]
+            }
+        }
+    }
+}
+/// Load all custom exercises from storage.
+///
+/// Errors are logged; an empty `Vec` is returned on failure.
+pub async fn load_custom_exercises() -> Vec<crate::models::Exercise> {
+    #[cfg(target_arch = "wasm32")]
+    {
+        match idb::get_all::<crate::models::Exercise>(idb::STORE_CUSTOM_EXERCISES).await {
+            Ok(exercises) => exercises,
+            Err(e) => {
+                log::error!("Failed to load custom exercises from IndexedDB: {e}");
+                vec![]
+            }
+        }
+    }
+    #[cfg(not(target_arch = "wasm32"))]
+    {
+        match tokio::task::spawn_blocking(|| {
+            native_storage::get_all::<crate::models::Exercise>(
+                native_storage::STORE_CUSTOM_EXERCISES,
+            )
+        })
+        .await
+        {
+            Ok(Ok(exercises)) => exercises,
+            Ok(Err(e)) => {
+                log::error!("Failed to load custom exercises: {e}");
+                vec![]
+            }
+            Err(e) => {
+                log::error!("spawn_blocking panicked loading custom exercises: {e}");
+                vec![]
+            }
+        }
+    }
+}
+/// Compute per-exercise all-time bests across every **completed** session.
+///
+/// On native this executes a single SQL aggregation query so no session JSON
+/// is ever deserialised into Rust structs.  On wasm all sessions are fetched
+/// from `IndexedDB` and aggregated in memory (SQL is not available there).
+///
+/// Errors are logged; an empty `Vec` is returned on failure.
+pub async fn compute_all_bests_rows() -> Vec<BestsRow> {
+    #[cfg(target_arch = "wasm32")]
+    {
+        match idb::get_all::<crate::models::WorkoutSession>(idb::STORE_SESSIONS).await {
+            Ok(sessions) => bests_rows_from_sessions(&sessions),
+            Err(e) => {
+                log::error!("Failed to load sessions for bests computation: {e}");
+                vec![]
+            }
+        }
+    }
+    #[cfg(not(target_arch = "wasm32"))]
+    {
+        match tokio::task::spawn_blocking(native_storage::compute_bests_rows).await {
+            Ok(Ok(rows)) => rows,
+            Ok(Err(e)) => {
+                log::error!("Failed to compute bests from storage: {e}");
+                vec![]
+            }
+            Err(e) => {
+                log::error!("spawn_blocking panicked computing bests: {e}");
+                vec![]
+            }
+        }
+    }
+}
+/// Compute per-exercise all-time bests restricted to the given `exercise_ids`.
+///
+/// On native this passes the IDs directly to the SQL query so only the
+/// requested exercises are aggregated.  On wasm all sessions are loaded and
+/// filtered in memory.
+pub async fn compute_bests_rows_for_exercises(exercise_ids: Vec<String>) -> Vec<BestsRow> {
+    #[cfg(target_arch = "wasm32")]
+    {
+        let id_set: std::collections::HashSet<String> = exercise_ids.into_iter().collect();
+        compute_all_bests_rows()
+            .await
+            .into_iter()
+            .filter(|row| id_set.contains(&row.exercise_id))
+            .collect()
+    }
+    #[cfg(not(target_arch = "wasm32"))]
+    {
+        match tokio::task::spawn_blocking(move || {
+            native_storage::compute_bests_rows_for(&exercise_ids)
+        })
+        .await
+        {
+            Ok(Ok(rows)) => rows,
+            Ok(Err(e)) => {
+                log::error!("Failed to compute bests for exercises: {e}");
+                vec![]
+            }
+            Err(e) => {
+                log::error!("spawn_blocking panicked computing bests for exercises: {e}");
+                vec![]
+            }
+        }
+    }
+}
+/// Aggregate per-exercise bests from an in-memory session slice (wasm helper).
+#[cfg(target_arch = "wasm32")]
+fn bests_rows_from_sessions(sessions: &[crate::models::WorkoutSession]) -> Vec<BestsRow> {
+    fn update_max<T: Ord>(slot: &mut Option<T>, new: T) {
+        match slot {
+            None => *slot = Some(new),
+            Some(prev) => {
+                if new > *prev {
+                    *prev = new;
+                }
+            }
+        }
+    }
+    let mut map: std::collections::HashMap<String, BestsRow> = std::collections::HashMap::new();
+    for session in sessions {
+        if !session.is_active() {
+            for log in &session.exercise_logs {
+                if !log.is_complete() {
+                    continue;
+                }
+                let entry = map
+                    .entry(log.exercise_id.clone())
+                    .or_insert_with(|| BestsRow {
+                        exercise_id: log.exercise_id.clone(),
+                        max_weight_hg: None,
+                        max_reps: None,
+                        max_distance_m: None,
+                        max_duration_s: None,
+                    });
+                if let Some(w) = log.weight_hg {
+                    update_max(&mut entry.max_weight_hg, w.0);
+                }
+                if let Some(r) = log.reps {
+                    update_max(&mut entry.max_reps, r);
+                }
+                if let Some(d) = log.distance_m {
+                    update_max(&mut entry.max_distance_m, d.0);
+                }
+                if let Some(dur) = log.duration_seconds() {
+                    update_max(&mut entry.max_duration_s, dur);
+                }
+            }
+        }
+    }
+    map.into_values().collect()
+}
+/// Enqueue a session upsert on the platform-specific background write queue.
+///
+/// Abstracts over [`idb_queue`] (web) and [`native_queue`] (native) so
+/// callers in [`super::app_state`] need no `#[cfg]` for this operation.
+pub fn enqueue_put_session(
+    session: crate::models::WorkoutSession,
+    toast: dioxus::signals::Signal<std::collections::VecDeque<String>>,
+    sessions_sig: dioxus::signals::Signal<Vec<crate::models::WorkoutSession>>,
+    previous: Option<crate::models::WorkoutSession>,
+) {
+    #[cfg(target_arch = "wasm32")]
+    idb_queue::enqueue(idb_queue::IdbOp::PutSession {
+        session,
+        toast,
+        sessions_sig,
+        previous,
+    });
+    #[cfg(not(target_arch = "wasm32"))]
+    native_queue::enqueue(native_queue::NativeOp::PutSession {
+        session,
+        toast,
+        sessions_sig,
+        previous,
+    });
+}
+/// Enqueue a session deletion on the platform-specific background write queue.
+pub fn enqueue_delete_session(
+    id: String,
+    toast: dioxus::signals::Signal<std::collections::VecDeque<String>>,
+    sessions_sig: dioxus::signals::Signal<Vec<crate::models::WorkoutSession>>,
+    snapshot: Option<crate::models::WorkoutSession>,
+) {
+    #[cfg(target_arch = "wasm32")]
+    idb_queue::enqueue(idb_queue::IdbOp::DeleteSession {
+        id,
+        toast,
+        sessions_sig,
+        snapshot,
+    });
+    #[cfg(not(target_arch = "wasm32"))]
+    native_queue::enqueue(native_queue::NativeOp::DeleteSession {
+        id,
+        toast,
+        sessions_sig,
+        snapshot,
+    });
+}
+/// Enqueue a custom-exercise upsert on the platform-specific background write queue.
+pub fn enqueue_put_exercise(
+    exercise: crate::models::Exercise,
+    toast: dioxus::signals::Signal<std::collections::VecDeque<String>>,
+) {
+    #[cfg(target_arch = "wasm32")]
+    idb_queue::enqueue(idb_queue::IdbOp::PutExercise(exercise, toast));
+    #[cfg(not(target_arch = "wasm32"))]
+    native_queue::enqueue(native_queue::NativeOp::PutExercise(exercise, toast));
+}
+
 #[cfg(target_arch = "wasm32")]
 pub(crate) mod idb {
     use rexie::{ObjectStore, Rexie, TransactionMode};
@@ -737,6 +994,109 @@ pub(crate) mod native_storage {
     pub fn remove_config_value(key: &str) -> Result<(), StorageError> {
         set_config_value(key, "")
     }
+    /// Load only the active (in-progress) sessions by filtering at the SQL level.
+    ///
+    /// More memory-efficient than [`get_all`] because completed sessions, which
+    /// can represent the bulk of history, are never deserialised into Rust.
+    pub fn get_active_sessions() -> Result<Vec<crate::models::WorkoutSession>, StorageError> {
+        let conn = open_db();
+        let mut stmt = conn.prepare("SELECT data FROM sessions WHERE end_time IS NULL")?;
+        let items = stmt
+            .query_map([], |row| row.get::<_, String>(0))?
+            .filter_map(Result::ok)
+            .filter_map(|data| {
+                serde_json::from_str::<crate::models::WorkoutSession>(&data)
+                    .inspect_err(|e| log::warn!("Skipping corrupt active session row: {e}"))
+                    .ok()
+            })
+            .collect();
+        Ok(items)
+    }
+    /// Compute per-exercise all-time bests using a single SQL aggregation query.
+    ///
+    /// Uses `json_each` to iterate the `exercise_logs` array inside each
+    /// completed session row, so **no session JSON is ever deserialised into a
+    /// Rust struct**.  This is the most memory-efficient path available on
+    /// native.
+    ///
+    /// Only completed logs (those whose `end_time` field is non-null) contribute
+    /// to the aggregation, matching the behaviour of
+    /// [`crate::services::app_state::merge_log_into_bests`].
+    pub fn compute_bests_rows() -> Result<Vec<super::BestsRow>, StorageError> {
+        bests_rows_query(None)
+    }
+    /// Same as [`compute_bests_rows`] but restricted to the given exercise IDs.
+    ///
+    /// Passes the IDs as a JSON array parameter and uses a sub-select to avoid
+    /// aggregating exercises the caller does not need.
+    pub fn compute_bests_rows_for(
+        exercise_ids: &[String],
+    ) -> Result<Vec<super::BestsRow>, StorageError> {
+        bests_rows_query(Some(exercise_ids))
+    }
+    /// Shared implementation: if `ids` is `None` aggregates all exercises;
+    /// if `Some`, adds a `json_each` IN-filter on the `exercise_id` column.
+    fn bests_rows_query(ids: Option<&[String]>) -> Result<Vec<super::BestsRow>, StorageError> {
+        let conn = open_db();
+        let id_filter = if ids.is_some() {
+            "AND json_extract(log.value, '$.exercise_id') \
+             IN (SELECT value FROM json_each(?1))"
+        } else {
+            ""
+        };
+        let sql = format!(
+            "SELECT \
+                 json_extract(log.value, '$.exercise_id')                        AS exercise_id, \
+                 MAX(CAST(json_extract(log.value, '$.weight_hg')   AS INTEGER))  AS max_weight, \
+                 MAX(CAST(json_extract(log.value, '$.reps')        AS INTEGER))  AS max_reps, \
+                 MAX(CAST(json_extract(log.value, '$.distance_m')  AS INTEGER))  AS max_dist, \
+                 MAX( \
+                     CAST(json_extract(log.value, '$.end_time')    AS INTEGER) \
+                   - CAST(json_extract(log.value, '$.start_time')  AS INTEGER) \
+                 )                                                               AS max_dur \
+             FROM sessions \
+             CROSS JOIN json_each(json_extract(data, '$.exercise_logs')) AS log \
+             WHERE end_time IS NOT NULL \
+               AND json_extract(log.value, '$.end_time') IS NOT NULL \
+               {id_filter} \
+             GROUP BY json_extract(log.value, '$.exercise_id')"
+        );
+        let mut stmt = conn.prepare(&sql)?;
+        let map_row = |row: &rusqlite::Row<'_>| {
+            Ok((
+                row.get::<_, String>(0)?,
+                row.get::<_, Option<i64>>(1)?,
+                row.get::<_, Option<i64>>(2)?,
+                row.get::<_, Option<i64>>(3)?,
+                row.get::<_, Option<i64>>(4)?,
+            ))
+        };
+        let rows: Vec<super::BestsRow> = if let Some(ids) = ids {
+            let json = serde_json::to_string(ids).unwrap_or_else(|_| "[]".into());
+            stmt.query_map(rusqlite::params![json], map_row)?
+                .filter_map(Result::ok)
+                .map(bests_row_from_tuple)
+                .collect()
+        } else {
+            stmt.query_map([], map_row)?
+                .filter_map(Result::ok)
+                .map(bests_row_from_tuple)
+                .collect()
+        };
+        Ok(rows)
+    }
+    /// Convert the raw SQL tuple into a [`BestsRow`].
+    fn bests_row_from_tuple(
+        (exercise_id, w, r, d, dur): (String, Option<i64>, Option<i64>, Option<i64>, Option<i64>),
+    ) -> super::BestsRow {
+        super::BestsRow {
+            exercise_id,
+            max_weight_hg: w.and_then(|v| u16::try_from(v).ok()),
+            max_reps: r.and_then(|v| u32::try_from(v).ok()),
+            max_distance_m: d.and_then(|v| u32::try_from(v).ok()),
+            max_duration_s: dur.and_then(|v| u64::try_from(v).ok()),
+        }
+    }
     /// Global mutex that serialises all tests touching native storage.
     ///
     /// Tests in any module that read or write native-storage config or data
@@ -809,7 +1169,9 @@ impl StorageProvider for NativeStorage {
 mod tests {
     use super::native_exercises;
     use super::native_storage;
-    use crate::models::{Category, Exercise, ExerciseLog, Force, WorkoutSession, DATA_VERSION};
+    use crate::models::{
+        Category, Distance, Exercise, ExerciseLog, Force, Weight, WorkoutSession, DATA_VERSION,
+    };
     /// All tests that touch native storage must hold this guard.
     fn lock() -> std::sync::MutexGuard<'static, ()> {
         native_storage::test_lock()
@@ -1305,5 +1667,100 @@ mod tests {
             distance_m: None,
             force: Some(Force::Push),
         }
+    }
+    #[test]
+    fn get_active_sessions_returns_only_active() {
+        let _g = lock();
+        let id_active = "ga_active_s1";
+        let id_done = "ga_done_s1";
+        let active = WorkoutSession {
+            id: id_active.into(),
+            start_time: 100,
+            end_time: None,
+            exercise_logs: vec![],
+            version: DATA_VERSION,
+            pending_exercise_ids: vec![],
+            rest_start_time: None,
+            current_exercise_id: None,
+            current_exercise_start: None,
+            paused_at: None,
+            total_paused_duration: 0,
+        };
+        let done = WorkoutSession {
+            id: id_done.into(),
+            start_time: 200,
+            end_time: Some(300),
+            exercise_logs: vec![],
+            version: DATA_VERSION,
+            pending_exercise_ids: vec![],
+            rest_start_time: None,
+            current_exercise_id: None,
+            current_exercise_start: None,
+            paused_at: None,
+            total_paused_duration: 0,
+        };
+        native_storage::put_item(native_storage::STORE_SESSIONS, id_active, &active).unwrap();
+        native_storage::put_item(native_storage::STORE_SESSIONS, id_done, &done).unwrap();
+        let result = native_storage::get_active_sessions().expect("get_active_sessions failed");
+        assert!(
+            result.iter().any(|s| s.id == id_active),
+            "active session must be present"
+        );
+        assert!(
+            !result.iter().any(|s| s.id == id_done),
+            "completed session must be excluded"
+        );
+        native_storage::delete_item(native_storage::STORE_SESSIONS, id_active).unwrap();
+        native_storage::delete_item(native_storage::STORE_SESSIONS, id_done).unwrap();
+    }
+    #[test]
+    fn compute_bests_rows_aggregates_correctly() {
+        let _g = lock();
+        let id = "cb_session1";
+        let log1 = ExerciseLog {
+            exercise_id: "cb_ex1".into(),
+            exercise_name: "Ex1".into(),
+            category: Category::Strength,
+            start_time: 1_000,
+            end_time: Some(1_060), // duration 60s
+            weight_hg: Some(Weight(1_000)),
+            reps: Some(10),
+            distance_m: None,
+            force: None,
+        };
+        let log2 = ExerciseLog {
+            exercise_id: "cb_ex1".into(),
+            exercise_name: "Ex1".into(),
+            category: Category::Strength,
+            start_time: 2_000,
+            end_time: Some(2_090),        // duration 90s — should win
+            weight_hg: Some(Weight(800)), // lower than log1, should not win
+            reps: Some(12),               // higher reps
+            distance_m: Some(Distance(500)),
+            force: None,
+        };
+        let session = WorkoutSession {
+            id: id.into(),
+            start_time: 1_000,
+            end_time: Some(3_000),
+            exercise_logs: vec![log1, log2],
+            version: DATA_VERSION,
+            pending_exercise_ids: vec![],
+            rest_start_time: None,
+            current_exercise_id: None,
+            current_exercise_start: None,
+            paused_at: None,
+            total_paused_duration: 0,
+        };
+        native_storage::put_item(native_storage::STORE_SESSIONS, id, &session).unwrap();
+        let rows = native_storage::compute_bests_rows().expect("compute_bests_rows failed");
+        let row = rows.iter().find(|r| r.exercise_id == "cb_ex1");
+        assert!(row.is_some(), "must have a row for cb_ex1");
+        let row = row.unwrap();
+        assert_eq!(row.max_weight_hg, Some(1_000), "max weight must be 1000");
+        assert_eq!(row.max_reps, Some(12), "max reps must be 12");
+        assert_eq!(row.max_distance_m, Some(500), "max distance must be 500");
+        assert_eq!(row.max_duration_s, Some(90), "max duration must be 90s");
+        native_storage::delete_item(native_storage::STORE_SESSIONS, id).unwrap();
     }
 }
