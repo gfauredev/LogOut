@@ -1,5 +1,5 @@
 ---
-lang: en
+lang: en-GB
 ---
 
 [![built with garnix](https://img.shields.io/endpoint.svg?url=https%3A%2F%2Fgarnix.io%2Fapi%2Fbadges%2Fgfauredev%2FLogOut)](https://garnix.io/repo/gfauredev/LogOut)
@@ -195,6 +195,27 @@ dx build --android --release --target aarch64-linux-android
 3. Open a **Pull Request (PR)** as soon as your code compiles and checks
 4. Fulfill the **PR** template checks before marking it ready for review
 5. Fix your code if it don’t pass [CI checks](#continuous-integration-ci)
+
+Sometimes, we need to make tradeoffs between different positives outcomes;
+follow that order:
+
+1. User Experience
+   1. Maximize data integrity, never lose or corrupt user data
+   2. Maximize extensibility, easily give users features they need
+   3. Maximize correctness and stability, work as the user expects, reliably
+   4. Minimize computational complexity, be snappy, pleasant to use
+2. Developer Experience
+   1. Maximize code readability and maintenability, make it easy to understand
+   2. Maximize simplicity, minimize complexity, avoid nesting, over-engineering
+   3. Maximize testability and iteration speed, isolated units, fast compile
+3. Device Friendlyness
+   1. Battery usage minimisation, don’t kill mobile devices
+   2. Memory usage minimisation, run smoothly on low-end devices, avoid leaks
+   3. Binary size minimisation, run on low-end devices, load quickly on the web
+   4. Network usage minimisation, work offline or in low-coverage environments
+
+Lower order items are not unimportant, this list is just for when tradeoffs are
+strictly necessary. If possible, maximize all outcomes.
 
 ## Continuous Integration (CI)
 
