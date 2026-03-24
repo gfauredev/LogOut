@@ -7,6 +7,16 @@ pub(crate) const EXERCISE_IMAGES_BASE_URL: &str =
     "https://raw.githubusercontent.com/gfauredev/free-exercise-db/main/";
 /// localStorage / config-file key used to store a user-configured exercise database URL.
 pub(crate) const EXERCISE_DB_URL_STORAGE_KEY: &str = "exercise_db_url";
+/// Cross-platform async sleep used by debounce coroutines.
+///
+/// On native targets this delegates to [`tokio::time::sleep`]; on WASM it uses
+/// [`gloo_timers`] because `tokio` is not available in the browser.
+pub(crate) async fn sleep_ms(ms: u32) {
+    #[cfg(not(target_arch = "wasm32"))]
+    tokio::time::sleep(std::time::Duration::from_millis(u64::from(ms))).await;
+    #[cfg(target_arch = "wasm32")]
+    gloo_timers::future::TimeoutFuture::new(ms).await;
+}
 /// Normalise a user-supplied exercise database URL so it is safe to use as a
 /// base URL for building file paths.
 ///

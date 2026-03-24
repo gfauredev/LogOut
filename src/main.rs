@@ -76,26 +76,33 @@ enum Route {
 /// Detects the user's preferred language from the browser/system, returning a
 /// `LanguageIdentifier`.  Falls back to English (`"en"`) when the language
 /// cannot be determined or is not one the app supports.
+///
+/// Parse failures are logged at `warn` level so they are visible in diagnostics
+/// without crashing the application.
 fn detect_preferred_language() -> unic_langid::LanguageIdentifier {
     #[cfg(target_arch = "wasm32")]
     if let Some(lang_str) = web_sys::window().and_then(|w| w.navigator().language()) {
-        if let Ok(id) = lang_str.parse() {
-            return id;
+        match lang_str.parse() {
+            Ok(id) => return id,
+            Err(e) => log::warn!("Browser locale {lang_str:?} failed to parse: {e}"),
         }
         if let Some(base) = lang_str.split('-').next() {
-            if let Ok(id) = base.parse() {
-                return id;
+            match base.parse() {
+                Ok(id) => return id,
+                Err(e) => log::warn!("Browser locale base tag {base:?} failed to parse: {e}"),
             }
         }
     }
     #[cfg(not(target_arch = "wasm32"))]
     if let Some(lang_str) = sys_locale::get_locale() {
-        if let Ok(id) = lang_str.parse() {
-            return id;
+        match lang_str.parse() {
+            Ok(id) => return id,
+            Err(e) => log::warn!("System locale {lang_str:?} failed to parse: {e}"),
         }
         if let Some(base) = lang_str.split('-').next() {
-            if let Ok(id) = base.parse() {
-                return id;
+            match base.parse() {
+                Ok(id) => return id,
+                Err(e) => log::warn!("System locale base tag {base:?} failed to parse: {e}"),
             }
         }
     }
