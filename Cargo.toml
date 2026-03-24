@@ -7,6 +7,7 @@ edition = "2021"
 default = ["web-platform"]
 web-platform = ["dioxus/web"]  # Web renderer (WASM / browser)
 mobile-platform = ["dioxus/mobile"]  # Mobile renderer (Android / iOS)
+server-platform = ["dioxus/server"]  # Server renderer (native binary serving PWA)
 
 [dependencies]
 dioxus = { version = "0.7", features = ["router"] }

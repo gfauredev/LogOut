@@ -1,6 +1,7 @@
 use super::session_timers::ExerciseElapsedTimer;
 use crate::models::{
-    format_time, parse_distance_km, parse_weight_kg, Category, ExerciseLog, Force,
+    format_time, parse_distance_km, parse_duration_seconds, parse_weight_kg, Category,
+    ExerciseLog, Force,
 };
 use crate::services::{exercise_db, storage};
 use dioxus::prelude::*;
@@ -12,6 +13,11 @@ use dioxus::prelude::*;
 /// columns with the exercise name; the fifth column keeps the 🏆 header icon.
 /// Rows that are not applicable for the current exercise (e.g. no-reps exercises
 /// skip 🔢) are omitted.
+///
+/// When `time_input` is `Some`, the ⏱️ row becomes an editable time field with
+/// increment/decrement buttons (edit mode).  When `None`, the row shows the ATH
+/// duration only (perform mode – the live timer is displayed separately by the
+/// [`ExerciseFormPanel`] parent).
 #[component]
 pub(super) fn ExerciseInputForm(
     /// ID of the exercise (used to look up personal records).
@@ -23,8 +29,13 @@ pub(super) fn ExerciseInputForm(
     distance_input: Signal<String>,
     force: Option<Force>,
     category: Category,
-    /// Duration of the most recent log for this exercise (previous set).
+    /// Duration of the most recent log for this exercise (previous set or
+    /// current log when editing).  Used for ATH comparison in perform mode.
     last_duration: Option<u64>,
+    /// When `Some`, enables editing the exercise duration via an inline input
+    /// field (edit mode).  When `None` the ⏱️ row is read-only (perform mode).
+    #[props(default)]
+    time_input: Option<Signal<String>>,
     on_complete: EventHandler<()>,
     on_cancel: EventHandler<()>,
 ) -> Element {
@@ -33,6 +44,7 @@ pub(super) fn ExerciseInputForm(
     let mut distance_input = distance_input;
     let show_reps = force.is_some_and(Force::has_reps);
     let is_cardio = category == Category::Cardio;
+    let is_editing_time = time_input.is_some();
     let bests = storage::get_exercise_bests(&exercise_id);
     let weight = weight_input.read();
     let weight_invalid = !weight.is_empty() && parse_weight_kg(&weight).is_none();
@@ -40,32 +52,74 @@ pub(super) fn ExerciseInputForm(
     let reps_invalid = !reps.is_empty() && reps.parse::<u32>().map(|r| r == 0).unwrap_or(true);
     let dist = distance_input.read();
     let distance_invalid = !dist.is_empty() && parse_distance_km(&dist).is_none();
+    let time_str = time_input.map_or_else(String::new, |ti| ti.read().clone());
+    let time_invalid =
+        is_editing_time && !time_str.is_empty() && parse_duration_seconds(&time_str).is_none();
     let weight_valid = weight.is_empty() || parse_weight_kg(&weight).is_some();
     let reps_valid = !show_reps || reps.parse::<u32>().map(|r| r > 0).unwrap_or(false);
     let distance_valid = !is_cardio || parse_distance_km(&dist).is_some();
-    let complete_disabled = !weight_valid || !reps_valid || !distance_valid;
-    let show_duration_row = last_duration.is_some() || bests.duration.is_some();
+    let time_valid = !time_invalid;
+    let complete_disabled = !weight_valid || !reps_valid || !distance_valid || !time_valid;
+    let show_duration_row = is_editing_time || bests.duration.is_some();
     rsx! {
         div { class: "exercise-edit",
             h3 { "{exercise_name}" }
             span { "🏆" }
-            // ⏱️ Time display (or input in edit mode) and ATH
+            // ⏱️ Time row: editable input in edit mode, ATH reference in perform mode.
             if show_duration_row {
-                div { class: "input-row", // duration-row",
+                div { class: "input-row",
                     span { "⏱️" }
-                    span {} // TODO Only when editing, not performing
-                    span {
-                        if let Some(dur) = last_duration {
-                            // TODO Increment while performing
-                            time { "{format_time(dur)}" }
+                    if is_editing_time {
+                        button {
+                            class: "less",
+                            r#type: "button",
+                            tabindex: -1,
+                            onclick: move |_| {
+                                if let Some(mut ti) = time_input {
+                                    let secs =
+                                        parse_duration_seconds(&ti.read()).unwrap_or(0);
+                                    ti.set(format_time(secs.saturating_sub(5)));
+                                }
+                            },
+                            "−"
                         }
+                    } else {
+                        span {}
                     }
-                    span {} // TODO Only when editing, not performing
+                    if is_editing_time {
+                        if let Some(mut ti) = time_input {
+                            input {
+                                r#type: "text",
+                                inputmode: "numeric",
+                                placeholder: "mm:ss",
+                                value: "{ti}",
+                                oninput: move |evt| ti.set(evt.value()),
+                                class: if time_invalid { "invalid" } else { "" },
+                            }
+                        }
+                    } else {
+                        span {}
+                    }
+                    if is_editing_time {
+                        button {
+                            class: "more",
+                            r#type: "button",
+                            tabindex: -1,
+                            onclick: move |_| {
+                                if let Some(mut ti) = time_input {
+                                    let secs =
+                                        parse_duration_seconds(&ti.read()).unwrap_or(0);
+                                    ti.set(format_time(secs + 5));
+                                }
+                            },
+                            "+"
+                        }
+                    } else {
+                        span {}
+                    }
                     span {
                         if let Some(best) = bests.duration {
-                            if last_duration.is_none_or(|prev| best > prev) {
-                                time { "{format_time(best)}" }
-                            }
+                            time { "{format_time(best)}" }
                         }
                     }
                 }
@@ -206,10 +260,9 @@ pub(super) fn ExerciseInputForm(
 }
 /// The active exercise input form.
 ///
-/// Renders the exercise name (embedded in the grid heading), optional elapsed
-/// timer and previous/ATH durations, then delegates the metric inputs to
-/// [`ExerciseInputForm`].  All state mutation stays in the parent
-/// [`super::active_session::SessionView`].
+/// Renders the elapsed timer (for all exercise types) and then delegates the
+/// metric inputs to [`ExerciseInputForm`].  All state mutation stays in the
+/// parent [`super::active_session::SessionView`].
 #[component]
 pub(super) fn ExerciseFormPanel(
     /// ID of the exercise currently being performed.
@@ -242,20 +295,15 @@ pub(super) fn ExerciseFormPanel(
             ("Unknown".to_string(), Category::Strength, None)
         }
     };
-    let show_reps = force.is_some_and(Force::has_reps);
-    let is_cardio = category == Category::Cardio;
     let last_log = storage::get_last_exercise_log(&exercise_id);
     let last_duration = last_log.as_ref().and_then(ExerciseLog::duration_seconds);
-    let show_static_timer = !show_reps && !is_cardio;
     rsx! {
         article {
-            if show_static_timer {
-                ExerciseElapsedTimer {
-                    exercise_start: *current_exercise_start.read(),
-                    last_duration,
-                    duration_bell_rung,
-                    paused_at,
-                }
+            ExerciseElapsedTimer {
+                exercise_start: *current_exercise_start.read(),
+                last_duration,
+                duration_bell_rung,
+                paused_at,
             }
             ExerciseInputForm {
                 exercise_id,
