@@ -15,12 +15,10 @@ lang: en-GB
 - [Project Structure](#project-structure)
 - [Tooling & Dependencies](#tooling-dependencies)
 - [Building & Running](#building-running)
-  - [Building the PWA](#building-the-pwa)
-  - [Building the Android App](#building-the-android-app)
-- [Code Conventions & Contributing](#code-conventions-contributing)
-- [Continuous Integration (CI)](#continuous-integration-ci)
-- [Continuous Deployment (CD)](#continuous-deployment-cd)
-- [Weekly Deep Checks](#weekly-deep-checks)
+  - [Android Native APK](#android-native-apk)
+- [Engineering Principles & Contributing](#engineering-principles-contributing)
+- [Continuous Integration & Continuous Deployment (CI / CD)](#continuous-integration-continuous-deployment-ci-cd)
+  - [Weekly Deep Checks](#weekly-deep-checks)
 
 <!--toc:end-->
 
@@ -30,14 +28,15 @@ A simple, efficient and cross-platform workout logging application with
 [800+ exercises] built-in, by [Guilhem Fauré].
 
 - 💪 Easily log workout sessions with sets, reps, weights, distances, durations
-- 📊 Analytics panel with line charts to track progress over time
-- 🏋️ Browse the 870+ included exercises with search functionality
-  - Easily add your custom exercises or customize existing ones
-- 📱 Mobile-first responsive design, bottom navigation bar, local-first
+- 🏋️ Use the 870+ included exercises with images and instructions
+  - 📝 Easily add your custom exercises or customize existing ones
+- 🔍 Easily search them with powerful text search and attribute based filtering
+- 📊 Track your progress over time on several metrics and exercises in analytics
+- 📱 Responsive design, ergonomic navigation, local-first, performant
 
 ## Project Structure
 
-The project follows a modular Rust structure for a Dioxus application:
+The project follows a modular [Rust] structure for a [Dioxus] application:
 
 ```text
 LogOut/
@@ -61,16 +60,14 @@ LogOut/
 
 ## Tooling & Dependencies
 
-| Purpose                                                  | Library    |
-| -------------------------------------------------------- | ---------- |
-| Main UI reactive framework                               | [Dioxus]   |
-| (De)Serialization, data models and persistence           | [Serde]    |
-| PWA Workouts and custom exercises storage ([IndexedDB])  | [Rexie]    |
-| Native Workouts and custom exercises storage ( [SQLite]) | [Rusqlite] |
-| Asynchronous HTTP client                                 | [Reqwest]  |
-| Date and time manipulation (UTC/Local offsets)           | [Time]     |
-| Async runtime for the native application target.         | [Tokio]    |
-| Bindings to browser APIs (Service Worker…)               | [Web-sys]  |
+| Purpose             | Methodology            |
+| ------------------- | ---------------------- |
+| Project versionning | [SemVer]               |
+| Commit messages     | [Conventional Commits] |
+| Branch naming       | [Conventional Branch]  |
+| Branching model     | [GitHub Flow]          |
+| Changes submission  | GitHub Pull Requests   |
+| Issue tracking      | GitHub Issues          |
 
 | Purpose                       | Tool                                         |
 | ----------------------------- | -------------------------------------------- |
@@ -89,50 +86,41 @@ LogOut/
 | Rust debugging                | [lldb]                                       |
 | Code edition                  | Allows modern Rust dev ([Helix], [VS Code]…) |
 
-| Purpose             | Methodology            |
-| ------------------- | ---------------------- |
-| Project versionning | [SemVer]               |
-| Commit messages     | [Conventional Commits] |
-| Branch naming       | [Conventional Branch]  |
-| Branching model     | [GitHub Flow]          |
-| Changes submission  | GitHub Pull Requests   |
-| Issue tracking      | GitHub Issues          |
+| Purpose                                                  | Library    |
+| -------------------------------------------------------- | ---------- |
+| Main UI reactive framework                               | [Dioxus]   |
+| (De)Serialization, data models and persistence           | [Serde]    |
+| PWA Workouts and custom exercises storage ([IndexedDB])  | [Rexie]    |
+| Native Workouts and custom exercises storage ( [SQLite]) | [Rusqlite] |
+| Asynchronous HTTP client                                 | [Reqwest]  |
+| Date and time manipulation (UTC/Local offsets)           | [Time]     |
+| Async runtime for the native application target.         | [Tokio]    |
+| Bindings to browser APIs (Service Worker…)               | [Web-sys]  |
 
 ## Building & Running
 
-The project provides a [Nix] development shell with all required dependencies
-(Rust, Dioxus CLI, Android SDK…). With Nix installed, enter the shell with
-`nix develop`. Preferably, with Direnv installed, allow the automatic
-development shell loading with `direnv allow`.
+The project uses [Nix] to download all (proper versions of) required
+dependencies, configure the development environment (shell) and build the
+application, reproducibly. The [Nix] environment and tooling is defined in
+[`flake.nix`](./flake.nix), enable it with `nix develop` or automatically with
+an allowed [`.envrc`](./.envrc) and [`direnv`] (recommended):
 
-### Building the PWA
+For release builds, we prefer pure reproducible `nix build`, but for development
+speed, it is recommended to use the hot-reloading `dx serve`.
 
-To build for web as a PWA, run
+### Android Native APK
 
-```sh
-dx build --web --release
-```
-
-Output is written to `target/dx/log-out/release/web/public/`.
-
-To serve the PWA locally with hot-reload during development, run
+We currently don’t support pure `nix build` for Android. To build the native
+Android APK, run the following from an activadet development shell:
 
 ```sh
-dx serve # Serves at http://localhost:8080
+dx build --android --release --target aarch64-linux-android # Your desired arch
 ```
 
-### Building the Android App
+> APK is signed with [`apk-sign.sh`](.script/apk-sign.sh) after the build, to
+> keep it reproducible and because Dioxus requires secrets in clear in VCS
 
-To build for Android as APK, run
-
-```sh
-dx build --android --release --target aarch64-linux-android
-```
-
-> Dioxus `0.7` don’t yet supports signing (it does, but keys have to be in clear
-> in `Dioxus.toml`) the APK, so we use `.script/android-sign.sh`.
-
-## Code Conventions & Contributing
+## Engineering Principles & Contributing
 
 Sometimes, we need to make tradeoffs between different positives outcomes.
 LogOut follows that priority order:
@@ -221,7 +209,7 @@ Follow this contribution process, based on [GitHub Flow], [Conventional Branch]:
 4. Fulfill the **PR** template checks before marking it ready for review
 5. Fix your code if it don’t pass [CI checks](#continuous-integration-ci)
 
-## Continuous Integration (CI)
+## Continuous Integration & Continuous Deployment (CI / CD)
 
 [LogOut] keep high standards of code quality and reliability. Every change must
 pass through a pull-request (PR), and every below check (that runs on pushes on
@@ -241,8 +229,6 @@ PRs) must pass (for some, at a certain level) for it to be merged into `main`.
     - Web Maestro **end-to-end tests** with `maestro test maestro/web`
     - Publish a report with screenshots of failed E2E tests as a PR comment
 
-## Continuous Deployment (CD)
-
 [LogOut] stays continuously fresh and up-to-date thanks to its automated
 deployment pipeline running at every push on `main` branch (coming only from
 validated PRs), on standard Linux runners.
@@ -257,7 +243,7 @@ validated PRs), on standard Linux runners.
 CD also runs when a [SemVer] `vMAJOR.MINOR.PATCH` **tag** is pushed, publishing
 a “Stable” GitHub Release with a production Android APK buit on this `tag`.
 
-## Weekly Deep Checks
+### Weekly Deep Checks
 
 [LogOut] ensures high quality code while with additional ressource intensive
 checks that run every Sunday at midnight on the `main` branch.
@@ -291,7 +277,6 @@ checks that run every Sunday at midnight on the `main` branch.
 [llvm-cov]: https://llvm.org/docs/CommandGuide/llvm-cov.html
 [Maestro]: https://maestro.dev
 [Nix]: https://nixos.org
-[Rust]: https://www.rust-lang.org
 [rust-analyzer]: https://rust-analyzer.github.io
 [rust]: https://www.rust-lang.org
 [rustc]: https://doc.rust-lang.org/rustc
