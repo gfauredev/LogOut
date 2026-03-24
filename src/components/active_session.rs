@@ -2,8 +2,7 @@ use super::session_exercise_form::ExerciseFormPanel;
 use super::session_timers::{RestTimerDisplay, SessionDurationDisplay};
 use crate::components::CompletedExerciseLog;
 use crate::models::{
-    get_current_timestamp, parse_distance_km, parse_weight_kg, Category, ExerciseLog, Force,
-    WorkoutSession,
+    get_current_timestamp, parse_distance_km, parse_weight_kg, ExerciseLog, Force, WorkoutSession,
 };
 use crate::services::exercise_db::{
     detect_filter_suggestions, exercise_matches_filters, SearchFilter,
@@ -12,6 +11,7 @@ use crate::services::{exercise_db, storage};
 use crate::{RestDurationSignal, Route};
 use dioxus::prelude::*;
 use futures_channel::mpsc::UnboundedReceiver;
+use std::sync::Arc;
 /// Maximum number of simultaneously active hard filters in the session search.
 const MAX_FILTERS: usize = 4;
 /// Debounce delay in milliseconds before re-running the expensive exercise filter.
@@ -382,31 +382,31 @@ pub fn SessionView() -> Element {
             return vec![];
         }
         let (custom_pool, all_pool) = filter_pool();
-        let mut results: Vec<(String, String, Category)> = Vec::new();
+        let mut results: Vec<Arc<crate::models::Exercise>> = Vec::new();
         let mut seen_ids = std::collections::HashSet::new();
         if has_query {
             let custom_results = exercise_db::search_exercises(&custom_pool, &query);
             for ex in custom_results {
                 if seen_ids.insert(ex.id.clone()) {
-                    results.push((ex.id.clone(), ex.name.clone(), ex.category));
+                    results.push(ex);
                 }
             }
             let db_results = exercise_db::search_exercises(&all_pool, &query);
             for ex in db_results.into_iter().take(MAX_TEXT_SEARCH_RESULTS) {
                 if seen_ids.insert(ex.id.clone()) {
-                    results.push((ex.id.clone(), ex.name.clone(), ex.category));
+                    results.push(ex);
                 }
             }
         } else {
             // Filters only, no text query – show all matching exercises (capped for performance).
             for ex in &custom_pool {
                 if seen_ids.insert(ex.id.clone()) {
-                    results.push((ex.id.clone(), ex.name.clone(), ex.category));
+                    results.push(ex.clone());
                 }
             }
             for ex in all_pool.iter().take(MAX_FILTER_ONLY_RESULTS) {
                 if seen_ids.insert(ex.id.clone()) {
-                    results.push((ex.id.clone(), ex.name.clone(), ex.category));
+                    results.push(ex.clone());
                 }
             }
         }
@@ -546,12 +546,12 @@ pub fn SessionView() -> Element {
                 }
                 if !search_results().is_empty() {
                     ul { class: "results",
-                        for (id , name , category) in search_results() {
+                        for ex in search_results() {
                             li {
-                                key: "{id}",
-                                onclick: move |_| start_exercise(id.clone()),
-                                span { "{name}" }
-                                span { class: "category", "{category}" }
+                                key: "{ex.id}",
+                                onclick: move |_| start_exercise(ex.id.clone()),
+                                span { "{ex.name}" }
+                                span { class: "category", "{ex.category}" }
                             }
                         }
                     }
