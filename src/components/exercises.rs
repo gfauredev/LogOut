@@ -39,45 +39,19 @@ pub fn Exercises() -> Element {
             search_signal.set(None);
         }
     });
-    // Debounce coroutine: one long-running task that restarts its timer on each
-    // incoming keystroke, so typing never accumulates N sleeping futures.
+    // Debounce coroutine: drains any already-queued keystrokes, sleeps for the
+    // debounce window, drains again to pick up late arrivals, then commits.
+    // Uses the cross-platform `sleep_ms` helper so no `#[cfg]` is needed here.
     let debounce_handle = use_coroutine(move |mut rx: UnboundedReceiver<String>| async move {
         use futures_util::StreamExt as _;
         while let Some(q) = rx.next().await {
-            // Drain any already-buffered updates to avoid stale intermediate results.
             let mut latest = q;
             while let Ok(q) = rx.try_recv() {
                 latest = q;
             }
-            // Wait for the debounce period, restarting the timer if a new message
-            // arrives on native (tokio::time::timeout). On wasm we drain after sleeping.
-            #[cfg(not(target_arch = "wasm32"))]
-            loop {
-                match tokio::time::timeout(
-                    std::time::Duration::from_millis(u64::from(SEARCH_DEBOUNCE_MS)),
-                    rx.next(),
-                )
-                .await
-                {
-                    // Timeout elapsed with no new input – debounce period is over.
-                    Err(_) => break,
-                    // Channel closed – stop the coroutine.
-                    Ok(None) => return,
-                    // New input arrived – update latest and restart the timer.
-                    Ok(Some(q)) => {
-                        latest = q;
-                        while let Ok(q) = rx.try_recv() {
-                            latest = q;
-                        }
-                    }
-                }
-            }
-            #[cfg(target_arch = "wasm32")]
-            {
-                gloo_timers::future::TimeoutFuture::new(SEARCH_DEBOUNCE_MS).await;
-                while let Ok(q) = rx.try_recv() {
-                    latest = q;
-                }
+            crate::utils::sleep_ms(SEARCH_DEBOUNCE_MS).await;
+            while let Ok(q) = rx.try_recv() {
+                latest = q;
             }
             debounced_query.set(latest);
             visible_count.set(PAGE_SIZE);

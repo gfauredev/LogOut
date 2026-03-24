@@ -2,7 +2,8 @@ use super::session_exercise_form::ExerciseFormPanel;
 use super::session_timers::{RestTimerDisplay, SessionDurationDisplay};
 use crate::components::CompletedExerciseLog;
 use crate::models::{
-    get_current_timestamp, parse_distance_km, parse_weight_kg, ExerciseLog, Force, WorkoutSession,
+    get_current_timestamp, parse_distance_km, parse_weight_kg, Category, ExerciseLog, Force,
+    WorkoutSession,
 };
 use crate::services::exercise_db::{
     detect_filter_suggestions, exercise_matches_filters, SearchFilter,
@@ -302,8 +303,9 @@ pub fn SessionView() -> Element {
     let custom_exercises = storage::use_custom_exercises();
     let all_exercises = exercise_db::use_exercises();
     let pending_ids = use_memo(move || session.read().pending_exercise_ids.clone());
-    // Debounce coroutine: one long-running task that restarts its timer on each
-    // incoming keystroke, so typing never accumulates N sleeping futures.
+    // Debounce coroutine: drains any already-queued keystrokes, sleeps for the
+    // debounce window, drains again to pick up late arrivals, then commits.
+    // Uses the cross-platform `sleep_ms` helper so no `#[cfg]` is needed here.
     let debounce_handle = use_coroutine(move |mut rx: UnboundedReceiver<String>| async move {
         use futures_util::StreamExt as _;
         while let Some(q) = rx.next().await {
@@ -311,30 +313,9 @@ pub fn SessionView() -> Element {
             while let Ok(q) = rx.try_recv() {
                 latest = q;
             }
-            #[cfg(not(target_arch = "wasm32"))]
-            loop {
-                match tokio::time::timeout(
-                    std::time::Duration::from_millis(u64::from(SEARCH_DEBOUNCE_MS)),
-                    rx.next(),
-                )
-                .await
-                {
-                    Err(_) => break,
-                    Ok(None) => return,
-                    Ok(Some(q)) => {
-                        latest = q;
-                        while let Ok(q) = rx.try_recv() {
-                            latest = q;
-                        }
-                    }
-                }
-            }
-            #[cfg(target_arch = "wasm32")]
-            {
-                gloo_timers::future::TimeoutFuture::new(SEARCH_DEBOUNCE_MS).await;
-                while let Ok(q) = rx.try_recv() {
-                    latest = q;
-                }
+            crate::utils::sleep_ms(SEARCH_DEBOUNCE_MS).await;
+            while let Ok(q) = rx.try_recv() {
+                latest = q;
             }
             debounced_query.set(latest);
         }
@@ -388,25 +369,25 @@ pub fn SessionView() -> Element {
             let custom_results = exercise_db::search_exercises(&custom_pool, &query);
             for ex in custom_results {
                 if seen_ids.insert(ex.id.clone()) {
-                    results.push(ex);
+                    results.push(Arc::clone(ex));
                 }
             }
             let db_results = exercise_db::search_exercises(&all_pool, &query);
             for ex in db_results.into_iter().take(MAX_TEXT_SEARCH_RESULTS) {
                 if seen_ids.insert(ex.id.clone()) {
-                    results.push(ex);
+                    results.push(Arc::clone(ex));
                 }
             }
         } else {
             // Filters only, no text query – show all matching exercises (capped for performance).
             for ex in &custom_pool {
                 if seen_ids.insert(ex.id.clone()) {
-                    results.push(ex.clone());
+                    results.push(Arc::clone(ex));
                 }
             }
             for ex in all_pool.iter().take(MAX_FILTER_ONLY_RESULTS) {
                 if seen_ids.insert(ex.id.clone()) {
-                    results.push(ex.clone());
+                    results.push(Arc::clone(ex));
                 }
             }
         }
