@@ -48,6 +48,8 @@ fn SessionHeader(
     session_start_time: u64,
     session_is_active: bool,
     paused_at: Option<u64>,
+    /// Total cumulative seconds spent paused (not counting the current pause).
+    total_paused_duration: u64,
     exercise_count: usize,
     /// Timestamp when the current rest period began, or `None` when not resting.
     rest_start_time: Option<u64>,
@@ -70,6 +72,7 @@ fn SessionHeader(
                         session_start_time,
                         session_is_active,
                         paused_at,
+                        total_paused_duration,
                     }
                 }
                 RestTimerDisplay {
@@ -600,6 +603,7 @@ pub fn GlobalSessionHeader() -> Element {
     let session_start_time = sess.start_time;
     let session_is_active = sess.is_active();
     let paused_at = sess.paused_at;
+    let total_paused_duration = sess.total_paused_duration;
     let rest_start_time = sess.rest_start_time;
     let on_pause = move |()| {
         let Some(mut s) = session() else { return };
@@ -629,6 +633,7 @@ pub fn GlobalSessionHeader() -> Element {
             session_start_time,
             session_is_active,
             paused_at,
+            total_paused_duration,
             exercise_count,
             rest_start_time,
             rest_duration: *rest_duration.read(),

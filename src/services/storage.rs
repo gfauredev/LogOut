@@ -28,7 +28,6 @@ pub use super::app_state::{
 /// indices which would add schema-migration complexity.
 ///
 /// Returns an empty `Vec` and logs an error when storage access fails.
-#[cfg_attr(not(target_arch = "wasm32"), allow(clippy::unused_async))]
 pub async fn load_completed_sessions_page(
     limit: usize,
     offset: usize,
@@ -49,10 +48,18 @@ pub async fn load_completed_sessions_page(
     }
     #[cfg(not(target_arch = "wasm32"))]
     {
-        match native_storage::get_completed_sessions_paged(limit, offset) {
-            Ok(sessions) => sessions,
-            Err(e) => {
+        match tokio::task::spawn_blocking(move || {
+            native_storage::get_completed_sessions_paged(limit, offset)
+        })
+        .await
+        {
+            Ok(Ok(sessions)) => sessions,
+            Ok(Err(e)) => {
                 log::error!("Failed to load completed sessions: {e}");
+                vec![]
+            }
+            Err(e) => {
+                log::error!("spawn_blocking panicked loading completed sessions: {e}");
                 vec![]
             }
         }
@@ -69,6 +76,19 @@ pub(crate) mod idb {
     pub const STORE_EXERCISES: &str = "exercises";
     /// Dedicated object store for binary image data (key: UUID string, value: `Uint8Array`).
     pub const STORE_IMAGES: &str = "images";
+    /// Structured error type for `IndexedDB` operations via the `rexie` crate.
+    ///
+    /// Using a typed enum instead of `String` preserves the underlying cause so
+    /// that callers can inspect or display it with full context.
+    #[derive(Debug, thiserror::Error)]
+    pub enum IdbError {
+        /// A lower-level `rexie` / IndexedDB error.
+        #[error("IndexedDB error: {0}")]
+        Rexie(#[from] rexie::Error),
+        /// A `serde-wasm-bindgen` serialisation or deserialisation error.
+        #[error("Serialization error: {0}")]
+        Serde(#[from] serde_wasm_bindgen::Error),
+    }
     /// Open (or create) the IndexedDB database via rexie.
     pub(super) async fn open_db() -> Result<Rexie, rexie::Error> {
         Rexie::builder(DB_NAME)
@@ -81,15 +101,13 @@ pub(crate) mod idb {
             .await
     }
     /// Put a single serialisable item into a store (upsert by key).
-    pub async fn put_item<T: serde::Serialize>(store_name: &str, item: &T) -> Result<(), String> {
-        let db = open_db().await.map_err(|e| format!("{e}"))?;
-        let tx = db
-            .transaction(&[store_name], TransactionMode::ReadWrite)
-            .map_err(|e| format!("{e}"))?;
-        let store = tx.store(store_name).map_err(|e| format!("{e}"))?;
-        let js_val = serde_wasm_bindgen::to_value(item).map_err(|e| format!("{e}"))?;
-        store.put(&js_val, None).await.map_err(|e| format!("{e}"))?;
-        tx.done().await.map_err(|e| format!("{e}"))?;
+    pub async fn put_item<T: serde::Serialize>(store_name: &str, item: &T) -> Result<(), IdbError> {
+        let db = open_db().await?;
+        let tx = db.transaction(&[store_name], TransactionMode::ReadWrite)?;
+        let store = tx.store(store_name)?;
+        let js_val = serde_wasm_bindgen::to_value(item)?;
+        store.put(&js_val, None).await?;
+        tx.done().await?;
         Ok(())
     }
     /// Put many serialisable items into a store in a single transaction.
@@ -99,65 +117,52 @@ pub(crate) mod idb {
     /// All individual `put` requests are issued concurrently within the same
     /// transaction via [`futures_util::future::try_join_all`] so the browser can
     /// pipeline them instead of waiting for each one before issuing the next.
-    pub async fn put_all<T: serde::Serialize>(store_name: &str, items: &[T]) -> Result<(), String> {
-        let db = open_db().await.map_err(|e| format!("{e}"))?;
-        let tx = db
-            .transaction(&[store_name], TransactionMode::ReadWrite)
-            .map_err(|e| format!("{e}"))?;
-        let store = tx.store(store_name).map_err(|e| format!("{e}"))?;
+    pub async fn put_all<T: serde::Serialize>(
+        store_name: &str,
+        items: &[T],
+    ) -> Result<(), IdbError> {
+        let db = open_db().await?;
+        let tx = db.transaction(&[store_name], TransactionMode::ReadWrite)?;
+        let store = tx.store(store_name)?;
         // Serialise all values first, then issue all puts concurrently.
         let js_values: Vec<_> = items
             .iter()
-            .map(|item| serde_wasm_bindgen::to_value(item).map_err(|e| format!("{e}")))
+            .map(serde_wasm_bindgen::to_value)
             .collect::<Result<_, _>>()?;
         let put_futs: Vec<_> = js_values
             .iter()
             .map(|js_val| store.put(js_val, None))
             .collect();
-        futures_util::future::try_join_all(put_futs)
-            .await
-            .map_err(|e| format!("{e}"))?;
-        tx.done().await.map_err(|e| format!("{e}"))?;
+        futures_util::future::try_join_all(put_futs).await?;
+        tx.done().await?;
         Ok(())
     }
     /// Delete an item from a store by its key.
-    pub async fn delete_item(store_name: &str, key: &str) -> Result<(), String> {
-        let db = open_db().await.map_err(|e| format!("{e}"))?;
-        let tx = db
-            .transaction(&[store_name], TransactionMode::ReadWrite)
-            .map_err(|e| format!("{e}"))?;
-        let store = tx.store(store_name).map_err(|e| format!("{e}"))?;
-        store
-            .delete(JsValue::from_str(key))
-            .await
-            .map_err(|e| format!("{e}"))?;
-        tx.done().await.map_err(|e| format!("{e}"))?;
+    pub async fn delete_item(store_name: &str, key: &str) -> Result<(), IdbError> {
+        let db = open_db().await?;
+        let tx = db.transaction(&[store_name], TransactionMode::ReadWrite)?;
+        let store = tx.store(store_name)?;
+        store.delete(JsValue::from_str(key)).await?;
+        tx.done().await?;
         Ok(())
     }
     /// Remove all items from a store.
-    pub async fn clear_all(store_name: &str) -> Result<(), String> {
-        let db = open_db().await.map_err(|e| format!("{e}"))?;
-        let tx = db
-            .transaction(&[store_name], TransactionMode::ReadWrite)
-            .map_err(|e| format!("{e}"))?;
-        let store = tx.store(store_name).map_err(|e| format!("{e}"))?;
-        store.clear().await.map_err(|e| format!("{e}"))?;
-        tx.done().await.map_err(|e| format!("{e}"))?;
+    pub async fn clear_all(store_name: &str) -> Result<(), IdbError> {
+        let db = open_db().await?;
+        let tx = db.transaction(&[store_name], TransactionMode::ReadWrite)?;
+        let store = tx.store(store_name)?;
+        store.clear().await?;
+        tx.done().await?;
         Ok(())
     }
     /// Load all items from a store.
     pub async fn get_all<T: serde::de::DeserializeOwned>(
         store_name: &str,
-    ) -> Result<Vec<T>, String> {
-        let db = open_db().await.map_err(|e| format!("{e}"))?;
-        let tx = db
-            .transaction(&[store_name], TransactionMode::ReadOnly)
-            .map_err(|e| format!("{e}"))?;
-        let store = tx.store(store_name).map_err(|e| format!("{e}"))?;
-        let js_values = store
-            .get_all(None, None)
-            .await
-            .map_err(|e| format!("{e}"))?;
+    ) -> Result<Vec<T>, IdbError> {
+        let db = open_db().await?;
+        let tx = db.transaction(&[store_name], TransactionMode::ReadOnly)?;
+        let store = tx.store(store_name)?;
+        let js_values = store.get_all(None, None).await?;
         let mut items = Vec::new();
         for (i, js_val) in js_values.into_iter().enumerate() {
             match serde_wasm_bindgen::from_value::<T>(js_val) {
@@ -318,7 +323,7 @@ pub mod idb_exercises {
     use super::idb;
     use crate::models::Exercise;
     /// Retrieve all cached exercises from the IndexedDB exercises store.
-    pub async fn get_all_exercises() -> Result<Vec<Exercise>, String> {
+    pub async fn get_all_exercises() -> Result<Vec<Exercise>, idb::IdbError> {
         idb::get_all::<Exercise>(idb::STORE_EXERCISES).await
     }
     /// Persist `exercises` to the IndexedDB exercises store in a single transaction.
@@ -347,21 +352,14 @@ pub mod idb_images {
     use wasm_bindgen::JsValue;
     use web_sys::Url;
     /// Persist `bytes` under `image_key` in the `images` object store.
-    pub async fn store_image(image_key: &str, bytes: &[u8]) -> Result<(), String> {
-        let db = super::idb::open_db().await.map_err(|e| format!("{e}"))?;
-        let tx = db
-            .transaction(&[super::idb::STORE_IMAGES], TransactionMode::ReadWrite)
-            .map_err(|e| format!("{e}"))?;
-        let store = tx
-            .store(super::idb::STORE_IMAGES)
-            .map_err(|e| format!("{e}"))?;
+    pub async fn store_image(image_key: &str, bytes: &[u8]) -> Result<(), super::idb::IdbError> {
+        let db = super::idb::open_db().await?;
+        let tx = db.transaction(&[super::idb::STORE_IMAGES], TransactionMode::ReadWrite)?;
+        let store = tx.store(super::idb::STORE_IMAGES)?;
         let arr = Uint8Array::from(bytes);
         let key = JsValue::from_str(image_key);
-        store
-            .put(&arr.into(), Some(&key))
-            .await
-            .map_err(|e| format!("{e}"))?;
-        tx.done().await.map_err(|e| format!("{e}"))?;
+        store.put(&arr.into(), Some(&key)).await?;
+        tx.done().await?;
         Ok(())
     }
     /// Load the bytes stored under `image_key` and return a `blob:` URL that can be
@@ -859,6 +857,7 @@ mod tests {
             current_exercise_id: None,
             current_exercise_start: None,
             paused_at: None,
+            total_paused_duration: 0,
         };
         native_storage::put_item(native_storage::STORE_SESSIONS, &session.id, &session).unwrap();
         let loaded: Vec<WorkoutSession> =
@@ -884,6 +883,7 @@ mod tests {
             current_exercise_id: None,
             current_exercise_start: None,
             paused_at: None,
+            total_paused_duration: 0,
         };
         let s2 = WorkoutSession {
             id: id.into(),
@@ -896,6 +896,7 @@ mod tests {
             current_exercise_id: None,
             current_exercise_start: None,
             paused_at: None,
+            total_paused_duration: 0,
         };
         native_storage::put_item(native_storage::STORE_SESSIONS, id, &s1).unwrap();
         native_storage::put_item(native_storage::STORE_SESSIONS, id, &s2).unwrap();
@@ -928,6 +929,7 @@ mod tests {
             current_exercise_id: None,
             current_exercise_start: None,
             paused_at: None,
+            total_paused_duration: 0,
         };
         native_storage::put_item(native_storage::STORE_SESSIONS, id, &session).unwrap();
         native_storage::delete_item(native_storage::STORE_SESSIONS, id).unwrap();
@@ -1105,6 +1107,7 @@ mod tests {
             current_exercise_id: None,
             current_exercise_start: None,
             paused_at: None,
+            total_paused_duration: 0,
         };
         native_storage::put_item(native_storage::STORE_SESSIONS, &session.id, &session).unwrap();
         let loaded: Vec<WorkoutSession> =
@@ -1195,6 +1198,7 @@ mod tests {
             current_exercise_id: None,
             current_exercise_start: None,
             paused_at: None,
+            total_paused_duration: 0,
         };
         let done = WorkoutSession {
             id: "paged_done".into(),
@@ -1207,6 +1211,7 @@ mod tests {
             current_exercise_id: None,
             current_exercise_start: None,
             paused_at: None,
+            total_paused_duration: 0,
         };
         native_storage::put_item(native_storage::STORE_SESSIONS, &active.id, &active).unwrap();
         native_storage::put_item(native_storage::STORE_SESSIONS, &done.id, &done).unwrap();
@@ -1238,6 +1243,7 @@ mod tests {
                 current_exercise_id: None,
                 current_exercise_start: None,
                 paused_at: None,
+                total_paused_duration: 0,
             };
             native_storage::put_item(native_storage::STORE_SESSIONS, &s.id, &s).unwrap();
         }
@@ -1284,6 +1290,7 @@ mod tests {
             current_exercise_id: None,
             current_exercise_start: None,
             paused_at: None,
+            total_paused_duration: 0,
         }
     }
     fn make_exercise_log(exercise_id: &str, start: u64, end: Option<u64>) -> ExerciseLog {

@@ -54,6 +54,9 @@ pub(super) fn SessionDurationDisplay(
     session_start_time: u64,
     session_is_active: bool,
     paused_at: Option<u64>,
+    /// Total cumulative seconds the session has spent paused so far, not
+    /// counting any ongoing pause (that is handled separately via `paused_at`).
+    total_paused_duration: u64,
 ) -> Element {
     let mut now_tick = use_signal(get_current_timestamp);
     use_coroutine(move |_: UnboundedReceiver<()>| async move {
@@ -70,7 +73,13 @@ pub(super) fn SessionDurationDisplay(
     });
     let effective_now = paused_at.unwrap_or_else(|| *now_tick.read());
     let duration = if session_is_active {
-        effective_now.saturating_sub(session_start_time)
+        let elapsed = effective_now.saturating_sub(session_start_time);
+        let ongoing_pause = paused_at
+            .map(|p| effective_now.saturating_sub(p))
+            .unwrap_or(0);
+        elapsed
+            .saturating_sub(total_paused_duration)
+            .saturating_sub(ongoing_pause)
     } else {
         0
     };
