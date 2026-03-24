@@ -170,9 +170,11 @@
             {
               basePath ? "LogOut", # Needed for GitHub Pages
               platform ? "web",
+              # Use cargoArtifactsWeb for wasm targets, cargoArtifactsHost for native (server).
+              cargoArtifacts ? (if platform == "server" then env.cargoArtifactsHost else env.cargoArtifactsWeb),
             }:
             env.craneLib.buildPackage {
-              cargoArtifacts = env.cargoArtifactsWeb;
+              inherit cargoArtifacts;
               src = env.filteredSrc;
               pname = "logout-${platform}";
               version = env.projectVersion;
@@ -186,12 +188,16 @@
                 dx build --${platform} --release --base-path ${env.pkgs.lib.escapeShellArg basePath}
               '';
               # TODO Retreive path from build output "🚀 path=…"
-              installPhase = ''
-                mkdir -p $out
-                cp -r target/dx/log-out/release/web/public/${
-                  if basePath == "/" then "* $out/" else " $out/${basePath}"
-                }
-              '';
+              installPhase =
+                if platform == "server" then ''
+                  mkdir -p $out/bin
+                  cp target/dx/log-out/release/server/log-out $out/bin/logout-server
+                '' else ''
+                  mkdir -p $out
+                  cp -r target/dx/log-out/release/web/public/${
+                    if basePath == "/" then "* $out/" else " $out/${basePath}"
+                  }
+                '';
               doCheck = false;
             };
           chromiumWrapper = env.pkgs.writeShellScriptBin "google-chrome" ''
@@ -223,7 +229,7 @@
         in
         {
           web = mkLogOut { };
-          server = mkLogOut { platform = "server"; }; # FIXME dioxus-liveview
+          server = mkLogOut { platform = "server"; };
           webE2eTester = env.pkgs.writeShellApplication {
             name = "logout-web-e2e-tester";
             runtimeInputs = env.webTestInputs ++ [

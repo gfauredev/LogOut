@@ -7,14 +7,17 @@ use dioxus::prelude::*;
 /// Shared exercise input form used both for performing a new set and for
 /// editing a completed log entry.
 ///
-/// Renders Weight / Distance / Reps rows with increment/decrement buttons and
-/// the all-time personal-record value displayed to the right of each `+`
-/// button.  All rows are laid out on a shared CSS grid so their columns
-/// (label · − · value · + · ATH) stay aligned across the whole form.
+/// Renders a CSS grid with five columns (metric · − · value · + · 🏆) and up to
+/// four rows (⏱️ · ⚖️ · 📏 · 🔢).  A heading row at the top spans the first four
+/// columns with the exercise name; the fifth column keeps the 🏆 header icon.
+/// Rows that are not applicable for the current exercise (e.g. no-reps exercises
+/// skip 🔢) are omitted.
 #[component]
 pub(super) fn ExerciseInputForm(
     /// ID of the exercise (used to look up personal records).
     exercise_id: String,
+    /// Display name of the exercise shown in the grid heading.
+    exercise_name: String,
     weight_input: Signal<String>,
     reps_input: Signal<String>,
     distance_input: Signal<String>,
@@ -41,28 +44,37 @@ pub(super) fn ExerciseInputForm(
     let reps_valid = !show_reps || reps.parse::<u32>().map(|r| r > 0).unwrap_or(false);
     let distance_valid = !is_cardio || parse_distance_km(&dist).is_some();
     let complete_disabled = !weight_valid || !reps_valid || !distance_valid;
+    let show_duration_row = last_duration.is_some() || bests.duration.is_some();
     rsx! {
-        if last_duration.is_some() || bests.duration.is_some() {
-            div { class: "duration-row",
-                if let Some(dur) = last_duration {
-                    div {
-                        label { "⏳" }
-                        time { "{format_time(dur)}" }
+        div { class: "exercise-inputs-grid",
+            // Heading row: exercise name spans the first four columns; 🏆 stays in column five.
+            div { class: "grid-heading",
+                span { class: "exercise-heading-name", "{exercise_name}" }
+                span { class: "grid-trophy-header", "🏆" }
+            }
+            // ⏱️ row – previous and all-time-best durations (shown only when available).
+            if show_duration_row {
+                div { class: "input-row duration-row",
+                    span { class: "metric-label", "⏱️" }
+                    span {} // decrement (−) column — no button for a display-only row
+                    span {
+                        if let Some(dur) = last_duration {
+                            time { "{format_time(dur)}" }
+                        }
                     }
-                }
-                if let Some(best) = bests.duration {
-                    if last_duration.is_none_or(|prev| best > prev) {
-                        div {
-                            label { "🏆" }
-                            time { "{format_time(best)}" }
+                    span {} // increment (+) column — no button for a display-only row
+                    span {
+                        if let Some(best) = bests.duration {
+                            if last_duration.is_none_or(|prev| best > prev) {
+                                time { "{format_time(best)}" }
+                            }
                         }
                     }
                 }
             }
-        }
-        div { class: "exercise-inputs-grid",
+            // ⚖️ row – weight input.
             div { class: "input-row",
-                label { "Weight" }
+                span { class: "metric-label", "⚖️" }
                 button {
                     class: "less",
                     r#type: "button",
@@ -99,9 +111,10 @@ pub(super) fn ExerciseInputForm(
                     span {}
                 }
             }
+            // 📏 row – distance input (cardio only).
             if is_cardio {
                 div { class: "input-row",
-                    label { "Distance" }
+                    span { class: "metric-label", "📏" }
                     button {
                         class: "less",
                         r#type: "button",
@@ -139,9 +152,10 @@ pub(super) fn ExerciseInputForm(
                     }
                 }
             }
+            // 🔢 row – reps input.
             if show_reps {
                 div { class: "input-row",
-                    label { "Reps" }
+                    span { class: "metric-label", "🔢" }
                     button {
                         class: "less",
                         r#type: "button",
@@ -194,9 +208,10 @@ pub(super) fn ExerciseInputForm(
 }
 /// The active exercise input form.
 ///
-/// Renders the exercise name, optional elapsed timer and previous/ATH
-/// durations, then delegates the metric inputs to [`ExerciseInputForm`].
-/// All state mutation stays in the parent [`super::active_session::SessionView`].
+/// Renders the exercise name (embedded in the grid heading), optional elapsed
+/// timer and previous/ATH durations, then delegates the metric inputs to
+/// [`ExerciseInputForm`].  All state mutation stays in the parent
+/// [`super::active_session::SessionView`].
 #[component]
 pub(super) fn ExerciseFormPanel(
     /// ID of the exercise currently being performed.
@@ -236,9 +251,6 @@ pub(super) fn ExerciseFormPanel(
     let show_static_timer = !show_reps && !is_cardio;
     rsx! {
         article {
-            header {
-                h3 { "{exercise_name}" }
-            }
             if show_static_timer {
                 ExerciseElapsedTimer {
                     exercise_start: *current_exercise_start.read(),
@@ -249,6 +261,7 @@ pub(super) fn ExerciseFormPanel(
             }
             ExerciseInputForm {
                 exercise_id,
+                exercise_name,
                 weight_input,
                 reps_input,
                 distance_input,

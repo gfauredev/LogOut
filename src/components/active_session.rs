@@ -18,6 +18,8 @@ const MAX_FILTERS: usize = 4;
 const SEARCH_DEBOUNCE_MS: u32 = 200;
 /// Maximum exercises shown when only attribute filters are active and there is no text query.
 const MAX_FILTER_ONLY_RESULTS: usize = 20;
+/// Maximum exercises shown from the full database when a text search query is active.
+const MAX_TEXT_SEARCH_RESULTS: usize = 10;
 /// Prefill the weight / reps / distance inputs from the last recorded log for
 /// `exercise_id`, or clear them if no prior log exists.
 fn prefill_inputs_from_last_log(
@@ -390,7 +392,7 @@ pub fn SessionView() -> Element {
                 }
             }
             let db_results = exercise_db::search_exercises(&all_pool, &query);
-            for ex in db_results.into_iter().take(10) {
+            for ex in db_results.into_iter().take(MAX_TEXT_SEARCH_RESULTS) {
                 if seen_ids.insert(ex.id.clone()) {
                     results.push((ex.id.clone(), ex.name.clone(), ex.category));
                 }

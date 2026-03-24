@@ -298,6 +298,10 @@ fn path_to_route(path: &str) -> Route {
         }
     }
 }
+/// Time slot allocated per exercise entry when building a session from a deep-link (seconds).
+const SESSION_ENTRY_INTERVAL_SECS: u64 = 120;
+/// Assumed duration of each exercise entry when building a session from a deep-link (seconds).
+const SESSION_ENTRY_DURATION_SECS: u64 = 60;
 /// Build a completed [`models::WorkoutSession`] from deep-link entries,
 /// looking up exercise metadata (name, category, force) from the loaded list.
 ///
@@ -319,8 +323,8 @@ where
     let mut session = WorkoutSession::new();
     session.start_time = base_time;
     for (i, entry) in entries.iter().enumerate() {
-        let start = base_time + i as u64 * 120;
-        let end = start + 60;
+        let start = base_time + i as u64 * SESSION_ENTRY_INTERVAL_SECS;
+        let end = start + SESSION_ENTRY_DURATION_SECS;
         let (name, category, force) = exercises
             .iter()
             .find(|e| e.as_ref().id == entry.exercise_id)
@@ -360,7 +364,11 @@ where
             distance_m,
         });
     }
-    session.end_time = Some(base_time + entries.len() as u64 * 120 + 60);
+    session.end_time = Some(
+        base_time
+            + entries.len() as u64 * SESSION_ENTRY_INTERVAL_SECS
+            + SESSION_ENTRY_DURATION_SECS,
+    );
     session
 }
 /// The auto-dismiss timer lives here (always mounted) so it is never cancelled

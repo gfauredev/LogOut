@@ -74,6 +74,7 @@ pub fn CompletedExerciseLog(
             if *is_editing.read() {
                 ExerciseInputForm {
                     exercise_id,
+                    exercise_name: log.exercise_name.clone(),
                     weight_input: edit_weight_input,
                     reps_input: edit_reps_input,
                     distance_input: edit_distance_input,
