@@ -46,23 +46,21 @@ pub(super) fn ExerciseInputForm(
     let complete_disabled = !weight_valid || !reps_valid || !distance_valid;
     let show_duration_row = last_duration.is_some() || bests.duration.is_some();
     rsx! {
-        div { class: "exercise-inputs-grid",
-            // Heading row: exercise name spans the first four columns; 🏆 stays in column five.
-            div { class: "grid-heading",
-                span { class: "exercise-heading-name", "{exercise_name}" }
-                span { class: "grid-trophy-header", "🏆" }
-            }
-            // ⏱️ row – previous and all-time-best durations (shown only when available).
+        div { class: "exercise-edit",
+            h3 { "{exercise_name}" }
+            span { "🏆" }
+            // ⏱️ Time display (or input in edit mode) and ATH
             if show_duration_row {
-                div { class: "input-row duration-row",
-                    span { class: "metric-label", "⏱️" }
-                    span {} // decrement (−) column — no button for a display-only row
+                div { class: "input-row", // duration-row",
+                    span { "⏱️" }
+                    span {} // TODO Only when editing, not performing
                     span {
                         if let Some(dur) = last_duration {
+                            // TODO Increment while performing
                             time { "{format_time(dur)}" }
                         }
                     }
-                    span {} // increment (+) column — no button for a display-only row
+                    span {} // TODO Only when editing, not performing
                     span {
                         if let Some(best) = bests.duration {
                             if last_duration.is_none_or(|prev| best > prev) {
@@ -72,9 +70,9 @@ pub(super) fn ExerciseInputForm(
                     }
                 }
             }
-            // ⚖️ row – weight input.
+            // ⚖️ Weight input and ATH
             div { class: "input-row",
-                span { class: "metric-label", "⚖️" }
+                span { "⚖️" }
                 button {
                     class: "less",
                     r#type: "button",
@@ -108,13 +106,13 @@ pub(super) fn ExerciseInputForm(
                 if let Some(best) = bests.weight_hg {
                     span { "{best}" }
                 } else {
-                    span {}
+                    span { "0" }
                 }
             }
-            // 📏 row – distance input (cardio only).
+            // 📏 Distance input (cardio exercises only) and ATH
             if is_cardio {
                 div { class: "input-row",
-                    span { class: "metric-label", "📏" }
+                    span { "📏" }
                     button {
                         class: "less",
                         r#type: "button",
@@ -148,14 +146,14 @@ pub(super) fn ExerciseInputForm(
                     if let Some(best) = bests.distance_m {
                         span { "{best}" }
                     } else {
-                        span {}
+                        span { "0" }
                     }
                 }
             }
-            // 🔢 row – reps input.
+            // 🔢 Repetitions input and ATH
             if show_reps {
                 div { class: "input-row",
-                    span { class: "metric-label", "🔢" }
+                    span { "🔢" }
                     button {
                         class: "less",
                         r#type: "button",
@@ -189,7 +187,7 @@ pub(super) fn ExerciseInputForm(
                     if let Some(best) = bests.reps {
                         span { class: "ath", "{best}" }
                     } else {
-                        span {}
+                        span { "0" }
                     }
                 }
             }

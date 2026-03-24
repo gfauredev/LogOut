@@ -86,7 +86,7 @@ input[type=number] {
 }
 
 input[type=number] {
-  width: 7ch;
+  min-width: 7ch;
 }
 
 input[type=url],
@@ -107,12 +107,13 @@ article {
   border: 1px solid var(--separation);
   border-radius: var(--radius);
   background: var(--article);
+  width: 100%; // Let the grid or flex layout choose width instead
 }
 
 main {
   flex: 1;
-  gap: var(--spacing);
-  grid-auto-rows: max-content;
+  width: min(var(--column), 100%);
+  margin: 0 auto;
 }
 
 time {
