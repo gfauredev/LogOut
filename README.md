@@ -134,20 +134,41 @@ dx build --android --release --target aarch64-linux-android
 
 ## Code Conventions & Contributing
 
+Sometimes, we need to make tradeoffs between different positives outcomes.
+LogOut follows that priority order:
+
+1. User Experience
+   1. Maximize data integrity, never lose or corrupt user data
+   2. Maximize extensibility, easily give users features they need
+   3. Maximize correctness and stability, work as the user expects, reliably
+   4. Minimize computational complexity, be snappy, pleasant to use
+2. Developer Experience
+   1. Maximize code readability and maintenability, make it easy to understand
+   2. Maximize simplicity, minimize complexity, avoid nesting, over-engineering
+   3. Maximize testability and iteration speed, isolated units, fast compile
+3. Device Friendlyness
+   1. Battery usage minimisation, don’t kill mobile devices
+   2. Memory usage minimisation, run smoothly on low-end devices, avoid leaks
+   3. Binary size minimisation, run on low-end devices, load quickly on the web
+   4. Network usage minimisation, work offline or in low-coverage environments
+
+That doesn’t means lower order items are not important, this list is just for
+when tradeoffs are strictly necessary. If possible, maximize all outcomes.
+Follow these general engineering principles:
+
 - **Decouple Business Logic from Platform Specificities:** Isolate core domain
   logic from underlying infrastructure (storage, OS integrations, UI frameworks,
-  and network)
+  network…)
   - Abstract these boundaries behind traits or interfaces to keep the
     application testable and portable
 - **Enforce a Single Source of Truth:** Never duplicate state
   - Derive component or local state directly from a centralized global state to
     prevent UI desynchronization
-    - Confine all state mutations to atomic, centralized functions
+  - Confine all state mutations to atomic, centralized functions
 - **Bind External Resources to Strict Lifecycles (RAII):** Guarantee cleanup for
   all external resources—such as DOM event listeners, database transactions, and
   browser object URLs—by tying their lifecycles directly to object scope
-- **Respect Async Boundaries and the Main Thread:** Treat the UI thread as
-  "sacred"
+- **Respect Async Boundaries and the Main Thread:** Treat UI thread as "sacred"
   - Strictly offload synchronous, I/O-heavy, or CPU-bound operations to
     background threads
   - Ensure state is passed safely across async boundaries, and use cancellable
@@ -175,47 +196,30 @@ dx build --android --release --target aarch64-linux-android
   - Use standardized, widely adopted crates/libraries for solved problems (URL
     encoding, timezone parsing, unit conversion) rather than writing custom
     implementations
-- Avoid "magic" hardcoded values, use clearly named constants
+- Avoid "**magic**" hardcoded values, use clearly named constants
   - Except where it really makes sense, like usually 0, 1, 100%…
 - Properly **document** what you do (functions, structs… with `rustdoc`)
 - Avoid nesting, avoid complexity; generally, avoid things with only one child
 - **Style** class-light, mainly based on semantic hierarchy and types
-- Ensure code is properly formatted with `dx fmt` and `cargo fmt --all`
-- Ensure code compiles with `dx build` plus eventual platform flags
-- Ensure all unit tests `cargo test` pass without warning
+- Ensure code is properly **formatted** with `dx fmt` and `cargo fmt --all`
+- Ensure code **compiles** with `dx build` plus eventual platform flags
+- Ensure all **unit tests** `cargo test` pass without warning
 - **No** `cargo clippy -- -D warnings -W clippy::all -W clippy::pedantic` warns
-- Ensure all end-to-end tests `maestro test` (`--headless`) pass
+- Ensure all **end-to-end tests** `maestro test` (`--headless`) pass
 
-1. Before writing any code, **open an issue** to discuss it with the maintainers
-2. Use [Conventional Commits] like branch names:
+Follow this contribution process, based on [GitHub Flow], [Conventional Branch]:
+
+1. Before writing any code, **open an issue** to discuss it with the maintainer
+2. Create a **branch** for your change with a clear [Conventional Branch] name:
    - `feat/my-new-feature`
    - `fix/my-bug-fix`
    - `refactor/my-consequent-refactor`
    - …
 3. Open a **Pull Request (PR)** as soon as your code compiles and checks
+   - Avoid touching things not strictly related to your desired changes, e.g.
+     updating dependencies
 4. Fulfill the **PR** template checks before marking it ready for review
 5. Fix your code if it don’t pass [CI checks](#continuous-integration-ci)
-
-Sometimes, we need to make tradeoffs between different positives outcomes;
-follow that order:
-
-1. User Experience
-   1. Maximize data integrity, never lose or corrupt user data
-   2. Maximize extensibility, easily give users features they need
-   3. Maximize correctness and stability, work as the user expects, reliably
-   4. Minimize computational complexity, be snappy, pleasant to use
-2. Developer Experience
-   1. Maximize code readability and maintenability, make it easy to understand
-   2. Maximize simplicity, minimize complexity, avoid nesting, over-engineering
-   3. Maximize testability and iteration speed, isolated units, fast compile
-3. Device Friendlyness
-   1. Battery usage minimisation, don’t kill mobile devices
-   2. Memory usage minimisation, run smoothly on low-end devices, avoid leaks
-   3. Binary size minimisation, run on low-end devices, load quickly on the web
-   4. Network usage minimisation, work offline or in low-coverage environments
-
-Lower order items are not unimportant, this list is just for when tradeoffs are
-strictly necessary. If possible, maximize all outcomes.
 
 ## Continuous Integration (CI)
 
