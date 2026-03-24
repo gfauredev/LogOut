@@ -215,14 +215,42 @@ pub fn save_session(session: WorkoutSession) {
     if !session.is_active() {
         let mut cache_sig = consume_context::<Signal<BestsCache>>();
         if is_update {
-            // Evict the stale entries and schedule a background recompute from
-            // storage.  This avoids an O(N) synchronous re-scan of all sessions.
-            let exercise_ids: Vec<String> = session
-                .exercise_logs
-                .iter()
-                .map(|l| l.exercise_id.clone())
-                .collect();
-            recompute_bests_for_exercises(exercise_ids, cache_sig);
+            // Only evict exercises whose old log held the personal record.
+            // If a log that was the PR is edited/removed, the cache is stale
+            // and must be recomputed from storage.  Exercises whose old log
+            // was below the PR are unaffected.
+            let affected_ids: Vec<String> = {
+                let cache = cache_sig.read();
+                previous
+                    .as_ref()
+                    .map(|prev_session| {
+                        prev_session
+                            .exercise_logs
+                            .iter()
+                            .filter(|old_log| {
+                                let bests =
+                                    cache.get(&old_log.exercise_id).cloned().unwrap_or_default();
+                                log_was_personal_record(old_log, &bests)
+                            })
+                            .map(|log| log.exercise_id.clone())
+                            .collect::<std::collections::HashSet<_>>()
+                            .into_iter()
+                            .collect()
+                    })
+                    .unwrap_or_default()
+            };
+            if affected_ids.is_empty() {
+                // No previously-cached PR was touched; just merge the new logs
+                // incrementally so any improvements are recorded without a
+                // storage round-trip.
+                let mut cache = cache_sig.write();
+                for log in &session.exercise_logs {
+                    let entry = cache.entry(log.exercise_id.clone()).or_default();
+                    merge_log_into_bests(entry, log);
+                }
+            } else {
+                recompute_bests_for_exercises(affected_ids, cache_sig);
+            }
         } else {
             // First-time completion: merge the new logs into the cache
             // incrementally — no storage round-trip required.
@@ -521,6 +549,20 @@ pub(crate) fn merge_log_into_bests(bests: &mut ExerciseBests, log: &ExerciseLog)
             Some(prev) => prev.max(dur),
         });
     }
+}
+/// Returns `true` when any of the log's recorded values exactly matches the
+/// corresponding cached personal record, meaning this log was the record setter.
+///
+/// Only complete logs are checked; an incomplete log always returns `false`.
+/// Used to determine whether deleting / editing a log requires a cache eviction.
+pub(crate) fn log_was_personal_record(log: &ExerciseLog, bests: &ExerciseBests) -> bool {
+    if !log.is_complete() {
+        return false;
+    }
+    (log.weight_hg.is_some() && log.weight_hg == bests.weight_hg)
+        || (log.reps.is_some() && log.reps == bests.reps)
+        || (log.distance_m.is_some() && log.distance_m == bests.distance_m)
+        || (log.duration_seconds().is_some() && log.duration_seconds() == bests.duration)
 }
 /// Returns the all-time personal bests for `exercise_id`.
 ///

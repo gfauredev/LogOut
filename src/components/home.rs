@@ -65,63 +65,6 @@ pub fn Home() -> Element {
         let new_session = WorkoutSession::new();
         storage::save_session(new_session);
     };
-    #[cfg(target_arch = "wasm32")]
-    let _scroll_guard = use_hook(move || {
-        use std::rc::Rc;
-        use wasm_bindgen::prelude::Closure;
-        use wasm_bindgen::JsCast as _;
-        let closure: Closure<dyn FnMut()> = Closure::wrap(Box::new(move || {
-            if *is_loading.peek() || *all_loaded.peek() {
-                return;
-            }
-            let Some(window) = web_sys::window() else {
-                return;
-            };
-            let Some(document) = window.document() else {
-                return;
-            };
-            let Some(el) = document.document_element() else {
-                return;
-            };
-            let scroll_top = window.scroll_y().unwrap_or(0.0);
-            let client_height = f64::from(el.client_height());
-            let scroll_height = f64::from(el.scroll_height());
-            if scroll_height > 0.0 && scroll_top + client_height >= scroll_height - 300.0 {
-                is_loading.set(true);
-                let off = *sessions_loaded_offset.peek();
-                wasm_bindgen_futures::spawn_local(async move {
-                    let next =
-                        crate::services::storage::load_completed_sessions_page(PAGE_SIZE, off)
-                            .await;
-                    let len = next.len();
-                    completed_sessions.write().extend(next);
-                    sessions_loaded_offset.set(off + len);
-                    all_loaded.set(len < PAGE_SIZE);
-                    is_loading.set(false);
-                });
-            }
-        }));
-        let func: js_sys::Function = closure.as_ref().unchecked_ref::<js_sys::Function>().clone();
-        if let Some(window) = web_sys::window() {
-            let _ = window.add_event_listener_with_callback("scroll", &func);
-        }
-        /// Drop guard that removes the scroll event listener when the `Home`
-        /// component unmounts, preventing a JS interop memory leak.
-        struct ScrollGuard {
-            /// Keeps the underlying JS function alive until the listener is removed.
-            #[allow(dead_code)]
-            closure: Closure<dyn FnMut()>,
-            func: js_sys::Function,
-        }
-        impl Drop for ScrollGuard {
-            fn drop(&mut self) {
-                if let Some(window) = web_sys::window() {
-                    let _ = window.remove_event_listener_with_callback("scroll", &self.func);
-                }
-            }
-        }
-        Rc::new(ScrollGuard { closure, func })
-    });
     rsx! {
         if *has_active.read() {
             SessionView {}
@@ -147,6 +90,14 @@ pub fn Home() -> Element {
                                 };
                                 sessions_loaded_offset.set(new_len);
                             },
+                        }
+                    }
+                    if !*all_loaded.read() {
+                        InfiniteScrollSentinel {
+                            is_loading,
+                            all_loaded,
+                            sessions_loaded_offset,
+                            completed_sessions,
                         }
                     }
                 }
@@ -296,4 +247,82 @@ fn SessionCard(session: WorkoutSession, on_delete: EventHandler<String>) -> Elem
             }
         }
     }
+}
+/// Sentinel element placed at the bottom of the session list.
+///
+/// On the web platform it uses the browser's `IntersectionObserver` API to
+/// detect when the bottom of the list scrolls into the viewport and
+/// transparently loads the next page of sessions.  The observer is properly
+/// disconnected when the component unmounts so no JS callbacks are leaked.
+///
+/// On native platforms the component renders nothing (sessions are loaded via
+/// SQL `LIMIT`/`OFFSET` on demand from the app's control flow).
+#[component]
+fn InfiniteScrollSentinel(
+    is_loading: Signal<bool>,
+    all_loaded: Signal<bool>,
+    sessions_loaded_offset: Signal<usize>,
+    completed_sessions: Signal<Vec<WorkoutSession>>,
+) -> Element {
+    #[cfg(target_arch = "wasm32")]
+    {
+        use std::rc::Rc;
+        use wasm_bindgen::prelude::Closure;
+        use wasm_bindgen::JsCast as _;
+        let _observer = use_hook(move || {
+            let callback: Closure<dyn FnMut(js_sys::Array)> =
+                Closure::wrap(Box::new(move |entries: js_sys::Array| {
+                    for entry in entries.iter() {
+                        let entry: web_sys::IntersectionObserverEntry = entry.unchecked_into();
+                        if entry.is_intersecting() {
+                            if *is_loading.peek() || *all_loaded.peek() {
+                                break;
+                            }
+                            is_loading.set(true);
+                            let off = *sessions_loaded_offset.peek();
+                            wasm_bindgen_futures::spawn_local(async move {
+                                let next = crate::services::storage::load_completed_sessions_page(
+                                    PAGE_SIZE, off,
+                                )
+                                .await;
+                                let len = next.len();
+                                completed_sessions.write().extend(next);
+                                sessions_loaded_offset.set(off + len);
+                                all_loaded.set(len < PAGE_SIZE);
+                                is_loading.set(false);
+                            });
+                            break;
+                        }
+                    }
+                }));
+            let observer = web_sys::IntersectionObserver::new(callback.as_ref().unchecked_ref())
+                .expect("IntersectionObserver::new should succeed");
+            struct ObserverGuard {
+                observer: web_sys::IntersectionObserver,
+                #[allow(dead_code)]
+                callback: Closure<dyn FnMut(js_sys::Array)>,
+            }
+            impl Drop for ObserverGuard {
+                fn drop(&mut self) {
+                    self.observer.disconnect();
+                }
+            }
+            Rc::new(ObserverGuard { observer, callback })
+        });
+        return rsx! {
+            div {
+                class: "sentinel",
+                onmounted: {
+                    let guard = _observer.clone();
+                    move |evt: Event<MountedData>| {
+                        if let Some(element) = evt.downcast::<web_sys::Element>().cloned() {
+                            guard.observer.observe(&element);
+                        }
+                    }
+                },
+            }
+        };
+    }
+    #[cfg(not(target_arch = "wasm32"))]
+    rsx! {}
 }

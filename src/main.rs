@@ -88,6 +88,17 @@ fn detect_preferred_language() -> unic_langid::LanguageIdentifier {
             }
         }
     }
+    #[cfg(not(target_arch = "wasm32"))]
+    if let Some(lang_str) = sys_locale::get_locale() {
+        if let Ok(id) = lang_str.parse() {
+            return id;
+        }
+        if let Some(base) = lang_str.split('-').next() {
+            if let Ok(id) = base.parse() {
+                return id;
+            }
+        }
+    }
     langid!("en")
 }
 fn main() {

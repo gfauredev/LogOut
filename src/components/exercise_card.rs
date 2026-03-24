@@ -197,24 +197,22 @@ pub fn ExerciseCard(
     let initial = show_instructions_initial.unwrap_or(false);
     let mut show_instructions = use_signal(move || initial);
     let db_i18n_sig = use_context::<DbI18nSignal>().0;
+    // Resolve the locale string once per language change.  All three memos
+    // below read this shared value so the BCP-47 lookup and prefix fallback
+    // run only once per locale update, not three times.
+    let lang_str = use_memo(move || i18n().language().to_string());
     let display_name = {
         let ex = exercise.clone();
-        use_memo(move || {
-            let lang = i18n().language();
-            ex.name_for_lang(&lang.to_string()).to_owned()
-        })
+        use_memo(move || ex.name_for_lang(&lang_str.read()).to_owned())
     };
     let display_instructions = {
         let ex = exercise.clone();
-        use_memo(move || {
-            let lang = i18n().language();
-            ex.instructions_for_lang(&lang.to_string()).to_vec()
-        })
+        use_memo(move || ex.instructions_for_lang(&lang_str.read()).to_vec())
     };
     let enum_labels = {
         let ex = exercise.clone();
         use_memo(move || {
-            let lang = i18n().language().to_string();
+            let lang = lang_str.read();
             let db_i18n = db_i18n_sig.read();
             let category =
                 translate_enum(&db_i18n, &lang, "category", ex.category.as_ref()).to_owned();

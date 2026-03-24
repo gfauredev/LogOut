@@ -7,6 +7,9 @@ pub struct WorkoutSession {
     /// Unique identifier for the session (randomly generated or timestamp-based).
     pub id: String,
     /// Unix timestamp (seconds) when the session was started.
+    /// This value is **never mutated** after the session is created; use
+    /// `total_paused_duration` to account for time spent paused when computing
+    /// the net workout duration.
     pub start_time: u64,
     /// Unix timestamp when the session was finished.  `None` while active.
     pub end_time: Option<u64>,
@@ -29,6 +32,12 @@ pub struct WorkoutSession {
     #[serde(default)]
     /// Unix timestamp when the session was paused (None if running).
     pub paused_at: Option<u64>,
+    #[serde(default)]
+    /// Total cumulative time (in seconds) the session has spent paused.
+    /// Incremented in [`WorkoutSession::resume`] and used by
+    /// [`WorkoutSession::duration_seconds`] so that `start_time` is never
+    /// mutated after the session is created.
+    pub total_paused_duration: u64,
 }
 impl WorkoutSession {
     /// Create a new session with current timestamp and a unique ID.
@@ -45,6 +54,7 @@ impl WorkoutSession {
             current_exercise_id: None,
             current_exercise_start: None,
             paused_at: None,
+            total_paused_duration: 0,
         }
     }
     /// Returns true if the session is currently active (no end time).
@@ -55,10 +65,13 @@ impl WorkoutSession {
     pub fn is_cancelled(&self) -> bool {
         self.is_active() && self.exercise_logs.is_empty() && self.current_exercise_id.is_none()
     }
-    /// Calculate session duration in seconds
+    /// Calculate session duration in seconds, excluding paused time.
     pub fn duration_seconds(&self) -> u64 {
         let end = self.end_time.unwrap_or_else(get_current_timestamp);
-        let mut total = end.saturating_sub(self.start_time);
+        let elapsed = end.saturating_sub(self.start_time);
+        // Subtract time already accumulated in `total_paused_duration`.
+        let mut total = elapsed.saturating_sub(self.total_paused_duration);
+        // Also subtract the current ongoing pause, if any.
         if let Some(paused) = self.paused_at {
             total = total.saturating_sub(end.saturating_sub(paused));
         }
@@ -70,12 +83,18 @@ impl WorkoutSession {
             self.paused_at = Some(get_current_timestamp());
         }
     }
-    /// Resume the session
+    /// Resume the session: accumulate the pause duration into
+    /// `total_paused_duration` without mutating `start_time`.
+    ///
+    /// `rest_start_time` and `current_exercise_start` are still advanced by
+    /// the pause duration so that their elapsed-since calculations remain
+    /// correct — those timestamps measure transient activity windows, not
+    /// the historical session start.
     pub fn resume(&mut self) {
         if let Some(paused) = self.paused_at {
             let now = get_current_timestamp();
             let pause_duration = now.saturating_sub(paused);
-            self.start_time += pause_duration;
+            self.total_paused_duration += pause_duration;
             if let Some(rest_start) = self.rest_start_time {
                 self.rest_start_time = Some(rest_start + pause_duration);
             }
@@ -136,6 +155,7 @@ mod tests {
             current_exercise_id: None,
             current_exercise_start: None,
             paused_at: None,
+            total_paused_duration: 0,
         };
         let json = serde_json::to_string(&session).unwrap();
         let back: WorkoutSession = serde_json::from_str(&json).unwrap();
@@ -156,6 +176,7 @@ mod tests {
             current_exercise_id: Some("bench_press".into()),
             current_exercise_start: Some(1200),
             paused_at: None,
+            total_paused_duration: 0,
         };
         let json = serde_json::to_string(&session).unwrap();
         let back: WorkoutSession = serde_json::from_str(&json).unwrap();
@@ -168,6 +189,7 @@ mod tests {
         let json = r#"{"id":"s1","start_time":1000,"end_time":null,"exercise_logs":[],"version":0,"pending_exercise_ids":[]}"#;
         let session: WorkoutSession = serde_json::from_str(json).unwrap();
         assert!(session.rest_start_time.is_none());
+        assert_eq!(session.total_paused_duration, 0);
     }
     #[test]
     fn workout_session_duration_calculation() {
@@ -182,9 +204,41 @@ mod tests {
             current_exercise_id: None,
             current_exercise_start: None,
             paused_at: None,
+            total_paused_duration: 0,
         };
         assert_eq!(s.duration_seconds(), 1000);
         s.paused_at = Some(1500);
         assert_eq!(s.duration_seconds(), 500);
+    }
+    #[test]
+    fn workout_session_resume_accumulates_paused_duration() {
+        // start_time must remain unchanged after resume
+        let mut s = WorkoutSession {
+            id: "s1".into(),
+            start_time: 1000,
+            end_time: Some(2200),
+            exercise_logs: vec![],
+            version: DATA_VERSION,
+            pending_exercise_ids: vec![],
+            rest_start_time: None,
+            current_exercise_id: None,
+            current_exercise_start: None,
+            paused_at: Some(1500),
+            total_paused_duration: 0,
+        };
+        // Simulate resume at t=1700: pause_duration = 200s
+        // Manually set total_paused_duration as resume() uses get_current_timestamp()
+        s.total_paused_duration = 200;
+        s.paused_at = None;
+        assert_eq!(s.start_time, 1000, "start_time must not be mutated");
+        // duration = (2200 - 1000) - 200 = 1000
+        assert_eq!(s.duration_seconds(), 1000);
+    }
+    #[test]
+    fn workout_session_total_paused_duration_serde_default() {
+        // Old sessions without the field should default to 0
+        let json = r#"{"id":"s1","start_time":1000,"end_time":null,"exercise_logs":[],"version":0,"pending_exercise_ids":[]}"#;
+        let session: WorkoutSession = serde_json::from_str(json).unwrap();
+        assert_eq!(session.total_paused_duration, 0);
     }
 }
