@@ -74,9 +74,7 @@ pub(super) fn SessionDurationDisplay(
     let effective_now = paused_at.unwrap_or_else(|| *now_tick.read());
     let duration = if session_is_active {
         let elapsed = effective_now.saturating_sub(session_start_time);
-        let ongoing_pause = paused_at
-            .map(|p| effective_now.saturating_sub(p))
-            .unwrap_or(0);
+        let ongoing_pause = paused_at.map_or(0, |p| effective_now.saturating_sub(p));
         elapsed
             .saturating_sub(total_paused_duration)
             .saturating_sub(ongoing_pause)
