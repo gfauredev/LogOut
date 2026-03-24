@@ -196,6 +196,8 @@ header.session {
   gap: var(--spacing);
   justify-content: space-between;
   align-items: center;
+  border-bottom-left-radius: var(--radius);
+  border-bottom-right-radius: var(--radius);
 
   h2 {
     margin: 0;
@@ -337,26 +339,34 @@ ul.results {
 }
 
 // ── Exercise input grid: label | − | value | + | ATH ─────────────────────
-.exercise-inputs-grid {
+.exercise-edit {
   display: grid;
-  grid-template-columns: minmax(5ch, auto) var(--btn-width) 1fr var(--btn-width) auto;
+  grid-template-columns: auto auto 1fr auto auto;
   gap: var(--spacing);
   align-items: center;
   margin-bottom: var(--spacing);
+
+  h3 {
+    grid-column: span 4;
+  }
+
+  span {
+    text-align: center;
+  }
 }
 
-.exercise-inputs-grid>.input-row {
+.exercise-edit>.input-row {
   display: contents;
 }
 
 // Duration row shown above the input grid
-.duration-row {
+/* .duration-row {
   display: flex;
   gap: var(--spacing);
   align-items: center;
   margin-bottom: var(--spacing);
   flex-wrap: wrap;
-}
+} */
 
 .exercise-timer {
   text-align: center;
