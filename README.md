@@ -35,9 +35,9 @@ A simple, efficient and cross-platform workout logging application with
 - 📱 Responsive design, ergonomic navigation, local-first, performant
 
 <p float="left">
-  <img src=".screenshot/search.png" width="32.5%" alt="Screenshot of LogOut exerices list page, with search terms entered">
-  <img src=".screenshot/home.png" width="32.5%" alt="Screenshot of LogOut home page, showing completed past sessions">
-  <img src=".screenshot/analytics.png" width="32.5%" alt="Screenshot of LogOut analytics page, showing evolution of Pull-Up weight and reps">
+  <img src=".screenshot/search.png" width="32.8%" alt="Screenshot of LogOut exerices list page, with search terms entered">
+  <img src=".screenshot/home.png" width="32.8%" alt="Screenshot of LogOut home page, showing completed past sessions">
+  <img src=".screenshot/analytics.png" width="32.8%" alt="Screenshot of LogOut analytics page, showing evolution of Pull-Up weight and reps">
 </p>
 
 ## Project Structure
@@ -92,16 +92,16 @@ LogOut/
 | Rust debugging                | [lldb]                                       |
 | Code edition                  | Allows modern Rust dev ([Helix], [VS Code]…) |
 
-| Purpose                                                  | Library    |
-| -------------------------------------------------------- | ---------- |
-| Main UI reactive framework                               | [Dioxus]   |
-| (De)Serialization, data models and persistence           | [Serde]    |
-| PWA Workouts and custom exercises storage ([IndexedDB])  | [Rexie]    |
-| Native Workouts and custom exercises storage ( [SQLite]) | [Rusqlite] |
-| Asynchronous HTTP client                                 | [Reqwest]  |
-| Date and time manipulation (UTC/Local offsets)           | [Time]     |
-| Async runtime for the native application target.         | [Tokio]    |
-| Bindings to browser APIs (Service Worker…)               | [Web-sys]  |
+| Purpose                                                 | Library    |
+| ------------------------------------------------------- | ---------- |
+| Main UI reactive framework                              | [Dioxus]   |
+| (De)Serialization, data models and persistence          | [Serde]    |
+| PWA Workouts and custom exercises storage ([IndexedDB]) | [Rexie]    |
+| Native Workouts and custom exercises storage ([SQLite]) | [Rusqlite] |
+| Asynchronous HTTP client                                | [Reqwest]  |
+| Date and time manipulation (UTC/Local offsets)          | [Time]     |
+| Async runtime for the native application target.        | [Tokio]    |
+| Bindings to browser APIs (Service Worker…)              | [Web-sys]  |
 
 ## Building & Running
 
@@ -109,7 +109,7 @@ The project uses [Nix] to download all (proper versions of) required
 dependencies, configure the development environment (shell) and build the
 application, reproducibly. The [Nix] environment and tooling is defined in
 [`flake.nix`](flake.nix), enable it with `nix develop` or automatically with an
-allowed [`.envrc`](.envrc) and [`direnv`] (recommended):
+allowed [`.envrc`](.envrc) (`direnv allow`) via [`direnv`] (recommended):
 
 For release builds, we prefer pure reproducible `nix build`, but for development
 speed, it is recommended to use the hot-reloading `dx serve` ([PWA] by default).
@@ -117,7 +117,7 @@ speed, it is recommended to use the hot-reloading `dx serve` ([PWA] by default).
 ### Android Native APK
 
 We currently don’t support pure `nix build` for Android. To build the native
-Android APK, run the following from an activadet development shell:
+Android APK, run the following from an activated development shell:
 
 ```sh
 dx build --android --release --target aarch64-linux-android # Your desired arch
@@ -242,7 +242,7 @@ validated PRs), on standard Linux runners.
 - Deploy the _production_ **Progressive Web App** to GitHub Pages
 - **Build production** release for Android `dx build --android --release`
   - Deploy **Android APK** in a “Rolling” timestamped GitHub (pre-)Release
-  - Sign it with GitHub secrets and `scripts/android-sign.sh`
+  - Sign it with GitHub secrets and `scripts/apk-sign.sh`
   - Only if the last release is from the previous (UTC) day, to avoid spamming
   - Remove the previous “Rolling” pre-releases older than a week
 

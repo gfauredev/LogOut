@@ -217,7 +217,7 @@
                 echo "- Android SDK $ANDROID_HOME"
                 echo "- Android NDK $ANDROID_NDK_HOME"
                 dx build --android --release --target ${target}
-                "${self}/.script/android-sign.sh"
+                "${self}/.script/apk-sign.sh"
               '';
             };
         in
