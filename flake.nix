@@ -106,6 +106,13 @@
             buildInputs = commonBuildInputs;
             doCheck = false;
           };
+          cargoArtifactsServer = craneLib.buildDepsOnly {
+            src = filteredSrc;
+            cargoExtraArgs = "--features server-platform";
+            nativeBuildInputs = commonNativeBuildInputs;
+            buildInputs = commonBuildInputs;
+            doCheck = false;
+          };
           cargoArtifactsWeb = craneLib.buildDepsOnly {
             src = filteredSrc;
             cargoExtraArgs = "--target wasm32-unknown-unknown";
@@ -152,6 +159,7 @@
             craneLib
             filteredSrc
             cargoArtifactsHost
+            cargoArtifactsServer
             cargoArtifactsWeb
             androidComposition
             commonNativeBuildInputs
@@ -170,8 +178,8 @@
             {
               basePath ? "LogOut", # Needed for GitHub Pages
               platform ? "web",
-              # Use cargoArtifactsWeb for wasm targets, cargoArtifactsHost for native (server).
-              cargoArtifacts ? (if platform == "server" then env.cargoArtifactsHost else env.cargoArtifactsWeb),
+              # Use cargoArtifactsServer for server, cargoArtifactsWeb for wasm, cargoArtifactsHost for clippy/tests.
+              cargoArtifacts ? (if platform == "server" then env.cargoArtifactsServer else env.cargoArtifactsWeb),
             }:
             env.craneLib.buildPackage {
               inherit cargoArtifacts;
@@ -187,11 +195,12 @@
                 export CARGO_TARGET_DIR=target
                 dx build --${platform} --release --base-path ${env.pkgs.lib.escapeShellArg basePath}
               '';
-              # TODO Retreive path from build output "🚀 path=…"
+              # Retrieve server binary from the architecture-specific target dir that dx uses.
               installPhase =
                 if platform == "server" then ''
                   mkdir -p $out/bin
-                  cp target/dx/log-out/release/server/log-out $out/bin/logout-server
+                  serverBin=$(find target -maxdepth 5 -name "log-out" -type f -path "*/server-release/*" | head -1)
+                  cp "$serverBin" $out/bin/logout-server
                 '' else ''
                   mkdir -p $out
                   cp -r target/dx/log-out/release/web/public/${

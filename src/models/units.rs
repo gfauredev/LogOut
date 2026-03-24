@@ -41,6 +41,36 @@ pub fn parse_weight_kg(input: &str) -> Option<Weight> {
     #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
     Some(Weight(hg as u16))
 }
+/// Parse a user-entered duration string (seconds, MM:SS, or HH:MM:SS) into seconds.
+#[must_use]
+pub fn parse_duration_seconds(input: &str) -> Option<u64> {
+    let s = input.trim();
+    if s.is_empty() {
+        return None;
+    }
+    let parts: Vec<&str> = s.split(':').collect();
+    match parts.as_slice() {
+        [secs] => secs.parse::<u64>().ok(),
+        [mins, secs] => {
+            let m: u64 = mins.parse().ok()?;
+            let s: u64 = secs.parse().ok()?;
+            if s >= 60 {
+                return None;
+            }
+            Some(m * 60 + s)
+        }
+        [hours, mins, secs] => {
+            let h: u64 = hours.parse().ok()?;
+            let m: u64 = mins.parse().ok()?;
+            let s: u64 = secs.parse().ok()?;
+            if m >= 60 || s >= 60 {
+                return None;
+            }
+            Some(h * 3600 + m * 60 + s)
+        }
+        _ => None,
+    }
+}
 /// Parse a user-entered km string into a Distance (meters).
 pub fn parse_distance_km(input: &str) -> Option<Distance> {
     let val: f64 = input.parse().ok()?;
