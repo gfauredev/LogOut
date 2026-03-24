@@ -35,9 +35,9 @@ A simple, efficient and cross-platform workout logging application with
 - 📱 Responsive design, ergonomic navigation, local-first, performant
 
 <p float="left">
-  <img src=".screenshot/search.png" width="33%" alt="Screenshot of LogOut exerices list page, with search terms entered">
-  <img src=".screenshot/home.png" width="33%" alt="Screenshot of LogOut home page, showing completed past sessions">
-  <img src=".screenshot/analytics.png" width="33%" alt="Screenshot of LogOut analytics page, showing evolution of Pull-Up weight and reps">
+  <img src=".screenshot/search.png" width="32.5%" alt="Screenshot of LogOut exerices list page, with search terms entered">
+  <img src=".screenshot/home.png" width="32.5%" alt="Screenshot of LogOut home page, showing completed past sessions">
+  <img src=".screenshot/analytics.png" width="32.5%" alt="Screenshot of LogOut analytics page, showing evolution of Pull-Up weight and reps">
 </p>
 
 ## Project Structure
