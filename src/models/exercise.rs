@@ -158,7 +158,7 @@ impl Exercise {
     ///
     /// Relative paths from the exercise database (e.g. `Squat/0.jpg`) are
     /// prefixed with the configured `EXERCISES_IMAGE_BASE_URL`.
-    #[cfg_attr(not(target_arch = "wasm32"), allow(dead_code))]
+    #[allow(dead_code)]
     pub fn get_image_url(&self, index: usize) -> Option<String> {
         let img = self.images.get(index)?;
         if img.starts_with("http://")

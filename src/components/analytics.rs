@@ -228,35 +228,91 @@ pub fn Analytics() -> Element {
         BottomNav { active_tab: ActiveTab::Analytics }
     }
 }
-const SVG_COORD: &str = r#"
+/// Converts a client X coordinate to an SVG X coordinate using the chart's viewBox.
+const SVG_COORD_X: &str = r#"
     const svg = document.querySelector("main.analytics svg");
-    const pt = svg.createSVGPoint();
-    const coords = await dioxus.recv();
-    pt.x = coords[0];
-    pt.y = coords[1];
-    const svgPt = pt.matrixTransform(svg.getScreenCTM().inverse());
-    dioxus.send([svgPt.x, svgPt.y]);
+    const r = svg.getBoundingClientRect();
+    const vb = svg.viewBox.baseVal;
+    const clientX = await dioxus.recv();
+    dioxus.send((clientX - r.left) / r.width * vb.width);
 "#;
+/// Update the cursor timestamp from a client-space X coordinate.
+///
+/// Spawns an async JS eval to convert the client coordinate into SVG space,
+/// then derives the corresponding timestamp via linear interpolation.
+fn update_cursor(
+    client_x: f64,
+    mut cursor_ts: Signal<Option<f64>>,
+    left_pad: f64,
+    chart_width: f64,
+    min_x: f64,
+    max_x: f64,
+) {
+    spawn(async move {
+        let mut ev = dioxus::prelude::document::eval(SVG_COORD_X);
+        if ev.send(serde_json::json!(client_x)).is_ok() {
+            if let Ok(val) = ev.recv::<serde_json::Value>().await {
+                if let Some(svg_x) = val.as_f64() {
+                    let frac = (svg_x - left_pad) / chart_width;
+                    if (0.0..=1.0).contains(&frac) {
+                        cursor_ts.set(Some(min_x + frac * (max_x - min_x)));
+                    } else {
+                        cursor_ts.set(None);
+                    }
+                }
+            }
+        }
+    });
+}
+// Canonical metric order: [Weight(0), Reps(1), Distance(2), Duration(3)]
+// Layout mapping:
+//   0 Weight  → chart 1, left  Y-axis
+//   1 Reps    → chart 1, right Y-axis
+//   2 Distance→ chart 2, left  Y-axis
+//   3 Duration→ chart 2, right Y-axis
+const ALL_METRICS: [Metric; 4] = [
+    Metric::Weight,
+    Metric::Reps,
+    Metric::Distance,
+    Metric::Duration,
+];
 #[component]
 fn ChartView(data: SeriesData, colors: Vec<&'static str>) -> Element {
-    let mut cursor_ts: Signal<Option<f64>> = use_signal(|| None);
+    let cursor_ts: Signal<Option<f64>> = use_signal(|| None);
+    let mut is_pointer_down: Signal<bool> = use_signal(|| false);
+    // ── Layout constants ─────────────────────────────────────────────────────
     let width = 600.0_f64;
-    let height = 400.0_f64;
+    // Height of each individual chart plot area (same as the original single chart).
+    let chart_height = 342.0_f64; // = original 400 − top_pad(30) − bottom_pad(28)
     let axis_slot = 55.0_f64;
     let top_pad = 30.0_f64;
-    let bottom_pad = 28.0_f64;
-    let right_pad = 10.0_f64;
-    let mut distinct_metrics: Vec<Metric> = Vec::new();
-    for (_, _, metric, pts) in &data {
-        if !pts.is_empty() && !distinct_metrics.contains(metric) {
-            distinct_metrics.push(*metric);
-        }
-    }
-    #[allow(clippy::cast_precision_loss)]
-    let n_axes = distinct_metrics.len().max(1) as f64;
-    let left_pad = axis_slot * n_axes;
+    // Vertical gap between chart 1 bottom (= shared X-axis) and chart 2 top.
+    // Accommodates the X-axis tick labels (≈18 px) plus visual breathing room.
+    let x_gap = 46.0_f64;
+    let chart2_bottom_margin = 5.0_f64;
+    // ── Metric availability ───────────────────────────────────────────────────
+    let metric_has_data: [bool; 4] = ALL_METRICS.map(|m| {
+        data.iter()
+            .any(|(_, _, dm, pts)| *dm == m && !pts.is_empty())
+    });
+    // Chart 2 is shown whenever Distance or Duration have data.
+    let has_chart2 = metric_has_data[2] || metric_has_data[3];
+    // Right axis exists when Reps (chart 1) or Duration (chart 2) have data.
+    let has_right_axis = metric_has_data[1] || metric_has_data[3];
+    let right_pad = if has_right_axis { axis_slot } else { 10.0_f64 };
+    let left_pad = axis_slot;
     let chart_width = (width - left_pad - right_pad).max(50.0);
-    let chart_height = height - top_pad - bottom_pad;
+    // ── Vertical geometry ─────────────────────────────────────────────────────
+    let chart1_top = top_pad;
+    let chart1_bottom = top_pad + chart_height;
+    let chart2_top = chart1_bottom + x_gap;
+    let chart2_bottom = chart2_top + chart_height;
+    let total_height = if has_chart2 {
+        chart2_bottom + chart2_bottom_margin
+    } else {
+        chart1_bottom + 28.0 // original bottom_pad keeps single-chart SVG height = 400
+    };
+    // ── X-axis range (shared across both charts) ──────────────────────────────
     let mut min_x = f64::INFINITY;
     let mut max_x = f64::NEG_INFINITY;
     for (_, _, _, pts) in &data {
@@ -272,43 +328,54 @@ fn ChartView(data: SeriesData, colors: Vec<&'static str>) -> Element {
             left_pad + (x - min_x) / (max_x - min_x) * chart_width
         }
     };
-    let axes: Vec<(&'static str, f64, f64, f64, f64)> = distinct_metrics
-        .iter()
-        .enumerate()
-        .map(|(i, metric)| {
-            let raw_y: Vec<f64> = data
-                .iter()
-                .filter(|(_, _, m, _)| m == metric)
-                .flat_map(|(_, _, _, pts)| pts.iter().map(|(_, y)| *y))
-                .collect();
-            let (unit, scale) = adapt_metric_unit(*metric, &raw_y);
-            let scaled: Vec<f64> = raw_y.iter().map(|y| y * scale).collect();
-            let s_min = scaled.iter().copied().fold(f64::INFINITY, f64::min);
-            let s_max = scaled.iter().copied().fold(f64::NEG_INFINITY, f64::max);
-            let rng = if (s_max - s_min).abs() < f64::EPSILON {
-                1.0
-            } else {
-                s_max - s_min
-            };
-            let min_y = (s_min - rng * 0.1).max(0.0);
-            let max_y = s_max + rng * 0.1;
-            #[allow(clippy::cast_precision_loss)]
-            let x_pos = axis_slot * (i as f64 + 1.0);
-            (unit, scale, min_y, max_y, x_pos)
-        })
-        .collect();
-    let y_svg = |y_display: f64, axis_idx: usize| -> f64 {
-        let (_, _, min_y, max_y, _) = axes[axis_idx];
-        if (max_y - min_y).abs() < f64::EPSILON {
-            top_pad + chart_height / 2.0
+    // ── Per-metric Y-axis data ────────────────────────────────────────────────
+    // `axis_data[i]` = Some((unit, y_scale, display_min, display_max)) when metric i has data.
+    #[allow(clippy::cast_precision_loss)]
+    let axis_data: [Option<(&'static str, f64, f64, f64)>; 4] = std::array::from_fn(|i| {
+        if !metric_has_data[i] {
+            return None;
+        }
+        let metric = ALL_METRICS[i];
+        let raw_y: Vec<f64> = data
+            .iter()
+            .filter(|(_, _, m, _)| *m == metric)
+            .flat_map(|(_, _, _, pts)| pts.iter().map(|(_, y)| *y))
+            .collect();
+        let (unit, scale) = adapt_metric_unit(metric, &raw_y);
+        let scaled: Vec<f64> = raw_y.iter().map(|y| y * scale).collect();
+        let s_min = scaled.iter().copied().fold(f64::INFINITY, f64::min);
+        let s_max = scaled.iter().copied().fold(f64::NEG_INFINITY, f64::max);
+        let rng = if (s_max - s_min).abs() < f64::EPSILON {
+            1.0
         } else {
-            top_pad + chart_height - (y_display - min_y) / (max_y - min_y) * chart_height
+            s_max - s_min
+        };
+        let min_y = (s_min - rng * 0.1).max(0.0);
+        let max_y = s_max + rng * 0.1;
+        Some((unit, scale, min_y, max_y))
+    });
+    // Convert a display-space Y value for metric index `mi` to SVG Y coordinate.
+    let y_svg = |y_display: f64, mi: usize| -> f64 {
+        let Some((_, _, min_y, max_y)) = axis_data[mi] else {
+            return 0.0;
+        };
+        let (ct, cb) = if mi < 2 {
+            (chart1_top, chart1_bottom)
+        } else {
+            (chart2_top, chart2_bottom)
+        };
+        let h = cb - ct;
+        if (max_y - min_y).abs() < f64::EPSILON {
+            ct + h / 2.0
+        } else {
+            ct + h - (y_display - min_y) / (max_y - min_y) * h
         }
     };
     let format_date = |ts: f64| -> String {
         #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
         crate::utils::format_session_date(ts as u64)
     };
+    // ── Cursor tooltip values ─────────────────────────────────────────────────
     let cursor_values: Vec<(usize, String, f64, &'static str)> = if let Some(ts) = *cursor_ts.read()
     {
         data.iter()
@@ -316,8 +383,8 @@ fn ChartView(data: SeriesData, colors: Vec<&'static str>) -> Element {
                 if points.is_empty() {
                     return None;
                 }
-                let axis_idx = distinct_metrics.iter().position(|m| m == metric)?;
-                let (unit, scale, _, _, _) = axes[axis_idx];
+                let mi = metric.to_index();
+                let (unit, scale, _, _) = axis_data[mi]?;
                 let nearest = points.iter().min_by(|(t1, _), (t2, _)| {
                     (t1 - ts)
                         .abs()
@@ -330,63 +397,110 @@ fn ChartView(data: SeriesData, colors: Vec<&'static str>) -> Element {
     } else {
         Vec::new()
     };
+    // ── Interaction geometry ──────────────────────────────────────────────────
+    // The transparent rect covers chart 1, the gap (X labels), and chart 2 (if shown).
+    let interact_height = if has_chart2 {
+        chart2_bottom - chart1_top
+    } else {
+        chart_height
+    };
+    let xlabel_y = chart1_bottom + 18.0;
+    let num_labels = 4
+        .min(data.iter().map(|(_, _, _, p)| p.len()).max().unwrap_or(0))
+        .max(2);
     rsx! {
         svg {
             width: "100%",
             height: "auto",
-            view_box: "0 0 {width} {height}",
-            style: "cursor: crosshair;",
+            view_box: "0 0 {width} {total_height}",
+            style: "cursor: crosshair; touch-action: pan-y;",
+            onmouseup: move |_| {
+                is_pointer_down.set(false);
+            },
+            onmouseleave: move |_| {
+                is_pointer_down.set(false);
+            },
+            // ── X-axis line (shared bottom of chart 1 / top reference of chart 2) ──
             line {
                 x1: "{left_pad}",
-                y1: "{top_pad + chart_height}",
+                y1: "{chart1_bottom}",
                 x2: "{left_pad + chart_width}",
-                y2: "{top_pad + chart_height}",
+                y2: "{chart1_bottom}",
                 stroke: "#555",
                 stroke_width: "1",
             }
-            for (axis_idx , (unit , _scale , min_y , max_y , x_pos)) in axes.iter().enumerate() {
-                g { key: "axis_{axis_idx}",
-                    line {
-                        x1: "{x_pos}",
-                        y1: "{top_pad}",
-                        x2: "{x_pos}",
-                        y2: "{top_pad + chart_height}",
-                        stroke: "#555",
-                        stroke_width: "1",
-                        stroke_opacity: "0.7",
-                    }
-                    text {
-                        x: "{x_pos}",
-                        y: "{top_pad - 6.0}",
-                        text_anchor: "middle",
-                        font_size: "12",
-                        font_weight: "bold",
-                        fill: "#aaa",
-                        "{unit}"
-                    }
-                    for tick in 0..5_usize {
-                        {
-                            #[allow(clippy::cast_precision_loss)]
-                            let frac = tick as f64 / 4.0;
-                            let y_val = min_y + (max_y - min_y) * frac;
-                            let sy = y_svg(y_val, axis_idx);
-                            rsx! {
-                                g { key: "tick_{tick}",
-                                    line {
-                                        x1: "{x_pos - 4.0}",
-                                        y1: "{sy}",
-                                        x2: "{x_pos}",
-                                        y2: "{sy}",
-                                        stroke: "#555",
-                                        stroke_width: "1",
-                                    }
-                                    text {
-                                        x: "{x_pos - 7.0}",
-                                        y: "{sy + 4.0}",
-                                        text_anchor: "end",
-                                        font_size: "11",
-                                        fill: "#888",
-                                        "{y_val:.1}"
+            if has_chart2 {
+                line {
+                    x1: "{left_pad}",
+                    y1: "{chart2_bottom}",
+                    x2: "{left_pad + chart_width}",
+                    y2: "{chart2_bottom}",
+                    stroke: "#555",
+                    stroke_width: "1",
+                }
+            }
+            // ── Y-axes ────────────────────────────────────────────────────────
+            for i in 0..4_usize {
+                if let Some((unit, _, min_y, max_y)) = axis_data[i] {
+                    {
+                        let is_right = i % 2 == 1;
+                        let x_pos = if is_right { left_pad + chart_width } else { left_pad };
+                        let (ct, cb) = if i < 2 {
+                            (chart1_top, chart1_bottom)
+                        } else {
+                            (chart2_top, chart2_bottom)
+                        };
+                        let tick_x1 = if is_right { x_pos } else { x_pos - 4.0 };
+                        let tick_x2 = if is_right { x_pos + 4.0 } else { x_pos };
+                        let text_x = if is_right { x_pos + 7.0 } else { x_pos - 7.0 };
+                        let text_anchor: &str = if is_right { "start" } else { "end" };
+                        let unit_anchor: &str = if is_right { "start" } else { "middle" };
+                        rsx! {
+                            g { key: "axis_{i}",
+                                line {
+                                    x1: "{x_pos}",
+                                    y1: "{ct}",
+                                    x2: "{x_pos}",
+                                    y2: "{cb}",
+                                    stroke: "#555",
+                                    stroke_width: "1",
+                                    stroke_opacity: "0.7",
+                                }
+                                text {
+                                    x: "{x_pos}",
+                                    y: "{ct - 6.0}",
+                                    text_anchor: "{unit_anchor}",
+                                    font_size: "12",
+                                    font_weight: "bold",
+                                    fill: "#aaa",
+                                    "{unit}"
+                                }
+                                for tick in 0..5_usize {
+                                    {
+                                        #[allow(clippy::cast_precision_loss)]
+                                        let frac = tick as f64 / 4.0;
+                                        let y_val = min_y + (max_y - min_y) * frac;
+                                        let sy = y_svg(y_val, i);
+                                        rsx! {
+                                            g { key: "tick_{tick}",
+                                                line {
+                                                    x1: "{tick_x1}",
+                                                    y1: "{sy}",
+                                                    x2: "{tick_x2}",
+                                                    y2: "{sy}",
+                                                    stroke: "#555",
+                                                    stroke_width: "1",
+                                                }
+                                                text {
+                                                    x: "{text_x}",
+                                                    y: "{sy + 4.0}",
+                                                    text_anchor: "{text_anchor}",
+                                                    font_size: "11",
+                                                    fill: "#888",
+                                                    "{y_val:.1}"
+                                                }
+                                            }
+                                        }
                                     }
                                 }
                             }
@@ -394,37 +508,35 @@ fn ChartView(data: SeriesData, colors: Vec<&'static str>) -> Element {
                     }
                 }
             }
-            {
-                let num_labels = 4
-                    .min(data.iter().map(|(_, _, _, p)| p.len()).max().unwrap_or(0))
-                    .max(2);
-                rsx! {
-                    for i in 0..num_labels {
-                        {
-                            #[allow(clippy::cast_precision_loss)]
-                            let x_val = min_x + (max_x - min_x) * (i as f64 / (num_labels - 1) as f64);
-                            let sx = scale_x(x_val);
-                            rsx! {
-                                g { key: "xlabel_{i}",
-                                    text {
-                                        x: "{sx}",
-                                        y: "{top_pad + chart_height + 18.0}",
-                                        text_anchor: "middle",
-                                        font_size: "11",
-                                        fill: "#aaa",
-                                        "{format_date(x_val)}"
-                                    }
-                                }
+            // ── X-axis labels (drawn once, shared between charts) ─────────────
+            for i in 0..num_labels {
+                {
+                    #[allow(clippy::cast_precision_loss)]
+                    let x_val = if num_labels <= 1 {
+                        f64::midpoint(min_x, max_x)
+                    } else {
+                        min_x + (max_x - min_x) * (i as f64 / (num_labels - 1) as f64)
+                    };
+                    let sx = scale_x(x_val);
+                    rsx! {
+                        g { key: "xlabel_{i}",
+                            text {
+                                x: "{sx}",
+                                y: "{xlabel_y}",
+                                text_anchor: "middle",
+                                font_size: "11",
+                                fill: "#aaa",
+                                "{format_date(x_val)}"
                             }
                         }
                     }
                 }
             }
+            // ── Data series ───────────────────────────────────────────────────
             for (slot_idx , _ , metric , points) in data.iter() {
                 {
-                    let axis_idx_opt = distinct_metrics.iter().position(|m| m == metric);
-                    if let Some(axis_idx) = axis_idx_opt {
-                        let (_, scale, _, _, _) = axes[axis_idx];
+                    let mi = metric.to_index();
+                    if let Some((_, scale, _, _)) = axis_data[mi] {
                         let color = *colors.get(*slot_idx).unwrap_or(&"#ccc");
                         if points.len() >= 2 {
                             let path_d = points
@@ -432,7 +544,7 @@ fn ChartView(data: SeriesData, colors: Vec<&'static str>) -> Element {
                                 .enumerate()
                                 .map(|(pi, (x, y))| {
                                     let sx = scale_x(*x);
-                                    let sy = y_svg(y * scale, axis_idx);
+                                    let sy = y_svg(y * scale, mi);
                                     if pi == 0 {
                                         format!("M {sx} {sy}")
                                     } else {
@@ -454,7 +566,7 @@ fn ChartView(data: SeriesData, colors: Vec<&'static str>) -> Element {
                                     for (x , y) in points.iter() {
                                         circle {
                                             cx: "{scale_x(*x)}",
-                                            cy: "{y_svg(y * scale, axis_idx)}",
+                                            cy: "{y_svg(y * scale, mi)}",
                                             r: "4",
                                             fill: "{color}",
                                             stroke: "#111",
@@ -469,7 +581,7 @@ fn ChartView(data: SeriesData, colors: Vec<&'static str>) -> Element {
                                 circle {
                                     key: "dot_{slot_idx}",
                                     cx: "{scale_x(x)}",
-                                    cy: "{y_svg(y * scale, axis_idx)}",
+                                    cy: "{y_svg(y * scale, mi)}",
                                     r: "5",
                                     fill: "{color}",
                                     stroke: "#111",
@@ -484,57 +596,76 @@ fn ChartView(data: SeriesData, colors: Vec<&'static str>) -> Element {
                     }
                 }
             }
+            // ── Cursor lines (one per visible chart, sharing the same timestamp) ──
             if let Some(ts) = *cursor_ts.read() {
                 {
                     let cx = scale_x(ts);
                     rsx! {
                         line {
                             x1: "{cx}",
-                            y1: "{top_pad}",
+                            y1: "{chart1_top}",
                             x2: "{cx}",
-                            y2: "{top_pad + chart_height}",
+                            y2: "{chart1_bottom}",
                             stroke: "#fff",
                             stroke_width: "1",
                             stroke_opacity: "0.5",
                             stroke_dasharray: "4 3",
                             pointer_events: "none",
                         }
+                        if has_chart2 {
+                            line {
+                                x1: "{cx}",
+                                y1: "{chart2_top}",
+                                x2: "{cx}",
+                                y2: "{chart2_bottom}",
+                                stroke: "#fff",
+                                stroke_width: "1",
+                                stroke_opacity: "0.5",
+                                stroke_dasharray: "4 3",
+                                pointer_events: "none",
+                            }
+                        }
                     }
                 }
             }
+            // ── Interaction overlay ───────────────────────────────────────────
+            // Transparent rect covering the full chart area; receives all pointer
+            // and touch events so cursor can be slid freely.
             rect {
                 x: "{left_pad}",
-                y: "{top_pad}",
+                y: "{chart1_top}",
                 width: "{chart_width}",
-                height: "{chart_height}",
+                height: "{interact_height}",
                 fill: "transparent",
                 onclick: move |evt| {
-                    let client_x = evt.client_coordinates().x;
-                    let client_y = evt.client_coordinates().y;
-                    let lp = left_pad;
-                    let cw = chart_width;
-                    let mx = min_x;
-                    let dx = max_x - min_x;
-                    spawn(async move {
-                        let mut ev = dioxus::prelude::document::eval(SVG_COORD);
-                        if ev.send(serde_json::json!([client_x, client_y])).is_ok() {
-                            if let Ok(result) = ev.recv::<serde_json::Value>().await {
-                                if let Some(arr) = result.as_array() {
-                                    if let Some(svg_x) = arr
-                                        .first()
-                                        .and_then(serde_json::Value::as_f64)
-                                    {
-                                        let frac = (svg_x - lp) / cw;
-                                        if (0.0..=1.0).contains(&frac) {
-                                            cursor_ts.set(Some(mx + frac * dx));
-                                        } else {
-                                            cursor_ts.set(None);
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    });
+                    let cx = evt.client_coordinates().x;
+                    update_cursor(cx, cursor_ts, left_pad, chart_width, min_x, max_x);
+                },
+                onmousedown: move |evt| {
+                    is_pointer_down.set(true);
+                    let cx = evt.client_coordinates().x;
+                    update_cursor(cx, cursor_ts, left_pad, chart_width, min_x, max_x);
+                },
+                onmousemove: move |evt| {
+                    if *is_pointer_down.read() {
+                        let cx = evt.client_coordinates().x;
+                        update_cursor(cx, cursor_ts, left_pad, chart_width, min_x, max_x);
+                    }
+                },
+                onmouseup: move |_| {
+                    is_pointer_down.set(false);
+                },
+                ontouchstart: move |evt| {
+                    if let Some(touch) = evt.touches().first() {
+                        let cx = touch.client_coordinates().x;
+                        update_cursor(cx, cursor_ts, left_pad, chart_width, min_x, max_x);
+                    }
+                },
+                ontouchmove: move |evt| {
+                    if let Some(touch) = evt.touches().first() {
+                        let cx = touch.client_coordinates().x;
+                        update_cursor(cx, cursor_ts, left_pad, chart_width, min_x, max_x);
+                    }
                 },
             }
         }

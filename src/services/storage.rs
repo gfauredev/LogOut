@@ -47,6 +47,7 @@ pub enum StorageError {
     Backend(String),
     /// A blocking background task panicked (native platforms only).
     #[error("Background task panicked: {0}")]
+    #[cfg_attr(target_arch = "wasm32", allow(dead_code))]
     TaskPanic(String),
 }
 #[cfg(target_arch = "wasm32")]
@@ -835,22 +836,29 @@ pub(crate) mod native_storage {
     /// lifetime of the process.  The schema migration is also applied exactly once,
     /// inside the `OnceLock` initialiser, so it never runs on subsequent calls.
     ///
-    /// # Panics
-    ///
-    /// Panics on the first call if the data directory cannot be created or the database
-    /// file cannot be opened.  These are considered fatal, unrecoverable errors.
-    fn open_db() -> std::sync::MutexGuard<'static, Connection> {
-        static DB: std::sync::OnceLock<std::sync::Mutex<Connection>> = std::sync::OnceLock::new();
-        let mutex = DB.get_or_init(|| {
-            std::fs::create_dir_all(data_dir()).expect("open_db: failed to create data directory");
-            let conn =
-                Connection::open(db_path()).expect("open_db: failed to open SQLite database");
-            apply_migration_if_needed(&conn).expect("open_db: failed to apply schema migration");
-            std::sync::Mutex::new(conn)
+    /// If the data directory cannot be created or the database file cannot be opened on
+    /// the first call, an error is returned and cached permanently — all subsequent calls
+    /// will return the same error without retrying.
+    fn open_db() -> Result<std::sync::MutexGuard<'static, Connection>, StorageError> {
+        static DB: std::sync::OnceLock<Result<std::sync::Mutex<Connection>, String>> =
+            std::sync::OnceLock::new();
+        let result = DB.get_or_init(|| {
+            (|| {
+                std::fs::create_dir_all(data_dir())
+                    .map_err(|e| format!("open_db: failed to create data directory: {e}"))?;
+                let conn = Connection::open(db_path())
+                    .map_err(|e| format!("open_db: failed to open SQLite database: {e}"))?;
+                apply_migration_if_needed(&conn)
+                    .map_err(|e| format!("open_db: failed to apply schema migration: {e}"))?;
+                Ok(std::sync::Mutex::new(conn))
+            })()
         });
-        mutex
-            .lock()
-            .unwrap_or_else(std::sync::PoisonError::into_inner)
+        match result {
+            Ok(mutex) => Ok(mutex
+                .lock()
+                .unwrap_or_else(std::sync::PoisonError::into_inner)),
+            Err(e) => Err(StorageError::Io(std::io::Error::other(e.clone()))),
+        }
     }
     /// Re-applies the schema migration using the shared long-lived connection.
     ///
@@ -858,13 +866,13 @@ pub(crate) mod native_storage {
     /// a fresh-database migration without needing a separate `Connection`.
     #[cfg(test)]
     pub(crate) fn apply_migration_for_testing() -> Result<(), StorageError> {
-        let conn = open_db();
+        let conn = open_db()?;
         apply_migration_if_needed(&conn)
     }
     /// Reads all items from a store, deserialising each row's JSON `data` column.
     pub fn get_all<T: DeserializeOwned>(store_name: &str) -> Result<Vec<T>, StorageError> {
         let table = store_table(store_name)?;
-        let conn = open_db();
+        let conn = open_db()?;
         let query = format!("SELECT data FROM {table}");
         let mut stmt = conn.prepare(&query)?;
         let items = stmt
@@ -892,7 +900,7 @@ pub(crate) mod native_storage {
         limit: usize,
         offset: usize,
     ) -> Result<Vec<crate::models::WorkoutSession>, StorageError> {
-        let conn = open_db();
+        let conn = open_db()?;
         let mut stmt = conn.prepare(
             "SELECT data FROM sessions \
              WHERE end_time IS NOT NULL \
@@ -938,7 +946,7 @@ pub(crate) mod native_storage {
                 Ok((id, data))
             })
             .collect::<Result<_, serde_json::Error>>()?;
-        let mut conn = open_db();
+        let mut conn = open_db()?;
         let tx = conn.transaction()?;
         let delete_sql = format!("DELETE FROM {table}");
         tx.execute(&delete_sql, [])?;
@@ -961,7 +969,7 @@ pub(crate) mod native_storage {
         let table = store_table(store_name)?;
         // Serialise outside the lock to keep the critical section minimal.
         let data = serde_json::to_string(item)?;
-        let conn = open_db();
+        let conn = open_db()?;
         let insert_sql = format!("INSERT OR REPLACE INTO {table} (id, data) VALUES (?1, ?2)");
         conn.execute(&insert_sql, params![id, data])?;
         Ok(())
@@ -969,14 +977,14 @@ pub(crate) mod native_storage {
     /// Deletes the item with `id` from a store (no-op if absent).
     pub fn delete_item(store_name: &str, id: &str) -> Result<(), StorageError> {
         let table = store_table(store_name)?;
-        let conn = open_db();
+        let conn = open_db()?;
         let delete_sql = format!("DELETE FROM {table} WHERE id = ?1");
         conn.execute(&delete_sql, params![id])?;
         Ok(())
     }
     /// Returns the string value for `key`, or `None` if absent.
     pub fn get_config_value(key: &str) -> Option<String> {
-        let conn = open_db();
+        let conn = open_db().ok()?;
         conn.query_row(
             "SELECT value FROM config WHERE key = ?1",
             params![key],
@@ -986,7 +994,7 @@ pub(crate) mod native_storage {
     }
     /// Sets `key` to `value`.  Passing an empty `value` removes the key.
     pub fn set_config_value(key: &str, value: &str) -> Result<(), StorageError> {
-        let conn = open_db();
+        let conn = open_db()?;
         if value.is_empty() {
             conn.execute("DELETE FROM config WHERE key = ?1", params![key])?;
         } else {
@@ -1006,7 +1014,7 @@ pub(crate) mod native_storage {
     /// More memory-efficient than [`get_all`] because completed sessions, which
     /// can represent the bulk of history, are never deserialised into Rust.
     pub fn get_active_sessions() -> Result<Vec<crate::models::WorkoutSession>, StorageError> {
-        let conn = open_db();
+        let conn = open_db()?;
         let mut stmt = conn.prepare("SELECT data FROM sessions WHERE end_time IS NULL")?;
         let items = stmt
             .query_map([], |row| row.get::<_, String>(0))?
@@ -1044,7 +1052,7 @@ pub(crate) mod native_storage {
     /// Shared implementation: if `ids` is `None` aggregates all exercises;
     /// if `Some`, adds a `json_each` IN-filter on the `exercise_id` column.
     fn bests_rows_query(ids: Option<&[String]>) -> Result<Vec<super::BestsRow>, StorageError> {
-        let conn = open_db();
+        let conn = open_db()?;
         let id_filter = if ids.is_some() {
             "AND json_extract(log.value, '$.exercise_id') \
              IN (SELECT value FROM json_each(?1))"
