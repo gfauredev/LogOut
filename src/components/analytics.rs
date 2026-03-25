@@ -484,34 +484,6 @@ fn ChartView(data: SeriesData, colors: Vec<&'static str>) -> Element {
                     }
                 }
             }
-            for (legend_idx , (slot_idx , exercise_name , metric , _)) in data.iter().enumerate() {
-                {
-                    if distinct_metrics.contains(metric) {
-                        #[allow(clippy::cast_precision_loss)]
-                        let ly = top_pad + legend_idx as f64 * 18.0;
-                        let color = *colors.get(*slot_idx).unwrap_or(&"#ccc");
-                        Some(rsx! {
-                            g { key: "legend_{slot_idx}",
-                                circle {
-                                    cx: "{width - 140.0}",
-                                    cy: "{ly}",
-                                    r: "5",
-                                    fill: "{color}",
-                                }
-                                text {
-                                    x: "{width - 127.0}",
-                                    y: "{ly + 4.0}",
-                                    font_size: "11",
-                                    fill: "#e0e0e0",
-                                    "{exercise_name}"
-                                }
-                            }
-                        })
-                    } else {
-                        None
-                    }
-                }
-            }
             if let Some(ts) = *cursor_ts.read() {
                 {
                     let cx = scale_x(ts);
