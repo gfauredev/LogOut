@@ -63,14 +63,14 @@ LogOut/
 
 ## Tooling and Dependencies
 
-| Purpose             | Methodology            |
-| ------------------- | ---------------------- |
-| Project versionning | [SemVer]               |
-| Commit messages     | [Conventional Commits] |
-| Branch naming       | [Conventional Branch]  |
-| Branching model     | [GitHub Flow]          |
-| Changes submission  | GitHub Pull Requests   |
-| Issue tracking      | GitHub Issues          |
+| Purpose            | Methodology            |
+| ------------------ | ---------------------- |
+| Project versioning | [SemVer]               |
+| Commit messages    | [Conventional Commits] |
+| Branch naming      | [Conventional Branch]  |
+| Branching model    | [GitHub Flow]          |
+| Changes submission | GitHub Pull Requests   |
+| Issue tracking     | GitHub Issues          |
 
 | Purpose                       | Tool                                         |
 | ----------------------------- | -------------------------------------------- |
@@ -135,16 +135,16 @@ LogOut follows that priority order:
    3. Maximize correctness and stability, work as the user expects, reliably
    4. Minimize computational complexity, be snappy, pleasant to use
 2. Developer Experience
-   1. Maximize code readability and maintenability, make it easy to understand
+   1. Maximize code readability and maintainability, make it easy to understand
    2. Maximize simplicity, minimize complexity, avoid nesting, over-engineering
    3. Maximize testability and iteration speed, isolated units, fast compile
-3. Device Friendlyness
+3. Device Friendliness
    1. Minimize battery usage, don’t kill mobile devices
    2. Minimize memory footprint, run smoothly on low-end devices
    3. Minimize binary and stored data size, be unnoticed, load quickly
    4. Minimize network usage, work offline, don’t waste users’ data plans
 
-That doesn’t means lower order items are not important, this list is just for
+That doesn’t mean lower order items are not important, this list is just for
 when tradeoffs are strictly necessary. If possible, maximize all outcomes.
 Follow these general engineering principles:
 
@@ -155,8 +155,8 @@ Follow these general engineering principles:
 - Enforce a **Single Source of Truth**, derive component or local state directly
   from a centralized global state to prevent desynchronization
   - Confine all state mutations to atomic, centralized functions
-- Bind external resources to **strict lifecycles** (RAII), guarantee their
-  cleanup by tying their lifecycles directly to object scope
+- Bind external resources to **strict lifecycles** (RAII), guarantee their clean
+  up by tying their lifecycles directly to object scope
   - Event listeners, database transactions, browser object URLs…
 - **Never block main/UI thread**, strictly offload synchronous, I/O-heavy, or
   CPU-bound operations to background threads
@@ -171,7 +171,7 @@ Follow these general engineering principles:
   whenever interacting with the network, file system, foreign functions (FFI)…
   - Handle errors explicitly without crashing the app, surface them gracefully
     to the user via managed queues, and never swallow them silently
-  - Generaly, avoid panicking methods and macros such as `.unwrap()` and
+  - In general avoid panicking methods and macros such as `.unwrap()` and
     `.expect()` variants, direct `vec[i]`, `.borrow()` variants, `panic!()`…
 - **Avoid or optimize I/O**, disk reads and network requests are expensive
   - Cache assets, strictly normalize data, optimize database queries…
@@ -200,7 +200,7 @@ Follow this contribution process, based on [GitHub Flow], [Conventional Branch]:
 3. Open a **Pull Request (PR)** as soon as your code compiles and checks
    - Avoid touching things not strictly related to your desired changes, e.g.
      updating dependencies
-4. Fulfill the **PR** template checks before marking it ready for review
+4. Fulfil the **PR** template checks before marking it ready for review
 5. Fix your code if it don’t pass [CI checks](#continuous-integration-ci)
 
 ## Continuous Integration and Deployment (CI/CD)
@@ -210,7 +210,7 @@ pass through a pull-request (PR), and every below check (that runs on pushes on
 PRs) must pass (for some, at a certain level) for it to be merged into `main`.
 
 - Run isolated in Garnix via (`flake.nix`)[flake.nix], for every push on PR
-  - Check if the code is properly **formated** `cargo fmt --all -- --check`
+  - Check if the code is properly **formatted** `cargo fmt --all -- --check`
   - **Lint** `cargo clippy -- -D warnings -W clippy::all -W clippy::pedantic`
   - **Unit test** while measuring **coverage** with `cargo llvm-cov`
   - **Build production** release for Web `dx build --web --release`
@@ -235,11 +235,11 @@ validated PRs), on standard Linux runners.
   - Remove the previous “Rolling” pre-releases older than a week
 
 CD also runs when a [SemVer] `vMAJOR.MINOR.PATCH` **tag** is pushed, publishing
-a “Stable” GitHub Release with a production Android APK buit on this `tag`.
+a “Stable” GitHub Release with a production Android APK built on this `tag`.
 
 ### Weekly Deep Checks
 
-[LogOut] ensures high quality code with additional ressource intensive checks
+[LogOut] ensures high quality code with additional resource intensive checks
 that run every Sunday at midnight on the `main` branch.
 
 - Run Android **end-to-end tests** in emulator `maestro test maestro/android`
