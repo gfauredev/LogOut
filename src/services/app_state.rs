@@ -118,7 +118,7 @@ pub fn save_session(session: WorkoutSession) {
     {
         let mut sessions = sig.write();
         if let Some(pos) = sessions.iter().position(|s| s.id == session.id) {
-            previous = Some((**sessions[pos]).clone());
+            previous = Some((*sessions[pos]).clone());
             sessions[pos] = Arc::new(session.clone());
             is_update = true;
         } else {

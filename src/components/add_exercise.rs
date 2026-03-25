@@ -42,7 +42,8 @@ pub fn AddExercise() -> Element {
         let exercise_id = exercise.id.clone();
         storage::add_custom_exercise(exercise);
         let active = sessions.read().iter().find(|s| s.is_active()).cloned();
-        if let Some(mut active_session) = active {
+        if let Some(active_session) = active {
+            let mut active_session = (*active_session).clone();
             let start = get_current_timestamp();
             active_session.current_exercise_id = Some(exercise_id);
             active_session.current_exercise_start = Some(start);

@@ -4,6 +4,7 @@ use dioxus::prelude::WritableExt;
 use dioxus::signals::Signal;
 use std::cell::RefCell;
 use std::collections::VecDeque;
+use std::sync::Arc;
 /// A pending write operation, including the toast signal for error reporting.
 pub enum NativeOp {
     /// Upsert a session.  On write failure the sessions signal is reverted to
@@ -11,7 +12,7 @@ pub enum NativeOp {
     PutSession {
         session: WorkoutSession,
         toast: Signal<std::collections::VecDeque<String>>,
-        sessions_sig: Signal<Vec<WorkoutSession>>,
+        sessions_sig: Signal<Vec<Arc<WorkoutSession>>>,
         /// `None` means the session was newly inserted; reverting removes it.
         /// `Some(old)` means it was an update; reverting restores `old`.
         previous: Option<WorkoutSession>,
@@ -21,7 +22,7 @@ pub enum NativeOp {
     DeleteSession {
         id: String,
         toast: Signal<std::collections::VecDeque<String>>,
-        sessions_sig: Signal<Vec<WorkoutSession>>,
+        sessions_sig: Signal<Vec<Arc<WorkoutSession>>>,
         /// The session that was removed from the signal, for revert on failure.
         snapshot: Option<WorkoutSession>,
     },
@@ -76,7 +77,7 @@ async fn drain() {
                             None => sessions.retain(|x| x.id != id),
                             Some(old) => {
                                 if let Some(pos) = sessions.iter().position(|x| x.id == id) {
-                                    sessions[pos] = old;
+                                    sessions[pos] = Arc::new(old);
                                 }
                             }
                         }
@@ -92,7 +93,7 @@ async fn drain() {
                             None => sessions.retain(|x| x.id != id),
                             Some(old) => {
                                 if let Some(pos) = sessions.iter().position(|x| x.id == id) {
-                                    sessions[pos] = old;
+                                    sessions[pos] = Arc::new(old);
                                 }
                             }
                         }
@@ -118,7 +119,7 @@ async fn drain() {
                             .write()
                             .push_back(format!("⚠️ Failed to delete session: {e}"));
                         if let Some(session) = snapshot {
-                            sessions_sig.write().push(session);
+                            sessions_sig.write().push(Arc::new(session));
                         }
                     }
                     Err(e) => {
@@ -127,7 +128,7 @@ async fn drain() {
                             .write()
                             .push_back("⚠️ Failed to delete session (internal error)".into());
                         if let Some(session) = snapshot {
-                            sessions_sig.write().push(session);
+                            sessions_sig.write().push(Arc::new(session));
                         }
                     }
                     Ok(Ok(())) => {}

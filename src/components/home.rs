@@ -14,7 +14,7 @@ pub fn Home() -> Element {
     let mut sessions_loaded_offset = use_signal(|| 0usize);
     let mut all_loaded = use_signal(|| false);
     let mut is_loading = use_signal(|| false);
-    let has_active = use_memo(move || sessions.read().iter().any(WorkoutSession::is_active));
+    let has_active = use_memo(move || sessions.read().iter().any(|s| s.is_active()));
     // Derive completed sessions from global state: watch the number of active
     // sessions and reload from storage whenever it changes (e.g. a session is
     // completed).  The effect also fires on mount, replacing the separate

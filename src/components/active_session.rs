@@ -216,7 +216,7 @@ fn PendingExercisesSection(pending_ids: Vec<String>, on_start: EventHandler<Stri
 /// the exercise that followed that earlier set.
 #[component]
 fn CompletedExercisesSection(
-    session: Memo<WorkoutSession>,
+    session: Memo<Arc<WorkoutSession>>,
     no_exercise_active: bool,
     on_replay: EventHandler<String>,
 ) -> Element {
@@ -291,7 +291,7 @@ pub fn SessionView() -> Element {
             .iter()
             .find(|s| s.is_active())
             .cloned()
-            .unwrap_or_else(WorkoutSession::new)
+            .unwrap_or_else(|| Arc::new(WorkoutSession::new()))
     });
     let mut search_query = use_signal(String::new);
     let mut debounced_query = use_signal(String::new);
@@ -592,7 +592,8 @@ pub fn GlobalSessionHeader() -> Element {
     let total_paused_duration = sess.total_paused_duration;
     let rest_start_time = sess.rest_start_time;
     let on_pause = move |()| {
-        let Some(mut s) = session() else { return };
+        let Some(s) = session() else { return };
+        let mut s = (*s).clone();
         if s.is_paused() {
             s.resume();
         } else {
@@ -605,7 +606,7 @@ pub fn GlobalSessionHeader() -> Element {
         if s.is_cancelled() {
             storage::delete_session(&s.id);
         } else {
-            let mut s = s.clone();
+            let mut s = (*s).clone();
             if s.is_paused() {
                 s.resume();
             }

@@ -5,12 +5,13 @@ use crate::models::{
 };
 use crate::services::storage;
 use dioxus::prelude::*;
+use std::sync::Arc;
 /// A single completed exercise log entry with inline edit support.
 #[component]
 pub fn CompletedExerciseLog(
     idx: usize,
     log: ExerciseLog,
-    session: Memo<WorkoutSession>,
+    session: Memo<Arc<WorkoutSession>>,
     /// Called when the user clicks the replay button to start another set.
     #[props(default)]
     on_replay: EventHandler<()>,
@@ -68,7 +69,7 @@ pub fn CompletedExerciseLog(
                         class: "del",
                         title: "Delete this exercise",
                         onclick: move |_| {
-                            let mut current_session = session.read().clone();
+                            let mut current_session = (**session.read()).clone();
                             current_session.exercise_logs.remove(idx);
                             storage::save_session(current_session);
                         },
@@ -88,7 +89,7 @@ pub fn CompletedExerciseLog(
                     last_duration,
                     time_input: Some(edit_time_input),
                     on_complete: move |()| {
-                        let mut current_session = session.read().clone();
+                        let mut current_session = (**session.read()).clone();
                         if let Some(log) = current_session.exercise_logs.get_mut(idx) {
                             log.weight_hg = parse_weight_kg(&edit_weight_input.read());
                             log.reps = if force.is_some_and(Force::has_reps) {

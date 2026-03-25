@@ -75,7 +75,7 @@ pub fn More() -> Element {
                 match storage::load_completed_sessions_page(page_size, offset).await {
                     Ok(page) => {
                         let fetched = page.len();
-                        all.extend(page);
+                        all.extend(page.into_iter().map(std::sync::Arc::new));
                         if fetched < page_size {
                             break;
                         }
