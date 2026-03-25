@@ -19,7 +19,7 @@
 
 <!--toc:end-->
 
-> Close your computer, *l*og your work*o*ut
+> Close your laptop, *l*og your work*o*ut
 
 A simple, efficient and cross-platform workout logging application with
 [800+ exercises] built-in, by [Guilhem Fauré].
@@ -32,9 +32,9 @@ A simple, efficient and cross-platform workout logging application with
 - 📱 Responsive design, ergonomic navigation, local-first, performant
 
 <p float="left">
-  <img src=".screenshot/search.png" width="32.8%" alt="Screenshot of LogOut exerices list page, with search terms entered">
-  <img src=".screenshot/home.png" width="32.8%" alt="Screenshot of LogOut home page, showing completed past sessions">
-  <img src=".screenshot/analytics.png" width="32.8%" alt="Screenshot of LogOut analytics page, showing evolution of Pull-Up weight and reps">
+  <img src=".screenshot/search.png" width="32%" alt="Screenshot of LogOut exerices list page, with search terms entered">
+  <img src=".screenshot/home.png" width="32%" alt="Screenshot of LogOut home page, showing completed past sessions">
+  <img src=".screenshot/analytics.png" width="32%" alt="Screenshot of LogOut analytics page, showing evolution of Pull-Up weight and reps">
 </p>
 
 ## Project Structure
@@ -130,6 +130,7 @@ LogOut follows that priority order:
 
 1. User Experience
    1. Maximize data integrity, never lose or corrupt user data
+      - ⚠️ WARNING Ignored until v1.0.0, expect breaking data model changes
    2. Maximize extensibility, easily give users features they need
    3. Maximize correctness and stability, work as the user expects, reliably
    4. Minimize computational complexity, be snappy, pleasant to use
@@ -170,6 +171,8 @@ Follow these general engineering principles:
   whenever interacting with the network, file system, foreign functions (FFI)…
   - Handle errors explicitly without crashing the app, surface them gracefully
     to the user via managed queues, and never swallow them silently
+  - Strictly avoid panicking methods and macros such as `.unwrap()` and
+    `.expect()` variants, direct `vec[i]`, `.borrow()` variants, `panic!()`…
 - **Avoid or optimize I/O**, disk reads and network requests are expensive
   - Cache assets, strictly normalize data, optimize database queries…
 - **Don’t reinvent the wheel**, use battle-tested abstractions, standardized,
@@ -236,8 +239,8 @@ a “Stable” GitHub Release with a production Android APK buit on this `tag`.
 
 ### Weekly Deep Checks
 
-[LogOut] ensures high quality code while with additional ressource intensive
-checks that run every Sunday at midnight on the `main` branch.
+[LogOut] ensures high quality code with additional ressource intensive checks
+that run every Sunday at midnight on the `main` branch.
 
 - Run Android **end-to-end tests** in emulator `maestro test maestro/android`
 - Analyze dependencies for vulnerabilities or deprecations with `cargo deny`

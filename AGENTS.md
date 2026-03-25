@@ -1,7 +1,7 @@
 <!-- LTeX: language=en-GB -->
 
 Check out the README and other documentation material. Respect coding
-conventions or guidelines you found, especially about processes.
+conventions or guidelines you found, especially engineering principles.
 
 This project uses a development environment, defined in `flake.nix`, invoke
 development tools preceded by `nix develop --command`, or enter dev-shell first.
