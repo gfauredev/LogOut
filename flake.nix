@@ -340,9 +340,11 @@
         {
           default = env.pkgs.mkShell {
             packages = with env.pkgs; [
-              # biome python3 sass scss-lint strace
+              # biome python3 sass strace
               cachix # Nix binary cache
               kotlin-language-server # Kotlin LSP
+              lightningcss # CSS linter & optimizer
+              scss-lint # SCSS linter
               taplo # TOML LSP
               typescript-language-server # TypeScript LSP
               vscode-langservers-extracted # HTML/CSS/JS(ON)

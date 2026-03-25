@@ -59,6 +59,7 @@ pub fn EditExercise(id: String) -> Element {
         navigator().go_back();
     };
     rsx! {
+        Stylesheet { href: asset!("/assets/edit.scss") }
         header {
             button {
                 onclick: move |_| navigator().go_back(),
