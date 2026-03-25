@@ -1,4 +1,4 @@
-// CSS entry point, Colors, Dimensions, Layout
+// CSS Colors, Dimensions, Layout, import of global rules
 :root {
   // Structure Colors
   --void: black;
@@ -44,18 +44,39 @@
   padding: 0;
 }
 
-body {
-  background: var(--void, black);
-  color: var(--primary, white);
-  font-family: system-ui, sans-serif;
-  min-height: 100vh;
-}
-
 @import "structure"; // Semantic nodes among the semantic hiearchical structure
 @import "component"; // Self-contained individual reusable components
 @import "unique"; // Self-contained unique non reusable components
-@import "context"; // Components altered by their (hierarchical) context
-// @media screen and (prefers-color-scheme: light) { @import "light" }
-// @media (pointer: fine) { @import "fine-pointer" } // Controls needing mouse
-// @media (pointer: none) { @import "no-pointer" } // Keyboard only control
-// @media screen and (prefers-reduced-motion: reduce) { }
+
+@media screen and (prefers-color-scheme: light) {
+  :root {
+    // Structure Colors
+    --void: white;
+    --article: #e2e2e2;
+    --separation: #ccc;
+    // Text Colors
+    --primary: black;
+    --secondary: #2a2a2a;
+    // Actions Colors
+    --more: #2e7dff; // Increment or Add +
+    --less: #ff3b30; // Decrement - or Delete permanently 🗑️
+    --edit: #e0e0e0; // Edit ✏️ or Repeat 🔁
+    --save: #00ff94; // Save 💾, confirm writing of data
+    --back: #8a8a8e; // Cancel or Go Back ❌
+    // Data Type Tag Colors
+    --tag-category: #e67e22; // orange
+    --tag-force: #3498db; // blue
+    --tag-equipment: #9b59b6; // purple
+    --tag-level: #f1c40f; // yellow
+    --tag-primary-muscle: #e74c3c; // red
+    --tag-secondary-muscle: #2ecc71; // green
+    --tag-strength: #c0392b; // dark red — strength (reps) exercises
+    --tag-cardio: #1a78c2; // dark blue — cardio (distance) exercises
+    --tag-static: #16a085; // teal — static (time only) exercises
+    --on-light: #111; // near-black text for use on bright tag backgrounds
+  }
+}
+
+// @media (pointer: fine) { TODO Controls needing mouse }
+// @media (pointer: none) { TODO Keyboard only control }
+// @media screen and (prefers-reduced-motion: reduce) { TODO Motion sickness }

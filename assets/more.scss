@@ -1,0 +1,11 @@
+// Structure and components specific to More page
+main.more article form {
+  display: flex;
+  gap: 8px;
+  align-items: stretch;
+
+  input {
+    flex: 1;
+    min-width: 0;
+  }
+}

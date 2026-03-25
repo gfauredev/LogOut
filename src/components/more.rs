@@ -209,6 +209,7 @@ pub fn More() -> Element {
         exercises_to_confirm.write().remove(0);
     };
     rsx! {
+        Stylesheet { href: asset!("/assets/more.scss") }
         header {
             h1 { "⚙️ More" }
         }

@@ -454,6 +454,7 @@ pub fn SessionView() -> Element {
         storage::cancel_exercise_in_session();
     };
     rsx! {
+        Stylesheet { href: asset!("/assets/session.scss") }
         main { class: "session",
             if current_exercise_id().is_none() && !pending_ids().is_empty() {
                 PendingExercisesSection {

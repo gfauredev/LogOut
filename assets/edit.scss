@@ -1,0 +1,6 @@
+// Structure and components specific to Create/Edit Exercise page
+main.edit>div {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing);
+}

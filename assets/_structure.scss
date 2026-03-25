@@ -1,6 +1,13 @@
 // Semantic hiearchical structure styles
 // Selector: HTML Types only, with eventual structural Operators like >, + …
 
+body {
+  background: var(--void, black);
+  color: var(--primary, white);
+  font-family: system-ui, sans-serif;
+  min-height: 100vh;
+}
+
 h2 {
   margin: 0 0 var(--spacing) 0;
   color: var(--primary);
