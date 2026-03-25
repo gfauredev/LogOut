@@ -17,6 +17,82 @@ pub use super::app_state::{
     provide_app_state, save_session, start_pending_exercise_in_session, update_custom_exercise,
     use_custom_exercises, use_sessions,
 };
+/// Resolve a raw image key from [`crate::models::Exercise::images`] to a
+/// displayable URL, or return `None` for `idb:` keys which require async
+/// loading on the web platform.
+///
+/// Recognised formats:
+/// - Absolute URL schemes (`http://`, `https://`, `blob:`, `data:`, `file://`)
+/// - Absolute filesystem paths (starting with `/`)
+/// - `local:filename` on native → resolved to `data_dir()/images/filename` as
+///   a `file://` URL (percent-encoded)
+/// - `idb:key` → `None` (caller must use [`idb_images::get_image_blob_url`]
+///   asynchronously on web)
+/// - Relative DB path (e.g. `Squat/0.jpg`) → prefixed with the configured
+///   `EXERCISES_IMAGE_BASE_URL`
+pub fn resolve_image_key(key: &str) -> Option<String> {
+    if key.starts_with("idb:") {
+        return None;
+    }
+    if key.starts_with("http://")
+        || key.starts_with("https://")
+        || key.starts_with("blob:")
+        || key.starts_with("data:")
+        || key.starts_with("file://")
+        || key.starts_with('/')
+    {
+        return Some(key.to_owned());
+    }
+    #[cfg(not(target_arch = "wasm32"))]
+    if let Some(filename) = key.strip_prefix("local:") {
+        use percent_encoding::{utf8_percent_encode, CONTROLS};
+        // Encodes characters that are unsafe in URL path segments while
+        // preserving all chars that are valid in paths (slashes are kept by
+        // encoding each component separately).
+        const PATH_SEGMENT: &percent_encoding::AsciiSet = &CONTROLS
+            .add(b' ')
+            .add(b'"')
+            .add(b'#')
+            .add(b'%')
+            .add(b'<')
+            .add(b'>')
+            .add(b'?')
+            .add(b'[')
+            .add(b'\\')
+            .add(b']')
+            .add(b'^')
+            .add(b'`')
+            .add(b'{')
+            .add(b'|')
+            .add(b'}');
+        let path = native_storage::data_dir().join("images").join(filename);
+        let encoded = path.components().fold(String::new(), |mut acc, c| {
+            use std::path::Component;
+            match c {
+                Component::Prefix(p) => {
+                    acc.push_str(&p.as_os_str().to_string_lossy());
+                }
+                Component::RootDir => acc.push('/'),
+                Component::Normal(seg) => {
+                    if !acc.is_empty() && !acc.ends_with('/') {
+                        acc.push('/');
+                    }
+                    acc.push_str(
+                        &utf8_percent_encode(&seg.to_string_lossy(), PATH_SEGMENT).to_string(),
+                    );
+                }
+                _ => {}
+            }
+            acc
+        });
+        return Some(format!("file://{encoded}"));
+    }
+    let base_url = crate::utils::get_exercise_images_base_url();
+    Some(format!(
+        "{base_url}{}{key}",
+        crate::models::EXERCISES_IMAGE_SUB_PATH
+    ))
+}
 /// Aggregated per-exercise personal-record values returned by
 /// [`compute_all_bests_rows`] and [`compute_bests_rows_for_exercises`].
 ///

@@ -30,80 +30,6 @@ fn translate_enum<'a>(db_i18n: &'a DbI18n, lang: &str, field: &str, value: &'a s
         .or_else(|| lang.split('-').next().and_then(lookup))
         .unwrap_or(value)
 }
-/// Resolves a raw image key from `Exercise::images` to a displayable URL, or
-/// returns `None` for `idb:` keys (which require async loading on web).
-///
-/// Recognised formats:
-/// - Absolute URL schemes (`http://`, `https://`, `blob:`, `data:`, `file://`)
-/// - Absolute filesystem paths (starting with `/`)
-/// - `local:filename` on native → resolved to `data_dir()/images/filename` as a `file://` URL
-/// - `idb:key` → `None` (caller must use `idb_images::get_image_blob_url` asynchronously)
-/// - Relative DB path (e.g. `Squat/0.jpg`) → prefixed with `EXERCISES_IMAGE_BASE_URL`
-fn resolve_image_key(key: &str) -> Option<String> {
-    if key.starts_with("idb:") {
-        return None;
-    }
-    if key.starts_with("http://")
-        || key.starts_with("https://")
-        || key.starts_with("blob:")
-        || key.starts_with("data:")
-        || key.starts_with("file://")
-        || key.starts_with('/')
-    {
-        return Some(key.to_owned());
-    }
-    #[cfg(not(target_arch = "wasm32"))]
-    if let Some(filename) = key.strip_prefix("local:") {
-        use percent_encoding::{utf8_percent_encode, CONTROLS};
-        // Encodes characters that are unsafe in URL path segments while preserving
-        // all chars that are valid in paths (slashes are kept by encoding each
-        // component separately).
-        const PATH_SEGMENT: &percent_encoding::AsciiSet = &CONTROLS
-            .add(b' ')
-            .add(b'"')
-            .add(b'#')
-            .add(b'%')
-            .add(b'<')
-            .add(b'>')
-            .add(b'?')
-            .add(b'[')
-            .add(b'\\')
-            .add(b']')
-            .add(b'^')
-            .add(b'`')
-            .add(b'{')
-            .add(b'|')
-            .add(b'}');
-        let path = crate::services::storage::native_storage::data_dir()
-            .join("images")
-            .join(filename);
-        let encoded = path.components().fold(String::new(), |mut acc, c| {
-            use std::path::Component;
-            match c {
-                Component::Prefix(p) => {
-                    acc.push_str(&p.as_os_str().to_string_lossy());
-                }
-                Component::RootDir => acc.push('/'),
-                Component::Normal(seg) => {
-                    if !acc.is_empty() && !acc.ends_with('/') {
-                        acc.push('/');
-                    }
-                    acc.push_str(
-                        &utf8_percent_encode(&seg.to_string_lossy(), PATH_SEGMENT).to_string(),
-                    );
-                }
-                _ => {}
-            }
-            acc
-        });
-        return Some(format!("file://{encoded}"));
-    }
-    let base_url = crate::utils::get_exercise_images_base_url();
-    Some(format!(
-        "{base_url}{}{key}",
-        crate::models::EXERCISES_IMAGE_SUB_PATH
-    ))
-}
 /// Renders a single exercise image, handling both regular URLs and `idb:`-prefixed
 /// keys that require async loading from `IndexedDB` on web.  Clicking cycles through
 /// multiple images when more than one is available.
@@ -115,7 +41,7 @@ fn ExerciseImage(images: Vec<String>, display_name: String) -> Element {
     // Synchronous URL via the shared resolver (covers all non-idb: keys).
     let sync_url = use_memo(move || {
         let key = images_for_sync.get(*img_index.read())?;
-        resolve_image_key(key)
+        storage::resolve_image_key(key)
     });
     // Async blob URL for `idb:`-prefixed keys (web only).
     #[cfg(target_arch = "wasm32")]

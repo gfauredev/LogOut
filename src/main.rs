@@ -137,7 +137,7 @@ fn App() -> Element {
     use_context_provider(|| ExerciseSearchSignal(Signal::new(None)));
     use_context_provider(|| PendingDeepLinkSignal(Signal::new(None)));
     use_context_provider(|| ShowRestInputSignal(Signal::new(false)));
-    use_context_provider(|| RestDurationSignal(Signal::new(30u64)));
+    use_context_provider(|| RestDurationSignal(Signal::new(DEFAULT_REST_DURATION_SECS)));
     // Services that consume contexts (must run after context providers above).
     services::storage::provide_app_state();
     #[cfg(target_arch = "wasm32")]
@@ -309,6 +309,13 @@ fn path_to_route(path: &str) -> Route {
 const SESSION_ENTRY_INTERVAL_SECS: u64 = 120;
 /// Assumed duration of each exercise entry when building a session from a deep-link (seconds).
 const SESSION_ENTRY_DURATION_SECS: u64 = 60;
+/// Default rest duration between sets (seconds).
+const DEFAULT_REST_DURATION_SECS: u64 = 30;
+/// Time offset applied when building a synthetic past session from a deep-link (seconds).
+///
+/// Sessions built from deep-links are backdated by this amount so they appear
+/// in the recent history rather than being timestamped in the future.
+const SESSION_HISTORY_OFFSET_SECS: u64 = 3_600;
 /// Build a completed [`models::WorkoutSession`] from deep-link entries,
 /// looking up exercise metadata (name, category, force) from the loaded list.
 ///
@@ -326,7 +333,7 @@ where
     E: AsRef<models::Exercise>,
 {
     use models::{Category, Distance, ExerciseLog, Force, Weight, WorkoutSession};
-    let base_time = models::get_current_timestamp().saturating_sub(3600);
+    let base_time = models::get_current_timestamp().saturating_sub(SESSION_HISTORY_OFFSET_SECS);
     let mut session = WorkoutSession::new();
     session.start_time = base_time;
     for (i, entry) in entries.iter().enumerate() {
