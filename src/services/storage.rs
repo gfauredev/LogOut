@@ -1952,9 +1952,6 @@ mod tests {
         );
         let url = result.unwrap();
         assert!(url.starts_with("file://"), "must start with file://");
-        assert!(
-            url.ends_with("my_image.jpg"),
-            "must end with the filename"
-        );
+        assert!(url.ends_with("my_image.jpg"), "must end with the filename");
     }
 }

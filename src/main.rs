@@ -5,6 +5,7 @@
 //! PWA (web) and native Android / desktop platforms.
 //!
 //! [Dioxus]: https://dioxuslabs.com
+// #![deny(clippy::unwrap_used, clippy::expect_used)]
 use dioxus::prelude::*;
 use dioxus_i18n::prelude::*;
 use unic_langid::langid;
