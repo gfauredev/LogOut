@@ -296,7 +296,7 @@ fn bests_rows_from_sessions(sessions: &[crate::models::WorkoutSession]) -> Vec<B
 pub fn enqueue_put_session(
     session: crate::models::WorkoutSession,
     toast: dioxus::signals::Signal<std::collections::VecDeque<String>>,
-    sessions_sig: dioxus::signals::Signal<Vec<crate::models::WorkoutSession>>,
+    sessions_sig: dioxus::signals::Signal<Vec<std::sync::Arc<crate::models::WorkoutSession>>>,
     previous: Option<crate::models::WorkoutSession>,
 ) {
     #[cfg(target_arch = "wasm32")]
@@ -318,7 +318,7 @@ pub fn enqueue_put_session(
 pub fn enqueue_delete_session(
     id: String,
     toast: dioxus::signals::Signal<std::collections::VecDeque<String>>,
-    sessions_sig: dioxus::signals::Signal<Vec<crate::models::WorkoutSession>>,
+    sessions_sig: dioxus::signals::Signal<Vec<std::sync::Arc<crate::models::WorkoutSession>>>,
     snapshot: Option<crate::models::WorkoutSession>,
 ) {
     #[cfg(target_arch = "wasm32")]
@@ -524,6 +524,7 @@ pub(crate) mod idb_queue {
     use dioxus::signals::Signal;
     use std::cell::RefCell;
     use std::collections::VecDeque;
+    use std::sync::Arc;
     /// A pending write operation, including the toast signal for error reporting.
     pub enum IdbOp {
         /// Upsert a session.  On write failure the sessions signal is reverted to
@@ -531,7 +532,7 @@ pub(crate) mod idb_queue {
         PutSession {
             session: WorkoutSession,
             toast: Signal<std::collections::VecDeque<String>>,
-            sessions_sig: Signal<Vec<WorkoutSession>>,
+            sessions_sig: Signal<Vec<Arc<WorkoutSession>>>,
             /// `None` means the session was newly inserted; reverting removes it.
             /// `Some(old)` means it was an update; reverting restores `old`.
             previous: Option<WorkoutSession>,
@@ -541,7 +542,7 @@ pub(crate) mod idb_queue {
         DeleteSession {
             id: String,
             toast: Signal<std::collections::VecDeque<String>>,
-            sessions_sig: Signal<Vec<WorkoutSession>>,
+            sessions_sig: Signal<Vec<Arc<WorkoutSession>>>,
             /// The session that was removed from the signal, for revert on failure.
             snapshot: Option<WorkoutSession>,
         },
@@ -605,7 +606,7 @@ pub(crate) mod idb_queue {
                             None => sessions.retain(|x| x.id != s.id),
                             Some(old) => {
                                 if let Some(pos) = sessions.iter().position(|x| x.id == s.id) {
-                                    sessions[pos] = old;
+                                    sessions[pos] = Arc::new(old);
                                 }
                             }
                         }
@@ -625,7 +626,7 @@ pub(crate) mod idb_queue {
                         // Revert: re-insert the session into the signal if we
                         // had a snapshot of it.
                         if let Some(session) = snapshot {
-                            sessions_sig.write().push(session);
+                            sessions_sig.write().push(Arc::new(session));
                         }
                     }
                 }

@@ -15,7 +15,14 @@ pub fn Home() -> Element {
     let mut all_loaded = use_signal(|| false);
     let mut is_loading = use_signal(|| false);
     let has_active = use_memo(move || sessions.read().iter().any(WorkoutSession::is_active));
-    use_hook(|| {
+    // Derive completed sessions from global state: watch the number of active
+    // sessions and reload from storage whenever it changes (e.g. a session is
+    // completed).  The effect also fires on mount, replacing the separate
+    // use_hook initial-load that was previously needed.
+    let active_count =
+        use_memo(move || sessions.read().iter().filter(|s| s.is_active()).count());
+    use_effect(move || {
+        let _count = active_count.read(); // subscribe; re-runs on every active-count change
         is_loading.set(true);
         spawn(async move {
             match storage::load_completed_sessions_page(PAGE_SIZE, 0).await {
@@ -31,41 +38,6 @@ pub fn Home() -> Element {
             }
             is_loading.set(false);
         });
-    });
-    let completed_session_ids = use_memo(move || {
-        sessions
-            .read()
-            .iter()
-            .filter(|s| !s.is_active())
-            .map(|s| s.id.clone())
-            .collect::<std::collections::HashSet<String>>()
-    });
-    use_effect(move || {
-        let new_ids = completed_session_ids.read().clone();
-        let viewed_ids: std::collections::HashSet<String> = completed_sessions
-            .peek()
-            .iter()
-            .map(|s| s.id.clone())
-            .collect();
-        let mut newly_completed: Vec<WorkoutSession> = sessions
-            .peek()
-            .iter()
-            .filter(|s| !s.is_active() && !viewed_ids.contains(&s.id))
-            .cloned()
-            .collect();
-        if !newly_completed.is_empty() {
-            newly_completed.sort_by(|a, b| b.start_time.cmp(&a.start_time));
-            let new_len = {
-                let mut cs = completed_sessions.write();
-                let mut new_cs = Vec::with_capacity(newly_completed.len() + cs.len());
-                new_cs.extend(newly_completed);
-                new_cs.extend(cs.drain(..));
-                *cs = new_cs;
-                cs.len()
-            };
-            sessions_loaded_offset.set(new_len);
-        }
-        let _ = new_ids;
     });
     let start_new_session = move |_| {
         let new_session = WorkoutSession::new();

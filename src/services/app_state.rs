@@ -13,15 +13,15 @@ use std::sync::Arc;
 /// Provide the shared workout-session and custom-exercise signals at the top of
 /// the component tree.  Call exactly once inside the root `App` component.
 pub fn provide_app_state() {
-    let sessions_sig = use_context_provider(|| Signal::new(Vec::<WorkoutSession>::new()));
+    let sessions_sig = use_context_provider(|| Signal::new(Vec::<Arc<WorkoutSession>>::new()));
     let custom_sig = use_context_provider(|| Signal::new(Vec::<Arc<Exercise>>::new()));
     let cache_sig = use_context_provider(|| Signal::new(BestsCache::new()));
     let toast = consume_context::<ToastSignal>().0;
     use_resource(move || load_storage_data(sessions_sig, custom_sig, cache_sig, toast));
 }
 /// Obtain the reactive sessions signal from the Dioxus context.
-pub fn use_sessions() -> Signal<Vec<WorkoutSession>> {
-    consume_context::<Signal<Vec<WorkoutSession>>>()
+pub fn use_sessions() -> Signal<Vec<Arc<WorkoutSession>>> {
+    consume_context::<Signal<Vec<Arc<WorkoutSession>>>>()
 }
 /// Obtain the reactive custom-exercises signal from the Dioxus context.
 pub fn use_custom_exercises() -> Signal<Vec<Arc<Exercise>>> {
@@ -42,7 +42,7 @@ pub fn use_custom_exercises() -> Signal<Vec<Arc<Exercise>>> {
 /// `compute_all_bests_rows` and `load_custom_exercises` hide their
 /// platform-specific dispatch so this function contains no `#[cfg]` blocks.
 async fn load_storage_data(
-    mut sessions_sig: Signal<Vec<WorkoutSession>>,
+    mut sessions_sig: Signal<Vec<Arc<WorkoutSession>>>,
     mut custom_sig: Signal<Vec<Arc<Exercise>>>,
     mut cache_sig: Signal<BestsCache>,
     mut toast: Signal<std::collections::VecDeque<String>>,
@@ -89,7 +89,7 @@ async fn load_storage_data(
         custom.len(),
     );
     if !active.is_empty() {
-        sessions_sig.set(active);
+        sessions_sig.set(active.into_iter().map(Arc::new).collect());
     }
     cache_sig.set(bests_rows_to_cache(bests_rows));
     if !custom.is_empty() {
@@ -118,12 +118,12 @@ pub fn save_session(session: WorkoutSession) {
     {
         let mut sessions = sig.write();
         if let Some(pos) = sessions.iter().position(|s| s.id == session.id) {
-            previous = Some(sessions[pos].clone());
-            sessions[pos] = session.clone();
+            previous = Some((**sessions[pos]).clone());
+            sessions[pos] = Arc::new(session.clone());
             is_update = true;
         } else {
             previous = None;
-            sessions.push(session.clone());
+            sessions.push(Arc::new(session.clone()));
             is_update = false;
         }
     }
@@ -192,7 +192,8 @@ pub fn save_session(session: WorkoutSession) {
 pub fn delete_session(id: &str) {
     let mut sig = use_sessions();
     // Capture the full session for potential revert and for exercise_id lookup.
-    let snapshot: Option<WorkoutSession> = sig.read().iter().find(|s| s.id == id).cloned();
+    let snapshot: Option<WorkoutSession> =
+        sig.read().iter().find(|s| s.id == id).map(|s| (**s).clone());
     let exercise_ids: Vec<String> = snapshot
         .as_ref()
         .map(|s| {
@@ -226,7 +227,7 @@ pub fn begin_exercise_in_session(exercise_id: String, exercise_start: u64) {
     let Some(session) = sig.read().iter().find(|s| s.is_active()).cloned() else {
         return;
     };
-    let mut updated = session;
+    let mut updated = (*session).clone();
     updated.rest_start_time = None;
     updated.current_exercise_id = Some(exercise_id);
     updated.current_exercise_start = Some(exercise_start);
@@ -243,7 +244,7 @@ pub fn append_exercise_log(log: ExerciseLog) {
     let Some(session) = sig.read().iter().find(|s| s.is_active()).cloned() else {
         return;
     };
-    let mut updated = session;
+    let mut updated = (*session).clone();
     updated.exercise_logs.push(log);
     updated.rest_start_time = Some(get_current_timestamp());
     updated.current_exercise_id = None;
@@ -259,7 +260,7 @@ pub fn cancel_exercise_in_session() {
     let Some(session) = sig.read().iter().find(|s| s.is_active()).cloned() else {
         return;
     };
-    let mut updated = session;
+    let mut updated = (*session).clone();
     updated.current_exercise_id = None;
     updated.current_exercise_start = None;
     save_session(updated);
@@ -275,7 +276,7 @@ pub fn start_pending_exercise_in_session(exercise_id: String, exercise_start: u6
     let Some(session) = sig.read().iter().find(|s| s.is_active()).cloned() else {
         return;
     };
-    let mut updated = session;
+    let mut updated = (*session).clone();
     let mut removed = false;
     updated.pending_exercise_ids.retain(|x| {
         if !removed && x == &exercise_id {
@@ -317,18 +318,21 @@ pub fn update_custom_exercise(exercise: Exercise) {
 pub fn get_last_exercise_log(exercise_id: &str) -> Option<ExerciseLog> {
     let sessions = use_sessions();
     let sessions = sessions.read();
-    find_last_exercise_log(&sessions, exercise_id).cloned()
+    find_last_exercise_log(sessions.as_slice(), exercise_id).cloned()
 }
 /// Pure search helper used by [`get_last_exercise_log`] and unit tests.
 ///
 /// Searches `sessions` in reverse order for the most recent completed log
 /// whose `exercise_id` matches `exercise_id`.
-pub(crate) fn find_last_exercise_log<'a>(
-    sessions: &'a [WorkoutSession],
+pub(crate) fn find_last_exercise_log<'a, S>(
+    sessions: &'a [S],
     exercise_id: &str,
-) -> Option<&'a ExerciseLog> {
+) -> Option<&'a ExerciseLog>
+where
+    S: AsRef<WorkoutSession>,
+{
     for session in sessions.iter().rev() {
-        for log in session.exercise_logs.iter().rev() {
+        for log in session.as_ref().exercise_logs.iter().rev() {
             if log.exercise_id == exercise_id && log.is_complete() {
                 return Some(log);
             }
