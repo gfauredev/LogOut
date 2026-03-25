@@ -310,7 +310,7 @@ const SESSION_ENTRY_INTERVAL_SECS: u64 = 120;
 /// Assumed duration of each exercise entry when building a session from a deep-link (seconds).
 const SESSION_ENTRY_DURATION_SECS: u64 = 60;
 /// Default rest duration between sets (seconds).
-const DEFAULT_REST_DURATION_SECS: u64 = 30;
+pub(crate) const DEFAULT_REST_DURATION_SECS: u64 = 30;
 /// Time offset applied when building a synthetic past session from a deep-link (seconds).
 ///
 /// Sessions built from deep-links are backdated by this amount so they appear

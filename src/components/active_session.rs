@@ -575,7 +575,7 @@ pub fn GlobalSessionHeader() -> Element {
     let session = use_memo(move || sessions.read().iter().find(|s| s.is_active()).cloned());
     let mut show_rest = use_context::<crate::ShowRestInputSignal>().0;
     let rest_duration = use_context::<RestDurationSignal>().0;
-    let mut rest_input_value = use_signal(|| 30u64.to_string());
+    let mut rest_input_value = use_signal(|| crate::DEFAULT_REST_DURATION_SECS.to_string());
     let mut congratulations = use_context::<crate::CongratulationsSignal>().0;
     use_effect(move || {
         if *show_rest.read() {

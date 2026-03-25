@@ -1906,4 +1906,55 @@ mod tests {
         assert_eq!(row.max_duration_s, Some(90), "max duration must be 90s");
         native_storage::delete_item(native_storage::STORE_SESSIONS, id).unwrap();
     }
+    #[test]
+    fn resolve_image_key_relative_path_gets_base_url_prefix() {
+        let _g = lock();
+        assert_eq!(
+            super::resolve_image_key("Squat/0.jpg"),
+            Some(
+                "https://raw.githubusercontent.com/gfauredev/free-exercise-db/main/exercises/Squat/0.jpg"
+                    .into(),
+            ),
+        );
+        assert_eq!(
+            super::resolve_image_key("BenchPress/1.jpg"),
+            Some(
+                "https://raw.githubusercontent.com/gfauredev/free-exercise-db/main/exercises/BenchPress/1.jpg"
+                    .into(),
+            ),
+        );
+    }
+    #[test]
+    fn resolve_image_key_https_passthrough() {
+        assert_eq!(
+            super::resolve_image_key("https://example.com/image.jpg"),
+            Some("https://example.com/image.jpg".into()),
+        );
+    }
+    #[test]
+    fn resolve_image_key_http_passthrough() {
+        assert_eq!(
+            super::resolve_image_key("http://example.com/image.jpg"),
+            Some("http://example.com/image.jpg".into()),
+        );
+    }
+    #[test]
+    fn resolve_image_key_idb_prefix_returns_none() {
+        assert_eq!(super::resolve_image_key("idb:some-uuid"), None);
+    }
+    #[test]
+    fn resolve_image_key_local_prefix_returns_file_url() {
+        let _g = lock();
+        let result = super::resolve_image_key("local:my_image.jpg");
+        assert!(
+            result.is_some(),
+            "local: prefix must resolve to a file:// URL"
+        );
+        let url = result.unwrap();
+        assert!(url.starts_with("file://"), "must start with file://");
+        assert!(
+            url.ends_with("my_image.jpg"),
+            "must end with the filename"
+        );
+    }
 }

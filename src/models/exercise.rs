@@ -160,23 +160,6 @@ impl AsRef<Exercise> for Exercise {
 #[cfg(test)]
 mod tests {
     use super::*;
-    fn make_exercise_with_image(image: &str) -> Exercise {
-        Exercise {
-            id: "ex1".into(),
-            name: "Test".into(),
-            name_lower: String::new(),
-            force: None,
-            level: None,
-            mechanic: None,
-            equipment: None,
-            primary_muscles: vec![],
-            secondary_muscles: vec![],
-            instructions: vec![],
-            category: Category::Strength,
-            images: vec![image.into()],
-            i18n: None,
-        }
-    }
     #[test]
     fn user_exercise_serialization_with_all_fields() {
         let exercise = Exercise {
@@ -413,63 +396,6 @@ mod tests {
         );
     }
     #[test]
-    fn exercise_get_image_url_by_index() {
-        #[cfg(not(target_arch = "wasm32"))]
-        let _g = crate::services::storage::native_storage::test_lock();
-        let ex = Exercise {
-            id: "ex1".into(),
-            name: "Squat".into(),
-            name_lower: String::new(),
-            force: None,
-            level: Some(Level::Beginner),
-            mechanic: None,
-            equipment: None,
-            primary_muscles: vec![],
-            secondary_muscles: vec![],
-            instructions: vec![],
-            category: Category::Strength,
-            images: vec!["Squat/0.jpg".into(), "Squat/1.jpg".into()],
-            i18n: None,
-        };
-        assert_eq!(
-            ex.get_image_url(0),
-            Some(
-                "https://raw.githubusercontent.com/gfauredev/free-exercise-db/main/exercises/Squat/0.jpg"
-                    .into(),
-            ),
-        );
-        assert_eq!(
-            ex.get_image_url(1),
-            Some(
-                "https://raw.githubusercontent.com/gfauredev/free-exercise-db/main/exercises/Squat/1.jpg"
-                    .into(),
-            ),
-        );
-        assert_eq!(ex.get_image_url(2), None);
-    }
-    #[test]
-    fn exercise_get_image_url_full_url_passthrough() {
-        let ex = Exercise {
-            id: "ex1".into(),
-            name: "Custom".into(),
-            name_lower: String::new(),
-            force: None,
-            level: None,
-            mechanic: None,
-            equipment: None,
-            primary_muscles: vec![],
-            secondary_muscles: vec![],
-            instructions: vec![],
-            category: Category::Strength,
-            images: vec!["https://example.com/image.jpg".into()],
-            i18n: None,
-        };
-        assert_eq!(
-            ex.get_image_url(0),
-            Some("https://example.com/image.jpg".into())
-        );
-    }
-    #[test]
     fn exercise_level_none_when_missing_from_json() {
         let json = r#"{"id":"ex1","name":"Test","category":"strength","primaryMuscles":[]}"#;
         let ex: Exercise = serde_json::from_str(json).unwrap();
@@ -550,28 +476,6 @@ mod tests {
         let json = serde_json::to_string(&ex).unwrap();
         let back: Exercise = serde_json::from_str(&json).unwrap();
         assert_eq!(back, ex);
-    }
-    #[test]
-    fn exercise_get_image_url_http_passthrough() {
-        let ex = Exercise {
-            id: "ex1".into(),
-            name: "Custom".into(),
-            name_lower: String::new(),
-            force: None,
-            level: None,
-            mechanic: None,
-            equipment: None,
-            primary_muscles: vec![],
-            secondary_muscles: vec![],
-            instructions: vec![],
-            category: Category::Strength,
-            images: vec!["http://example.com/image.jpg".into()],
-            i18n: None,
-        };
-        assert_eq!(
-            ex.get_image_url(0),
-            Some("http://example.com/image.jpg".into())
-        );
     }
     #[test]
     fn exercise_type_tag_cardio() {
