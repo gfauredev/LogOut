@@ -9,7 +9,7 @@ const TIMER_TICK_MS: u32 = 1_000;
 /// sound and vibration correctly.
 /// `is_duration_bell` selects a different message to distinguish from rest alerts.
 #[cfg(target_arch = "wasm32")]
-pub(super) fn send_notification(is_duration_bell: bool) {
+pub(crate) fn send_notification(is_duration_bell: bool) {
     use web_sys::{NotificationOptions, NotificationPermission};
     if web_sys::Notification::permission() != NotificationPermission::Granted {
         return;
