@@ -348,6 +348,14 @@ pub struct ExerciseBests {
     pub distance_m: Option<Distance>,
     /// Longest set duration ever recorded.
     pub duration: Option<u64>,
+    /// Weight from the most-recently completed log (for input prefilling).
+    pub last_weight_hg: Option<Weight>,
+    /// Reps from the most-recently completed log.
+    pub last_reps: Option<u32>,
+    /// Distance from the most-recently completed log.
+    pub last_distance_m: Option<Distance>,
+    /// `end_time` of the most-recently completed log.
+    pub last_log_end_time: Option<u64>,
 }
 /// In-memory cache of per-exercise all-time bests, maintained incrementally.
 ///
@@ -402,6 +410,14 @@ pub(crate) fn merge_log_into_bests(bests: &mut ExerciseBests, log: &ExerciseLog)
             None => dur,
             Some(prev) => prev.max(dur),
         });
+    }
+    // Update last-log values if this log is more recent.
+    let log_end = log.end_time.unwrap_or(0);
+    if log_end > bests.last_log_end_time.unwrap_or(0) {
+        bests.last_log_end_time = Some(log_end);
+        bests.last_weight_hg = log.weight_hg;
+        bests.last_reps = log.reps;
+        bests.last_distance_m = log.distance_m;
     }
 }
 /// Returns `true` when any of the log's recorded values exactly matches the
@@ -486,6 +502,10 @@ fn exercise_bests_from_row(row: &super::storage::BestsRow) -> ExerciseBests {
         reps: row.max_reps,
         distance_m: row.max_distance_m.map(Distance),
         duration: row.max_duration_s,
+        last_weight_hg: row.last_weight_hg.map(Weight),
+        last_reps: row.last_reps,
+        last_distance_m: row.last_distance_m.map(Distance),
+        last_log_end_time: row.last_log_end_time,
     }
 }
 /// Convert a `Vec<BestsRow>` returned by storage into a full [`BestsCache`].

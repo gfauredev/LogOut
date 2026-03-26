@@ -34,6 +34,14 @@ pub struct BestsRow {
     pub max_distance_m: Option<u32>,
     /// Maximum set duration (seconds) across all completed logs.
     pub max_duration_s: Option<u64>,
+    /// `weight_hg` from the most-recently completed log (for input prefilling).
+    pub last_weight_hg: Option<u16>,
+    /// Repetition count from the most-recently completed log.
+    pub last_reps: Option<u32>,
+    /// `distance_m` from the most-recently completed log.
+    pub last_distance_m: Option<u32>,
+    /// `end_time` of the most-recently completed log (used to merge entries).
+    pub last_log_end_time: Option<u64>,
 }
 /// Unified error type returned by all async storage read operations.
 ///
@@ -195,6 +203,10 @@ fn bests_rows_from_sessions(sessions: &[crate::models::WorkoutSession]) -> Vec<B
                         max_reps: None,
                         max_distance_m: None,
                         max_duration_s: None,
+                        last_weight_hg: None,
+                        last_reps: None,
+                        last_distance_m: None,
+                        last_log_end_time: None,
                     });
                 if let Some(w) = log.weight_hg {
                     update_max(&mut entry.max_weight_hg, w.0);
@@ -207,6 +219,14 @@ fn bests_rows_from_sessions(sessions: &[crate::models::WorkoutSession]) -> Vec<B
                 }
                 if let Some(dur) = log.duration_seconds() {
                     update_max(&mut entry.max_duration_s, dur);
+                }
+                // Track most-recently completed log per exercise for prefilling.
+                let log_end = log.end_time.unwrap_or(0);
+                if log_end > entry.last_log_end_time.unwrap_or(0) {
+                    entry.last_log_end_time = Some(log_end);
+                    entry.last_weight_hg = log.weight_hg.map(|w| w.0);
+                    entry.last_reps = log.reps;
+                    entry.last_distance_m = log.distance_m.map(|d| d.0);
                 }
             }
         }
@@ -1059,22 +1079,54 @@ pub(crate) mod native_storage {
         } else {
             ""
         };
+        // CTE-based query that computes both ATH (max) values and the values from
+        // the most-recently completed log per exercise in a single pass.
         let sql = format!(
-            "SELECT \
-                 json_extract(log.value, '$.exercise_id')                        AS exercise_id, \
-                 MAX(CAST(json_extract(log.value, '$.weight_hg')   AS INTEGER))  AS max_weight, \
-                 MAX(CAST(json_extract(log.value, '$.reps')        AS INTEGER))  AS max_reps, \
-                 MAX(CAST(json_extract(log.value, '$.distance_m')  AS INTEGER))  AS max_dist, \
-                 MAX( \
+            "WITH all_logs AS ( \
+                 SELECT \
+                     json_extract(log.value, '$.exercise_id')                           AS exercise_id, \
+                     CAST(json_extract(log.value, '$.weight_hg')   AS INTEGER)          AS weight, \
+                     CAST(json_extract(log.value, '$.reps')        AS INTEGER)          AS reps, \
+                     CAST(json_extract(log.value, '$.distance_m')  AS INTEGER)          AS dist, \
                      CAST(json_extract(log.value, '$.end_time')    AS INTEGER) \
-                   - CAST(json_extract(log.value, '$.start_time')  AS INTEGER) \
-                 )                                                               AS max_dur \
-             FROM sessions \
-             CROSS JOIN json_each(json_extract(data, '$.exercise_logs')) AS log \
-             WHERE end_time IS NOT NULL \
-               AND json_extract(log.value, '$.end_time') IS NOT NULL \
-               {id_filter} \
-             GROUP BY json_extract(log.value, '$.exercise_id')"
+                   - CAST(json_extract(log.value, '$.start_time')  AS INTEGER)          AS dur, \
+                     CAST(json_extract(log.value, '$.end_time')    AS INTEGER)          AS end_ts \
+                 FROM sessions \
+                 CROSS JOIN json_each(json_extract(data, '$.exercise_logs')) AS log \
+                 WHERE end_time IS NOT NULL \
+                   AND json_extract(log.value, '$.end_time') IS NOT NULL \
+                   {id_filter} \
+             ), \
+             bests AS ( \
+                 SELECT exercise_id, \
+                        MAX(weight) AS max_weight, \
+                        MAX(reps)   AS max_reps, \
+                        MAX(dist)   AS max_dist, \
+                        MAX(dur)    AS max_dur \
+                 FROM all_logs \
+                 GROUP BY exercise_id \
+             ), \
+             ranked AS ( \
+                 SELECT exercise_id, weight, reps, dist, end_ts, \
+                        ROW_NUMBER() OVER ( \
+                            PARTITION BY exercise_id \
+                            ORDER BY end_ts DESC \
+                        ) AS rn \
+                 FROM all_logs \
+             ), \
+             lasts AS ( \
+                 SELECT exercise_id, \
+                        weight AS last_weight, \
+                        reps   AS last_reps, \
+                        dist   AS last_dist, \
+                        end_ts AS last_ts \
+                 FROM ranked WHERE rn = 1 \
+             ) \
+             SELECT b.exercise_id, \
+                    b.max_weight, b.max_reps, b.max_dist, b.max_dur, \
+                    l.last_weight, l.last_reps, l.last_dist, l.last_ts \
+             FROM bests b \
+             LEFT JOIN lasts l ON b.exercise_id = l.exercise_id"
         );
         let mut stmt = conn.prepare(&sql)?;
         let map_row = |row: &rusqlite::Row<'_>| {
@@ -1084,6 +1136,10 @@ pub(crate) mod native_storage {
                 row.get::<_, Option<i64>>(2)?,
                 row.get::<_, Option<i64>>(3)?,
                 row.get::<_, Option<i64>>(4)?,
+                row.get::<_, Option<i64>>(5)?,
+                row.get::<_, Option<i64>>(6)?,
+                row.get::<_, Option<i64>>(7)?,
+                row.get::<_, Option<i64>>(8)?,
             ))
         };
         let rows: Vec<super::BestsRow> = if let Some(ids) = ids {
@@ -1102,7 +1158,17 @@ pub(crate) mod native_storage {
     }
     /// Convert the raw SQL tuple into a [`BestsRow`].
     fn bests_row_from_tuple(
-        (exercise_id, w, r, d, dur): (String, Option<i64>, Option<i64>, Option<i64>, Option<i64>),
+        (exercise_id, w, r, d, dur, lw, lr, ld, lts): (
+            String,
+            Option<i64>,
+            Option<i64>,
+            Option<i64>,
+            Option<i64>,
+            Option<i64>,
+            Option<i64>,
+            Option<i64>,
+            Option<i64>,
+        ),
     ) -> super::BestsRow {
         super::BestsRow {
             exercise_id,
@@ -1110,6 +1176,10 @@ pub(crate) mod native_storage {
             max_reps: r.and_then(|v| u32::try_from(v).ok()),
             max_distance_m: d.and_then(|v| u32::try_from(v).ok()),
             max_duration_s: dur.and_then(|v| u64::try_from(v).ok()),
+            last_weight_hg: lw.and_then(|v| u16::try_from(v).ok()),
+            last_reps: lr.and_then(|v| u32::try_from(v).ok()),
+            last_distance_m: ld.and_then(|v| u32::try_from(v).ok()),
+            last_log_end_time: lts.and_then(|v| u64::try_from(v).ok()),
         }
     }
     /// Global mutex that serialises all tests touching native storage.
