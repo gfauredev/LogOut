@@ -200,17 +200,24 @@
               # Retrieve server binary from the architecture-specific target dir that dx uses.
               installPhase =
                 if platform == "server" then
+                  # Server: extract the native binary
                   ''
                     mkdir -p $out/bin
                     serverBin=$(find target -maxdepth 5 -name "log-out" -type f -path "*/server-release/*" | head -1)
                     cp "$serverBin" $out/bin/logout-server
                   ''
-                else
+                else if basePath == "/" then
+                  # Web at root: copy all public assets to $out directly
                   ''
                     mkdir -p $out
-                    cp -r target/dx/log-out/release/web/public/${
-                      if basePath == "/" then "* $out/" else " $out/${basePath}"
-                    }
+                    cp -r target/dx/log-out/release/web/public/* $out/
+                  ''
+                else
+                  # Web at sub-path (e.g. "LogOut" or "LogOut/preview"):
+                  # copy public assets into $out/<basePath> matching the served URL structure
+                  ''
+                    mkdir -p $out/${basePath}
+                    cp -r target/dx/log-out/release/web/public/ $out/${basePath}
                   '';
               doCheck = false;
             };
@@ -243,6 +250,7 @@
         in
         {
           web = mkLogOut { };
+          webPreview = mkLogOut { basePath = "LogOut/preview"; };
           server = mkLogOut { platform = "server"; };
           webE2eTester = env.pkgs.writeShellApplication {
             name = "logout-web-e2e-tester";

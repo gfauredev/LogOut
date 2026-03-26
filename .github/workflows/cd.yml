@@ -12,17 +12,52 @@ on:
   workflow_dispatch:
 
 jobs:
-  pwa:
-    if: github.ref == 'refs/heads/main' && !startsWith(github.ref, 'refs/tags/v')
+  pwa-preview:
+    if: github.ref == 'refs/heads/main'
     timeout-minutes: 15
     runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
     permissions:
-      contents: read
-      pages: write
-      id-token: write
+      contents: write
+    steps:
+    - uses: actions/checkout@v6
+      with:
+        lfs: true
+    - uses: cachix/install-nix-action@v31
+      with:
+        github_access_token: ${{ secrets.GITHUB_TOKEN }}
+        extra_nix_config: |
+          extra-substituters = https://cache.garnix.io
+          extra-trusted-public-keys = cache.garnix.io:CTFPyKSLcx5RMJKfLo5EEPUObbA78b0YQ2DTCJXqr9g=
+    - uses: DeterminateSystems/magic-nix-cache-action@v13
+    - run: sleep 5 #  Sleep hoping Garnix evaluation will start after
+    - uses: lewagon/wait-on-check-action@v1.5.0
+      with:
+        ref: ${{ github.event.pull_request.head.sha || github.sha }}
+        check-regexp: 'Evaluate flake.nix'
+        repo-token: ${{ secrets.GITHUB_TOKEN }}
+        fail-on-no-checks: false
+        allowed-conclusions: success,failure,cancelled,skipped,timed_out,neutral
+    - uses: lewagon/wait-on-check-action@v1.5.0
+      with:
+        ref: ${{ github.event.pull_request.head.sha || github.sha }}
+        check-regexp: 'package web.*'
+        repo-token: ${{ secrets.GITHUB_TOKEN }}
+        fail-on-no-checks: false
+        allowed-conclusions: success,failure,cancelled,skipped,timed_out,neutral
+    - run: nix build .#webPreview -o dist
+    - uses: peaceiris/actions-gh-pages@v4
+      with:
+        github_token: ${{ secrets.GITHUB_TOKEN }}
+        publish_dir: ./dist/LogOut/preview
+        destination_dir: preview
+        keep_files: true
+
+  pwa-release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    timeout-minutes: 15
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
     - uses: actions/checkout@v6
       with:
@@ -50,10 +85,11 @@ jobs:
         fail-on-no-checks: false
         allowed-conclusions: success,failure,cancelled,skipped,timed_out,neutral
     - run: nix build .#web -o dist
-    - uses: actions/upload-pages-artifact@v4
-      with: { path: ./dist/LogOut }
-    - uses: actions/deploy-pages@v4
-      id: deployment
+    - uses: peaceiris/actions-gh-pages@v4
+      with:
+        github_token: ${{ secrets.GITHUB_TOKEN }}
+        publish_dir: ./dist/LogOut
+        keep_files: true
 
   android-release:
     if: startsWith(github.ref, 'refs/tags/v')
@@ -186,7 +222,7 @@ jobs:
       contents: write
     steps:
     - uses: actions/checkout@v6
-    - run: | # Cleanup rolling releases > 7 days or < 12 hours
+    - run: | # Cleanup rolling releases > 14 days
         gh release list --json tagName,createdAt,isPrerelease --limit 100 \
           --jq '.[]|select(.isPrerelease == true)|"\(.tagName) \(.createdAt)"' \
         | while read -r OLD_TAG CREATED_AT; do
@@ -197,3 +233,4 @@ jobs:
         done
       env:
         GH_TOKEN: ${{ github.token }}
+
