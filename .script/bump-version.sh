@@ -47,6 +47,7 @@ echo "Updated $cargo_toml and $flake_nix to $new"
 if [ -t 0 ] && [ -t 1 ]; then
   read -r -p "Create git tag v$new? [y/N] " response
   if [[ "$response" =~ ^[Yy]$ ]]; then
+    cargo update logout
     git commit --all
     git tag --annotate "v$new" --message "Release v$new"
     echo "Created tag v$new"
