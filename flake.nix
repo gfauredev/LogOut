@@ -81,6 +81,7 @@
             cargo-deny
             cargo-llvm-cov
             cargo-mutants
+            clang
             dioxus-cli
             wasm-bindgen-cli_0_2_114
             patchelf
