@@ -12,15 +12,17 @@ on:
   workflow_dispatch:
 
 jobs:
-  pwa-release:
+  release:
     if: startsWith(github.ref, 'refs/tags/v')
-    timeout-minutes: 15
+    timeout-minutes: 45
     runs-on: ubuntu-latest
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     permissions:
-      contents: read
+      contents: write # Required by 'gh release'
+      checks: read    # Required by wait-on-check-action
+      statuses: read  # Required by wait-on-check-action
       pages: write
       id-token: write
     steps:
@@ -45,15 +47,31 @@ jobs:
     - uses: lewagon/wait-on-check-action@v1.5.0
       with:
         ref: ${{ github.event.pull_request.head.sha || github.sha }}
-        check-regexp: 'package web.*'
+        check-regexp: 'package web.*|devShell.*linux.*'
         repo-token: ${{ secrets.GITHUB_TOKEN }}
         fail-on-no-checks: false
         allowed-conclusions: success,failure,cancelled,skipped,timed_out,neutral
-    - run: nix build .#web --out-link web
+    - run: |
+        nix build .#web --out-link web
+        tar -czvf web.tar.gz web/LogOut/*
     - uses: actions/upload-pages-artifact@v4
       with: { path: ./web/LogOut }
     - uses: actions/deploy-pages@v5
       id: deployment
+    - uses: timheuer/base64-to-file@v1.2.4
+      with:
+        fileName: 'logout.jks'
+        encodedString: ${{ secrets.ANDROID_KEYSTORE_B64 }}
+      id: keystore
+    - run: nix run .#androidBuild
+      env:
+        ANDROID_KEYSTORE_PATH: ${{ steps.keystore.outputs.filePath }}
+        ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+    - run: |
+        TAG=${GITHUB_REF#refs/tags/}
+        gh release create "$TAG" *.apk web.tar.gz --title "$TAG" --notes "Release $TAG"
+      env:
+        GH_TOKEN: ${{ github.token }}
 
   pwa-prerelease:
     if: github.ref == 'refs/heads/main' && !startsWith(github.ref, 'refs/tags/v')
@@ -100,56 +118,6 @@ jobs:
       with: { path: ./dist/LogOut }
     - uses: actions/deploy-pages@v5
       id: deployment
-
-  android-release:
-    if: startsWith(github.ref, 'refs/tags/v')
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    permissions:
-      contents: write # Required by 'gh release'
-      checks: read    # Required by wait-on-check-action
-      statuses: read  # Required by wait-on-check-action
-    steps:
-    - uses: actions/checkout@v6
-      with:
-        lfs: true
-    - uses: cachix/install-nix-action@v31
-      with:
-        github_access_token: ${{ secrets.GITHUB_TOKEN }}
-        extra_nix_config: |
-          extra-substituters = https://cache.garnix.io
-          extra-trusted-public-keys = cache.garnix.io:CTFPyKSLcx5RMJKfLo5EEPUObbA78b0YQ2DTCJXqr9g=
-    - uses: DeterminateSystems/magic-nix-cache-action@v13
-    - run: sleep 5 #  Sleep hoping Garnix evaluation will start after
-    - uses: lewagon/wait-on-check-action@v1.5.0
-      with:
-        ref: ${{ github.event.pull_request.head.sha || github.sha }}
-        check-regexp: 'Evaluate flake.nix'
-        repo-token: ${{ secrets.GITHUB_TOKEN }}
-        fail-on-no-checks: false
-        allowed-conclusions: success,failure,cancelled,skipped,timed_out,neutral
-    - uses: lewagon/wait-on-check-action@v1.5.0
-      with:
-        ref: ${{ github.event.pull_request.head.sha || github.sha }}
-        check-regexp: 'devShell.*linux.*'
-        repo-token: ${{ secrets.GITHUB_TOKEN }}
-        fail-on-no-checks: false
-        allowed-conclusions: success,failure,cancelled,skipped,timed_out,neutral
-    - uses: timheuer/base64-to-file@v1.2.4
-      with:
-        fileName: 'logout.jks'
-        encodedString: ${{ secrets.ANDROID_KEYSTORE_B64 }}
-      id: keystore
-    - run: nix run .#androidBuild
-      env:
-        ANDROID_KEYSTORE_PATH: ${{ steps.keystore.outputs.filePath }}
-        ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
-    - name: Publish Semantically Versionned Release
-      run: |
-        TAG=${GITHUB_REF#refs/tags/}
-        gh release create "$TAG" *.apk --title "$TAG" --notes "Release $TAG"
-      env:
-        GH_TOKEN: ${{ github.token }}
 
   check-tag:
     if: github.ref == 'refs/heads/main'
@@ -214,7 +182,7 @@ jobs:
       env:
         GH_TOKEN: ${{ github.token }}
 
-  cleanup:
+  prerelease-cleanup:
     if: github.ref == 'refs/heads/main' && !startsWith(github.ref, 'refs/tags/v')
     timeout-minutes: 5
     runs-on: ubuntu-latest

@@ -1,21 +1,10 @@
 mkdir --mode 775 --verbose dist
 mkdir --mode 775 --verbose dist/LogOut
-if ARTIFACT_URL=$(gh api "repos/{owner}/{repo}/actions/artifacts?name=github-pages&per_page=100" --jq '[.artifacts[] | select(.expired == false)] | sort_by(.created_at) | last | .archive_download_url // empty'); then
-  if [ -n "$ARTIFACT_URL" ]; then
-    gh api "$ARTIFACT_URL" >release.zip
-    unzip release.zip -d release/
-    if [ -f release/artifact.tar ]; then
-      tar -xf release/artifact.tar -C dist/LogOut/
-    else
-      echo "WARNING: artifact.tar not found, stopping now to not destroy prod"
-      exit 1
-    fi
-  else
-    echo "WARNING: No previous stable Pages deployment found, stopping now"
-    exit 1
-  fi
+gh release download --pattern "web.tar.gz" --dir .
+if [ -f "web.tar.gz" ]; then
+  tar -xzvf web.tar.gz -C dist/LogOut/
 else
-  echo "WARNING: Could not fetch artifacts list, stopping now"
+  echo "WARNING: No web archive found in latest release, stopping now"
   exit 1
 fi
 nix build .#preWeb --out-link preWeb
