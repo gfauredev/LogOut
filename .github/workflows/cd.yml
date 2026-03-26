@@ -93,11 +93,7 @@ jobs:
         repo-token: ${{ secrets.GITHUB_TOKEN }}
         fail-on-no-checks: false
         allowed-conclusions: success,failure,cancelled,skipped,timed_out,neutral
-    - run: |
-        mkdir --verbose dist/
-        # TODO Download current Pages Release to dist/
-        nix build .#preWeb --out-link preWeb
-        cp -f --dereference --recursive -v preWeb/LogOut/preview dist/LogOut/
+    - run: .script/web-prerelease.sh
       env:
         GH_TOKEN: ${{ github.token }}
     - uses: actions/upload-pages-artifact@v4
