@@ -1,0 +1,67 @@
+{
+  "$schema": "https://charm.land/crush.json",
+  "lsp": {
+    "rust": {
+      "command": "rust-analyzer"
+    },
+    "nix": {
+      "command": "nil"
+    },
+    "kotlin": {
+      "command": "kotlin-language-server"
+    },
+    "toml": {
+      "command": "taplo",
+      "args": [
+        "lsp",
+        "stdio"
+      ]
+    },
+    "typescript": {
+      "command": "typescript-language-server",
+      "args": [
+        "--stdio"
+      ]
+    },
+    "css": {
+      "command": "vscode-css-languageserver",
+      "args": [
+        "--stdio"
+      ]
+    },
+    "html": {
+      "command": "vscode-html-languageserver",
+      "args": [
+        "--stdio"
+      ]
+    },
+    "json": {
+      "command": "vscode-json-languageserver",
+      "args": [
+        "--stdio"
+      ]
+    },
+    "yaml": {
+      "command": "yaml-language-server",
+      "args": [
+        "--stdio"
+      ]
+    }
+  },
+  "permissions": {
+    "allowed_tools": [
+      "view",
+      "ls",
+      "grep",
+      "ripgrep",
+      "rg",
+      "sd",
+      "fd",
+      "find",
+      "cargo",
+      "dx",
+      "nix",
+      "patchelf"
+    ]
+  }
+}
