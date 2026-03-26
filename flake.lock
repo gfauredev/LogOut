@@ -7,11 +7,11 @@
         "nixpkgs": "nixpkgs_2"
       },
       "locked": {
-        "lastModified": 1774525464,
-        "narHash": "sha256-mzdiphxkRMt/owibBBJRu9wNhyxLRNIHhuEJVCfSzdw=",
+        "lastModified": 1774525966,
+        "narHash": "sha256-DJJN+bz+MiNVKnL86xR9Yuxuedmym7gnNl8UGdZROgg=",
         "owner": "gfauredev",
         "repo": "nix-agents-jail",
-        "rev": "d9d4723d12e965db5a524be2423a5f8ea6b9ec72",
+        "rev": "7640fb33d23e6b81c74fa6cf724789ee0c840fe8",
         "type": "github"
       },
       "original": {
