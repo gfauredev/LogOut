@@ -45,16 +45,6 @@
   }
 }
 
-main.exercises,
-main.sessions,
-main.more,
-main.edit {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(min(var(--column), 100%), 1fr));
-  gap: var(--spacing);
-  grid-auto-rows: max-content;
-}
-
 main.analytics {
   padding: 0;
 

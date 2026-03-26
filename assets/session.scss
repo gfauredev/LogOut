@@ -1,4 +1,9 @@
 // Structure and components specific to Active Session page
-main.session article {
+main.session {
+  width: min(var(--column), 100%);
   margin: 0 auto;
+
+  article {
+    margin: var(--spacing) auto;
+  }
 }
