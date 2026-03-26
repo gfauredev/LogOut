@@ -1156,19 +1156,21 @@ pub(crate) mod native_storage {
         };
         Ok(rows)
     }
+    /// Raw SQL projection tuple returned by `bests_rows_query`.
+    type BestsSqlTuple = (
+        String,
+        Option<i64>,
+        Option<i64>,
+        Option<i64>,
+        Option<i64>,
+        Option<i64>,
+        Option<i64>,
+        Option<i64>,
+        Option<i64>,
+    );
     /// Convert the raw SQL tuple into a [`BestsRow`].
     fn bests_row_from_tuple(
-        (exercise_id, w, r, d, dur, lw, lr, ld, lts): (
-            String,
-            Option<i64>,
-            Option<i64>,
-            Option<i64>,
-            Option<i64>,
-            Option<i64>,
-            Option<i64>,
-            Option<i64>,
-            Option<i64>,
-        ),
+        (exercise_id, w, r, d, dur, lw, lr, ld, lts): BestsSqlTuple,
     ) -> super::BestsRow {
         super::BestsRow {
             exercise_id,

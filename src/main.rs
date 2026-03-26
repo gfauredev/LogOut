@@ -108,7 +108,7 @@ fn detect_preferred_language() -> unic_langid::LanguageIdentifier {
     }
     langid!("en")
 }
-/// Main entry point of the LogOut application.
+/// Main entry point of the `LogOut` application.
 ///
 /// Initializes logging, sets up platform-specific notification channels (Android),
 /// registers the service worker (PWA), and launches the Dioxus UI application.
