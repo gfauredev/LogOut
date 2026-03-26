@@ -17,12 +17,14 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
     crane.url = "github:ipetkov/crane";
+    agents-jail.url = "github:gfauredev/nix-agents-jail";
   };
   outputs =
     {
       self,
       nixpkgs,
       rust-overlay,
+      agents-jail,
       crane,
     }:
     let
@@ -271,32 +273,6 @@
               maestro test --headless "${self}/maestro/android"
             '';
           };
-          sandbox =
-            let
-              pkgs = env.pkgs;
-              devShellExecutable = pkgs.writeShellScriptBin "logout-devshell" ''
-                exec ${pkgs.nix}/bin/nix develop "path:$PWD" "$@"
-              '';
-            in
-            pkgs.dockerTools.buildLayeredImage {
-              name = "logout-sandbox";
-              tag = "latest";
-              contents = [
-                pkgs.nix
-                devShellExecutable
-                pkgs.cacert
-              ];
-              config = {
-                Cmd = [ "${devShellExecutable}/bin/logout-devshell" ];
-                Env = [
-                  "PATH=/bin"
-                  "SSL_CERT_FILE=${pkgs.cacert}/etc/ssl/certs/ca-bundle.crt"
-                  "NIX_CONFIG=experimental-features = nix-command flakes"
-                  "NIX_PAGER=cat"
-                  "SHELL=${pkgs.bashInteractive}/bin/bash"
-                ];
-              };
-            };
           default = env.pkgs.symlinkJoin {
             name = "logout-all";
             paths = [
@@ -349,6 +325,12 @@
               typescript-language-server # TypeScript LSP
               vscode-langservers-extracted # HTML/CSS/JS(ON)
               yaml-language-server # YAML LSP
+              (agents-jail.lib.${system}.mkCrush {
+                extraPkgs = env.commonNativeBuildInputs ++ env.androidNativeBuildInputs;
+              })
+              (agents-jail.lib.${system}.mkOpencode {
+                extraPkgs = env.commonNativeBuildInputs ++ env.androidNativeBuildInputs;
+              })
             ];
             nativeBuildInputs = env.commonNativeBuildInputs ++ env.androidNativeBuildInputs;
             buildInputs = env.commonBuildInputs;
