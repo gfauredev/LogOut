@@ -30,7 +30,7 @@
     let
       forAllSystems = nixpkgs.lib.genAttrs [
         "x86_64-linux" # "aarch64-linux"
-        "aarch64-darwin"
+        # "aarch64-darwin"
       ];
       nixpkgsFor = forAllSystems (
         system:
@@ -184,6 +184,20 @@
               # Use cargoArtifactsServer for server, cargoArtifactsWeb for wasm, cargoArtifactsHost for clippy/tests.
               cargoArtifacts ? (if platform == "server" then env.cargoArtifactsServer else env.cargoArtifactsWeb),
             }:
+            let
+              target =
+                if platform == "web" then
+                  "target/dx/log-out/release/${platform}/public/*"
+                else if platform == "server" then
+                  "target/dx/log-out/release/web/log-out"
+                else
+                  "target/dx/log-out/release/${platform}/*";
+              out =
+                if platform == "server" then
+                  "$out/bin/" # \n
+                else
+                  "$out/${basePath}"; # WARN May need to deduplicate /
+            in
             env.craneLib.buildPackage {
               inherit cargoArtifacts;
               src = env.filteredSrc;
@@ -198,28 +212,10 @@
                 export CARGO_TARGET_DIR=target
                 dx build --${platform} --release --base-path ${env.pkgs.lib.escapeShellArg basePath}
               '';
-              # Retrieve server binary from the architecture-specific target dir that dx uses.
-              installPhase =
-                if platform == "server" then
-                  # Server: extract the native binary
-                  ''
-                    mkdir -p $out/bin
-                    serverBin=$(find target -maxdepth 5 -name "log-out" -type f -path "*/server-release/*" | head -1)
-                    cp "$serverBin" $out/bin/logout-server
-                  ''
-                else if basePath == "/" then
-                  # Web at root: copy all public assets to $out directly
-                  ''
-                    mkdir -p $out
-                    cp -r target/dx/log-out/release/web/public/* $out/
-                  ''
-                else
-                  # Web at sub-path (e.g. "LogOut" or "LogOut/preview"):
-                  # copy public assets into $out/<basePath> matching the served URL structure
-                  ''
-                    mkdir -p $out/${basePath}
-                    cp -r target/dx/log-out/release/web/public/ $out/${basePath}
-                  '';
+              installPhase = ''
+                mkdir --parents --verbose ${out}
+                cp --recursive --verbose ${target} ${out}
+              '';
               doCheck = false;
             };
           chromiumWrapper = env.pkgs.writeShellScriptBin "google-chrome" ''
@@ -251,7 +247,7 @@
         in
         {
           web = mkLogOut { };
-          webPreview = mkLogOut { basePath = "LogOut/preview"; };
+          preWeb = mkLogOut { basePath = "LogOut/preview"; };
           server = mkLogOut { platform = "server"; };
           webE2eTester = env.pkgs.writeShellApplication {
             name = "logout-web-e2e-tester";
