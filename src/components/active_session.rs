@@ -44,7 +44,7 @@ fn prefill_inputs_from_last_log(
         bests.last_log_end_time,
     ) {
         (Some(a), Some(b)) => a >= b,
-        (Some(_), None) | (None, None) => true,
+        (Some(_) | None, None) => true,
         (None, Some(_)) => false,
     };
 
