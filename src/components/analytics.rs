@@ -571,21 +571,23 @@ fn ChartView(data: SeriesData, colors: Vec<&'static str>) -> Element {
                             let sum_xx: f64 = points.iter().map(|(x, _)| x * x).sum();
                             let sum_xy: f64 = points.iter().map(|(x, y)| x * y * scale).sum();
                             let denom = n * sum_xx - sum_x * sum_x;
-                            let (trend_x1, trend_y1, trend_x2, trend_y2) =
-                                if denom.abs() > f64::EPSILON {
-                                    let slope = (n * sum_xy - sum_x * sum_y) / denom;
-                                    let intercept = (sum_y - slope * sum_x) / n;
-                                    let x1 = points.first().map(|(x, _)| *x).unwrap_or(min_x);
-                                    let x2 = points.last().map(|(x, _)| *x).unwrap_or(max_x);
-                                    (x1, slope * x1 + intercept, x2, slope * x2 + intercept)
-                                } else {
-                                    // Vertical or single-x: flat line at mean y
-                                    let mean_y = sum_y / n;
-                                    (min_x, mean_y, max_x, mean_y)
-                                };
+                            // Vertical or single-x: flat line at mean y
+                            // Dashed trend line
+                            // Data points
+                            let (trend_x1, trend_y1, trend_x2, trend_y2) = if denom.abs()
+                                > f64::EPSILON
+                            {
+                                let slope = (n * sum_xy - sum_x * sum_y) / denom;
+                                let intercept = (sum_y - slope * sum_x) / n;
+                                let x1 = points.first().map(|(x, _)| *x).unwrap_or(min_x);
+                                let x2 = points.last().map(|(x, _)| *x).unwrap_or(max_x);
+                                (x1, slope * x1 + intercept, x2, slope * x2 + intercept)
+                            } else {
+                                let mean_y = sum_y / n;
+                                (min_x, mean_y, max_x, mean_y)
+                            };
                             Some(rsx! {
                                 g { key: "series_{slot_idx}",
-                                    // Dashed trend line
                                     line {
                                         x1: "{scale_x(trend_x1)}",
                                         y1: "{y_svg(trend_y1, mi)}",
@@ -597,7 +599,6 @@ fn ChartView(data: SeriesData, colors: Vec<&'static str>) -> Element {
                                         stroke_linecap: "round",
                                         opacity: "0.7",
                                     }
-                                    // Data points
                                     for (x , y) in points.iter() {
                                         circle {
                                             cx: "{scale_x(*x)}",

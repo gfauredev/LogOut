@@ -27,8 +27,10 @@ pub(crate) fn send_notification(is_duration_bell: bool) {
     } else {
         "logout-rest"
     });
-    let vibrate = serde_wasm_bindgen::to_value(&[200u32, 100, 200]).unwrap();
-    opts.set_vibrate(&vibrate);
+    let vibrate = serde_wasm_bindgen::to_value(&[200u32, 100, 200]).ok();
+    if let Some(v) = vibrate {
+        opts.set_vibrate(&v);
+    }
     wasm_bindgen_futures::spawn_local(async move {
         if let Some(window) = web_sys::window() {
             let sw = window.navigator().service_worker();

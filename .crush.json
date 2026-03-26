@@ -5,7 +5,7 @@
       "command": "rust-analyzer"
     },
     "nix": {
-      "command": "nil"
+      "command": "nixd"
     },
     "kotlin": {
       "command": "kotlin-language-server"
