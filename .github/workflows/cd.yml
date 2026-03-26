@@ -200,17 +200,7 @@ jobs:
         ANDROID_KEYSTORE_PATH: ${{ steps.keystore.outputs.filePath }}
         ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
     - name: Publish Timestamped Pre-release # If no SemVer tag on last commit
-      run: |
-        NOW=$(date -u +"%Y-%m-%d")
-        read -r OLD_TAG CREATED_AT <<< "$(gh release list \
-          --json tagName,createdAt,isPrerelease --limit 1 \
-          --jq '.[]|select(.isPrerelease == true)|"\(.tagName) \(.createdAt)"')"
-        if [ -z "$CREATED_AT" ] ||
-          [ "$(date -d "$CREATED_AT" +%s)" -le "$(date -d '2 days ago' +%s)" ]
-        then
-          gh release create "pre-$NOW" *.apk --prerelease \
-            --title "$NOW" --notes "Automated pre-release for $NOW"
-        fi
+      run: .script/prerelease.sh
       env:
         GH_TOKEN: ${{ github.token }}
 
@@ -222,15 +212,7 @@ jobs:
       contents: write
     steps:
     - uses: actions/checkout@v6
-    - run: | # Cleanup rolling releases > 14 days
-        gh release list --json tagName,createdAt,isPrerelease --limit 100 \
-          --jq '.[]|select(.isPrerelease == true)|"\(.tagName) \(.createdAt)"' \
-        | while read -r OLD_TAG CREATED_AT; do
-          TIMESTAMP=$(date -d "$CREATED_AT" +%s)
-          if [ "$TIMESTAMP" -lt "$(date -d '14 days ago' +%s)" ]; then
-            gh release delete "$OLD_TAG" --yes --cleanup-tag
-          fi
-        done
+    - run: .script/prerelease-cleanup.sh
       env:
         GH_TOKEN: ${{ github.token }}
 
