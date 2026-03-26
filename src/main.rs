@@ -114,12 +114,7 @@ fn detect_preferred_language() -> unic_langid::LanguageIdentifier {
 /// registers the service worker (PWA), and launches the Dioxus UI application.
 fn main() {
     dioxus_logger::init(dioxus_logger::tracing::Level::INFO).expect("failed to init logger");
-    #[cfg(target_os = "android")]
-    {
-        services::android_notifications::setup_notification_channel();
-    }
-    #[cfg(all(not(target_arch = "wasm32"), not(target_os = "android")))]
-    {}
+    services::android_notifications::setup_notification_channel();
     services::service_worker::register_service_worker();
     services::wake_lock::enable_wake_lock();
     launch(App);

@@ -134,7 +134,6 @@ pub async fn reload_exercises(
         }
     }
 }
-#[allow(unused_mut, unused_variables)]
 async fn load_exercises(mut sig: Signal<Vec<Arc<Exercise>>>) {
     #[cfg(target_arch = "wasm32")]
     {

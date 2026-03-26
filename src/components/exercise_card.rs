@@ -4,6 +4,7 @@ use crate::{DbI18nSignal, Route};
 use dioxus::prelude::*;
 use dioxus_i18n::{prelude::i18n, t};
 use std::sync::Arc;
+
 /// Looks up the translation for a single enum value in the `i18n.json` data.
 ///
 /// Falls back to the English `value` string when:
@@ -30,110 +31,40 @@ fn translate_enum<'a>(db_i18n: &'a DbI18n, lang: &str, field: &str, value: &'a s
         .or_else(|| lang.split('-').next().and_then(lookup))
         .unwrap_or(value)
 }
-/// Resolves a raw image key from `Exercise::images` to a displayable URL, or
-/// returns `None` for `idb:` keys (which require async loading on web).
-///
-/// Recognised formats:
-/// - Absolute URL schemes (`http://`, `https://`, `blob:`, `data:`, `file://`)
-/// - Absolute filesystem paths (starting with `/`)
-/// - `local:filename` on native → resolved to `data_dir()/images/filename` as a `file://` URL
-/// - `idb:key` → `None` (caller must use `idb_images::get_image_blob_url` asynchronously)
-/// - Relative DB path (e.g. `Squat/0.jpg`) → prefixed with `EXERCISES_IMAGE_BASE_URL`
-fn resolve_image_key(key: &str) -> Option<String> {
-    if key.starts_with("idb:") {
-        return None;
-    }
-    if key.starts_with("http://")
-        || key.starts_with("https://")
-        || key.starts_with("blob:")
-        || key.starts_with("data:")
-        || key.starts_with("file://")
-        || key.starts_with('/')
-    {
-        return Some(key.to_owned());
-    }
-    #[cfg(not(target_arch = "wasm32"))]
-    if let Some(filename) = key.strip_prefix("local:") {
-        use percent_encoding::{utf8_percent_encode, CONTROLS};
-        // Encodes characters that are unsafe in URL path segments while preserving
-        // all chars that are valid in paths (slashes are kept by encoding each
-        // component separately).
-        const PATH_SEGMENT: &percent_encoding::AsciiSet = &CONTROLS
-            .add(b' ')
-            .add(b'"')
-            .add(b'#')
-            .add(b'%')
-            .add(b'<')
-            .add(b'>')
-            .add(b'?')
-            .add(b'[')
-            .add(b'\\')
-            .add(b']')
-            .add(b'^')
-            .add(b'`')
-            .add(b'{')
-            .add(b'|')
-            .add(b'}');
-        let path = crate::services::storage::native_storage::data_dir()
-            .join("images")
-            .join(filename);
-        let encoded = path.components().fold(String::new(), |mut acc, c| {
-            use std::path::Component;
-            match c {
-                Component::Prefix(p) => {
-                    acc.push_str(&p.as_os_str().to_string_lossy());
-                }
-                Component::RootDir => acc.push('/'),
-                Component::Normal(seg) => {
-                    if !acc.is_empty() && !acc.ends_with('/') {
-                        acc.push('/');
-                    }
-                    acc.push_str(
-                        &utf8_percent_encode(&seg.to_string_lossy(), PATH_SEGMENT).to_string(),
-                    );
-                }
-                _ => {}
-            }
-            acc
-        });
-        return Some(format!("file://{encoded}"));
-    }
-    let base_url = crate::utils::get_exercise_images_base_url();
-    Some(format!(
-        "{base_url}{}{key}",
-        crate::models::EXERCISES_IMAGE_SUB_PATH
-    ))
-}
+
 /// Renders a single exercise image, handling both regular URLs and `idb:`-prefixed
 /// keys that require async loading from `IndexedDB` on web.  Clicking cycles through
 /// multiple images when more than one is available.
 #[component]
-fn ExerciseImage(images: Vec<String>, display_name: String) -> Element {
+fn ExerciseImage(exercise: Arc<Exercise>, display_name: String) -> Element {
     let mut img_index = use_signal(|| 0usize);
-    let image_count = images.len();
-    let images_for_sync = images.clone();
-    // Synchronous URL via the shared resolver (covers all non-idb: keys).
-    let sync_url = use_memo(move || {
-        let key = images_for_sync.get(*img_index.read())?;
-        resolve_image_key(key)
-    });
+    let image_count = exercise.images.len();
+
+    // Synchronous URL via the shared model method (covers all non-idb: keys).
+    let sync_url = {
+        let ex = exercise.clone();
+        use_memo(move || ex.get_image_url(*img_index.read()))
+    };
+
     // Async blob URL for `idb:`-prefixed keys (web only).
     #[cfg(target_arch = "wasm32")]
     let idb_url = {
-        let images_for_idb = images.clone();
+        let ex = exercise.clone();
         use_resource(move || {
-            let images = images_for_idb.clone();
+            let ex = ex.clone();
             async move {
-                let key = images.get(*img_index.read())?.clone();
+                let key = ex.images.get(*img_index.read())?.clone();
                 let image_key = key.strip_prefix("idb:")?;
                 crate::services::storage::idb_images::get_image_blob_url(image_key).await
             }
         })
     };
+
     // Revoke stale `blob:` URLs when the resource produces a new value or the
     // component is unmounted, to avoid leaking object-URL memory.
     #[cfg(target_arch = "wasm32")]
     let prev_blob_url: Signal<Option<String>> = use_signal(|| None);
+
     #[cfg(target_arch = "wasm32")]
     {
         let mut slot = prev_blob_url;
@@ -153,10 +84,12 @@ fn ExerciseImage(images: Vec<String>, display_name: String) -> Element {
             }
         });
     }
+
     let display_url: Option<String> = {
         #[cfg(target_arch = "wasm32")]
         {
-            let is_idb = images
+            let is_idb = exercise
+                .images
                 .get(*img_index.read())
                 .map_or(false, |k| k.starts_with("idb:"));
             if is_idb {
@@ -170,6 +103,7 @@ fn ExerciseImage(images: Vec<String>, display_name: String) -> Element {
             sync_url.read().clone()
         }
     };
+
     if let Some(url) = display_url {
         rsx! {
             img {
@@ -188,6 +122,7 @@ fn ExerciseImage(images: Vec<String>, display_name: String) -> Element {
         rsx! {}
     }
 }
+
 #[component]
 pub fn ExerciseCard(
     exercise: Arc<Exercise>,
@@ -197,18 +132,22 @@ pub fn ExerciseCard(
     let initial = show_instructions_initial.unwrap_or(false);
     let mut show_instructions = use_signal(move || initial);
     let db_i18n_sig = use_context::<DbI18nSignal>().0;
+
     // Resolve the locale string once per language change.  All three memos
     // below read this shared value so the BCP-47 lookup and prefix fallback
     // run only once per locale update, not three times.
     let lang_str = use_memo(move || i18n().language().to_string());
+
     let display_name = {
         let ex = exercise.clone();
         use_memo(move || ex.name_for_lang(&lang_str.read()).to_owned())
     };
+
     let display_instructions = {
         let ex = exercise.clone();
         use_memo(move || ex.instructions_for_lang(&lang_str.read()).to_vec())
     };
+
     let enum_labels = {
         let ex = exercise.clone();
         use_memo(move || {
@@ -245,6 +184,7 @@ pub fn ExerciseCard(
             )
         })
     };
+
     rsx! {
         article { key: "{exercise.id}",
             header {
@@ -308,7 +248,7 @@ pub fn ExerciseCard(
             }
             if !exercise.images.is_empty() {
                 ExerciseImage {
-                    images: exercise.images.clone(),
+                    exercise: exercise.clone(),
                     display_name: display_name.read().clone(),
                 }
             }
@@ -341,10 +281,12 @@ pub fn ExerciseCard(
         }
     }
 }
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::models::DbI18nLang;
+
     fn sample_db_i18n() -> DbI18n {
         let mut lang = DbI18nLang::default();
         lang.category
@@ -357,6 +299,7 @@ mod tests {
         map.insert("fr".into(), lang);
         map
     }
+
     #[test]
     fn translate_enum_exact_match() {
         let db_i18n = sample_db_i18n();
@@ -378,6 +321,7 @@ mod tests {
             "pectoraux"
         );
     }
+
     #[test]
     fn translate_enum_prefix_match() {
         let db_i18n = sample_db_i18n();
@@ -386,6 +330,7 @@ mod tests {
             "musculation",
         );
     }
+
     #[test]
     fn translate_enum_missing_lang_returns_original() {
         let db_i18n = sample_db_i18n();
@@ -394,6 +339,7 @@ mod tests {
             "strength"
         );
     }
+
     #[test]
     fn translate_enum_missing_key_returns_original() {
         let db_i18n = sample_db_i18n();
@@ -402,6 +348,7 @@ mod tests {
             "cardio"
         );
     }
+
     #[test]
     fn translate_enum_unknown_field_returns_original() {
         let db_i18n = sample_db_i18n();

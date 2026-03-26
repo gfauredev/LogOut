@@ -7,5 +7,4 @@ pub fn setup_notification_channel() {
     log::info!("Setting up Android notification channels...");
 }
 #[cfg(not(target_os = "android"))]
-#[allow(dead_code)]
 pub fn setup_notification_channel() {}

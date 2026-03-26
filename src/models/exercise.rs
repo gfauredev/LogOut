@@ -1,4 +1,5 @@
 use super::enums::{Category, Equipment, Force, Level, Mechanic, Muscle};
+#[cfg(test)]
 use super::exercise_type_tag;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -158,31 +159,80 @@ impl Exercise {
     ///
     /// Relative paths from the exercise database (e.g. `Squat/0.jpg`) are
     /// prefixed with the configured `EXERCISES_IMAGE_BASE_URL`.
-    #[allow(dead_code)]
+    /// Resolves a raw image key from `images` by index to a displayable URL.
+    /// Returns `None` for `idb:` keys (which require async loading on web) or
+    /// if the index is out of bounds.
+    ///
+    /// Recognised formats:
+    /// - Absolute URL schemes (`http://`, `https://`, `blob:`, `data:`, `file://`)
+    /// - Absolute filesystem paths (starting with `/`)
+    /// - `local:filename` on native → resolved to `data_dir()/images/filename` as a `file://` URL
+    /// - `idb:key` → `None` (caller must use `idb_images::get_image_blob_url` asynchronously)
+    /// - Relative DB path (e.g. `Squat/0.jpg`) → prefixed with `EXERCISES_IMAGE_BASE_URL`
     pub fn get_image_url(&self, index: usize) -> Option<String> {
-        let img = self.images.get(index)?;
-        if img.starts_with("http://")
-            || img.starts_with("https://")
-            || img.starts_with("blob:")
-            || img.starts_with("data:")
-            || img.starts_with("file://")
-            || img.starts_with('/')
-        {
-            return Some(img.clone());
-        }
-        if img.starts_with("idb:") {
-            // Blob is stored in IndexedDB; must be loaded asynchronously.
+        let key = self.images.get(index)?;
+        if key.starts_with("idb:") {
             return None;
         }
+        if key.starts_with("http://")
+            || key.starts_with("https://")
+            || key.starts_with("blob:")
+            || key.starts_with("data:")
+            || key.starts_with("file://")
+            || key.starts_with('/')
+        {
+            return Some(key.to_owned());
+        }
+
         #[cfg(not(target_arch = "wasm32"))]
-        if let Some(filename) = img.strip_prefix("local:") {
+        if let Some(filename) = key.strip_prefix("local:") {
+            use percent_encoding::{utf8_percent_encode, CONTROLS};
+            // Encodes characters that are unsafe in URL path segments while preserving
+            // all chars that are valid in paths (slashes are kept by encoding each
+            // component separately).
+            const PATH_SEGMENT: &percent_encoding::AsciiSet = &CONTROLS
+                .add(b' ')
+                .add(b'"')
+                .add(b'#')
+                .add(b'%')
+                .add(b'<')
+                .add(b'>')
+                .add(b'?')
+                .add(b'[')
+                .add(b'\\')
+                .add(b']')
+                .add(b'^')
+                .add(b'`')
+                .add(b'{')
+                .add(b'|')
+                .add(b'}');
             let path = crate::services::storage::native_storage::data_dir()
                 .join("images")
                 .join(filename);
-            return Some(format!("file://{}", path.display()));
+            let encoded = path.components().fold(String::new(), |mut acc, c| {
+                use std::path::Component;
+                match c {
+                    Component::Prefix(p) => {
+                        acc.push_str(&p.as_os_str().to_string_lossy());
+                    }
+                    Component::RootDir => acc.push('/'),
+                    Component::Normal(seg) => {
+                        if !acc.is_empty() && !acc.ends_with('/') {
+                            acc.push('/');
+                        }
+                        acc.push_str(
+                            &utf8_percent_encode(&seg.to_string_lossy(), PATH_SEGMENT).to_string(),
+                        );
+                    }
+                    _ => {}
+                }
+                acc
+            });
+            return Some(format!("file://{encoded}"));
         }
+
         let base_url = crate::utils::get_exercise_images_base_url();
-        Some(format!("{base_url}{EXERCISES_IMAGE_SUB_PATH}{img}"))
+        Some(format!("{base_url}{EXERCISES_IMAGE_SUB_PATH}{key}"))
     }
     /// Get the first image URL if available
     #[cfg(test)]
@@ -195,7 +245,7 @@ impl Exercise {
     /// - `"tag-cardio"` / `"🏃"` — distance-based (`Category::Cardio`)
     /// - `"tag-strength"` / `"💪"` — repetition-based (`Force::Pull` / `Force::Push`)
     /// - `"tag-static"` / `"⏱️"` — time-only (static hold, stretch, etc.)
-    #[allow(dead_code)]
+    #[cfg(test)]
     pub fn type_tag(&self) -> (&'static str, &'static str) {
         exercise_type_tag(self.category, self.force)
     }

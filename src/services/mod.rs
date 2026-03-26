@@ -1,4 +1,3 @@
-#[cfg(not(target_arch = "wasm32"))]
 pub mod android_notifications;
 pub mod app_state;
 pub mod exercise_db;

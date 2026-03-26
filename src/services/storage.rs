@@ -1197,64 +1197,10 @@ pub(crate) mod native_storage {
         m.lock().unwrap_or_else(std::sync::PoisonError::into_inner)
     }
 }
-/// Trait that abstracts synchronous key-value storage operations.
-///
-/// Both the `get_all` / `put_item` / `delete_item` / `store_all` family of
-/// operations on the native (`SQLite`) backend implement this interface.
-/// Defining a shared trait decouples business logic from the concrete backend
-/// and makes the storage layer straightforward to substitute in tests or to
-/// extend with new implementations in the future.
-///
-/// The web (`IndexedDB`) backend is inherently asynchronous and therefore does
-/// not implement this synchronous trait; it exposes an equivalent async API
-/// through the [`idb`] module.
-#[cfg(not(target_arch = "wasm32"))]
-#[allow(dead_code)]
-pub trait StorageProvider {
-    /// The error type returned by all operations on this provider.
-    type Error: std::fmt::Display + std::fmt::Debug;
-    /// Load all items from `store_name`, skipping rows that fail to deserialise.
-    fn get_all<T: serde::de::DeserializeOwned>(store_name: &str) -> Result<Vec<T>, Self::Error>;
-    /// Upsert one item (identified by `id`) into `store_name`.
-    fn put_item<T: serde::Serialize>(
-        store_name: &str,
-        id: &str,
-        item: &T,
-    ) -> Result<(), Self::Error>;
-    /// Delete the item with `id` from `store_name` (no-op if absent).
-    fn delete_item(store_name: &str, id: &str) -> Result<(), Self::Error>;
-    /// Replace all items in `store_name` with `items` in a single transaction.
-    fn store_all<T: serde::Serialize>(store_name: &str, items: &[T]) -> Result<(), Self::Error>;
-}
-/// Zero-size marker type that binds [`StorageProvider`] to the `SQLite`
+/// Zero-size marker type that binds [`AsyncStorageProvider`] to the `SQLite`
 /// backend exposed by [`native_storage`].
 #[cfg(not(target_arch = "wasm32"))]
-#[allow(dead_code)]
 pub struct NativeStorage;
-#[cfg(not(target_arch = "wasm32"))]
-impl StorageProvider for NativeStorage {
-    type Error = native_storage::StorageError;
-    fn get_all<T: serde::de::DeserializeOwned>(store_name: &str) -> Result<Vec<T>, Self::Error> {
-        native_storage::get_all(store_name)
-    }
-    fn put_item<T: serde::Serialize>(
-        store_name: &str,
-        id: &str,
-        item: &T,
-    ) -> Result<(), Self::Error> {
-        native_storage::put_item(store_name, id, item)
-    }
-    fn delete_item(store_name: &str, id: &str) -> Result<(), Self::Error> {
-        native_storage::delete_item(store_name, id)
-    }
-    fn store_all<T: serde::Serialize>(store_name: &str, items: &[T]) -> Result<(), Self::Error> {
-        native_storage::store_all(store_name, items)
-    }
-}
-/// [`AsyncStorageProvider`] implementation for the `SQLite` (native) backend.
-///
-/// Each method spawns a blocking task via [`tokio::task::spawn_blocking`] so
-/// that the synchronous `SQLite` operations never block the async runtime.
 #[cfg(not(target_arch = "wasm32"))]
 impl AsyncStorageProvider for NativeStorage {
     async fn load_completed_sessions_page(
