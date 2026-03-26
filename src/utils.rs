@@ -7,6 +7,13 @@ pub(crate) const EXERCISE_IMAGES_BASE_URL: &str =
     "https://raw.githubusercontent.com/gfauredev/free-exercise-db/main/";
 /// localStorage / config-file key used to store a user-configured exercise database URL.
 pub(crate) const EXERCISE_DB_URL_STORAGE_KEY: &str = "exercise_db_url";
+/// Seconds in a minute.
+pub const SECONDS_IN_MINUTE: u64 = 60;
+/// Seconds in an hour.
+pub const SECONDS_IN_HOUR: u64 = 3600;
+/// Seconds in a day.
+pub const SECONDS_IN_DAY: u64 = 86400;
+
 /// Cross-platform async sleep used by debounce coroutines.
 ///
 /// On native targets this delegates to [`tokio::time::sleep`]; on WASM it uses
@@ -347,7 +354,7 @@ mod tests {
     }
     #[test]
     fn format_session_date_today() {
-        let ts = today_midnight_local_secs() + 3600;
+        let ts = today_midnight_local_secs() + SECONDS_IN_HOUR;
         assert_eq!(format_session_date(ts), "Today");
     }
     #[test]
@@ -357,7 +364,7 @@ mod tests {
     }
     #[test]
     fn format_session_date_days_ago() {
-        let ts = today_midnight_local_secs() - 86400 * 3;
+        let ts = today_midnight_local_secs() - SECONDS_IN_DAY * 3;
         assert_eq!(format_session_date(ts), "3 days ago");
     }
     #[test]
@@ -372,7 +379,7 @@ mod tests {
     }
     #[test]
     fn format_session_date_two_days_ago() {
-        let ts = today_midnight_local_secs() - 86400 * 2;
+        let ts = today_midnight_local_secs() - SECONDS_IN_DAY * 2;
         assert_eq!(format_session_date(ts), "2 days ago");
     }
     #[test]

@@ -1,257 +1,10 @@
-use crate::components::{ActiveTab, BottomNav};
-use crate::models::{ExerciseLog, HG_PER_KG, M_PER_KM};
-use crate::services::storage;
+use crate::models::analytics::{adapt_metric_unit, Metric};
 use dioxus::prelude::*;
-#[derive(Clone, Copy, PartialEq, Debug)]
-pub enum Metric {
-    Weight,
-    Reps,
-    Distance,
-    Duration,
-}
-impl Metric {
-    /// Returns the index of this metric in the `available_by_metric` array.
-    fn to_index(self) -> usize {
-        match self {
-            Metric::Weight => 0,
-            Metric::Reps => 1,
-            Metric::Distance => 2,
-            Metric::Duration => 3,
-        }
-    }
-    #[allow(clippy::cast_precision_loss)]
-    fn extract_value(self, log: &ExerciseLog) -> Option<f64> {
-        match self {
-            Metric::Weight => log.weight_hg.map(|w| f64::from(w.0) / HG_PER_KG),
-            Metric::Reps => log.reps.map(f64::from),
-            Metric::Distance => log.distance_m.map(|d| f64::from(d.0) / M_PER_KM),
-            Metric::Duration => log.duration_seconds().map(|d| d as f64 / 60.0),
-        }
-    }
-}
-/// Determine the most adapted display unit for a metric based on the actual
-/// data values, so the Y-axis stays in a readable range.
-/// Returns `(short_unit, scale_factor)` where `scale_factor` is applied to
-/// the raw values to produce display values.
-fn adapt_metric_unit(metric: Metric, values: &[f64]) -> (&'static str, f64) {
-    let avg = if values.is_empty() {
-        0.0
-    } else {
-        #[allow(clippy::cast_precision_loss)]
-        let len = values.len() as f64;
-        values.iter().sum::<f64>() / len
-    };
-    match metric {
-        Metric::Weight => ("kg", 1.0),
-        Metric::Reps => ("reps", 1.0),
-        Metric::Distance => {
-            if avg < 1.0 {
-                ("m", M_PER_KM)
-            } else {
-                ("km", 1.0)
-            }
-        }
-        Metric::Duration => {
-            if avg < 3.0 {
-                ("s", 60.0)
-            } else if avg < 180.0 {
-                ("min", 1.0)
-            } else {
-                ("h", 1.0 / 60.0)
-            }
-        }
-    }
-}
-const COLORS: [&str; 8] = [
-    "#3498db", "#e74c3c", "#2ecc71", "#9b59b6", "#e67e22", "#f1c40f", "#16a085", "#e91e63",
-];
+
 /// A single metric–exercise data series:
 /// (original slot index, display name, metric, timestamped values).
-type SeriesData = Vec<(usize, String, Metric, Vec<(f64, f64)>)>;
-#[component]
-pub fn Analytics() -> Element {
-    let mut selected_pairs: Signal<Vec<(Metric, Option<String>)>> =
-        use_signal(|| vec![(Metric::Weight, None); 8]);
-    let sessions_resource = use_resource(move || async move {
-        let mut all: Vec<crate::models::WorkoutSession> = Vec::new();
-        let mut offset = 0usize;
-        let page_size = 500usize;
-        loop {
-            match storage::load_completed_sessions_page(page_size, offset).await {
-                Ok(page) => {
-                    let fetched = page.len();
-                    all.extend(page);
-                    if fetched < page_size {
-                        break;
-                    }
-                    offset += fetched;
-                }
-                Err(e) => {
-                    log::error!("Failed to load sessions page for analytics: {e}");
-                    break;
-                }
-            }
-        }
-        all
-    });
-    let sessions: Vec<crate::models::WorkoutSession> =
-        sessions_resource.read().as_deref().unwrap_or(&[]).to_vec();
-    let available_by_metric = use_memo(move || {
-        let res = sessions_resource.read();
-        let sessions = res.as_deref().unwrap_or(&[]);
-        let mut maps: [std::collections::HashMap<String, String>; 4] =
-            std::array::from_fn(|_| std::collections::HashMap::new());
-        for session in sessions {
-            for log in &session.exercise_logs {
-                if log.weight_hg.is_some() {
-                    maps[0].insert(log.exercise_id.clone(), log.exercise_name.clone());
-                }
-                if log.reps.is_some() {
-                    maps[1].insert(log.exercise_id.clone(), log.exercise_name.clone());
-                }
-                if log.distance_m.is_some() {
-                    maps[2].insert(log.exercise_id.clone(), log.exercise_name.clone());
-                }
-                maps[3].insert(log.exercise_id.clone(), log.exercise_name.clone());
-            }
-        }
-        maps.map(|m| {
-            let mut v: Vec<_> = m.into_iter().collect();
-            v.sort_by(|a, b| a.1.cmp(&b.1));
-            v
-        })
-    });
-    let chart_data: SeriesData = {
-        selected_pairs
-            .read()
-            .iter()
-            .enumerate()
-            .filter_map(|(i, (metric, opt_id))| opt_id.as_ref().map(|id| (i, *metric, id.clone())))
-            .map(|(i, metric, exercise_id)| {
-                let mut points = Vec::new();
-                for session in &sessions {
-                    for log in &session.exercise_logs {
-                        if log.exercise_id == exercise_id {
-                            if let Some(value) = metric.extract_value(log) {
-                                #[allow(clippy::cast_precision_loss)]
-                                points.push((log.start_time as f64, value));
-                            }
-                        }
-                    }
-                }
-                points.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap_or(std::cmp::Ordering::Equal));
-                let metric_idx = metric.to_index();
-                let exercise_name = available_by_metric
-                    .read()
-                    .get(metric_idx)
-                    .and_then(|list| list.iter().find(|(id, _)| id == &exercise_id))
-                    .map_or_else(|| exercise_id.clone(), |(_, name)| name.clone());
-                (i, exercise_name, metric, points)
-            })
-            .collect()
-    };
-    rsx! {
-        header {
-            h1 { "📊 Analytics" }
-            p { "Track your progress over time" }
-            label { "Metric–Exercise Pairs (⩽ 8)" }
-            for i in 0..8 {
-                {
-                    let pairs = selected_pairs.read().clone();
-                    let is_visible = i == 0
-                        || pairs.get(i - 1).is_some_and(|(_, opt_id)| opt_id.is_some());
-                    if is_visible {
-                        let (current_metric, current_exercise) = pairs[i].clone();
-                        let is_locked = current_exercise.is_some();
-                        let exercises_for_slot: Vec<_> = available_by_metric
-                            .read()[current_metric.to_index()]
-                            .iter()
-                            .filter(|(id, _)| {
-                                !pairs
-                                    .iter()
-                                    .enumerate()
-                                    .any(|(j, (m, opt_id))| {
-                                        j != i && *m == current_metric
-                                            && opt_id.as_deref() == Some(id.as_str())
-                                    })
-                            })
-                            .cloned()
-                            .collect();
-                        Some(rsx! {
-                            div { key: "{i}", class: "exercise-selector",
-                                div { style: "background: {COLORS[i]};" }
-                                select {
-                                    value: "{current_metric:?}",
-                                    disabled: is_locked,
-                                    onchange: move |evt| {
-                                        let mut pairs = selected_pairs.write();
-                                        pairs[i].0 = match evt.value().as_str() {
-                                            "Reps" => Metric::Reps,
-                                            "Distance" => Metric::Distance,
-                                            "Duration" => Metric::Duration,
-                                            _ => Metric::Weight,
-                                        };
-                                        pairs[i].1 = None;
-                                    },
-                                    option { value: "Weight", "Weight (kg)" }
-                                    option { value: "Reps", "Repetitions" }
-                                    option { value: "Distance", "Distance" }
-                                    option { value: "Duration", "Duration" }
-                                }
-                                select {
-                                    value: "{current_exercise.as_deref().unwrap_or(\"\")}",
-                                    disabled: is_locked,
-                                    onchange: move |evt| {
-                                        let mut pairs = selected_pairs.write();
-                                        let value = evt.value();
-                                        pairs[i].1 = if value.is_empty() { None } else { Some(value) };
-                                    },
-                                    option { value: "", "-- Select Exercise --" }
-                                    for (id , name) in exercises_for_slot.iter() {
-                                        option { value: "{id}", "{name}" }
-                                    }
-                                }
-                                if is_locked {
-                                    button {
-                                        class: "back",
-                                        r#type: "button",
-                                        title: "Remove this series",
-                                        onclick: move |_| {
-                                            let mut pairs = selected_pairs.write();
-                                            pairs[i] = (Metric::Weight, None);
-                                            // Compact: shift remaining entries left to fill the gap.
-                                            for j in i..7 {
-                                                if pairs[j].1.is_none() && pairs[j + 1].1.is_some() {
-                                                    pairs[j] = pairs[j + 1].clone();
-                                                    pairs[j + 1] = (Metric::Weight, None);
-                                                } else {
-                                                    break;
-                                                }
-                                            }
-                                        },
-                                        "✕"
-                                    }
-                                }
-                            }
-                        })
-                    } else {
-                        None
-                    }
-                }
-            }
-        }
-        main { class: "analytics",
-            if chart_data.is_empty()
-                || chart_data.iter().all(|(_, _, _, points)| points.is_empty())
-            {
-                p { "Select exercises to view analytics" }
-            } else {
-                ChartView { data: chart_data, colors: COLORS.to_vec() }
-            }
-        }
-        BottomNav { active_tab: ActiveTab::Analytics }
-    }
-}
+pub type SeriesData = Vec<(usize, String, Metric, Vec<(f64, f64)>)>;
+
 /// Converts a client X coordinate to an SVG X coordinate using the chart's viewBox.
 const SVG_COORD_X: &str = r#"
     const svg = document.querySelector("main.analytics svg");
@@ -260,10 +13,16 @@ const SVG_COORD_X: &str = r#"
     const clientX = await dioxus.recv();
     dioxus.send((clientX - r.left) / r.width * vb.width);
 "#;
+
+/// Canonical metric order: [Weight(0), Reps(1), Distance(2), Duration(3)]
+const ALL_METRICS: [Metric; 4] = [
+    Metric::Weight,
+    Metric::Reps,
+    Metric::Distance,
+    Metric::Duration,
+];
+
 /// Update the cursor timestamp from a client-space X coordinate.
-///
-/// Spawns an async JS eval to convert the client coordinate into SVG space,
-/// then derives the corresponding timestamp via linear interpolation.
 fn update_cursor(
     client_x: f64,
     mut cursor_ts: Signal<Option<f64>>,
@@ -288,44 +47,31 @@ fn update_cursor(
         }
     });
 }
-// Canonical metric order: [Weight(0), Reps(1), Distance(2), Duration(3)]
-// Layout mapping:
-//   0 Weight  → chart 1, left  Y-axis
-//   1 Reps    → chart 1, right Y-axis
-//   2 Distance→ chart 2, left  Y-axis
-//   3 Duration→ chart 2, right Y-axis
-const ALL_METRICS: [Metric; 4] = [
-    Metric::Weight,
-    Metric::Reps,
-    Metric::Distance,
-    Metric::Duration,
-];
+
 #[component]
-fn ChartView(data: SeriesData, colors: Vec<&'static str>) -> Element {
+pub fn ChartView(data: SeriesData, colors: Vec<&'static str>) -> Element {
     let cursor_ts: Signal<Option<f64>> = use_signal(|| None);
     let mut is_pointer_down: Signal<bool> = use_signal(|| false);
+
     // ── Layout constants ─────────────────────────────────────────────────────
     let width = 600.0_f64;
-    // Height of each individual chart plot area (same as the original single chart).
-    let chart_height = 342.0_f64; // = original 400 − top_pad(30) − bottom_pad(28)
+    let chart_height = 342.0_f64;
     let axis_slot = 55.0_f64;
     let top_pad = 30.0_f64;
-    // Vertical gap between chart 1 bottom (= shared X-axis) and chart 2 top.
-    // Accommodates the X-axis tick labels (≈18 px) plus visual breathing room.
     let x_gap = 46.0_f64;
     let chart2_bottom_margin = 5.0_f64;
+
     // ── Metric availability ───────────────────────────────────────────────────
     let metric_has_data: [bool; 4] = ALL_METRICS.map(|m| {
         data.iter()
             .any(|(_, _, dm, pts)| *dm == m && !pts.is_empty())
     });
-    // Chart 2 is shown whenever Distance or Duration have data.
     let has_chart2 = metric_has_data[2] || metric_has_data[3];
-    // Right axis exists when Reps (chart 1) or Duration (chart 2) have data.
     let has_right_axis = metric_has_data[1] || metric_has_data[3];
     let right_pad = if has_right_axis { axis_slot } else { 10.0_f64 };
     let left_pad = axis_slot;
     let chart_width = (width - left_pad - right_pad).max(50.0);
+
     // ── Vertical geometry ─────────────────────────────────────────────────────
     let chart1_top = top_pad;
     let chart1_bottom = top_pad + chart_height;
@@ -334,8 +80,9 @@ fn ChartView(data: SeriesData, colors: Vec<&'static str>) -> Element {
     let total_height = if has_chart2 {
         chart2_bottom + chart2_bottom_margin
     } else {
-        chart1_bottom + 28.0 // original bottom_pad keeps single-chart SVG height = 400
+        chart1_bottom + 28.0
     };
+
     // ── X-axis range (shared across both charts) ──────────────────────────────
     let mut min_x = f64::INFINITY;
     let mut max_x = f64::NEG_INFINITY;
@@ -352,8 +99,8 @@ fn ChartView(data: SeriesData, colors: Vec<&'static str>) -> Element {
             left_pad + (x - min_x) / (max_x - min_x) * chart_width
         }
     };
+
     // ── Per-metric Y-axis data ────────────────────────────────────────────────
-    // `axis_data[i]` = Some((unit, y_scale, display_min, display_max)) when metric i has data.
     #[allow(clippy::cast_precision_loss)]
     let axis_data: [Option<(&'static str, f64, f64, f64)>; 4] = std::array::from_fn(|i| {
         if !metric_has_data[i] {
@@ -378,7 +125,7 @@ fn ChartView(data: SeriesData, colors: Vec<&'static str>) -> Element {
         let max_y = s_max + rng * 0.1;
         Some((unit, scale, min_y, max_y))
     });
-    // Convert a display-space Y value for metric index `mi` to SVG Y coordinate.
+
     let y_svg = |y_display: f64, mi: usize| -> f64 {
         let Some((_, _, min_y, max_y)) = axis_data[mi] else {
             return 0.0;
@@ -395,10 +142,12 @@ fn ChartView(data: SeriesData, colors: Vec<&'static str>) -> Element {
             ct + h - (y_display - min_y) / (max_y - min_y) * h
         }
     };
+
     let format_date = |ts: f64| -> String {
         #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
         crate::utils::format_session_date(ts as u64)
     };
+
     // ── Cursor tooltip values ─────────────────────────────────────────────────
     let cursor_values: Vec<(usize, String, f64, &'static str)> = if let Some(ts) = *cursor_ts.read()
     {
@@ -421,8 +170,7 @@ fn ChartView(data: SeriesData, colors: Vec<&'static str>) -> Element {
     } else {
         Vec::new()
     };
-    // ── Interaction geometry ──────────────────────────────────────────────────
-    // The transparent rect covers chart 1, the gap (X labels), and chart 2 (if shown).
+
     let interact_height = if has_chart2 {
         chart2_bottom - chart1_top
     } else {
@@ -432,6 +180,7 @@ fn ChartView(data: SeriesData, colors: Vec<&'static str>) -> Element {
     let num_labels = 4
         .min(data.iter().map(|(_, _, _, p)| p.len()).max().unwrap_or(0))
         .max(2);
+
     rsx! {
         svg {
             width: "100%",
@@ -444,7 +193,6 @@ fn ChartView(data: SeriesData, colors: Vec<&'static str>) -> Element {
             onmouseleave: move |_| {
                 is_pointer_down.set(false);
             },
-            // ── X-axis line (shared bottom of chart 1 / top reference of chart 2) ──
             line {
                 x1: "{left_pad}",
                 y1: "{chart1_bottom}",
@@ -463,7 +211,6 @@ fn ChartView(data: SeriesData, colors: Vec<&'static str>) -> Element {
                     stroke_width: "1",
                 }
             }
-            // ── Y-axes ────────────────────────────────────────────────────────
             for i in 0..4_usize {
                 if let Some((unit, _, min_y, max_y)) = axis_data[i] {
                     {
@@ -532,7 +279,6 @@ fn ChartView(data: SeriesData, colors: Vec<&'static str>) -> Element {
                     }
                 }
             }
-            // ── X-axis labels (drawn once, shared between charts) ─────────────
             for i in 0..num_labels {
                 {
                     #[allow(clippy::cast_precision_loss)]
@@ -556,14 +302,12 @@ fn ChartView(data: SeriesData, colors: Vec<&'static str>) -> Element {
                     }
                 }
             }
-            // ── Data series ───────────────────────────────────────────────────
             for (slot_idx , _ , metric , points) in data.iter() {
                 {
                     let mi = metric.to_index();
                     if let Some((_, scale, _, _)) = axis_data[mi] {
                         let color = *colors.get(*slot_idx).unwrap_or(&"#ccc");
                         if points.len() >= 2 {
-                            // Compute a linear regression (least-squares) trend line.
                             #[allow(clippy::cast_precision_loss)]
                             let n = points.len() as f64;
                             let sum_x: f64 = points.iter().map(|(x, _)| x).sum();
@@ -571,9 +315,6 @@ fn ChartView(data: SeriesData, colors: Vec<&'static str>) -> Element {
                             let sum_xx: f64 = points.iter().map(|(x, _)| x * x).sum();
                             let sum_xy: f64 = points.iter().map(|(x, y)| x * y * scale).sum();
                             let denom = n * sum_xx - sum_x * sum_x;
-                            // Vertical or single-x: flat line at mean y
-                            // Dashed trend line
-                            // Data points
                             let (trend_x1, trend_y1, trend_x2, trend_y2) = if denom.abs()
                                 > f64::EPSILON
                             {
@@ -632,7 +373,6 @@ fn ChartView(data: SeriesData, colors: Vec<&'static str>) -> Element {
                     }
                 }
             }
-            // ── Cursor lines (one per visible chart, sharing the same timestamp) ──
             if let Some(ts) = *cursor_ts.read() {
                 {
                     let cx = scale_x(ts);
@@ -664,9 +404,6 @@ fn ChartView(data: SeriesData, colors: Vec<&'static str>) -> Element {
                     }
                 }
             }
-            // ── Interaction overlay ───────────────────────────────────────────
-            // Transparent rect covering the full chart area; receives all pointer
-            // and touch events so cursor can be slid freely.
             rect {
                 x: "{left_pad}",
                 y: "{chart1_top}",

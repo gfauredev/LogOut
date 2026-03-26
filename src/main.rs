@@ -124,6 +124,9 @@ fn main() {
     services::wake_lock::enable_wake_lock();
     launch(App);
 }
+/// Default rest time in seconds offered to the user in the rest input form.
+const DEFAULT_REST_SECONDS: u64 = 30;
+
 #[component]
 fn App() -> Element {
     use_init_i18n(|| {
@@ -141,7 +144,7 @@ fn App() -> Element {
     use_context_provider(|| ExerciseSearchSignal(Signal::new(None)));
     use_context_provider(|| PendingDeepLinkSignal(Signal::new(None)));
     use_context_provider(|| ShowRestInputSignal(Signal::new(false)));
-    use_context_provider(|| RestDurationSignal(Signal::new(30u64)));
+    use_context_provider(|| RestDurationSignal(Signal::new(DEFAULT_REST_SECONDS)));
     // Services that consume contexts (must run after context providers above).
     services::storage::provide_app_state();
     #[cfg(target_arch = "wasm32")]

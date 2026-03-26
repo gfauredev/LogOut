@@ -1,6 +1,4 @@
 use super::session_exercise_form::ExerciseFormPanel;
-use super::session_timers::{RestTimerDisplay, SessionDurationDisplay};
-use crate::components::CompletedExerciseLog;
 use crate::models::{
     get_current_timestamp, parse_distance_km, parse_weight_kg, Category, ExerciseLog, Force,
     WorkoutSession, HG_PER_KG, M_PER_KM,
@@ -13,6 +11,17 @@ use crate::{RestDurationSignal, Route};
 use dioxus::prelude::*;
 use futures_channel::mpsc::UnboundedReceiver;
 use std::sync::Arc;
+
+mod completed_exercises;
+mod header;
+mod pending_exercises;
+mod rest_input;
+
+pub use completed_exercises::CompletedExercisesSection;
+pub use header::SessionHeader;
+pub use pending_exercises::PendingExercisesSection;
+pub use rest_input::RestDurationInput;
+
 /// Maximum number of simultaneously active hard filters in the session search.
 const MAX_FILTERS: usize = 4;
 /// Debounce delay in milliseconds before re-running the expensive exercise filter.
@@ -23,12 +32,9 @@ const MAX_FILTER_ONLY_RESULTS: usize = 20;
 const MAX_TEXT_SEARCH_RESULTS: usize = 10;
 /// Default rest time in seconds offered to the user in the rest input form.
 const DEFAULT_REST_SECONDS: u64 = 30;
+
 /// Prefill the weight / reps / distance inputs from the last recorded log for
 /// `exercise_id`, or clear them if no prior log exists.
-///
-/// Checks both the active session (in-memory signal) and completed sessions
-/// (via the `BestsCache` `last_*` fields) and uses the most-recently completed
-/// log regardless of which session it belongs to.
 fn prefill_inputs_from_last_log(
     exercise_id: &str,
     mut weight_input: Signal<String>,
@@ -92,243 +98,7 @@ fn prefill_inputs_from_last_log(
         }
     }
 }
-/// Sticky session header showing the elapsed timer, rest timer, and session controls.
-#[component]
-fn SessionHeader(
-    session_start_time: u64,
-    session_is_active: bool,
-    paused_at: Option<u64>,
-    /// Total cumulative seconds spent paused (not counting the current pause).
-    total_paused_duration: u64,
-    exercise_count: usize,
-    /// Timestamp when the current rest period began, or `None` when not resting.
-    rest_start_time: Option<u64>,
-    /// Configured rest duration (seconds).
-    rest_duration: u64,
-    on_click_timer: EventHandler<()>,
-    on_pause: EventHandler<()>,
-    on_finish: EventHandler<()>,
-) -> Element {
-    let is_paused = paused_at.is_some();
-    rsx! {
-        header { class: "session",
-            h2 { tabindex: 0, "⏱️ Active Session" }
-            div {
-                class: "session-timers",
-                onclick: move |_| on_click_timer.call(()),
-                title: "Click to set rest duration",
-                time {
-                    SessionDurationDisplay {
-                        session_start_time,
-                        session_is_active,
-                        paused_at,
-                        total_paused_duration,
-                    }
-                }
-                RestTimerDisplay {
-                    start_time: rest_start_time,
-                    rest_duration,
-                    paused_at,
-                }
-            }
-            button {
-                class: "edit",
-                onclick: move |_| on_pause.call(()),
-                title: if is_paused { "Resume Session" } else { "Pause Session" },
-                if is_paused {
-                    "▶️"
-                } else {
-                    "⏸️"
-                }
-            }
-            if exercise_count == 0 {
-                button {
-                    class: "back",
-                    onclick: move |_| on_finish.call(()),
-                    title: "Cancel Session",
-                    "❌"
-                }
-            } else {
-                button {
-                    class: "save",
-                    onclick: move |_| on_finish.call(()),
-                    title: "Finish Session",
-                    "💾"
-                }
-            }
-        }
-    }
-}
-/// Collapsible form for configuring the rest duration between sets.
-#[component]
-fn RestDurationInput(
-    mut show_rest_input: Signal<bool>,
-    mut rest_input_value: Signal<String>,
-    mut rest_duration: Signal<u64>,
-) -> Element {
-    rsx! {
-        form {
-            class: "inputs",
-            aria_label: "Set rest duration",
-            onsubmit: move |evt| {
-                evt.prevent_default();
-                if let Ok(val) = rest_input_value.read().parse::<u64>() {
-                    rest_duration.set(val);
-                }
-                show_rest_input.set(false);
-            },
-            label { r#for: "rest-duration-field", "Rest duration" }
-            input {
-                id: "rest-duration-field",
-                r#type: "number",
-                inputmode: "numeric",
-                value: "{rest_input_value}",
-                oninput: move |evt| rest_input_value.set(evt.value()),
-            }
-            button { class: "yes", r#type: "submit", "💾" }
-        }
-    }
-}
-/// List of exercises pre-added to the session that haven't been started yet.
-/// The first (oldest) exercise is always visible and directly clickable.
-/// Any additional exercises are hidden inside a folded `<details>` dropdown.
-/// Fires `on_start` with the exercise ID when the user taps 🔁.
-#[component]
-fn PendingExercisesSection(pending_ids: Vec<String>, on_start: EventHandler<String>) -> Element {
-    let all_exercises = exercise_db::use_exercises();
-    let custom_exercises = storage::use_custom_exercises();
-    let resolved: Vec<(String, String, Category)> = {
-        let all = all_exercises.read();
-        let custom = custom_exercises.read();
-        pending_ids
-            .iter()
-            .map(|id| {
-                if let Some(ex) = exercise_db::resolve_exercise(&all, &custom, id) {
-                    (id.clone(), ex.name.clone(), ex.category)
-                } else {
-                    (id.clone(), "Unknown".to_string(), Category::Strength)
-                }
-            })
-            .collect()
-    };
-    rsx! {
-        section { class: "exercises",
-            if let Some((first_id, first_name, first_cat)) = resolved.first() {
-                {
-                    let id = first_id.clone();
-                    let name = first_name.clone();
-                    let cat = *first_cat;
-                    rsx! {
-                        article {
-                            header {
-                                h4 { "{name}" }
-                                ul {
-                                    li { "{cat}" }
-                                }
-                                button { class: "edit", onclick: move |_| on_start.call(id.clone()), "🔁" }
-                            }
-                        }
-                    }
-                }
-            }
-            if resolved.len() > 1 {
-                details {
-                    summary { "More pre-added ({resolved.len() - 1})" }
-                    for (id , name , category) in resolved.iter().skip(1).cloned() {
-                        {
-                            let id2 = id.clone();
-                            rsx! {
-                                article { key: "{id}",
-                                    header {
-                                        h4 { "{name}" }
-                                        ul {
-                                            li { "{category}" }
-                                        }
-                                        button { class: "edit", onclick: move |_| on_start.call(id2.clone()), "🔁" }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-}
-/// Antichronological list of completed exercise logs with replay and edit actions.
-/// Fires `on_replay` with the exercise ID when the user taps 🔁.
-///
-/// When no exercise is active and the last completed exercise was also done
-/// earlier in the session, a quick-action button is shown at the top suggesting
-/// the exercise that followed that earlier set.
-#[component]
-fn CompletedExercisesSection(
-    session: Memo<WorkoutSession>,
-    no_exercise_active: bool,
-    on_replay: EventHandler<String>,
-) -> Element {
-    let all_exercises = exercise_db::use_exercises();
-    let custom_exercises = storage::use_custom_exercises();
-    let suggested_next = use_memo(move || {
-        let logs = &session.read().exercise_logs;
-        let last = logs.last()?;
-        let last_id = &last.exercise_id;
-        let last_idx = logs.len() - 1;
-        let prior_idx = logs[..last_idx]
-            .iter()
-            .rposition(|l| l.exercise_id == *last_id)?;
-        let next_log = logs.get(prior_idx + 1)?;
-        if next_log.exercise_id == *last_id {
-            return None;
-        }
-        Some((next_log.exercise_id.clone(), next_log.exercise_name.clone()))
-    });
-    let suggestion_label = use_memo(move || {
-        suggested_next().map(|(id, fallback_name)| {
-            let all = all_exercises.read();
-            let custom = custom_exercises.read();
-            let name = exercise_db::resolve_exercise(&all, &custom, &id)
-                .map_or(fallback_name, |ex| ex.name.clone());
-            (id, name)
-        })
-    });
-    rsx! {
-        section { // class: "exercises",
 
-
-            h3 { "Completed Exercises" }
-            if no_exercise_active {
-                if let Some((next_id, next_name)) = suggestion_label() {
-                    button {
-                        class: "label",
-                        onclick: {
-                            let id = next_id.clone();
-                            move |_| on_replay.call(id.clone())
-                        },
-                        "⏩ {next_name}"
-                    }
-                }
-            }
-            {
-                rsx! {
-                    for (idx , log) in session.read().exercise_logs.iter().enumerate().rev() {
-                        CompletedExerciseLog {
-                            key: "{idx}",
-                            idx,
-                            log: log.clone(),
-                            session,
-                            show_replay: no_exercise_active,
-                            on_replay: {
-                                let id = log.exercise_id.clone();
-                                move |()| on_replay.call(id.clone())
-                            },
-                        }
-                    }
-                }
-            }
-        }
-    }
-}
 #[component]
 pub fn SessionView() -> Element {
     let sessions = storage::use_sessions();
@@ -352,9 +122,7 @@ pub fn SessionView() -> Element {
     let custom_exercises = storage::use_custom_exercises();
     let all_exercises = exercise_db::use_exercises();
     let pending_ids = use_memo(move || session.read().pending_exercise_ids.clone());
-    // Debounce coroutine: drains any already-queued keystrokes, sleeps for the
-    // debounce window, drains again to pick up late arrivals, then commits.
-    // Uses the cross-platform `sleep_ms` helper so no `#[cfg]` is needed here.
+
     let debounce_handle = use_coroutine(move |mut rx: UnboundedReceiver<String>| async move {
         use futures_util::StreamExt as _;
         while let Some(q) = rx.next().await {
@@ -369,9 +137,11 @@ pub fn SessionView() -> Element {
             debounced_query.set(latest);
         }
     });
+
     use_effect(move || {
         debounce_handle.send(search_query.read().clone());
     });
+
     let filter_suggestions = use_memo(move || {
         let query = search_query.read();
         if query.is_empty() {
@@ -383,7 +153,7 @@ pub fn SessionView() -> Element {
             .filter(|s| !current.contains(s))
             .collect::<Vec<_>>()
     });
-    // Step 1: filter both exercise pools by active chips (re-runs only when chips change).
+
     let filter_pool = use_memo(move || {
         let custom = custom_exercises.read();
         let all = all_exercises.read();
@@ -403,7 +173,7 @@ pub fn SessionView() -> Element {
             .collect();
         (filtered_custom, filtered_all)
     });
-    // Step 2: text-search within the pre-filtered pool (re-runs on debounced keystrokes).
+
     let search_results = use_memo(move || {
         let query = debounced_query.read();
         let has_query = !query.is_empty();
@@ -428,7 +198,6 @@ pub fn SessionView() -> Element {
                 }
             }
         } else {
-            // Filters only, no text query – show all matching exercises (capped for performance).
             for ex in &custom_pool {
                 if seen_ids.insert(ex.id.clone()) {
                     results.push(Arc::clone(ex));
@@ -442,6 +211,7 @@ pub fn SessionView() -> Element {
         }
         results
     });
+
     let mut start_exercise = move |exercise_id: String| {
         prefill_inputs_from_last_log(&exercise_id, weight_input, reps_input, distance_input);
         let exercise_start = get_current_timestamp();
@@ -451,6 +221,7 @@ pub fn SessionView() -> Element {
         duration_bell_rung.set(false);
         storage::begin_exercise_in_session(exercise_id, exercise_start);
     };
+
     let complete_exercise = move |()| {
         let Some(exercise_id) = current_exercise_id() else {
             return;
@@ -494,12 +265,14 @@ pub fn SessionView() -> Element {
         distance_input.set(String::new());
         duration_bell_rung.set(false);
     };
+
     let cancel_exercise = move |()| {
         weight_input.set(String::new());
         reps_input.set(String::new());
         distance_input.set(String::new());
         storage::cancel_exercise_in_session();
     };
+
     rsx! {
         Stylesheet { href: asset!("/assets/session.scss") }
         main { class: "session",
@@ -610,12 +383,7 @@ pub fn SessionView() -> Element {
         }
     }
 }
-/// Sticky session header rendered in the app-level layout so it remains
-/// visible on every page while a workout session is active.
-///
-/// Clicking the timer block toggles the rest-duration input form via the
-/// global [`crate::ShowRestInputSignal`].
-/// The finish/cancel button ends or discards the session from any page.
+
 #[component]
 pub fn GlobalSessionHeader() -> Element {
     let sessions = storage::use_sessions();
