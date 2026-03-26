@@ -1,40 +1,48 @@
 use serde::{Deserialize, Serialize};
 use std::fmt;
-/// Weight stored as hectograms (100 g units). 1 kg = 10 hg.
+/// Weight stored as hectograms: 1 kg = 10 hg
+pub const HG_PER_KG: f64 = 10.0;
+/// Distance stored as meters: 1 km = 1000 m
+pub const M_PER_KM: f64 = 1000.0;
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Weight(pub u16);
+
 impl fmt::Display for Weight {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        if self.0.is_multiple_of(10) {
-            write!(f, "{} kg", self.0 / 10)
+        if f64::from(self.0) % HG_PER_KG < f64::EPSILON {
+            write!(f, "{} kg", f64::from(self.0) / HG_PER_KG)
         } else {
-            write!(f, "{:.1} kg", f64::from(self.0) / 10.0)
+            write!(f, "{:.1} kg", f64::from(self.0) / HG_PER_KG)
         }
     }
 }
+
 /// Distance stored as meters. 1 km = 1000 m.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Distance(pub u32);
+
 impl fmt::Display for Distance {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        if self.0 >= 1000 {
-            if self.0.is_multiple_of(1000) {
-                write!(f, "{} km", self.0 / 1000)
+        if f64::from(self.0) >= M_PER_KM {
+            if f64::from(self.0) % M_PER_KM < f64::EPSILON {
+                write!(f, "{} km", f64::from(self.0) / M_PER_KM)
             } else {
-                write!(f, "{:.2} km", f64::from(self.0) / 1000.0)
+                write!(f, "{:.2} km", f64::from(self.0) / M_PER_KM)
             }
         } else {
             write!(f, "{} m", self.0)
         }
     }
 }
+
 /// Parse a user-entered kg string into a Weight (hectograms).
 pub fn parse_weight_kg(input: &str) -> Option<Weight> {
     let val: f64 = input.parse().ok()?;
     if !val.is_finite() || val <= 0.0 {
         return None;
     }
-    let hg = (val * 10.0).round();
+    let hg = (val * HG_PER_KG).round();
     if hg < 1.0 || hg > f64::from(u16::MAX) {
         return None;
     }
@@ -77,7 +85,7 @@ pub fn parse_distance_km(input: &str) -> Option<Distance> {
     if !val.is_finite() || val <= 0.0 {
         return None;
     }
-    let m = (val * 1000.0).round();
+    let m = (val * M_PER_KM).round();
     if m < 1.0 || m > f64::from(u32::MAX) {
         return None;
     }

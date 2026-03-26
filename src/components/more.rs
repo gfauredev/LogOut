@@ -408,7 +408,10 @@ async fn read_file_input(id: &str) -> Option<String> {
     let files = input.files()?;
     let file = files.get(0)?;
     let promise = js_sys::Promise::new(&mut |resolve, reject| {
-        let reader = web_sys::FileReader::new().expect("FileReader");
+        let Ok(reader) = web_sys::FileReader::new() else {
+            let _ = reject.call0(&wasm_bindgen::JsValue::NULL);
+            return;
+        };
         let reader_clone = reader.clone();
         let onload = wasm_bindgen::closure::Closure::once(move |_: web_sys::ProgressEvent| {
             let result = reader_clone.result().unwrap_or(wasm_bindgen::JsValue::NULL);

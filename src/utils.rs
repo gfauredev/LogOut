@@ -241,7 +241,7 @@ pub fn parse_session_exercises(s: &str) -> Vec<SessionExerciseEntry> {
                     None
                 } else {
                     w.parse::<f64>().ok().and_then(|kg| {
-                        let hg = (kg * 10.0).round();
+                        let hg = (kg * crate::models::HG_PER_KG).round();
                         if (0.0..=f64::from(u32::MAX)).contains(&hg) {
                             #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
                             Some(hg as u32)

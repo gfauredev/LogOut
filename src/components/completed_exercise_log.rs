@@ -1,7 +1,7 @@
 use super::session_exercise_form::ExerciseInputForm;
 use crate::models::{
     format_time, parse_distance_km, parse_duration_seconds, parse_weight_kg, Category, ExerciseLog,
-    Force, WorkoutSession,
+    Force, WorkoutSession, HG_PER_KG, M_PER_KM,
 };
 use crate::services::storage;
 use dioxus::prelude::*;
@@ -28,13 +28,13 @@ pub fn CompletedExerciseLog(
         move |_| {
             edit_weight_input.set(
                 log.weight_hg
-                    .map(|w| format!("{:.1}", f64::from(w.0) / 10.0))
+                    .map(|w| format!("{:.1}", f64::from(w.0) / HG_PER_KG))
                     .unwrap_or_default(),
             );
             edit_reps_input.set(log.reps.map(|r| r.to_string()).unwrap_or_default());
             edit_distance_input.set(
                 log.distance_m
-                    .map(|d| format!("{:.2}", f64::from(d.0) / 1000.0))
+                    .map(|d| format!("{:.2}", f64::from(d.0) / M_PER_KM))
                     .unwrap_or_default(),
             );
             edit_time_input.set(log.duration_seconds().map(format_time).unwrap_or_default());

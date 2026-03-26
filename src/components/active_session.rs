@@ -3,7 +3,7 @@ use super::session_timers::{RestTimerDisplay, SessionDurationDisplay};
 use crate::components::CompletedExerciseLog;
 use crate::models::{
     get_current_timestamp, parse_distance_km, parse_weight_kg, Category, ExerciseLog, Force,
-    WorkoutSession,
+    WorkoutSession, HG_PER_KG, M_PER_KM,
 };
 use crate::services::exercise_db::{
     detect_filter_suggestions, exercise_matches_filters, SearchFilter,
@@ -21,6 +21,8 @@ const SEARCH_DEBOUNCE_MS: u32 = 200;
 const MAX_FILTER_ONLY_RESULTS: usize = 20;
 /// Maximum exercises shown from the full database when a text search query is active.
 const MAX_TEXT_SEARCH_RESULTS: usize = 10;
+/// Default rest time in seconds offered to the user in the rest input form.
+const DEFAULT_REST_SECONDS: u64 = 30;
 /// Prefill the weight / reps / distance inputs from the last recorded log for
 /// `exercise_id`, or clear them if no prior log exists.
 ///
@@ -51,7 +53,7 @@ fn prefill_inputs_from_last_log(
     if use_active {
         if let Some(last_log) = active_log {
             if let Some(w) = last_log.weight_hg {
-                weight_input.set(format!("{:.1}", f64::from(w.0) / 10.0));
+                weight_input.set(format!("{:.1}", f64::from(w.0) / HG_PER_KG));
             } else {
                 weight_input.set(String::new());
             }
@@ -61,7 +63,7 @@ fn prefill_inputs_from_last_log(
                 reps_input.set(String::new());
             }
             if let Some(d) = last_log.distance_m {
-                distance_input.set(format!("{:.2}", f64::from(d.0) / 1000.0));
+                distance_input.set(format!("{:.2}", f64::from(d.0) / M_PER_KM));
             } else {
                 distance_input.set(String::new());
             }
@@ -74,7 +76,7 @@ fn prefill_inputs_from_last_log(
     } else {
         // Use values from the most-recently completed cross-session log.
         if let Some(w) = bests.last_weight_hg {
-            weight_input.set(format!("{:.1}", f64::from(w.0) / 10.0));
+            weight_input.set(format!("{:.1}", f64::from(w.0) / HG_PER_KG));
         } else {
             weight_input.set(String::new());
         }
@@ -84,7 +86,7 @@ fn prefill_inputs_from_last_log(
             reps_input.set(String::new());
         }
         if let Some(d) = bests.last_distance_m {
-            distance_input.set(format!("{:.2}", f64::from(d.0) / 1000.0));
+            distance_input.set(format!("{:.2}", f64::from(d.0) / M_PER_KM));
         } else {
             distance_input.set(String::new());
         }
@@ -620,7 +622,7 @@ pub fn GlobalSessionHeader() -> Element {
     let session = use_memo(move || sessions.read().iter().find(|s| s.is_active()).cloned());
     let mut show_rest = use_context::<crate::ShowRestInputSignal>().0;
     let rest_duration = use_context::<RestDurationSignal>().0;
-    let mut rest_input_value = use_signal(|| 30u64.to_string());
+    let mut rest_input_value = use_signal(|| DEFAULT_REST_SECONDS.to_string());
     let mut congratulations = use_context::<crate::CongratulationsSignal>().0;
     use_effect(move || {
         if *show_rest.read() {
