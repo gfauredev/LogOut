@@ -127,8 +127,8 @@ pub fn save_session(session: WorkoutSession) {
             is_update = false;
         }
     }
+    let mut cache_sig = consume_context::<Signal<BestsCache>>();
     if !session.is_active() {
-        let mut cache_sig = consume_context::<Signal<BestsCache>>();
         if is_update {
             // Only evict exercises whose old log held the personal record.
             // If a log that was the PR is edited/removed, the cache is stale
@@ -174,6 +174,43 @@ pub fn save_session(session: WorkoutSession) {
                 let entry = cache.entry(log.exercise_id.clone()).or_default();
                 merge_log_into_bests(entry, log);
             }
+        }
+    } else if is_update {
+        // Session is still active but was updated (e.g. a log was deleted).
+        // Check if any previously-cached PR came from a log that is now
+        // absent, and if so evict and recompute those entries from storage.
+        let affected_ids: Vec<String> = {
+            let cache = cache_sig.read();
+            previous
+                .as_ref()
+                .map(|prev_session| {
+                    let new_log_ids: std::collections::HashSet<_> = session
+                        .exercise_logs
+                        .iter()
+                        .map(|l| (l.exercise_id.clone(), l.start_time))
+                        .collect();
+                    prev_session
+                        .exercise_logs
+                        .iter()
+                        .filter(|old_log| {
+                            // Log was removed from the session
+                            !new_log_ids
+                                .contains(&(old_log.exercise_id.clone(), old_log.start_time))
+                        })
+                        .filter(|old_log| {
+                            let bests =
+                                cache.get(&old_log.exercise_id).cloned().unwrap_or_default();
+                            log_was_personal_record(old_log, &bests)
+                        })
+                        .map(|log| log.exercise_id.clone())
+                        .collect::<std::collections::HashSet<_>>()
+                        .into_iter()
+                        .collect()
+                })
+                .unwrap_or_default()
+        };
+        if !affected_ids.is_empty() {
+            recompute_bests_for_exercises(affected_ids, cache_sig);
         }
     }
     let toast = consume_context::<ToastSignal>().0;
@@ -238,11 +275,22 @@ pub fn begin_exercise_in_session(exercise_id: String, exercise_start: u64) {
 /// as `rest_start_time`, and clears `current_exercise_id` /
 /// `current_exercise_start`, then persists.  No-op when there is no active
 /// session.
+///
+/// **`BestsCache` maintenance**: the new log is merged into the cache
+/// immediately (incrementally) so that the ATH is updated at exercise
+/// completion rather than waiting for the full session to be saved.
 pub fn append_exercise_log(log: ExerciseLog) {
     let sig = use_sessions();
     let Some(session) = sig.read().iter().find(|s| s.is_active()).cloned() else {
         return;
     };
+    // Update the BestsCache immediately for this exercise.
+    {
+        let mut cache_sig = consume_context::<Signal<BestsCache>>();
+        let mut cache = cache_sig.write();
+        let entry = cache.entry(log.exercise_id.clone()).or_default();
+        merge_log_into_bests(entry, &log);
+    }
     let mut updated = session;
     updated.exercise_logs.push(log);
     updated.rest_start_time = Some(get_current_timestamp());

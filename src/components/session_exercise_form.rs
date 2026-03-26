@@ -1,4 +1,4 @@
-use super::session_timers::ExerciseElapsedTimer;
+use super::session_timers::InlineExerciseTimer;
 use crate::models::{
     format_time, parse_distance_km, parse_duration_seconds, parse_weight_kg, Category, ExerciseLog,
     Force,
@@ -15,9 +15,8 @@ use dioxus::prelude::*;
 /// skip 🔢) are omitted.
 ///
 /// When `time_input` is `Some`, the ⏱️ row becomes an editable time field with
-/// increment/decrement buttons (edit mode).  When `None`, the row shows the ATH
-/// duration only (perform mode – the live timer is displayed separately by the
-/// [`ExerciseFormPanel`] parent).
+/// increment/decrement buttons (edit mode).  When `None`, the row shows the live
+/// elapsed timer in the value column (perform mode).
 #[component]
 pub(super) fn ExerciseInputForm(
     /// ID of the exercise (used to look up personal records).
@@ -33,9 +32,18 @@ pub(super) fn ExerciseInputForm(
     /// current log when editing).  Used for ATH comparison in perform mode.
     last_duration: Option<u64>,
     /// When `Some`, enables editing the exercise duration via an inline input
-    /// field (edit mode).  When `None` the ⏱️ row is read-only (perform mode).
+    /// field (edit mode).  When `None` the ⏱️ row shows the live elapsed timer.
     #[props(default)]
     time_input: Option<Signal<String>>,
+    /// Timestamp when the exercise started (perform mode only).
+    #[props(default)]
+    exercise_start: Option<u64>,
+    /// Tracks whether the duration bell has fired (perform mode only).
+    #[props(default)]
+    duration_bell_rung: Option<Signal<bool>>,
+    /// Session paused timestamp (perform mode only).
+    #[props(default)]
+    paused_at: Option<u64>,
     on_complete: EventHandler<()>,
     on_cancel: EventHandler<()>,
 ) -> Element {
@@ -45,6 +53,7 @@ pub(super) fn ExerciseInputForm(
     let show_reps = force.is_some_and(Force::has_reps);
     let is_cardio = category == Category::Cardio;
     let is_editing_time = time_input.is_some();
+    let is_perform_mode = !is_editing_time && exercise_start.is_some();
     let bests = storage::get_exercise_bests(&exercise_id);
     let weight = weight_input.read();
     let weight_invalid = !weight.is_empty() && parse_weight_kg(&weight).is_none();
@@ -60,12 +69,13 @@ pub(super) fn ExerciseInputForm(
     let distance_valid = !is_cardio || parse_distance_km(&dist).is_some();
     let time_valid = !time_invalid;
     let complete_disabled = !weight_valid || !reps_valid || !distance_valid || !time_valid;
-    let show_duration_row = is_editing_time || bests.duration.is_some();
+    // Show the ⏱️ row when editing (edit mode), when performing (perform mode), or when an ATH exists.
+    let show_duration_row = is_editing_time || is_perform_mode || bests.duration.is_some();
     rsx! {
         div { class: "exercise-edit",
             h3 { "{exercise_name}" }
             span { "🏆" }
-            // ⏱️ Time row: editable input in edit mode, ATH reference in perform mode.
+            // ⏱️ Time row: editable input in edit mode; live timer in perform mode.
             if show_duration_row {
                 div { class: "input-row",
                     span { "⏱️" }
@@ -95,6 +105,17 @@ pub(super) fn ExerciseInputForm(
                                 oninput: move |evt| ti.set(evt.value()),
                                 class: if time_invalid { "invalid" } else { "" },
                             }
+                        }
+                    } else if is_perform_mode {
+                        if let Some(bell_sig) = duration_bell_rung {
+                            InlineExerciseTimer {
+                                exercise_start,
+                                last_duration,
+                                duration_bell_rung: bell_sig,
+                                paused_at,
+                            }
+                        } else {
+                            span {}
                         }
                     } else {
                         span {}
@@ -297,12 +318,6 @@ pub(super) fn ExerciseFormPanel(
     let last_duration = last_log.as_ref().and_then(ExerciseLog::duration_seconds);
     rsx! {
         article {
-            ExerciseElapsedTimer {
-                exercise_start: *current_exercise_start.read(),
-                last_duration,
-                duration_bell_rung,
-                paused_at,
-            }
             ExerciseInputForm {
                 exercise_id,
                 exercise_name,
@@ -312,6 +327,9 @@ pub(super) fn ExerciseFormPanel(
                 force,
                 category,
                 last_duration,
+                exercise_start: *current_exercise_start.read(),
+                duration_bell_rung: Some(duration_bell_rung),
+                paused_at,
                 on_complete,
                 on_cancel,
             }

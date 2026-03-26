@@ -23,26 +23,72 @@ const MAX_FILTER_ONLY_RESULTS: usize = 20;
 const MAX_TEXT_SEARCH_RESULTS: usize = 10;
 /// Prefill the weight / reps / distance inputs from the last recorded log for
 /// `exercise_id`, or clear them if no prior log exists.
+///
+/// Checks both the active session (in-memory signal) and completed sessions
+/// (via the `BestsCache` `last_*` fields) and uses the most-recently completed
+/// log regardless of which session it belongs to.
 fn prefill_inputs_from_last_log(
     exercise_id: &str,
     mut weight_input: Signal<String>,
     mut reps_input: Signal<String>,
     mut distance_input: Signal<String>,
 ) {
-    if let Some(last_log) = storage::get_last_exercise_log(exercise_id) {
-        if let Some(w) = last_log.weight_hg {
-            weight_input.set(format!("{:.1}", f64::from(w.0) / 10.0));
-        }
-        if let Some(reps) = last_log.reps {
-            reps_input.set(reps.to_string());
-        }
-        if let Some(d) = last_log.distance_m {
-            distance_input.set(format!("{:.2}", f64::from(d.0) / 1000.0));
+    // Most-recent log from the active session (same session).
+    let active_log = storage::get_last_exercise_log(exercise_id);
+    // Most-recent log info from completed sessions (via cache).
+    let bests = storage::get_exercise_bests(exercise_id);
+
+    // Pick whichever source has the more recent end_time.
+    let use_active = match (
+        active_log.as_ref().and_then(|l| l.end_time),
+        bests.last_log_end_time,
+    ) {
+        (Some(a), Some(b)) => a >= b,
+        (Some(_), None) => true,
+        (None, Some(_)) => false,
+        (None, None) => true, // both empty; fall through to clearing
+    };
+
+    if use_active {
+        if let Some(last_log) = active_log {
+            if let Some(w) = last_log.weight_hg {
+                weight_input.set(format!("{:.1}", f64::from(w.0) / 10.0));
+            } else {
+                weight_input.set(String::new());
+            }
+            if let Some(reps) = last_log.reps {
+                reps_input.set(reps.to_string());
+            } else {
+                reps_input.set(String::new());
+            }
+            if let Some(d) = last_log.distance_m {
+                distance_input.set(format!("{:.2}", f64::from(d.0) / 1000.0));
+            } else {
+                distance_input.set(String::new());
+            }
+        } else if bests.last_log_end_time.is_none() {
+            // No log anywhere – clear inputs.
+            weight_input.set(String::new());
+            reps_input.set(String::new());
+            distance_input.set(String::new());
         }
     } else {
-        weight_input.set(String::new());
-        reps_input.set(String::new());
-        distance_input.set(String::new());
+        // Use values from the most-recently completed cross-session log.
+        if let Some(w) = bests.last_weight_hg {
+            weight_input.set(format!("{:.1}", f64::from(w.0) / 10.0));
+        } else {
+            weight_input.set(String::new());
+        }
+        if let Some(reps) = bests.last_reps {
+            reps_input.set(reps.to_string());
+        } else {
+            reps_input.set(String::new());
+        }
+        if let Some(d) = bests.last_distance_m {
+            distance_input.set(format!("{:.2}", f64::from(d.0) / 1000.0));
+        } else {
+            distance_input.set(String::new());
+        }
     }
 }
 /// Sticky session header showing the elapsed timer, rest timer, and session controls.
