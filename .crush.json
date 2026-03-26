@@ -7,9 +7,6 @@
     "nix": {
       "command": "nixd"
     },
-    "kotlin": {
-      "command": "kotlin-language-server"
-    },
     "toml": {
       "command": "taplo",
       "args": [
