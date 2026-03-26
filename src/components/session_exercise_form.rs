@@ -136,11 +136,7 @@ pub(super) fn ExerciseInputForm(
                     } else {
                         span {}
                     }
-                    span {
-                        if let Some(best) = bests.duration {
-                            time { "{format_time(best)}" }
-                        }
-                    }
+                    time { "{format_time(bests.duration.unwrap_or(0))}" }
                 }
             }
             // ⚖️ Weight input and ATH

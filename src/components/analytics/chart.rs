@@ -241,9 +241,9 @@ pub fn ChartView(data: SeriesData, colors: Vec<&'static str>) -> Element {
                                     x: "{x_pos}",
                                     y: "{ct - 6.0}",
                                     text_anchor: "{unit_anchor}",
-                                    font_size: "12",
+                                    font_size: "14",
                                     font_weight: "bold",
-                                    fill: "#aaa",
+                                    fill: "#ccc",
                                     "{unit}"
                                 }
                                 for tick in 0..5_usize {
@@ -266,8 +266,8 @@ pub fn ChartView(data: SeriesData, colors: Vec<&'static str>) -> Element {
                                                     x: "{text_x}",
                                                     y: "{sy + 4.0}",
                                                     text_anchor: "{text_anchor}",
-                                                    font_size: "11",
-                                                    fill: "#888",
+                                                    font_size: "13",
+                                                    fill: "#bbb",
                                                     "{y_val:.1}"
                                                 }
                                             }
@@ -294,8 +294,8 @@ pub fn ChartView(data: SeriesData, colors: Vec<&'static str>) -> Element {
                                 x: "{sx}",
                                 y: "{xlabel_y}",
                                 text_anchor: "middle",
-                                font_size: "11",
-                                fill: "#aaa",
+                                font_size: "13",
+                                fill: "#ccc",
                                 "{format_date(x_val)}"
                             }
                         }
