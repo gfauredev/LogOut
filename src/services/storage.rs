@@ -709,8 +709,7 @@ pub(crate) use super::native_queue;
 /// Each "store" maps to a table with columns `id TEXT PRIMARY KEY, data TEXT`.
 /// A separate `config` table holds arbitrary key/value string pairs.
 ///
-/// On first launch, existing JSON files from the old file-based backend are
-/// automatically migrated into the database and then deleted.
+/// On first launch, the database is initialized with the current schema.
 #[cfg(not(target_arch = "wasm32"))]
 pub(crate) mod native_storage {
     use rusqlite::{params, Connection};
@@ -791,8 +790,7 @@ pub(crate) mod native_storage {
     ///
     /// | version | change |
     /// |---------|--------|
-    /// | 0 → 2  | fresh install: create all tables with `start_time`/`end_time` generated columns and covering indices on `sessions` |
-    /// | 1 → 2  | existing install: recreate `sessions` with generated columns and indices (rename → create → copy → drop) |
+    /// | 0 → 2   | fresh install: create all tables with `start_time`/`end_time` generated columns and covering indices on `sessions` |
     ///
     /// Separated from [`open_db`] so it can be called in tests after a manual schema
     /// reset without needing to re-create the long-lived connection.
@@ -820,31 +818,6 @@ pub(crate) mod native_storage {
                  CREATE TABLE IF NOT EXISTS custom_exercises (id TEXT PRIMARY KEY, data TEXT NOT NULL);
                  CREATE TABLE IF NOT EXISTS exercises         (id TEXT PRIMARY KEY, data TEXT NOT NULL);
                  CREATE TABLE IF NOT EXISTS config            (key TEXT PRIMARY KEY, value TEXT NOT NULL);
-                 PRAGMA user_version = 2;",
-            )?;
-        }
-        if schema_version == 1 {
-            // Existing install: add generated columns to sessions via rename→create→copy→drop.
-            conn.execute_batch(
-                "ALTER TABLE sessions RENAME TO sessions_v1;
-                 CREATE TABLE sessions (
-                     id          TEXT    PRIMARY KEY,
-                     data        TEXT    NOT NULL,
-                     start_time  INTEGER GENERATED ALWAYS AS (
-                                     CASE WHEN json_valid(data)
-                                          THEN CAST(json_extract(data, '$.start_time') AS INTEGER)
-                                          ELSE NULL END
-                                 ) STORED,
-                     end_time    INTEGER GENERATED ALWAYS AS (
-                                     CASE WHEN json_valid(data)
-                                          THEN CAST(json_extract(data, '$.end_time') AS INTEGER)
-                                          ELSE NULL END
-                                 ) STORED
-                 );
-                 INSERT INTO sessions(id, data) SELECT id, data FROM sessions_v1;
-                 DROP TABLE sessions_v1;
-                 CREATE INDEX IF NOT EXISTS idx_sessions_end_time   ON sessions(end_time)   WHERE end_time   IS NOT NULL;
-                 CREATE INDEX IF NOT EXISTS idx_sessions_start_time ON sessions(start_time) WHERE start_time IS NOT NULL;
                  PRAGMA user_version = 2;",
             )?;
         }
