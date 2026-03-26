@@ -183,3 +183,47 @@ pub(super) fn ExerciseElapsedTimer(
         }
     }
 }
+/// Renders the exercise elapsed timer inline inside the ⏱️ form row (perform mode).
+///
+/// Unlike [`ExerciseElapsedTimer`] this component renders only the time value
+/// so it can be embedded inside the exercise-edit grid without adding an extra
+/// wrapper element.
+#[component]
+pub(super) fn InlineExerciseTimer(
+    exercise_start: Option<u64>,
+    last_duration: Option<u64>,
+    mut duration_bell_rung: Signal<bool>,
+    paused_at: Option<u64>,
+) -> Element {
+    let mut now_tick = use_signal(get_current_timestamp);
+    use_coroutine(move |_: UnboundedReceiver<()>| async move {
+        loop {
+            #[cfg(target_arch = "wasm32")]
+            gloo_timers::future::TimeoutFuture::new(TIMER_TICK_MS).await;
+            #[cfg(not(target_arch = "wasm32"))]
+            tokio::time::sleep(std::time::Duration::from_millis(1_000)).await;
+            now_tick.set(get_current_timestamp());
+        }
+    });
+    let effective_now = paused_at.unwrap_or_else(|| *now_tick.read());
+    let elapsed = if let Some(start) = exercise_start {
+        effective_now.saturating_sub(start)
+    } else {
+        0
+    };
+    if !*duration_bell_rung.read() {
+        if let Some(dur) = last_duration {
+            if dur > 0 && elapsed >= dur {
+                duration_bell_rung.set(true);
+                #[cfg(target_arch = "wasm32")]
+                send_notification(true);
+            }
+        }
+    }
+    let timer_reached = last_duration.is_some_and(|d| d > 0 && elapsed >= d);
+    rsx! {
+        time { class: if timer_reached { "exercise-timer reached" } else { "exercise-timer" },
+            "{format_time(elapsed)}"
+        }
+    }
+}

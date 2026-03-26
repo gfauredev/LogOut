@@ -162,6 +162,7 @@ pub fn Analytics() -> Element {
                         || pairs.get(i - 1).is_some_and(|(_, opt_id)| opt_id.is_some());
                     if is_visible {
                         let (current_metric, current_exercise) = pairs[i].clone();
+                        let is_locked = current_exercise.is_some();
                         let exercises_for_slot: Vec<_> = available_by_metric
                             .read()[current_metric.to_index()]
                             .iter()
@@ -181,6 +182,7 @@ pub fn Analytics() -> Element {
                                 div { style: "background: {COLORS[i]};" }
                                 select {
                                     value: "{current_metric:?}",
+                                    disabled: is_locked,
                                     onchange: move |evt| {
                                         let mut pairs = selected_pairs.write();
                                         pairs[i].0 = match evt.value().as_str() {
@@ -198,6 +200,7 @@ pub fn Analytics() -> Element {
                                 }
                                 select {
                                     value: "{current_exercise.as_deref().unwrap_or(\"\")}",
+                                    disabled: is_locked,
                                     onchange: move |evt| {
                                         let mut pairs = selected_pairs.write();
                                         let value = evt.value();
@@ -206,6 +209,27 @@ pub fn Analytics() -> Element {
                                     option { value: "", "-- Select Exercise --" }
                                     for (id , name) in exercises_for_slot.iter() {
                                         option { value: "{id}", "{name}" }
+                                    }
+                                }
+                                if is_locked {
+                                    button {
+                                        class: "back",
+                                        r#type: "button",
+                                        title: "Remove this series",
+                                        onclick: move |_| {
+                                            let mut pairs = selected_pairs.write();
+                                            pairs[i] = (Metric::Weight, None);
+                                            // Compact: shift remaining entries left to fill the gap.
+                                            for j in i..7 {
+                                                if pairs[j].1.is_none() && pairs[j + 1].1.is_some() {
+                                                    pairs[j] = pairs[j + 1].clone();
+                                                    pairs[j + 1] = (Metric::Weight, None);
+                                                } else {
+                                                    break;
+                                                }
+                                            }
+                                        },
+                                        "✕"
                                     }
                                 }
                             }
@@ -539,30 +563,41 @@ fn ChartView(data: SeriesData, colors: Vec<&'static str>) -> Element {
                     if let Some((_, scale, _, _)) = axis_data[mi] {
                         let color = *colors.get(*slot_idx).unwrap_or(&"#ccc");
                         if points.len() >= 2 {
-                            let path_d = points
-                                .iter()
-                                .enumerate()
-                                .map(|(pi, (x, y))| {
-                                    let sx = scale_x(*x);
-                                    let sy = y_svg(y * scale, mi);
-                                    if pi == 0 {
-                                        format!("M {sx} {sy}")
-                                    } else {
-                                        format!("L {sx} {sy}")
-                                    }
-                                })
-                                .collect::<Vec<_>>()
-                                .join(" ");
+                            // Compute a linear regression (least-squares) trend line.
+                            #[allow(clippy::cast_precision_loss)]
+                            let n = points.len() as f64;
+                            let sum_x: f64 = points.iter().map(|(x, _)| x).sum();
+                            let sum_y: f64 = points.iter().map(|(_, y)| y * scale).sum();
+                            let sum_xx: f64 = points.iter().map(|(x, _)| x * x).sum();
+                            let sum_xy: f64 = points.iter().map(|(x, y)| x * y * scale).sum();
+                            let denom = n * sum_xx - sum_x * sum_x;
+                            let (trend_x1, trend_y1, trend_x2, trend_y2) =
+                                if denom.abs() > f64::EPSILON {
+                                    let slope = (n * sum_xy - sum_x * sum_y) / denom;
+                                    let intercept = (sum_y - slope * sum_x) / n;
+                                    let x1 = points.first().map(|(x, _)| *x).unwrap_or(min_x);
+                                    let x2 = points.last().map(|(x, _)| *x).unwrap_or(max_x);
+                                    (x1, slope * x1 + intercept, x2, slope * x2 + intercept)
+                                } else {
+                                    // Vertical or single-x: flat line at mean y
+                                    let mean_y = sum_y / n;
+                                    (min_x, mean_y, max_x, mean_y)
+                                };
                             Some(rsx! {
                                 g { key: "series_{slot_idx}",
-                                    path {
-                                        d: "{path_d}",
+                                    // Dashed trend line
+                                    line {
+                                        x1: "{scale_x(trend_x1)}",
+                                        y1: "{y_svg(trend_y1, mi)}",
+                                        x2: "{scale_x(trend_x2)}",
+                                        y2: "{y_svg(trend_y2, mi)}",
                                         stroke: "{color}",
-                                        stroke_width: "3",
-                                        fill: "none",
+                                        stroke_width: "2",
+                                        stroke_dasharray: "8 4",
                                         stroke_linecap: "round",
-                                        stroke_linejoin: "round",
+                                        opacity: "0.7",
                                     }
+                                    // Data points
                                     for (x , y) in points.iter() {
                                         circle {
                                             cx: "{scale_x(*x)}",
