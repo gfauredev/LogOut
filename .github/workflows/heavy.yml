@@ -1,25 +1,8 @@
 on:
-  schedule:
-    - cron: '0 0 * * 0' # Each Sunday Midnight
+  # schedule: [cron: '0 0 * * *'] # Each Midnight
   workflow_dispatch: # Allow manual trigger
 
 jobs:
-  # update-deps:
-  #   runs-on: ubuntu-latest
-  #   timeout-minutes: 30
-  #   steps:
-  #   - uses: actions/checkout@v6
-  #   - uses: cachix/install-nix-action@v31
-  #     with:
-  #       github_access_token: ${{ secrets.GITHUB_TOKEN }}
-  #       extra_nix_config: |
-  #         extra-substituters = https://cache.garnix.io
-  #         extra-trusted-public-keys = cache.garnix.io:CTFPyKSLcx5RMJKfLo5EEPUObbA78b0YQ2DTCJXqr9g=
-  #   - uses: DeterminateSystems/magic-nix-cache-action@v13
-  #   - run: nix flake update
-  #   - run: nix develop -c cargo update
-  #   TODO Without rebuilding devShell instead of Garnix
-
   audit-deps:
     runs-on: ubuntu-latest
     timeout-minutes: 30

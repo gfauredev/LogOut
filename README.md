@@ -237,10 +237,10 @@ validated PRs), on standard Linux runners.
 CD also runs when a [SemVer] `vMAJOR.MINOR.PATCH` **tag** is pushed, publishing
 a “Stable” GitHub Release with a production Android APK built on this `tag`.
 
-### Weekly Deep Checks
+### Heavier Checks
 
 [LogOut] ensures high quality code with additional resource intensive checks
-that run every Sunday at midnight on the `main` branch.
+that can be triggered manually to run on the `main` branch.
 
 - Run Android **end-to-end tests** in emulator `maestro test maestro/android`
 - Analyze dependencies for vulnerabilities or deprecations with `cargo deny`

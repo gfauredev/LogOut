@@ -1,5 +1,5 @@
-mkdir --parents --verbose dist/LogOut
-# Download current stable Pages deployment to preserve it during pre-release
+mkdir --mode 775 --verbose dist
+mkdir --mode 775 --verbose dist/LogOut
 if ARTIFACT_URL=$(gh api "repos/{owner}/{repo}/actions/artifacts?name=github-pages&per_page=100" --jq '[.artifacts[] | select(.expired == false)] | sort_by(.created_at) | last | .archive_download_url // empty'); then
   if [ -n "$ARTIFACT_URL" ]; then
     gh api "$ARTIFACT_URL" >release.zip
