@@ -579,8 +579,8 @@ fn ChartView(data: SeriesData, colors: Vec<&'static str>) -> Element {
                             {
                                 let slope = (n * sum_xy - sum_x * sum_y) / denom;
                                 let intercept = (sum_y - slope * sum_x) / n;
-                                let x1 = points.first().map(|(x, _)| *x).unwrap_or(min_x);
-                                let x2 = points.last().map(|(x, _)| *x).unwrap_or(max_x);
+                                let x1 = points.first().map_or(min_x, |(x, _)| *x);
+                                let x2 = points.last().map_or(max_x, |(x, _)| *x);
                                 (x1, slope * x1 + intercept, x2, slope * x2 + intercept)
                             } else {
                                 let mean_y = sum_y / n;
