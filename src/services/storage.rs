@@ -788,18 +788,22 @@ pub(crate) mod native_storage {
     }
     /// Runs incremental schema migrations to bring the database up to the current version.
     ///
-    /// | version | change |
-    /// |---------|--------|
-    /// | 0 → 2   | fresh install: create all tables with `start_time`/`end_time` generated columns and covering indices on `sessions` |
+    /// Any schema version below 2 (including a blank database) causes all tables to be
+    /// dropped and recreated fresh.  Data preservation is not attempted — the app has no
+    /// established user base yet.
     ///
     /// Separated from [`open_db`] so it can be called in tests after a manual schema
     /// reset without needing to re-create the long-lived connection.
     fn apply_migration_if_needed(conn: &Connection) -> Result<(), StorageError> {
         let schema_version: u32 = conn.query_row("PRAGMA user_version", [], |r| r.get(0))?;
-        if schema_version == 0 {
-            // Fresh install: create all tables with generated columns from the start.
+        if schema_version < 2 {
+            // Fresh install or outdated schema: drop everything and start clean.
             conn.execute_batch(
-                "CREATE TABLE IF NOT EXISTS sessions (
+                "DROP TABLE IF EXISTS sessions;
+                 DROP TABLE IF EXISTS custom_exercises;
+                 DROP TABLE IF EXISTS exercises;
+                 DROP TABLE IF EXISTS config;
+                 CREATE TABLE sessions (
                      id          TEXT    PRIMARY KEY,
                      data        TEXT    NOT NULL,
                      start_time  INTEGER GENERATED ALWAYS AS (
@@ -815,9 +819,9 @@ pub(crate) mod native_storage {
                  );
                  CREATE INDEX IF NOT EXISTS idx_sessions_end_time   ON sessions(end_time)   WHERE end_time   IS NOT NULL;
                  CREATE INDEX IF NOT EXISTS idx_sessions_start_time ON sessions(start_time) WHERE start_time IS NOT NULL;
-                 CREATE TABLE IF NOT EXISTS custom_exercises (id TEXT PRIMARY KEY, data TEXT NOT NULL);
-                 CREATE TABLE IF NOT EXISTS exercises         (id TEXT PRIMARY KEY, data TEXT NOT NULL);
-                 CREATE TABLE IF NOT EXISTS config            (key TEXT PRIMARY KEY, value TEXT NOT NULL);
+                 CREATE TABLE custom_exercises (id TEXT PRIMARY KEY, data TEXT NOT NULL);
+                 CREATE TABLE exercises         (id TEXT PRIMARY KEY, data TEXT NOT NULL);
+                 CREATE TABLE config            (key TEXT PRIMARY KEY, value TEXT NOT NULL);
                  PRAGMA user_version = 2;",
             )?;
         }
@@ -1490,7 +1494,7 @@ mod tests {
     /// first access.  This test simulates a "fresh database" by dropping all
     /// tables via the shared connection and then calling
     /// [`native_storage::apply_migration_for_testing`] to re-apply the DDL,
-    /// which checks `user_version` and recreates the tables when it is 0.
+    /// which checks `user_version` and recreates the tables when it is below 2.
     #[test]
     fn schema_migration_runs_on_fresh_database() {
         let _g = lock();
@@ -1534,43 +1538,6 @@ mod tests {
             native_storage::get_all(native_storage::STORE_SESSIONS).unwrap();
         assert!(loaded.iter().any(|s| s.id == session.id));
         native_storage::delete_item(native_storage::STORE_SESSIONS, &session.id).unwrap();
-    }
-    /// Verify that the v1→v2 migration (adding generated columns to an existing
-    /// sessions table) preserves data and leaves the paged query working.
-    #[test]
-    fn schema_migration_v1_to_v2_preserves_data() {
-        let _g = lock();
-        let db_path = native_storage::data_dir().join("log-out.db");
-        // Force the database into schema version 1 by recreating sessions without
-        // generated columns, copying any live rows, then setting user_version = 1.
-        {
-            let conn = rusqlite::Connection::open(&db_path).unwrap();
-            conn.execute_batch(
-                "DROP TABLE IF EXISTS sessions;
-                 DROP TABLE IF EXISTS sessions_v1;
-                 CREATE TABLE sessions (id TEXT PRIMARY KEY, data TEXT NOT NULL);
-                 INSERT INTO sessions(id, data)
-                     VALUES ('v1_s1', '{\"id\":\"v1_s1\",\"start_time\":1000,\"end_time\":2000,\
-                              \"exercise_logs\":[],\"version\":1,\"pending_exercise_ids\":[]}');
-                 PRAGMA user_version = 1;",
-            )
-            .unwrap();
-        }
-        native_storage::apply_migration_for_testing().expect("v1→v2 migration must succeed");
-        let page = native_storage::get_completed_sessions_paged(10, 0)
-            .expect("paged query must work after v1→v2 migration");
-        assert!(
-            page.iter().any(|s| s.id == "v1_s1"),
-            "row inserted before migration must survive v1→v2"
-        );
-        {
-            let conn = rusqlite::Connection::open(&db_path).unwrap();
-            conn.execute(
-                "DELETE FROM sessions WHERE id = ?1",
-                rusqlite::params!["v1_s1"],
-            )
-            .unwrap();
-        }
     }
     /// Insert a row with invalid JSON directly into `SQLite` and verify that
     /// `get_all` silently skips it rather than returning an error.

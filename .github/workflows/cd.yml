@@ -64,6 +64,7 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     permissions:
       contents: read
+      actions: read
       pages: write
       id-token: write
     steps:
@@ -97,6 +98,8 @@ jobs:
         # TODO Download current Pages Release to dist/
         nix build .#preWeb --out-link preWeb
         cp -f --dereference --recursive -v preWeb/LogOut/preview dist/LogOut/
+      env:
+        GH_TOKEN: ${{ github.token }}
     - uses: actions/upload-pages-artifact@v4
       with: { path: ./dist/LogOut }
     - uses: actions/deploy-pages@v4
