@@ -33,7 +33,7 @@ jobs:
         --caught --timeout 300 --exclude "src/components/*"
 
   e2e-android:
-    runs-on: macos-14 # Apple Silicon for native ARM64 emulation
+    runs-on: macos-latest # Apple Silicon for native ARM64 emulation
     timeout-minutes: 60
     permissions:
       contents: read

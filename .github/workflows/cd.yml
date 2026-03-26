@@ -52,7 +52,7 @@ jobs:
     - run: nix build .#web --out-link web
     - uses: actions/upload-pages-artifact@v4
       with: { path: ./web/LogOut }
-    - uses: actions/deploy-pages@v4
+    - uses: actions/deploy-pages@v5
       id: deployment
 
   pwa-prerelease:
@@ -98,7 +98,7 @@ jobs:
         GH_TOKEN: ${{ github.token }}
     - uses: actions/upload-pages-artifact@v4
       with: { path: ./dist/LogOut }
-    - uses: actions/deploy-pages@v4
+    - uses: actions/deploy-pages@v5
       id: deployment
 
   android-release:
