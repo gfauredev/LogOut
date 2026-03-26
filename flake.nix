@@ -312,24 +312,26 @@
         system:
         let
           env = sharedEnvFor system;
+          devTools = with env.pkgs; [
+            # biome python3 sass strace
+            cachix # Nix binary cache
+            kotlin-language-server # Kotlin LSP
+            lightningcss # CSS linter & optimizer
+            scss-lint # SCSS linter
+            taplo # TOML LSP
+            typescript-language-server # TypeScript LSP
+            vscode-langservers-extracted # HTML/CSS/JS(ON)
+            yaml-language-server # YAML LSP
+          ];
         in
         {
           default = env.pkgs.mkShell {
-            packages = with env.pkgs; [
-              # biome python3 sass strace
-              cachix # Nix binary cache
-              kotlin-language-server # Kotlin LSP
-              lightningcss # CSS linter & optimizer
-              scss-lint # SCSS linter
-              taplo # TOML LSP
-              typescript-language-server # TypeScript LSP
-              vscode-langservers-extracted # HTML/CSS/JS(ON)
-              yaml-language-server # YAML LSP
+            packages = devTools ++ [
               (agents-jail.lib.${system}.mkCrush {
-                extraPkgs = env.commonNativeBuildInputs ++ env.androidNativeBuildInputs;
+                extraPkgs = devTools ++ env.commonNativeBuildInputs ++ env.androidNativeBuildInputs;
               })
               (agents-jail.lib.${system}.mkOpencode {
-                extraPkgs = env.commonNativeBuildInputs ++ env.androidNativeBuildInputs;
+                extraPkgs = devTools ++ env.commonNativeBuildInputs ++ env.androidNativeBuildInputs;
               })
             ];
             nativeBuildInputs = env.commonNativeBuildInputs ++ env.androidNativeBuildInputs;
