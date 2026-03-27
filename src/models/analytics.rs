@@ -1,4 +1,8 @@
 use crate::models::{ExerciseLog, HG_PER_KG, M_PER_KM};
+/// Minimum average duration (in minutes) below which values are displayed in seconds.
+const DURATION_MINS_SECS_THRESHOLD: f64 = 3.0;
+/// Minimum average duration (in minutes) below which values are displayed in minutes rather than hours.
+const DURATION_HOURS_MINS_THRESHOLD: f64 = 180.0;
 
 #[derive(Clone, Copy, PartialEq, Debug, serde::Serialize, serde::Deserialize)]
 pub enum Metric {
@@ -53,9 +57,9 @@ pub fn adapt_metric_unit(metric: Metric, values: &[f64]) -> (&'static str, f64) 
             }
         }
         Metric::Duration => {
-            if avg < 3.0 {
+            if avg < DURATION_MINS_SECS_THRESHOLD {
                 ("s", 60.0)
-            } else if avg < 180.0 {
+            } else if avg < DURATION_HOURS_MINS_THRESHOLD {
                 ("min", 1.0)
             } else {
                 ("h", 1.0 / 60.0)

@@ -33,6 +33,10 @@ jobs:
         extra_nix_config: |
           extra-substituters = https://cache.garnix.io
           extra-trusted-public-keys = cache.garnix.io:CTFPyKSLcx5RMJKfLo5EEPUObbA78b0YQ2DTCJXqr9g=
+    - uses: cachix/cachix-action@v16
+      with:
+        name: gfauredev
+        authToken: '${{ secrets.CACHIX_AUTH_TOKEN }}'
     - uses: DeterminateSystems/magic-nix-cache-action@v13
     - run: sleep 5 #  Sleep hoping Garnix evaluation will start after
     - uses: lewagon/wait-on-check-action@v1.5.0
@@ -80,6 +84,10 @@ jobs:
         extra_nix_config: |
           extra-substituters = https://cache.garnix.io
           extra-trusted-public-keys = cache.garnix.io:CTFPyKSLcx5RMJKfLo5EEPUObbA78b0YQ2DTCJXqr9g=
+    - uses: cachix/cachix-action@v16
+      with:
+        name: gfauredev
+        authToken: '${{ secrets.CACHIX_AUTH_TOKEN }}'
     - uses: DeterminateSystems/magic-nix-cache-action@v13
     - name: Start web app server
       run: |
@@ -108,13 +116,16 @@ jobs:
     timeout-minutes: 40
     steps:
     - uses: actions/checkout@v6
-    # - uses: wimpysworld/nothing-but-nix@v10
     - uses: cachix/install-nix-action@v31
       with:
         github_access_token: ${{ secrets.GITHUB_TOKEN }}
         extra_nix_config: |
           extra-substituters = https://cache.garnix.io
           extra-trusted-public-keys = cache.garnix.io:CTFPyKSLcx5RMJKfLo5EEPUObbA78b0YQ2DTCJXqr9g=
+    - uses: cachix/cachix-action@v16
+      with:
+        name: gfauredev
+        authToken: '${{ secrets.CACHIX_AUTH_TOKEN }}'
     - uses: DeterminateSystems/magic-nix-cache-action@v13
     - name: Remove system Chrome to prevent version mismatch with nixpkgs chromedriver
       run: sudo apt-get remove -y google-chrome-stable

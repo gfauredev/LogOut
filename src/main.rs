@@ -328,7 +328,7 @@ where
     E: AsRef<models::Exercise>,
 {
     use models::{Category, Distance, ExerciseLog, Force, Weight, WorkoutSession};
-    let base_time = models::get_current_timestamp().saturating_sub(3600);
+    let base_time = models::get_current_timestamp().saturating_sub(utils::SECONDS_IN_HOUR);
     let mut session = WorkoutSession::new();
     session.start_time = base_time;
     for (i, entry) in entries.iter().enumerate() {
