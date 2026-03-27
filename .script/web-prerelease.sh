@@ -2,7 +2,7 @@ mkdir --mode 775 --verbose dist
 gh release download --pattern "web.tar.gz" --dir .
 if [ -f "web.tar.gz" ]; then
   tar -xzvf web.tar.gz -C dist/
-  if [ -f "dist/LogOut" ]; then
+  if [ -d "dist/LogOut" ]; then
     chmod 775 dist/LogOut
   else
     echo "WARNING: No LogOut directory found in web archive, stopping now"
