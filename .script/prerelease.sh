@@ -4,9 +4,8 @@ set -e
 
 NOW=$(date -u +"%Y-%m-%d")
 
-read -r CREATED_AT <<<"$(gh release list \
-  --json tagName,createdAt,isPrerelease --limit 1 \
-  --jq '.[]|select(.isPrerelease == true)|"\(.createdAt)"')"
+CREATED_AT=$(gh release list --json publishedAt,isPrerelease \
+  --jq '.[] | select(.isPrerelease == true) | .publishedAt' | head -n 1)
 
 if [ -z "$CREATED_AT" ] ||
   [ "$(date -d "$CREATED_AT" +%s)" -le "$(date -d '2 days ago' +%s)" ]; then
