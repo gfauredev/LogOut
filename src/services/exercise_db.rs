@@ -182,7 +182,7 @@ pub(crate) async fn download_exercises() -> Result<Option<Vec<Exercise>>, String
         .send()
         .await
         .map_err(|e| format!("HTTP error: {e}"))?;
-    if response.status().as_u16() == 304 {
+    if response.status() == reqwest::StatusCode::NOT_MODIFIED {
         log::info!("exercises.json is up to date (304 Not Modified)");
         return Ok(None);
     }
@@ -216,7 +216,7 @@ async fn download_exercise_lang(lang: &str) -> Result<Vec<ExerciseLangEntry>, St
     let response = reqwest::get(&url)
         .await
         .map_err(|e| format!("HTTP error fetching {lang} lang file: {e}"))?;
-    if response.status().as_u16() == 404 {
+    if response.status() == reqwest::StatusCode::NOT_FOUND {
         return Ok(Vec::new());
     }
     if !response.status().is_success() {

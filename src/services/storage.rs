@@ -736,6 +736,13 @@ pub(crate) mod native_storage {
     pub const STORE_SESSIONS: &str = "sessions";
     pub const STORE_CUSTOM_EXERCISES: &str = "custom_exercises";
     pub const STORE_EXERCISES: &str = "exercises";
+    /// Name of the application data sub-directory under the OS data dir.
+    const APP_DATA_DIR_NAME: &str = "log-out";
+    /// File name of the `SQLite` database within the application data directory.
+    pub const DB_FILENAME: &str = "log-out.db";
+    /// `SQLite` `user_version` value written on a successful schema migration.
+    /// Any database with a lower version is wiped and recreated from scratch.
+    const SCHEMA_VERSION: u32 = 2;
     /// Structured error type for native (`SQLite`) storage operations.
     #[derive(Debug, thiserror::Error)]
     pub enum StorageError {
@@ -781,10 +788,10 @@ pub(crate) mod native_storage {
         }
         dirs::data_local_dir()
             .unwrap_or_else(|| PathBuf::from("."))
-            .join("log-out")
+            .join(APP_DATA_DIR_NAME)
     }
     fn db_path() -> PathBuf {
-        data_dir().join("log-out.db")
+        data_dir().join(DB_FILENAME)
     }
     /// Runs incremental schema migrations to bring the database up to the current version.
     ///
@@ -796,8 +803,9 @@ pub(crate) mod native_storage {
     /// reset without needing to re-create the long-lived connection.
     fn apply_migration_if_needed(conn: &Connection) -> Result<(), StorageError> {
         let schema_version: u32 = conn.query_row("PRAGMA user_version", [], |r| r.get(0))?;
-        if schema_version < 2 {
+        if schema_version < SCHEMA_VERSION {
             // Fresh install or outdated schema: drop everything and start clean.
+            // SCHEMA_VERSION must match the `PRAGMA user_version` value at the end.
             conn.execute_batch(
                 "DROP TABLE IF EXISTS sessions;
                  DROP TABLE IF EXISTS custom_exercises;
@@ -1500,7 +1508,7 @@ mod tests {
         let _g = lock();
         native_storage::get_all::<WorkoutSession>(native_storage::STORE_SESSIONS).ok();
         {
-            let db_path = native_storage::data_dir().join("log-out.db");
+            let db_path = native_storage::data_dir().join(native_storage::DB_FILENAME);
             if db_path.exists() {
                 let conn = rusqlite::Connection::open(&db_path).unwrap();
                 conn.execute_batch(
@@ -1544,7 +1552,7 @@ mod tests {
     #[test]
     fn get_all_skips_corrupt_rows() {
         let _g = lock();
-        let db_path = native_storage::data_dir().join("log-out.db");
+        let db_path = native_storage::data_dir().join(native_storage::DB_FILENAME);
         native_storage::get_all::<WorkoutSession>(native_storage::STORE_SESSIONS).unwrap();
         {
             let conn = rusqlite::Connection::open(&db_path).unwrap();
