@@ -171,8 +171,8 @@ Follow these general engineering principles:
   whenever interacting with the network, file system, foreign functions (FFI)…
   - Handle errors explicitly without crashing the app, surface them gracefully
     to the user via managed queues, and never swallow them silently
-  - In general avoid panicking methods and macros such as `.unwrap()` and
-    `.expect()` variants, direct `vec[i]`, `.borrow()` variants, `panic!()`…
+  - Avoid methods/macros such as `.unwrap()`, `.expect()`, `.borrow()` variants,
+    direct `vec[i]`, `panic!()`… unless mathematically guaranteed to never fail
 - **Avoid or optimize I/O**, disk reads and network requests are expensive
   - Cache assets, strictly normalize data, optimize database queries…
 - **Don’t reinvent the wheel**, use battle-tested abstractions, standardized,
