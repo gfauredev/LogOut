@@ -53,7 +53,7 @@ jobs:
         allowed-conclusions: success,failure,cancelled,skipped,timed_out,neutral
     - run: |
         nix build .#web --out-link web
-        tar -czvf web.tar.gz web/LogOut/*
+        tar -czvf web.tar.gz -C web LogOut
     - uses: actions/upload-pages-artifact@v4
       with: { path: ./web/LogOut }
     - uses: actions/deploy-pages@v5
