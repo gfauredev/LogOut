@@ -43,7 +43,7 @@ jobs:
       with:
         name: gfauredev
         authToken: '${{ secrets.CACHIX_AUTH_TOKEN }}'
-    - uses: DeterminateSystems/magic-nix-cache-action@v13
+    # - uses: DeterminateSystems/magic-nix-cache-action@v13
     - run: sleep 5 #  Sleep hoping Garnix evaluation will start after
     - uses: lewagon/wait-on-check-action@v1.5.0
       with:
@@ -125,7 +125,6 @@ jobs:
       with:
         name: gfauredev
         authToken: '${{ secrets.CACHIX_AUTH_TOKEN }}'
-    - uses: DeterminateSystems/magic-nix-cache-action@v13
     - run: sleep 5 #  Sleep hoping Garnix evaluation will start after
     - uses: lewagon/wait-on-check-action@v1.5.0
       with:
@@ -172,7 +171,6 @@ jobs:
       with:
         name: gfauredev
         authToken: '${{ secrets.CACHIX_AUTH_TOKEN }}'
-    - uses: DeterminateSystems/magic-nix-cache-action@v13
     - run: sleep 5 #  Sleep hoping Garnix evaluation will start after
     - uses: lewagon/wait-on-check-action@v1.5.0
       with:

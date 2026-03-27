@@ -37,7 +37,6 @@ jobs:
       with:
         name: gfauredev
         authToken: '${{ secrets.CACHIX_AUTH_TOKEN }}'
-    - uses: DeterminateSystems/magic-nix-cache-action@v13
     - run: sleep 5 #  Sleep hoping Garnix evaluation will start after
     - uses: lewagon/wait-on-check-action@v1.5.0
       with:
@@ -88,7 +87,6 @@ jobs:
       with:
         name: gfauredev
         authToken: '${{ secrets.CACHIX_AUTH_TOKEN }}'
-    - uses: DeterminateSystems/magic-nix-cache-action@v13
     - name: Start web app server
       run: |
         nix run &
@@ -126,7 +124,6 @@ jobs:
       with:
         name: gfauredev
         authToken: '${{ secrets.CACHIX_AUTH_TOKEN }}'
-    - uses: DeterminateSystems/magic-nix-cache-action@v13
     - name: Remove system Chrome to prevent version mismatch with nixpkgs chromedriver
       run: sudo apt-get remove -y google-chrome-stable
     - run: |

@@ -18,7 +18,6 @@ jobs:
       with:
         name: gfauredev
         authToken: '${{ secrets.CACHIX_AUTH_TOKEN }}'
-    - uses: DeterminateSystems/magic-nix-cache-action@v13
     - run: nix develop -c cargo deny check
 
   test-mutants:
@@ -36,7 +35,6 @@ jobs:
       with:
         name: gfauredev
         authToken: '${{ secrets.CACHIX_AUTH_TOKEN }}'
-    - uses: DeterminateSystems/magic-nix-cache-action@v13
     - run: nix develop -c cargo mutants --no-shuffle \
         --caught --timeout 300 --exclude "src/components/*"
 
@@ -57,7 +55,6 @@ jobs:
       with:
         name: gfauredev
         authToken: '${{ secrets.CACHIX_AUTH_TOKEN }}'
-    - uses: DeterminateSystems/magic-nix-cache-action@v13
     - run: gh release download --pattern "*.apk" --dir . # From CD
       env:
         GH_TOKEN: ${{ github.token }}
