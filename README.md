@@ -14,7 +14,7 @@
   - [Android Native APK](#android-native-apk)
 - [Engineering Principles and Contributing](#engineering-principles-and-contributing)
 - [Continuous Integration and Deployment (CI/CD)](#continuous-integration-and-deployment-cicd)
-  - [Weekly Deep Checks](#weekly-deep-checks)
+  - [Heavier Checks](#heavier-checks)
 - [Licensing and Credits](#licensing-and-credits)
 
 <!--toc:end-->
@@ -72,22 +72,22 @@ LogOut/
 | Changes submission | GitHub Pull Requests   |
 | Issue tracking     | GitHub Issues          |
 
-| Purpose                       | Tool                                         |
-| ----------------------------- | -------------------------------------------- |
-| Rust compilation              | [rustc]                                      |
-| Build system                  | [Cargo]                                      |
-| Dependencies and environment  | [Nix]                                        |
-| Versionning and collaboration | [Git] hosted on GitHub                       |
-| Unit tests                    | [Cargo test]                                 |
-| End-to-end tests (PWA)        | [Maestro] (beta web)                         |
-| End-to-end tests (Android)    | [Maestro]                                    |
-| Code coverage                 | [cargo-llvm-cov]                             |
-| Rust language assistance      | [rust-analyzer] (LSP)                        |
-| Documentation from code       | [rustdoc]                                    |
-| Rust formatting               | [rustfmt] and [dx] fmt                       |
-| Rust quality control          | [Clippy]                                     |
-| Rust debugging                | [lldb]                                       |
-| Code edition                  | Allows modern Rust dev ([Helix], [VS Code]…) |
+| Purpose                      | Tool                                         |
+| ---------------------------- | -------------------------------------------- |
+| Rust compilation             | [rustc]                                      |
+| Build system                 | [Cargo]                                      |
+| Dependencies and environment | [Nix]                                        |
+| Versioning and collaboration | [Git] hosted on GitHub                       |
+| Unit tests                   | [Cargo test]                                 |
+| End-to-end tests (PWA)       | [Maestro] (beta web)                         |
+| End-to-end tests (Android)   | [Maestro]                                    |
+| Code coverage                | [cargo-llvm-cov]                             |
+| Rust language assistance     | [rust-analyzer] (LSP)                        |
+| Documentation from code      | [rustdoc]                                    |
+| Rust formatting              | [rustfmt] and [dx] fmt                       |
+| Rust quality control         | [Clippy]                                     |
+| Rust debugging               | [lldb]                                       |
+| Code edition                 | Allows modern Rust dev ([Helix], [VS Code]…) |
 
 | Purpose                                                 | Library    |
 | ------------------------------------------------------- | ---------- |
@@ -155,8 +155,8 @@ Follow these general engineering principles:
 - Enforce a **Single Source of Truth**, derive component or local state directly
   from a centralized global state to prevent desynchronization
   - Confine all state mutations to atomic, centralized functions
-- Bind external resources to **strict lifecycles** (RAII), guarantee their clean
-  up by tying their lifecycles directly to object scope
+- Bind external resources to **strict lifecycles** (RAII), guarantee their
+  clean-up by tying their lifecycles directly to object scope
   - Event listeners, database transactions, browser object URLs…
 - **Never block main/UI thread**, strictly offload synchronous, I/O-heavy, or
   CPU-bound operations to background threads
@@ -237,14 +237,16 @@ validated PRs), on standard Linux runners.
 CD also runs when a [SemVer] `vMAJOR.MINOR.PATCH` **tag** is pushed, publishing
 a “Stable” GitHub Release with a production Android APK built on this `tag`.
 
+Additionally, [renovate] GitHub app is used to monitor the freshness of
+project’s dependencies.
+
 ### Heavier Checks
 
 [LogOut] ensures high quality code with additional resource intensive checks
 that can be triggered manually to run on the `main` branch.
 
 - Run Android **end-to-end tests** in emulator `maestro test maestro/android`
-- Analyze dependencies for vulnerabilities or deprecations with `cargo deny`
-  - Automatically open PRs to update dependencies and flake with `renovate`
+- Analyse dependencies for vulnerabilities or deprecations with `cargo deny`
 - Test the tests’ comprehensiveness by introducing bugs they should catch
   - **Mutation testing** with `cargo-mutants`
 - Publish report(s) of the above checks accessible via the forge
@@ -282,6 +284,7 @@ The [exercise database] is under the Unlicense (public domain).
 [Maestro]: https://maestro.dev
 [Nix]: https://nixos.org
 [pwa]: https://developer.mozilla.org/en-US/docs/Web/Progressive_web_apps
+[renovate]: https://www.mend.io/renovate
 [rust-analyzer]: https://rust-analyzer.github.io
 [rust]: https://www.rust-lang.org
 [rustc]: https://doc.rust-lang.org/rustc
