@@ -1,5 +1,6 @@
 use crate::models::{Category, Equipment, Force, Muscle};
 use dioxus::prelude::*;
+use dioxus_i18n::t;
 use strum::IntoEnumIterator;
 /// Shared form fields used by both `AddCustomExercisePage` and `EditCustomExercisePage`.
 #[component]
@@ -212,7 +213,7 @@ pub fn ExerciseFormFields(
                 id: "image-file-input",
                 r#type: "file",
                 accept: "image/*",
-                title: "Upload a local image file",
+                title: t!("form-image-upload-title"),
             }
         }
     };
@@ -221,27 +222,27 @@ pub fn ExerciseFormFields(
         div { class: "inputs",
             input {
                 r#type: "text",
-                placeholder: "/path/to/local/image.jpg",
+                placeholder: t!("form-local-image-placeholder"),
                 value: "{local_image_path_input}",
                 oninput: move |evt| local_image_path_input.set(evt.value()),
-                title: "Path to a local image file (will be copied into app storage)",
+                title: t!("form-local-image-title"),
             }
             button { class: "more", onclick: add_local_image, "📁" }
         }
     };
     rsx! {
         div {
-            label { r#for: "exercise-name-input", "Exercise Name *" }
+            label { r#for: "exercise-name-input", {t!("form-name-label")} }
             input {
                 id: "exercise-name-input",
                 r#type: "text",
-                placeholder: "Pushups",
+                placeholder: t!("form-name-placeholder"),
                 value: "{name_input}",
                 oninput: move |evt| name_input.set(evt.value()),
             }
         }
         div {
-            label { "Category *" }
+            label { {t!("form-category-label")} }
             select {
                 value: "{category_input.read()}",
                 oninput: move |evt| {
@@ -257,7 +258,7 @@ pub fn ExerciseFormFields(
             }
         }
         div {
-            label { "Force Type" }
+            label { {t!("form-force-label")} }
             select {
                 value: if let Some(f) = *force_input.read() { f.to_string() } else { String::new() },
                 oninput: move |evt| {
@@ -270,14 +271,14 @@ pub fn ExerciseFormFields(
                         force_input.set(Some(f));
                     }
                 },
-                option { value: "", "None" }
+                option { value: "", {t!("form-none-option")} }
                 for force_type in Force::iter() {
                     option { value: "{force_type}", "{force_type}" }
                 }
             }
         }
         div {
-            label { "Equipment" }
+            label { {t!("form-equipment-label")} }
             select {
                 value: if let Some(e) = *equipment_input.read() { e.to_string() } else { String::new() },
                 oninput: move |evt| {
@@ -290,19 +291,19 @@ pub fn ExerciseFormFields(
                         equipment_input.set(Some(e));
                     }
                 },
-                option { value: "", "None" }
+                option { value: "", {t!("form-none-option")} }
                 for equipment in Equipment::iter() {
                     option { value: "{equipment}", "{equipment}" }
                 }
             }
         }
         div {
-            label { "Primary Muscles" }
+            label { {t!("form-muscles-primary-label")} }
             div { class: "inputs",
                 select {
                     value: "{muscle_input}",
                     oninput: move |evt| muscle_input.set(evt.value()),
-                    option { value: "", "Select muscle..." }
+                    option { value: "", {t!("form-muscle-select-default")} }
                     for muscle in Muscle::iter() {
                         option { value: "{muscle}", "{muscle}" }
                     }
@@ -328,12 +329,12 @@ pub fn ExerciseFormFields(
             }
         }
         div {
-            label { "Secondary Muscles" }
+            label { {t!("form-muscles-secondary-label")} }
             div { class: "inputs",
                 select {
                     value: "{secondary_muscle_input}",
                     oninput: move |evt| secondary_muscle_input.set(evt.value()),
-                    option { value: "", "Select muscle..." }
+                    option { value: "", {t!("form-muscle-select-default")} }
                     for muscle in Muscle::iter() {
                         option { value: "{muscle}", "{muscle}" }
                     }
@@ -359,11 +360,11 @@ pub fn ExerciseFormFields(
             }
         }
         div {
-            label { "Instructions" }
+            label { {t!("form-instructions-label")} }
             div { class: "inputs",
                 input {
                     r#type: "text",
-                    placeholder: "Add an instruction step...",
+                    placeholder: t!("form-instruction-placeholder"),
                     value: "{instructions_input}",
                     oninput: move |evt| instructions_input.set(evt.value()),
                 }
@@ -385,11 +386,11 @@ pub fn ExerciseFormFields(
             }
         }
         div {
-            label { "Images" }
+            label { {t!("form-images-label")} }
             div { class: "inputs",
                 input {
                     r#type: "url",
-                    placeholder: "https://example.com/image.jpg",
+                    placeholder: t!("form-image-url-placeholder"),
                     value: "{image_url_input}",
                     oninput: move |evt| image_url_input.set(evt.value()),
                 }

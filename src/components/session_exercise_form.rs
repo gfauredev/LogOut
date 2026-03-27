@@ -5,6 +5,7 @@ use crate::models::{
 };
 use crate::services::{exercise_db, storage};
 use dioxus::prelude::*;
+use dioxus_i18n::t;
 /// Shared exercise input form used both for performing a new set and for
 /// editing a completed log entry.
 ///
@@ -100,7 +101,7 @@ pub(super) fn ExerciseInputForm(
                             input {
                                 r#type: "text",
                                 inputmode: "numeric",
-                                placeholder: "mm:ss",
+                                placeholder: t!("time-placeholder"),
                                 value: "{ti}",
                                 oninput: move |evt| ti.set(evt.value()),
                                 class: if time_invalid { "invalid" } else { "" },
@@ -157,7 +158,7 @@ pub(super) fn ExerciseInputForm(
                     r#type: "number",
                     inputmode: "decimal",
                     step: "0.1",
-                    placeholder: "kg",
+                    placeholder: t!("weight-placeholder"),
                     value: "{weight_input}",
                     oninput: move |evt| weight_input.set(evt.value()),
                     class: if weight_invalid { "invalid" } else { "" },
@@ -197,7 +198,7 @@ pub(super) fn ExerciseInputForm(
                         r#type: "number",
                         inputmode: "decimal",
                         step: "0.1",
-                        placeholder: "km",
+                        placeholder: t!("distance-placeholder"),
                         value: "{distance_input}",
                         oninput: move |evt| distance_input.set(evt.value()),
                         class: if distance_invalid { "invalid" } else { "" },
@@ -238,7 +239,7 @@ pub(super) fn ExerciseInputForm(
                     input {
                         r#type: "number",
                         inputmode: "numeric",
-                        placeholder: "reps",
+                        placeholder: t!("reps-placeholder"),
                         value: "{reps_input}",
                         oninput: move |evt| reps_input.set(evt.value()),
                         class: if reps_invalid { "invalid" } else { "" },
@@ -266,7 +267,7 @@ pub(super) fn ExerciseInputForm(
                 class: "save",
                 onclick: move |_| on_complete.call(()),
                 disabled: complete_disabled,
-                title: "Complete Exercise",
+                title: t!("exercise-complete-title"),
                 "💾"
             }
             button { class: "back", onclick: move |_| on_cancel.call(()), "❌" }

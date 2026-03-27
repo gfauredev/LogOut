@@ -2,6 +2,7 @@ use crate::components::exercise_form_fields::ExerciseFormFields;
 use crate::models::{Equipment, Exercise, Force};
 use crate::services::storage;
 use dioxus::prelude::*;
+use dioxus_i18n::t;
 #[component]
 pub fn EditExercise(id: String) -> Element {
     let custom_exercises = storage::use_custom_exercises();
@@ -9,11 +10,11 @@ pub fn EditExercise(id: String) -> Element {
     let Some(ex) = exercise() else {
         return rsx! {
             main { class: "edit",
-                p { "Exercise not found" }
+                p { {t!("exercise-not-found")} }
                 button {
                     onclick: move |_evt: Event<MouseData>| navigator().go_back(),
                     class: "back",
-                    title: "Cancel",
+                    title: t!("cancel-title"),
                     "❌"
                 }
             }
@@ -64,10 +65,10 @@ pub fn EditExercise(id: String) -> Element {
             button {
                 onclick: move |_| navigator().go_back(),
                 class: "cancel",
-                title: "Cancel",
+                title: t!("cancel-title"),
                 "❌"
             }
-            h1 { "Edit Exercise" }
+            h1 { {t!("edit-exercise-page-title")} }
         }
         main { class: "edit",
             ExerciseFormFields {
@@ -83,7 +84,7 @@ pub fn EditExercise(id: String) -> Element {
                 instructions_list,
                 image_url_input,
                 images_list,
-                save_label: "Save Changes".to_string(),
+                save_label: t!("exercise-save-changes"),
                 on_save: save_exercise,
             }
         }

@@ -8,6 +8,12 @@ app-subtitle = Turn off your computer, Log your workOut
 no-sessions = No past sessions yet
 start-first-workout = Tap + to start your first workout
 start-new-workout = Start New Workout
+session-repeat-title = Start a new session based on this one
+session-delete-title = Delete session
+session-show-more = +{ $count } more
+session-delete-confirm = Delete this session?
+session-delete-confirm-btn = 🗑️ Delete
+cancel-btn = ❌ Cancel
 
 ## Exercises page
 browse-exercises = Browse { $count } exercises
@@ -19,3 +25,99 @@ filter-remove = Remove filter
 ## Exercise card
 exercise-edit = Edit
 exercise-clone = Clone then edit
+
+## Active session – search
+session-search-placeholder = Search for an exercise...
+session-add-exercise-title = Add Custom Exercise
+session-filter-remove = Remove filter
+session-filter-add = Add filter
+pending-more = More pre-added ({ $count })
+
+## Active session – header
+session-title = ⏱️ Active Session
+session-timer-title = Click to set rest duration
+session-pause-btn = Pause Session
+session-resume-btn = Resume Session
+session-cancel-btn = Cancel Session
+session-finish-btn = Finish Session
+
+## Active session – rest input
+rest-duration-aria = Set rest duration
+rest-duration-label = Rest duration
+
+## Active session – completed exercises
+completed-exercises-title = Completed Exercises
+
+## Exercise input form
+exercise-complete-title = Complete Exercise
+time-placeholder = mm:ss
+weight-placeholder = kg
+distance-placeholder = km
+reps-placeholder = reps
+
+## Completed exercise log
+log-replay-title = Do another set
+log-edit-title = Edit this exercise
+log-delete-title = Delete this exercise
+
+## Add / Edit exercise pages
+add-exercise-page-title = Add Exercise
+edit-exercise-page-title = Edit Exercise
+exercise-not-found = Exercise not found
+exercise-save = Save Exercise
+exercise-save-changes = Save Changes
+cancel-title = Cancel
+
+## Exercise form fields
+form-name-label = Exercise Name *
+form-category-label = Category *
+form-force-label = Force Type
+form-equipment-label = Equipment
+form-muscles-primary-label = Primary Muscles
+form-muscles-secondary-label = Secondary Muscles
+form-instructions-label = Instructions
+form-images-label = Images
+form-name-placeholder = Pushups
+form-muscle-select-default = Select muscle...
+form-instruction-placeholder = Add an instruction step...
+form-image-url-placeholder = https://example.com/image.jpg
+form-none-option = None
+form-image-upload-title = Upload a local image file
+form-local-image-placeholder = /path/to/local/image.jpg
+form-local-image-title = Path to a local image file (will be copied into app storage)
+form-save-aria = Save
+
+## More page
+more-title = ⚙️ More
+more-export-section = 📤 Export
+more-export-exercises-btn = 💾 Custom Exercises
+more-export-sessions-btn = 💾 Sessions
+more-import-section = 📥 Import
+more-import-exercises-btn = 📂 Custom Exercises
+more-import-sessions-btn = 📂 Sessions
+more-about-section = LogOut
+more-db-url-section = ⚙️ Exercise Database URL
+more-db-url-desc = Override the exercise database source. Save to trigger a re-download on next reload.
+more-db-url-save-aria = Save
+more-oss-section = Open Source & Licences
+more-built-with-section = Built With
+more-replace-confirm = Replace custom exercise { $name }?
+more-replace-btn = 💾 Replace
+
+## Toast messages (static prefixes; technical error detail appended at runtime)
+toast-export-failed = ⚠️ Export failed
+toast-export-sessions-failed = ⚠️ Failed to export sessions
+toast-sessions-invalid = ⚠️ Invalid sessions JSON
+toast-exercises-invalid = ⚠️ Invalid exercises JSON
+
+## Analytics page
+analytics-title = 📊 Analytics
+analytics-subtitle = Track your progress over time
+analytics-pairs-label = Metric–Exercise Pairs (⩽ 8)
+analytics-empty = Select exercises to view analytics
+analytics-metric-weight = Weight (kg)
+analytics-metric-reps = Repetitions
+analytics-metric-distance = Distance
+analytics-metric-duration = Duration
+analytics-select-exercise = -- Select Exercise --
+analytics-remove-series = Remove this series

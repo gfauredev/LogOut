@@ -1,6 +1,7 @@
 use crate::models::Category;
 use crate::services::{exercise_db, storage};
 use dioxus::prelude::*;
+use dioxus_i18n::t;
 
 /// List of exercises pre-added to the session that haven't been started yet.
 /// The first (oldest) exercise is always visible and directly clickable.
@@ -49,7 +50,7 @@ pub fn PendingExercisesSection(
             }
             if resolved.len() > 1 {
                 details {
-                    summary { "More pre-added ({resolved.len() - 1})" }
+                    summary { {t!("pending-more", count : (resolved.len() - 1).to_string())} }
                     for (id , name , category) in resolved.iter().skip(1).cloned() {
                         {
                             let id2 = id.clone();

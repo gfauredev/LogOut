@@ -2,6 +2,7 @@ use crate::components::CompletedExerciseLog;
 use crate::models::WorkoutSession;
 use crate::services::{exercise_db, storage};
 use dioxus::prelude::*;
+use dioxus_i18n::t;
 
 /// Antichronological list of completed exercise logs with replay and edit actions.
 /// Fires `on_replay` with the exercise ID when the user taps 🔁.
@@ -44,7 +45,7 @@ pub fn CompletedExercisesSection(
         section { // class: "exercises",
 
 
-            h3 { "Completed Exercises" }
+            h3 { {t!("completed-exercises-title")} }
             if no_exercise_active {
                 if let Some((next_id, next_name)) = suggestion_label() {
                     button {

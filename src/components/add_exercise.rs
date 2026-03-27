@@ -2,6 +2,7 @@ use crate::components::exercise_form_fields::ExerciseFormFields;
 use crate::models::{get_current_timestamp, Category, Equipment, Exercise, Force, Muscle};
 use crate::services::storage;
 use dioxus::prelude::*;
+use dioxus_i18n::t;
 #[component]
 pub fn AddExercise() -> Element {
     let name_input = use_signal(String::new);
@@ -55,11 +56,11 @@ pub fn AddExercise() -> Element {
     };
     rsx! {
         header {
-            h1 { "Add Exercise" }
+            h1 { {t!("add-exercise-page-title")} }
             button {
                 class: "back",
                 onclick: move |_| navigator().go_back(),
-                title: "Cancel",
+                title: t!("cancel-title"),
                 "❌"
             }
         }
@@ -77,7 +78,7 @@ pub fn AddExercise() -> Element {
                 instructions_list,
                 image_url_input,
                 images_list,
-                save_label: "Save Exercise".to_string(),
+                save_label: t!("exercise-save"),
                 on_save: save_exercise,
             }
         }
