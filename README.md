@@ -131,14 +131,14 @@ LogOut follows that priority order:
 1. User Experience
    1. Maximize data integrity, never lose or corrupt user data
       - ⚠️ WARNING Ignored until v1.0.0, expect breaking data model changes
-   2. Maximize extensibility, easily give users features they need
-   3. Maximize correctness and stability, work as the user expects, reliably
+   2. Maximize correctness and stability, work as the user expects, reliably
+   3. Maximize extensibility, easily give users features they need
    4. Minimize computational complexity, be snappy, pleasant to use
 2. Developer Experience
    1. Maximize code readability and maintainability, make it easy to understand
    2. Maximize simplicity, minimize complexity, avoid nesting, over-engineering
    3. Maximize testability and iteration speed, isolated units, fast compile
-3. Device Friendliness
+3. Resource Efficiency (also important for UX)
    1. Minimize battery usage, don’t kill mobile devices
    2. Minimize memory footprint, run smoothly on low-end devices
    3. Minimize binary and stored data size, be unnoticed, load quickly
@@ -182,7 +182,11 @@ Follow these general engineering principles:
   - Except where it really makes sense, like usually 0, 1, 100%…
 - Properly **document** what you do (functions, structs… with `rustdoc`)
 - Avoid nesting, avoid complexity; generally, avoid things with only one child
-- **Style** class-light, mainly based on semantic hierarchy and types
+- **Minimize** number of **classes**, keep the necessary one highly **semantic**
+  - `structure.scss` semantic nodes among the semantic hierarchical structure
+  - `component.scss` self-contained individual reusable components
+  - `unique.scss` self-contained unique non-reusable components
+  - `$page.scss` structure and components specific to `$page`
 - Ensure code is properly **formatted** with `dx fmt` and `cargo fmt --all`
 - Ensure code **compiles** with `dx build` plus eventual platform flags
 - Ensure all **unit tests** `cargo test` pass without warning

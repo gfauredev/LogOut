@@ -44,9 +44,9 @@
   padding: 0;
 }
 
-@import "structure"; // Semantic nodes among the semantic hiearchical structure
+@import "structure"; // Semantic nodes among the semantic hierarchical structure
 @import "component"; // Self-contained individual reusable components
-@import "unique"; // Self-contained unique non reusable components
+@import "unique"; // Self-contained unique non-reusable components
 
 @media screen and (prefers-color-scheme: light) {
   :root {
@@ -57,7 +57,7 @@
     // Text Colors
     --primary: black;
     --secondary: #2a2a2a;
-    // Actions Colors
+    // Actions Colors TODO Consider improving constrast
     --more: #2e7dff; // Increment or Add +
     --less: #ff3b30; // Decrement - or Delete permanently 🗑️
     --edit: #e0e0e0; // Edit ✏️ or Repeat 🔁
