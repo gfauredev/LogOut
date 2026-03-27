@@ -1,5 +1,6 @@
 use crate::models::analytics::Metric;
 use dioxus::prelude::*;
+use dioxus_i18n::t;
 
 #[component]
 pub fn MetricSelector(
@@ -43,10 +44,10 @@ pub fn MetricSelector(
                     };
                     pairs[i].1 = None;
                 },
-                option { value: "Weight", "Weight (kg)" }
-                option { value: "Reps", "Repetitions" }
-                option { value: "Distance", "Distance" }
-                option { value: "Duration", "Duration" }
+                option { value: "Weight", {t!("analytics-metric-weight")} }
+                option { value: "Reps", {t!("analytics-metric-reps")} }
+                option { value: "Distance", {t!("analytics-metric-distance")} }
+                option { value: "Duration", {t!("analytics-metric-duration")} }
             }
             select {
                 value: "{current_exercise.as_deref().unwrap_or(\"\")}",
@@ -56,7 +57,7 @@ pub fn MetricSelector(
                     let value = evt.value();
                     pairs[i].1 = if value.is_empty() { None } else { Some(value) };
                 },
-                option { value: "", "-- Select Exercise --" }
+                option { value: "", {t!("analytics-select-exercise")} }
                 for (id , name) in exercises_for_slot.iter() {
                     option { value: "{id}", "{name}" }
                 }
@@ -65,7 +66,7 @@ pub fn MetricSelector(
                 button {
                     class: "back",
                     r#type: "button",
-                    title: "Remove this series",
+                    title: t!("analytics-remove-series"),
                     onclick: move |_| {
                         let mut pairs = selected_pairs.write();
                         pairs[i] = (Metric::Weight, None);

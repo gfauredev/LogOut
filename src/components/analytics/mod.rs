@@ -2,6 +2,7 @@ use crate::components::{ActiveTab, BottomNav};
 use crate::models::analytics::Metric;
 use crate::services::storage;
 use dioxus::prelude::*;
+use dioxus_i18n::t;
 
 mod chart;
 mod selector;
@@ -102,9 +103,9 @@ pub fn Analytics() -> Element {
 
     rsx! {
         header {
-            h1 { "📊 Analytics" }
-            p { "Track your progress over time" }
-            label { "Metric–Exercise Pairs (⩽ 8)" }
+            h1 { {t!("analytics-title")} }
+            p { {t!("analytics-subtitle")} }
+            label { {t!("analytics-pairs-label")} }
             for i in 0..8 {
                 MetricSelector {
                     i,
@@ -118,7 +119,7 @@ pub fn Analytics() -> Element {
             if chart_data.is_empty()
                 || chart_data.iter().all(|(_, _, _, points)| points.is_empty())
             {
-                p { "Select exercises to view analytics" }
+                p { {t!("analytics-empty")} }
             } else {
                 ChartView { data: chart_data, colors: COLORS.to_vec() }
             }

@@ -188,14 +188,14 @@ fn SessionCard(session: WorkoutSession, on_delete: EventHandler<String>) -> Elem
                                 storage::save_session(new_session);
                             }
                         },
-                        title: "Start a new session based on this one",
+                        title: t!("session-repeat-title"),
                         "🔁"
                     }
                 }
                 button {
                     class: "del",
                     onclick: move |_| show_delete_confirm.set(true),
-                    title: "Delete session",
+                    title: t!("session-delete-title"),
                     "🗑️"
                 }
             }
@@ -218,7 +218,7 @@ fn SessionCard(session: WorkoutSession, on_delete: EventHandler<String>) -> Elem
                         li {
                             class: "more",
                             onclick: move |_| show_all_exercises.set(true),
-                            "+{hidden_count} more"
+                            {t!("session-show-more", count : hidden_count.to_string())}
                         }
                     }
                 }
@@ -229,7 +229,7 @@ fn SessionCard(session: WorkoutSession, on_delete: EventHandler<String>) -> Elem
                     onclick: move |_| show_delete_confirm.set(false),
                 }
                 dialog { open: true, onclick: move |evt| evt.stop_propagation(),
-                    p { "Delete this session?" }
+                    p { {t!("session-delete-confirm")} }
                     div {
                         button {
                             onclick: {
@@ -241,12 +241,12 @@ fn SessionCard(session: WorkoutSession, on_delete: EventHandler<String>) -> Elem
                                 }
                             },
                             class: "del label",
-                            "🗑️ Delete"
+                            {t!("session-delete-confirm-btn")}
                         }
                         button {
                             onclick: move |_| show_delete_confirm.set(false),
                             class: "back label",
-                            "❌ Cancel"
+                            {t!("cancel-btn")}
                         }
                     }
                 }

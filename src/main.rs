@@ -129,6 +129,7 @@ fn App() -> Element {
         I18nConfig::new(preferred_lang)
             .with_locale((langid!("en"), include_str!("../assets/en.ftl")))
             .with_locale((langid!("fr"), include_str!("../assets/fr.ftl")))
+            .with_locale((langid!("es"), include_str!("../assets/es.ftl")))
             .with_fallback(langid!("en"))
     });
     // Provide all contexts before any service that may consume them.

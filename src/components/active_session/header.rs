@@ -1,5 +1,6 @@
 use super::super::session_timers::{RestTimerDisplay, SessionDurationDisplay};
 use dioxus::prelude::*;
+use dioxus_i18n::t;
 
 /// Sticky session header showing the elapsed timer, rest timer, and session controls.
 #[component]
@@ -21,11 +22,11 @@ pub fn SessionHeader(
     let is_paused = paused_at.is_some();
     rsx! {
         header { class: "session",
-            h2 { tabindex: 0, "⏱️ Active Session" }
+            h2 { tabindex: 0, {t!("session-title")} }
             div {
                 class: "session-timers",
                 onclick: move |_| on_click_timer.call(()),
-                title: "Click to set rest duration",
+                title: t!("session-timer-title"),
                 time {
                     SessionDurationDisplay {
                         session_start_time,
@@ -43,7 +44,7 @@ pub fn SessionHeader(
             button {
                 class: "edit",
                 onclick: move |_| on_pause.call(()),
-                title: if is_paused { "Resume Session" } else { "Pause Session" },
+                title: if is_paused { t!("session-resume-btn") } else { t!("session-pause-btn") },
                 if is_paused {
                     "▶️"
                 } else {
@@ -54,14 +55,14 @@ pub fn SessionHeader(
                 button {
                     class: "back",
                     onclick: move |_| on_finish.call(()),
-                    title: "Cancel Session",
+                    title: t!("session-cancel-btn"),
                     "❌"
                 }
             } else {
                 button {
                     class: "save",
                     onclick: move |_| on_finish.call(()),
-                    title: "Finish Session",
+                    title: t!("session-finish-btn"),
                     "💾"
                 }
             }

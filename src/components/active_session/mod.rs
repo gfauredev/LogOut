@@ -9,6 +9,7 @@ use crate::services::exercise_db::{
 use crate::services::{exercise_db, storage};
 use crate::{RestDurationSignal, Route};
 use dioxus::prelude::*;
+use dioxus_i18n::t;
 use futures_channel::mpsc::UnboundedReceiver;
 use std::sync::Arc;
 
@@ -299,14 +300,14 @@ pub fn SessionView() -> Element {
                 div { class: "inputs",
                     input {
                         r#type: "text",
-                        placeholder: "Search for an exercise...",
+                        placeholder: t!("session-search-placeholder"),
                         value: "{search_query}",
                         oninput: move |evt| search_query.set(evt.value()),
                     }
                     Link {
                         class: "more",
                         to: Route::AddExercise {},
-                        title: "Add Custom Exercise",
+                        title: t!("session-add-exercise-title"),
                         "+"
                     }
                 }
@@ -315,7 +316,7 @@ pub fn SessionView() -> Element {
                         for (i , filter) in active_filters.read().iter().enumerate() {
                             button {
                                 class: "filter-chip active",
-                                title: "Remove filter",
+                                title: t!("session-filter-remove"),
                                 onclick: move |_| {
                                     let mut filters = active_filters.write();
                                     if i < filters.len() {
@@ -333,7 +334,7 @@ pub fn SessionView() -> Element {
                             if active_filters.read().len() < MAX_FILTERS {
                                 button {
                                     class: "filter-chip suggestion",
-                                    title: "Add filter",
+                                    title: t!("session-filter-add"),
                                     onclick: {
                                         let suggestion = suggestion.clone();
                                         move |_| {

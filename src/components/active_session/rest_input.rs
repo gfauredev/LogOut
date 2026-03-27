@@ -1,4 +1,5 @@
 use dioxus::prelude::*;
+use dioxus_i18n::t;
 
 /// Collapsible form for configuring the rest duration between sets.
 #[component]
@@ -10,7 +11,7 @@ pub fn RestDurationInput(
     rsx! {
         form {
             class: "inputs",
-            aria_label: "Set rest duration",
+            aria_label: t!("rest-duration-aria"),
             onsubmit: move |evt| {
                 evt.prevent_default();
                 if let Ok(val) = rest_input_value.read().parse::<u64>() {
@@ -18,7 +19,7 @@ pub fn RestDurationInput(
                 }
                 show_rest_input.set(false);
             },
-            label { r#for: "rest-duration-field", "Rest duration" }
+            label { r#for: "rest-duration-field", {t!("rest-duration-label")} }
             input {
                 id: "rest-duration-field",
                 r#type: "number",

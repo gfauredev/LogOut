@@ -3,6 +3,7 @@ use crate::models::Exercise;
 use crate::services::{exercise_db, storage};
 use crate::ToastSignal;
 use dioxus::prelude::*;
+use dioxus_i18n::t;
 #[component]
 pub fn More() -> Element {
     let mut url_input = use_signal(crate::utils::get_exercise_db_url);
@@ -12,6 +13,10 @@ pub fn More() -> Element {
     let sessions = storage::use_sessions();
     let custom_exercises = storage::use_custom_exercises();
     let all_exercises = exercise_db::use_exercises();
+    // Pre-compute translated toast message prefixes at render time.
+    // Only for closures that do NOT move into async blocks (to preserve Copy-ability).
+    let msg_export_failed = t!("toast-export-failed");
+    let msg_export_sessions_failed = t!("toast-export-sessions-failed");
     let save_url = move |evt: Event<FormData>| {
         evt.prevent_default();
         let url = crate::utils::normalize_db_url(url_input.read().trim());
@@ -48,22 +53,27 @@ pub fn More() -> Element {
             exercise_db::reload_exercises(sig, toast).await;
         });
     };
-    let export_exercises = move |_| {
-        let exercises = custom_exercises.read().clone();
-        match serde_json::to_string_pretty(&exercises) {
-            Ok(json) => {
-                #[cfg(target_arch = "wasm32")]
-                trigger_download("custom_exercises.json", &json);
-                #[cfg(not(target_arch = "wasm32"))]
-                log::info!("Export exercises (native): {}", json.len());
-            }
-            Err(e) => {
-                let mut t = toast;
-                t.write().push_back(format!("⚠️ Export failed: {e}"));
+    let export_exercises = {
+        let msg_export_failed = msg_export_failed.clone();
+        move |_| {
+            let exercises = custom_exercises.read().clone();
+            match serde_json::to_string_pretty(&exercises) {
+                Ok(json) => {
+                    #[cfg(target_arch = "wasm32")]
+                    trigger_download("custom_exercises.json", &json);
+                    #[cfg(not(target_arch = "wasm32"))]
+                    log::info!("Export exercises (native): {}", json.len());
+                }
+                Err(e) => {
+                    let mut t = toast;
+                    t.write().push_back(format!("{msg_export_failed}: {e}"));
+                }
             }
         }
     };
     let export_sessions = move |_| {
+        let msg_export_sessions_failed = msg_export_sessions_failed.clone();
+        let msg_export_failed = msg_export_failed.clone();
         let mut t = toast;
         spawn(async move {
             let active = sessions.peek().clone();
@@ -82,7 +92,7 @@ pub fn More() -> Element {
                     }
                     Err(e) => {
                         t.write()
-                            .push_back(format!("⚠️ Failed to export sessions: {e}"));
+                            .push_back(format!("{msg_export_sessions_failed}: {e}"));
                         return;
                     }
                 }
@@ -96,7 +106,7 @@ pub fn More() -> Element {
                     log::info!("Export sessions (native): {}", json.len());
                 }
                 Err(e) => {
-                    t.write().push_back(format!("⚠️ Export failed: {e}"));
+                    t.write().push_back(format!("{msg_export_failed}: {e}"));
                 }
             }
         });
@@ -210,23 +220,29 @@ pub fn More() -> Element {
     rsx! {
         Stylesheet { href: asset!("/assets/more.scss") }
         header {
-            h1 { "⚙️ More" }
+            h1 { {t!("more-title")} }
         }
         main { class: "more",
             article {
-                h2 { "📤 Export" }
+                h2 { {t!("more-export-section")} }
                 div { class: "inputs",
-                    button { class: "label save", onclick: export_exercises, "💾 Custom Exercises" }
-                    button { class: "label save", onclick: export_sessions, "💾 Sessions" }
+                    button { class: "label save", onclick: export_exercises,
+                        {t!("more-export-exercises-btn")}
+                    }
+                    button { class: "label save", onclick: export_sessions,
+                        {t!("more-export-sessions-btn")}
+                    }
                 }
             }
             article {
-                h2 { "📥 Import" }
+                h2 { {t!("more-import-section")} }
                 div { class: "inputs",
                     button { class: "label more", onclick: open_exercises_import,
-                        "📂 Custom Exercises"
+                        {t!("more-import-exercises-btn")}
                     }
-                    button { class: "label more", onclick: open_sessions_import, "📂 Sessions" }
+                    button { class: "label more", onclick: open_sessions_import,
+                        {t!("more-import-sessions-btn")}
+                    }
                 }
                 input {
                     r#type: "file",
@@ -244,8 +260,8 @@ pub fn More() -> Element {
                 }
             }
             article {
-                h2 { "LogOut" }
-                p { "Turn off your computer, Log your workOut." }
+                h2 { {t!("more-about-section")} }
+                p { {t!("app-subtitle")} }
                 p {
                     "A simple, efficient and cross-platform workout "
                     "logging application with "
@@ -259,11 +275,8 @@ pub fn More() -> Element {
                 }
             }
             article {
-                h2 { "⚙️ Exercise Database URL" }
-                p {
-                    "Override the exercise database source. "
-                    "Save to trigger a re-download on next reload."
-                }
+                h2 { {t!("more-db-url-section")} }
+                p { {t!("more-db-url-desc")} }
                 form { onsubmit: save_url,
                     input {
                         r#type: "url",
@@ -274,13 +287,13 @@ pub fn More() -> Element {
                     button {
                         r#type: "submit",
                         class: "icon save",
-                        aria_label: "Save",
+                        aria_label: t!("more-db-url-save-aria"),
                         "💾"
                     }
                 }
             }
             article {
-                h2 { "Open Source & Licences" }
+                h2 { {t!("more-oss-section")} }
                 p {
                     "This project is open-source under the GPL-3.0, "
                     "and uses other open-source projects. See its "
@@ -301,7 +314,7 @@ pub fn More() -> Element {
                 }
             }
             article {
-                h2 { "Built With" }
+                h2 { {t!("more-built-with-section")} }
                 ul {
                     li {
                         a { href: "https://rust-lang.org", target: "_blank", "Rust" }
@@ -326,13 +339,9 @@ pub fn More() -> Element {
         if let Some(exercise) = exercises_to_confirm.read().first().cloned() {
             div { class: "backdrop", onclick: skip_replace }
             dialog { open: true, onclick: move |evt| evt.stop_propagation(),
-                p {
-                    "Replace custom exercise "
-                    {exercise.name}
-                    "?"
-                }
+                p { {t!("more-replace-confirm", name : exercise.name.clone())} }
                 div {
-                    button { class: "no label", onclick: confirm_replace, "💾 Replace" }
+                    button { class: "no label", onclick: confirm_replace, {t!("more-replace-btn")} }
                     button { class: "yes", onclick: skip_replace, "❌" }
                 }
             }

@@ -5,6 +5,7 @@ use crate::models::{
 };
 use crate::services::storage;
 use dioxus::prelude::*;
+use dioxus_i18n::t;
 /// A single completed exercise log entry with inline edit support.
 #[component]
 pub fn CompletedExerciseLog(
@@ -53,7 +54,7 @@ pub fn CompletedExerciseLog(
                     if show_replay {
                         button {
                             class: "edit",
-                            title: "Do another set",
+                            title: t!("log-replay-title"),
                             onclick: move |_| on_replay.call(()),
                             "🔁"
                         }
@@ -61,12 +62,12 @@ pub fn CompletedExerciseLog(
                     button {
                         class: "edit",
                         onclick: start_edit,
-                        title: "Edit this exercise",
+                        title: t!("log-edit-title"),
                         "✏️"
                     }
                     button {
                         class: "del",
-                        title: "Delete this exercise",
+                        title: t!("log-delete-title"),
                         onclick: move |_| {
                             let mut current_session = session.read().clone();
                             current_session.exercise_logs.remove(idx);
