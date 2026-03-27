@@ -11,6 +11,10 @@ on:
     tags: [v*]
   workflow_dispatch:
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   release:
     if: startsWith(github.ref, 'refs/tags/v')
@@ -84,6 +88,8 @@ jobs:
       is_tagged: ${{ steps.check.outputs.is_tagged }}
     steps:
     - uses: actions/checkout@v6
+      with:
+        fetch-depth: 0
     - id: check
       run: |
         if git describe --tags --exact-match HEAD >/dev/null 2>&1; then
