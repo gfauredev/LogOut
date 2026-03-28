@@ -3,8 +3,9 @@ use crate::models::{
     format_time, parse_distance_km, parse_duration_seconds, parse_weight_kg, Category, ExerciseLog,
     Force, WorkoutSession, HG_PER_KG, M_PER_KM,
 };
-use crate::services::storage;
+use crate::services::{exercise_db, storage};
 use dioxus::prelude::*;
+use dioxus_i18n::prelude::i18n;
 use dioxus_i18n::t;
 /// A single completed exercise log entry with inline edit support.
 #[component]
@@ -42,6 +43,18 @@ pub fn CompletedExerciseLog(
             is_editing.set(true);
         }
     };
+    let all_exercises = exercise_db::use_exercises();
+    let custom_exercises = storage::use_custom_exercises();
+    let lang_str = use_memo(move || i18n().language().to_string());
+    let exercise_id_for_name = log.exercise_id.clone();
+    let fallback_name = log.exercise_name.clone();
+    let display_name = use_memo(move || {
+        let all = all_exercises.read();
+        let custom = custom_exercises.read();
+        let lang = lang_str.read();
+        exercise_db::resolve_exercise(&all, &custom, &exercise_id_for_name)
+            .map_or_else(|| fallback_name.clone(), |ex| ex.name_for_lang(&lang).to_owned())
+    });
     let force = log.force;
     let category = log.category;
     let exercise_id = log.exercise_id.clone();
@@ -49,7 +62,7 @@ pub fn CompletedExerciseLog(
     rsx! {
         article {
             header {
-                h4 { "{log.exercise_name}" }
+                h4 { "{display_name}" }
                 div { class: "inputs",
                     if show_replay {
                         button {

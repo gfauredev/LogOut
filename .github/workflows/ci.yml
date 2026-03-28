@@ -64,6 +64,8 @@ jobs:
 
           **Lines: ${{ steps.coverage_report.outputs.COVERED }}/${{ steps.coverage_report.outputs.TOTAL }} (${{ steps.coverage_report.outputs.PERCENT }}%)**
 
+          ⏱️ Tests: ${{ steps.coverage_report.outputs.TESTS_COUNT }} tests in ${{ steps.coverage_report.outputs.DURATION }}s
+
           ${{ steps.coverage_report.outputs.REPORT }}
     - run: |
         if [ "${{ steps.coverage_report.outputs.FAILED }}" == "true" ]; then
