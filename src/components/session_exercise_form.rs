@@ -5,6 +5,7 @@ use crate::models::{
 };
 use crate::services::{exercise_db, storage};
 use dioxus::prelude::*;
+use dioxus_i18n::prelude::i18n;
 use dioxus_i18n::t;
 /// Shared exercise input form used both for performing a new set and for
 /// editing a completed log entry.
@@ -149,8 +150,12 @@ pub(super) fn ExerciseInputForm(
                     tabindex: -1,
                     onclick: move |_| {
                         let cur: f64 = weight_input.read().parse().unwrap_or(0.0);
-                        let next = (cur - 0.5).max(0.0);
-                        weight_input.set(format!("{next:.1}"));
+                        let next = cur - 0.5;
+                        if next <= 0.0 {
+                            weight_input.set(String::new());
+                        } else {
+                            weight_input.set(format!("{next:.1}"));
+                        }
                     },
                     "−"
                 }
@@ -302,11 +307,13 @@ pub(super) fn ExerciseFormPanel(
 ) -> Element {
     let all_exercises = exercise_db::use_exercises();
     let custom_exercises = storage::use_custom_exercises();
+    let lang_str = use_memo(move || i18n().language().to_string());
     let (exercise_name, category, force) = {
         let all = all_exercises.read();
         let custom = custom_exercises.read();
+        let lang = lang_str.read();
         if let Some(ex) = exercise_db::resolve_exercise(&all, &custom, &exercise_id) {
-            (ex.name.clone(), ex.category, ex.force)
+            (ex.name_for_lang(&lang).to_owned(), ex.category, ex.force)
         } else {
             ("Unknown".to_string(), Category::Strength, None)
         }

@@ -301,23 +301,9 @@ const SCORE_NAME_NORM_CONTAINS: u32 = 70;
 const SCORE_NAME_ALL_TOKENS: u32 = 65;
 const SCORE_NAME_REVERSE: u32 = 60;
 const SCORE_I18N_NAME: u32 = 55;
-/// Computes a relevance score for `exercise` against the pre-computed query
-/// components.  Returns 0 if the exercise does not match the query at all.
-/// Only the exercise title (English and all available localised names) is
-/// searched; attribute filtering is handled exclusively by hard filters.
-fn score_exercise(
-    exercise: &Exercise,
-    query_lower: &str,
-    query_norm: &str,
-    tokens: &[String],
-) -> u32 {
-    let computed_name_lower;
-    let name_lc: &str = if exercise.name_lower.is_empty() {
-        computed_name_lower = exercise.name.to_lowercase();
-        &computed_name_lower
-    } else {
-        &exercise.name_lower
-    };
+/// Computes a relevance score for a single already-lowercased name string
+/// against the pre-computed query components.  Returns 0 when no match.
+fn score_name_str(name_lc: &str, query_lower: &str, query_norm: &str, tokens: &[String]) -> u32 {
     let name_norm = normalize_for_search(name_lc);
     if name_lc == query_lower {
         return SCORE_EXACT_NAME;
@@ -343,6 +329,49 @@ fn score_exercise(
     if !query_norm.is_empty() && !name_norm.is_empty() && query_norm.contains(&name_norm) {
         return SCORE_NAME_REVERSE;
     }
+    0
+}
+/// Computes a relevance score for `exercise` against the pre-computed query
+/// components.  Returns 0 if the exercise does not match the query at all.
+/// Only the exercise title (English and all available localised names) is
+/// searched; attribute filtering is handled exclusively by hard filters.
+///
+/// When `lang` is non-empty the localised name for that language is scored
+/// with the same full tier set as the English name, so that e.g. searching
+/// "Pompe" in French ranks the French Push-Up translation as highly as an
+/// English exact-name match.  All other i18n names fall back to the lower
+/// `SCORE_I18N_NAME` tier.
+fn score_exercise(
+    exercise: &Exercise,
+    query_lower: &str,
+    query_norm: &str,
+    tokens: &[String],
+    lang: &str,
+) -> u32 {
+    let computed_name_lower;
+    let name_lc: &str = if exercise.name_lower.is_empty() {
+        computed_name_lower = exercise.name.to_lowercase();
+        &computed_name_lower
+    } else {
+        &exercise.name_lower
+    };
+    // Score the default (English) name.
+    let mut best = score_name_str(name_lc, query_lower, query_norm, tokens);
+    // Score the localised name for the user's language with the same full
+    // tiers, so a "Pompe" search in French can rank as highly as an exact
+    // English name match.
+    if !lang.is_empty() {
+        let loc_name = exercise.name_for_lang(lang);
+        // Only re-score when the translation actually differs from the default.
+        if loc_name != exercise.name {
+            let loc_lc = loc_name.to_lowercase();
+            best = best.max(score_name_str(&loc_lc, query_lower, query_norm, tokens));
+        }
+    }
+    if best > 0 {
+        return best;
+    }
+    // Fall back: any i18n name match (other languages) earns a lower score.
     if exercise.i18n.as_ref().is_some_and(|map| {
         map.values().any(|i18n| {
             i18n.name.as_deref().is_some_and(|n| {
@@ -365,9 +394,14 @@ fn score_exercise(
 /// Results are sorted by relevance: exact / near-exact name matches appear
 /// first, followed by prefix / token matches.
 ///
+/// Pass the user's BCP-47 language tag (e.g. `"fr"` or `"fr-FR"`) as `lang`
+/// so that matches against the localised name for that language are scored
+/// with the same full tier set as the English name.  Pass `""` to disable
+/// language-aware scoring (e.g. in unit tests that only exercise English names).
+///
 /// Works with any element type that dereferences to [`Exercise`] (e.g. plain
 /// `Exercise` in tests, `Arc<Exercise>` in production signals).
-pub fn search_exercises<'a, E>(exercises: &'a [E], query: &str) -> Vec<&'a E>
+pub fn search_exercises<'a, E>(exercises: &'a [E], query: &str, lang: &str) -> Vec<&'a E>
 where
     E: AsRef<Exercise>,
 {
@@ -381,7 +415,7 @@ where
     let mut scored: Vec<(u32, &E)> = exercises
         .iter()
         .filter_map(|exercise| {
-            let score = score_exercise(exercise.as_ref(), &query_lower, &query_norm, &tokens);
+            let score = score_exercise(exercise.as_ref(), &query_lower, &query_norm, &tokens, lang);
             if score > 0 {
                 Some((score, exercise))
             } else {
@@ -602,70 +636,70 @@ mod tests {
     #[test]
     fn search_by_name() {
         let exercises = sample_exercises();
-        let results = search_exercises(&exercises, "bench");
+        let results = search_exercises(&exercises, "bench", "");
         assert_eq!(results.len(), 1);
         assert_eq!(results[0].id, "bench_press");
     }
     #[test]
     fn search_by_muscle_returns_empty() {
         let exercises = sample_exercises();
-        let results = search_exercises(&exercises, "lats");
+        let results = search_exercises(&exercises, "lats", "");
         assert!(results.is_empty());
     }
     #[test]
     fn search_by_category_returns_empty() {
         let exercises = sample_exercises();
-        let results = search_exercises(&exercises, "cardio");
+        let results = search_exercises(&exercises, "cardio", "");
         assert!(results.is_empty());
     }
     #[test]
     fn search_by_force_returns_empty() {
         let exercises = sample_exercises();
-        let results = search_exercises(&exercises, "push");
+        let results = search_exercises(&exercises, "push", "");
         assert!(results.is_empty());
     }
     #[test]
     fn search_by_equipment_returns_empty() {
         let exercises = sample_exercises();
-        let results = search_exercises(&exercises, "barbell");
+        let results = search_exercises(&exercises, "barbell", "");
         assert!(results.is_empty());
     }
     #[test]
     fn search_by_level_returns_empty() {
         let exercises = sample_exercises();
-        let results = search_exercises(&exercises, "beginner");
+        let results = search_exercises(&exercises, "beginner", "");
         assert!(results.is_empty());
     }
     #[test]
     fn search_case_insensitive() {
         let exercises = sample_exercises();
-        let results = search_exercises(&exercises, "BENCH");
+        let results = search_exercises(&exercises, "BENCH", "");
         assert_eq!(results.len(), 1);
     }
     #[test]
     fn search_no_match() {
         let exercises = sample_exercises();
-        let results = search_exercises(&exercises, "zzz_no_match");
+        let results = search_exercises(&exercises, "zzz_no_match", "");
         assert!(results.is_empty());
     }
     #[test]
     fn search_hyphenated_query_finds_unhyphenated_name() {
         let exercises = sample_exercises();
-        let results = search_exercises(&exercises, "pull-up");
+        let results = search_exercises(&exercises, "pull-up", "");
         assert_eq!(results.len(), 1);
         assert_eq!(results[0].id, "pull_up");
     }
     #[test]
     fn search_plain_query_finds_hyphenated_name() {
         let exercises = sample_exercises();
-        let results = search_exercises(&exercises, "pullup");
+        let results = search_exercises(&exercises, "pullup", "");
         assert_eq!(results.len(), 1);
         assert_eq!(results[0].id, "pull_up");
     }
     #[test]
     fn search_pluralised_query_finds_exercise() {
         let exercises = sample_exercises();
-        let results = search_exercises(&exercises, "bench press");
+        let results = search_exercises(&exercises, "bench press", "");
         assert_eq!(results.len(), 1);
         assert_eq!(results[0].id, "bench_press");
     }
@@ -687,7 +721,7 @@ mod tests {
             i18n: None,
         }
         .with_lowercase()];
-        let results = search_exercises(&exercises, "wide grip bench");
+        let results = search_exercises(&exercises, "wide grip bench", "");
         assert_eq!(
             results.len(),
             1,
@@ -713,7 +747,7 @@ mod tests {
             i18n: None,
         }
         .with_lowercase()];
-        let results = search_exercises(&exercises, "… pushups");
+        let results = search_exercises(&exercises, "… pushups", "");
         assert_eq!(results.len(), 1, "punctuation-only token should be ignored");
         assert_eq!(results[0].id, "pushups");
     }
@@ -727,7 +761,7 @@ mod tests {
     #[test]
     fn search_empty_query_returns_all() {
         let exercises = sample_exercises();
-        let results = search_exercises(&exercises, "");
+        let results = search_exercises(&exercises, "", "");
         assert_eq!(results.len(), exercises.len());
     }
     #[test]
@@ -816,7 +850,7 @@ mod tests {
     #[test]
     fn search_with_none_force_does_not_match_by_name_of_pull() {
         let exercises = sample_exercises();
-        let results = search_exercises(&exercises, "pull");
+        let results = search_exercises(&exercises, "pull", "");
         for r in &results {
             assert_ne!(r.id, "running");
         }
@@ -824,7 +858,7 @@ mod tests {
     #[test]
     fn search_with_body_only_equipment_returns_empty() {
         let exercises = sample_exercises();
-        let results = search_exercises(&exercises, "body only");
+        let results = search_exercises(&exercises, "body only", "");
         assert!(results.is_empty());
     }
     #[test]
@@ -845,7 +879,7 @@ mod tests {
             i18n: None,
         }
         .with_lowercase()];
-        let results = search_exercises(&exercises, "kettlebell");
+        let results = search_exercises(&exercises, "kettlebell", "");
         assert!(
             results.is_empty(),
             "ID token matching is removed; title 'KB Pistol Squat' does not contain 'kettlebell'",
@@ -854,25 +888,25 @@ mod tests {
     #[test]
     fn search_by_secondary_muscle_returns_empty() {
         let exercises = sample_exercises();
-        let results = search_exercises(&exercises, "triceps");
+        let results = search_exercises(&exercises, "triceps", "");
         assert!(results.is_empty());
     }
     #[test]
     fn search_by_secondary_muscle_biceps_returns_empty() {
         let exercises = sample_exercises();
-        let results = search_exercises(&exercises, "biceps");
+        let results = search_exercises(&exercises, "biceps", "");
         assert!(results.is_empty());
     }
     #[test]
     fn search_muscle_word_start_no_false_positive() {
         let exercises = sample_exercises();
-        let results = search_exercises(&exercises, "ring");
+        let results = search_exercises(&exercises, "ring", "");
         assert!(!results.iter().any(|e| e.id == "running"));
     }
     #[test]
     fn search_muscle_word_start_prefix_returns_empty() {
         let exercises = sample_exercises();
-        let results = search_exercises(&exercises, "ham");
+        let results = search_exercises(&exercises, "ham", "");
         assert!(!results.iter().any(|e| e.id == "running"));
     }
     #[test]
@@ -931,7 +965,7 @@ mod tests {
             images: vec![],
             i18n: None,
         }];
-        let results = search_exercises(&exercises, "quadriceps");
+        let results = search_exercises(&exercises, "quadriceps", "");
         assert!(results.is_empty());
     }
     #[test]
@@ -951,7 +985,7 @@ mod tests {
             images: vec![],
             i18n: None,
         }];
-        let results = search_exercises(&exercises, "glutes");
+        let results = search_exercises(&exercises, "glutes", "");
         assert!(results.is_empty());
     }
     #[test]
@@ -971,7 +1005,7 @@ mod tests {
             images: vec![],
             i18n: None,
         }];
-        let results = search_exercises(&exercises, "cardio");
+        let results = search_exercises(&exercises, "cardio", "");
         assert!(results.is_empty());
     }
     #[test]
@@ -1000,20 +1034,90 @@ mod tests {
             i18n: Some(i18n_map),
         }
         .with_lowercase()];
-        let results = search_exercises(&exercises, "développé");
+        let results = search_exercises(&exercises, "développé", "");
         assert_eq!(results.len(), 1, "should find by French name");
+        assert_eq!(results[0].id, "bench_press");
+    }
+    #[test]
+    fn search_lang_aware_exact_match_outranks_english_partial() {
+        // When searching "pompe" in French, "Push-Up" (French: "Pompe") should
+        // rank above any exercise that only matches partially in English.
+        let mut i18n_pompe = std::collections::HashMap::new();
+        i18n_pompe.insert(
+            "fr".to_string(),
+            crate::models::ExerciseI18n {
+                name: Some("Pompe".to_string()),
+                instructions: None,
+            },
+        );
+        let exercises = vec![
+            Exercise {
+                id: "push_up".into(),
+                name: "Push-Up".into(),
+                name_lower: String::new(),
+                force: Some(Force::Push),
+                level: Some(Level::Beginner),
+                mechanic: None,
+                equipment: Some(Equipment::BodyOnly),
+                primary_muscles: vec![Muscle::Chest],
+                secondary_muscles: vec![Muscle::Triceps],
+                instructions: vec![],
+                category: Category::Strength,
+                images: vec![],
+                i18n: Some(i18n_pompe),
+            }
+            .with_lowercase(),
+            Exercise {
+                id: "push_up_wide".into(),
+                name: "Push-Up Wide".into(),
+                name_lower: String::new(),
+                force: Some(Force::Push),
+                level: Some(Level::Beginner),
+                mechanic: None,
+                equipment: Some(Equipment::BodyOnly),
+                primary_muscles: vec![Muscle::Chest],
+                secondary_muscles: vec![],
+                instructions: vec![],
+                category: Category::Strength,
+                images: vec![],
+                i18n: None,
+            }
+            .with_lowercase(),
+        ];
+        // With lang="fr", "pompe" should exactly match "Pompe" → SCORE_EXACT_NAME.
+        // "Push-Up Wide" has no French translation so it doesn't match "pompe" at all.
+        let results = search_exercises(&exercises, "pompe", "fr");
+        assert!(!results.is_empty(), "should find at least one result");
+        assert_eq!(
+            results[0].id, "push_up",
+            "Push-Up (French: Pompe) should be the top result for 'pompe' search in French",
+        );
+        // Without lang, only the i18n fallback (score 55) should fire.
+        let results_no_lang = search_exercises(&exercises, "pompe", "");
+        assert!(
+            !results_no_lang.is_empty(),
+            "should still find by i18n name without lang hint"
+        );
+        assert_eq!(results_no_lang[0].id, "push_up");
+    }
+    #[test]
+    fn search_lang_aware_does_not_affect_english_results() {
+        // Passing a lang should not break English name matching.
+        let exercises = sample_exercises();
+        let results = search_exercises(&exercises, "bench press", "fr");
+        assert!(!results.is_empty());
         assert_eq!(results[0].id, "bench_press");
     }
     #[test]
     fn search_by_translated_tag_returns_empty() {
         let exercises = sample_exercises();
-        let results = search_exercises(&exercises, "musculation");
+        let results = search_exercises(&exercises, "musculation", "");
         assert!(results.is_empty());
     }
     #[test]
     fn search_by_translated_tag_without_db_i18n_does_not_match() {
         let exercises = sample_exercises();
-        let results = search_exercises(&exercises, "musculation");
+        let results = search_exercises(&exercises, "musculation", "");
         assert!(results.is_empty());
     }
     #[test]
@@ -1374,7 +1478,7 @@ mod tests {
             }
             .with_lowercase(),
         ];
-        let results = search_exercises(&exercises, "push-up");
+        let results = search_exercises(&exercises, "push-up", "");
         assert!(
             !results.is_empty(),
             "search should find at least the Push-Up exercise"
@@ -1387,7 +1491,7 @@ mod tests {
     #[test]
     fn search_exact_name_ranks_first() {
         let exercises = sample_exercises();
-        let results = search_exercises(&exercises, "bench press");
+        let results = search_exercises(&exercises, "bench press", "");
         assert!(!results.is_empty());
         assert_eq!(results[0].id, "bench_press");
     }
@@ -1427,7 +1531,7 @@ mod tests {
             }
             .with_lowercase(),
         ];
-        let results = search_exercises(&exercises, "pull");
+        let results = search_exercises(&exercises, "pull", "");
         assert!(results.len() >= 2);
         assert_eq!(
             results[0].id, "pull_up",

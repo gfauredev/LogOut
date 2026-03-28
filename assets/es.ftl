@@ -96,13 +96,26 @@ more-import-section = 📥 Importar
 more-import-exercises-btn = 📂 Ejercicios personalizados
 more-import-sessions-btn = 📂 Sesiones
 more-about-section = LogOut
+more-about-desc-a = Una aplicación simple, eficiente y multiplataforma para registrar entrenamientos con
+more-about-exercises-link = 800+ ejercicios
+more-about-desc-b = integrados, por
 more-db-url-section = ⚙️ URL de la base de datos de ejercicios
 more-db-url-desc = Cambia la fuente de datos de ejercicios. Guarda para forzar una nueva descarga en el próximo reinicio.
 more-db-url-save-aria = Guardar
 more-oss-section = Código abierto y licencias
+more-oss-desc-a = Este proyecto es de código abierto bajo la licencia GPL-3.0 y utiliza otros proyectos de código abierto. Consulta su
+more-oss-repo-link = repositorio de código
+more-oss-desc-b = para más detalles. Aceptamos contribuciones, incluyendo a la
+more-oss-db-link = base de datos de ejercicios
 more-built-with-section = Creado con
+more-built-with-rust = Lenguaje de programación de sistemas
+more-built-with-dioxus = Framework Rust para aplicaciones multiplataforma
+more-built-with-freeexdb = Datos e imágenes de ejercicios, por yuhonas
+more-built-with-others = Y muchos más …
 more-replace-confirm = ¿Reemplazar el ejercicio personalizado { $name }?
 more-replace-btn = 💾 Reemplazar
+more-sessions-refused = sesión/sesiones rechazada(s): ID ya existe
+more-exercises-refused = ejercicio(s) rechazado(s): conflicto con ID integrado
 
 ## Mensajes toast (prefijo estático; el detalle técnico se añade en tiempo de ejecución)
 toast-export-failed = ⚠️ Error al exportar

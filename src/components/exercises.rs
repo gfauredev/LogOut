@@ -6,6 +6,7 @@ use crate::services::exercise_db::{
 use crate::services::{exercise_db, storage};
 use crate::{ExerciseSearchSignal, Route};
 use dioxus::prelude::*;
+use dioxus_i18n::prelude::i18n;
 use dioxus_i18n::t;
 use futures_channel::mpsc::UnboundedReceiver;
 use std::sync::Arc;
@@ -23,6 +24,7 @@ pub fn Exercises() -> Element {
     let all_exercises = exercise_db::use_exercises();
     let custom_exercises = storage::use_custom_exercises();
     let sessions = storage::use_sessions();
+    let lang_str = use_memo(move || i18n().language().to_string());
     // Raw query updated on every keystroke (drives the input value and filter-suggestion chips).
     let mut search_query = use_signal(String::new);
     // Debounced query – only updated `SEARCH_DEBOUNCE_MS` after the user stops typing.
@@ -127,13 +129,14 @@ pub fn Exercises() -> Element {
                 }
             }
         } else {
-            let custom_results = exercise_db::search_exercises(&custom_pool, &query);
+            let custom_results =
+                exercise_db::search_exercises(&custom_pool, &query, &lang_str.read());
             for ex in custom_results {
                 if seen_ids.insert(ex.id.clone()) {
                     results.push((ex.clone(), true));
                 }
             }
-            let db_results = exercise_db::search_exercises(&all_pool, &query);
+            let db_results = exercise_db::search_exercises(&all_pool, &query, &lang_str.read());
             for ex in db_results {
                 if seen_ids.insert(ex.id.clone()) {
                     results.push((ex.clone(), false));
