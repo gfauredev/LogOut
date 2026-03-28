@@ -52,8 +52,10 @@ pub fn CompletedExerciseLog(
         let all = all_exercises.read();
         let custom = custom_exercises.read();
         let lang = lang_str.read();
-        exercise_db::resolve_exercise(&all, &custom, &exercise_id_for_name)
-            .map_or_else(|| fallback_name.clone(), |ex| ex.name_for_lang(&lang).to_owned())
+        exercise_db::resolve_exercise(&all, &custom, &exercise_id_for_name).map_or_else(
+            || fallback_name.clone(),
+            |ex| ex.name_for_lang(&lang).to_owned(),
+        )
     });
     let force = log.force;
     let category = log.category;
