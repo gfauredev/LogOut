@@ -137,7 +137,7 @@ pub fn More() -> Element {
                 }
                 if refused > 0 {
                     t.write()
-                        .push_back(format!("⚠️ {refused} {}", msg_sessions_refused(),));
+                        .push_back(format!("⚠️ {refused} {}", msg_sessions_refused()));
                 }
             }
         }
@@ -171,7 +171,7 @@ pub fn More() -> Element {
                 }
                 if refused > 0 {
                     t.write()
-                        .push_back(format!("⚠️ {refused} {}", msg_exercises_refused(),));
+                        .push_back(format!("⚠️ {refused} {}", msg_exercises_refused()));
                 }
                 if !to_confirm.is_empty() {
                     exercises_to_confirm.set(to_confirm);

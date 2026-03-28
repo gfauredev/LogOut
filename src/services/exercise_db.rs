@@ -333,10 +333,10 @@ fn score_name_str(name_lc: &str, query_lower: &str, query_norm: &str, tokens: &[
 }
 /// Computes a relevance score for `exercise` against the pre-computed query
 /// components.  Returns 0 if the exercise does not match the query at all.
-/// Only the exercise title (English and all available localised names) is
+/// Only the exercise title (English and all available localized names) is
 /// searched; attribute filtering is handled exclusively by hard filters.
 ///
-/// When `lang` is non-empty the localised name for that language is scored
+/// When `lang` is non-empty the localized name for that language is scored
 /// with the same full tier set as the English name, so that e.g. searching
 /// "Pompe" in French ranks the French Push-Up translation as highly as an
 /// English exact-name match.  All other i18n names fall back to the lower
@@ -357,7 +357,7 @@ fn score_exercise(
     };
     // Score the default (English) name.
     let mut best = score_name_str(name_lc, query_lower, query_norm, tokens);
-    // Score the localised name for the user's language with the same full
+    // Score the localized name for the user's language with the same full
     // tiers, so a "Pompe" search in French can rank as highly as an exact
     // English name match.
     if !lang.is_empty() {
@@ -384,7 +384,7 @@ fn score_exercise(
     }
     0
 }
-/// Search exercises by title (English name and all available localised names).
+/// Search exercises by title (English name and all available localized names).
 ///
 /// Attribute values (muscles, category, force, equipment, level) are
 /// intentionally excluded from search; use hard filters (`SearchFilter`) for
@@ -395,7 +395,7 @@ fn score_exercise(
 /// first, followed by prefix / token matches.
 ///
 /// Pass the user's BCP-47 language tag (e.g. `"fr"` or `"fr-FR"`) as `lang`
-/// so that matches against the localised name for that language are scored
+/// so that matches against the localized name for that language are scored
 /// with the same full tier set as the English name.  Pass `""` to disable
 /// language-aware scoring (e.g. in unit tests that only exercise English names).
 ///
