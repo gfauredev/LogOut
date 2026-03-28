@@ -80,6 +80,7 @@
             cargo-binutils
             cargo-deny
             cargo-llvm-cov
+            cargo-nextest
             cargo-mutants
             clang
             dioxus-cli
@@ -404,6 +405,7 @@
             version = env.projectVersion;
             nativeBuildInputs = env.commonNativeBuildInputs ++ [ env.pkgs.lcov ];
             buildInputs = env.commonBuildInputs;
+            # TODO Measure durations with nextest and output them
             buildPhase = ''
               export HOME=$TMPDIR
               mkdir -p $out
