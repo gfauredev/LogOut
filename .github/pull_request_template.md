@@ -20,5 +20,5 @@ Resolves #ENTER_ISSUE_NUMBER
   - [ ] Code compiles, `dx build` succeeds (with necessary platform flags)
   - [ ] NO `cargo clippy -- -D warnings -W clippy::all -W clippy::pedantic`
         warnings
-  - [ ] All unit tests pass without warnings (`cargo test`)
+  - [ ] All unit tests pass without warnings (`cargo llvm-cov nextest`)
   - [ ] End-to-end tests pass (`maestro test --headless maestro/{web,android}`)

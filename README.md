@@ -83,7 +83,7 @@ LogOut/
 | Build system                 | [Cargo]                                      |
 | Dependencies and environment | [Nix]                                        |
 | Versioning and collaboration | [Git] hosted on GitHub                       |
-| Unit tests                   | [Cargo test]                                 |
+| Unit tests                   | [Cargo test], [cargo-llvm-cov], [nextest]    |
 | End-to-end tests (PWA)       | [Maestro] (beta web)                         |
 | End-to-end tests (Android)   | [Maestro]                                    |
 | Code coverage                | [cargo-llvm-cov]                             |
@@ -194,7 +194,7 @@ Follow these general engineering principles:
   - `$page.scss` structure and components specific to `$page`
 - Ensure code is properly **formatted** with `dx fmt` and `cargo fmt --all`
 - Ensure code **compiles** with `dx build` plus eventual platform flags
-- Ensure all **unit tests** `cargo test` pass without warning
+- Ensure all **unit tests** `cargo llvm-cov nextest` pass without warning
 - **No** `cargo clippy -- -D warnings -W clippy::all -W clippy::pedantic` warns
 - Ensure all **end-to-end tests** `maestro test` (`--headless`) pass
 
@@ -221,7 +221,7 @@ PRs) must pass (for some, at a certain level) for it to be merged into `main`.
 - Run isolated in Garnix via (`flake.nix`)[flake.nix], for every push on PR
   - Check if the code is properly **formatted** `cargo fmt --all -- --check`
   - **Lint** `cargo clippy -- -D warnings -W clippy::all -W clippy::pedantic`
-  - **Unit test** while measuring **coverage** with `cargo llvm-cov`
+  - **Unit test** while measuring **coverage** with `cargo llvm-cov nextest`
   - **Build production** release for Web `dx build --web --release`
   - At each step, cache outputs to avoid redundant work (automatic in Garnix)
 - Run in standard Linux or macOS runners once necessary outputs are available
@@ -291,6 +291,7 @@ The [exercise database] is under the Unlicense (public domain).
 [lldb]: https://lldb.llvm.org
 [llvm-cov]: https://llvm.org/docs/CommandGuide/llvm-cov.html
 [Maestro]: https://maestro.dev
+[nextest]: https://nexte.st
 [Nix]: https://nixos.org
 [pwa]: https://developer.mozilla.org/en-US/docs/Web/Progressive_web_apps
 [renovate]: https://www.mend.io/renovate
