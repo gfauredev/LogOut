@@ -1,7 +1,6 @@
 use crate::components::{ActiveTab, BottomNav, SessionView};
 use crate::models::{format_time, WorkoutSession};
 use crate::services::storage;
-use crate::utils::format_session_date;
 use crate::{ExerciseSearchSignal, Route};
 use dioxus::prelude::*;
 use dioxus_i18n::t;
@@ -127,7 +126,14 @@ fn SessionCard(session: WorkoutSession, on_delete: EventHandler<String>) -> Elem
     let mut search_signal = use_context::<ExerciseSearchSignal>().0;
     let navigator = use_navigator();
     let duration = session.duration_seconds();
-    let date_str = format_session_date(session.start_time);
+    let date_str = {
+        let days = crate::utils::session_days_ago(session.start_time);
+        match days {
+            0 => t!("date-today"),
+            1 => t!("date-yesterday"),
+            n => t!("date-days-ago", count: n.to_string()),
+        }
+    };
     let unique_exercises: Vec<(String, String, &'static str, &'static str)> = {
         let mut seen = std::collections::HashSet::new();
         session

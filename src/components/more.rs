@@ -14,9 +14,13 @@ pub fn More() -> Element {
     let custom_exercises = storage::use_custom_exercises();
     let all_exercises = exercise_db::use_exercises();
     // Pre-compute translated toast message prefixes at render time.
-    // Only for closures that do NOT move into async blocks (to preserve Copy-ability).
+    // Export-failed strings are used in closures that clone before capture, so String is OK.
     let msg_export_failed = t!("toast-export-failed");
     let msg_export_sessions_failed = t!("toast-export-sessions-failed");
+    // Invalid-JSON strings are used in closures that must remain FnMut (captured by async move).
+    // use_memo returns Memo<String> which is Copy, so these closures stay FnMut on WASM.
+    let msg_sessions_invalid = use_memo(|| t!("toast-sessions-invalid"));
+    let msg_exercises_invalid = use_memo(|| t!("toast-exercises-invalid"));
     let save_url = move |evt: Event<FormData>| {
         evt.prevent_default();
         let url = crate::utils::normalize_db_url(url_input.read().trim());
@@ -116,7 +120,7 @@ pub fn More() -> Element {
         match serde_json::from_str::<Vec<crate::models::WorkoutSession>>(&json) {
             Err(e) => {
                 t.write()
-                    .push_back(format!("⚠️ Invalid sessions JSON: {e}"));
+                    .push_back(format!("{}: {e}", msg_sessions_invalid()));
             }
             Ok(imported) => {
                 let existing_ids: Vec<String> =
@@ -142,7 +146,7 @@ pub fn More() -> Element {
         match serde_json::from_str::<Vec<Exercise>>(&json) {
             Err(e) => {
                 t.write()
-                    .push_back(format!("⚠️ Invalid exercises JSON: {e}"));
+                    .push_back(format!("{}: {e}", msg_exercises_invalid()));
             }
             Ok(imported) => {
                 let db = all_exercises.read();

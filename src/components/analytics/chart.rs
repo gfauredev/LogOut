@@ -143,9 +143,19 @@ pub fn ChartView(data: SeriesData, colors: Vec<&'static str>) -> Element {
         }
     };
 
-    let format_date = |ts: f64| -> String {
+    let i18n = dioxus_i18n::prelude::i18n();
+    let format_date = move |ts: f64| -> String {
         #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
-        crate::utils::format_session_date(ts as u64)
+        let days = crate::utils::session_days_ago(ts as u64);
+        match days {
+            0 => i18n.translate("date-today"),
+            1 => i18n.translate("date-yesterday"),
+            n => {
+                let mut args = dioxus_i18n::fluent::FluentArgs::new();
+                args.set("count", n);
+                i18n.translate_with_args("date-days-ago", Some(&args))
+            }
+        }
     };
 
     // ── Cursor tooltip values ─────────────────────────────────────────────────

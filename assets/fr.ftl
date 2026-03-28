@@ -110,9 +110,26 @@ toast-export-sessions-failed = ⚠️ Échec de l'export des séances
 toast-sessions-invalid = ⚠️ JSON de séances invalide
 toast-exercises-invalid = ⚠️ JSON d'exercices invalide
 
+## Étiquettes de date relative
+date-today = Aujourd'hui
+date-yesterday = Hier
+date-days-ago = Il y a { $count } jour{ $count ->
+    [one] {""}
+   *[other] s
+}
+
+## Toast de félicitations et notifications
+congratulations = 🎉 Beau travail ! Séance terminée !
+notif-permission-blocked = ⚠️ Notifications bloquées
+notif-permission-enable = ⚠️ Appuie ici pour activer les notifications
+notif-duration-title = Durée atteinte
+notif-duration-body = Durée cible de l'exercice atteinte !
+notif-rest-title = Repos terminé
+notif-rest-body = C'est l'heure de ta prochaine série !
+
 ## Page Statistiques
 analytics-title = 📊 Statistiques
-analytics-subtitle = Suivez votre progression dans le temps
+analytics-subtitle = Suis ta progression dans le temps
 analytics-pairs-label = Paires métrique–exercice (⩽ 8)
 analytics-empty = Sélectionnez des exercices pour voir les statistiques
 analytics-metric-weight = Poids (kg)

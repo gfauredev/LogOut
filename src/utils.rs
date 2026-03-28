@@ -310,6 +310,9 @@ fn route_name_to_path(name: &str) -> String {
     }
 }
 /// Format a session timestamp as a human-readable relative date string.
+///
+/// Returns English strings; for localised output use [`session_days_ago`] with
+/// `t!()` in a component.
 #[must_use]
 pub fn format_session_date(timestamp: u64) -> String {
     let days_ago = days_since(timestamp);
@@ -318,6 +321,13 @@ pub fn format_session_date(timestamp: u64) -> String {
         1 => "Yesterday".to_string(),
         n => format!("{n} days ago"),
     }
+}
+/// Return how many calendar days ago `timestamp` occurred (0 = today,
+/// 1 = yesterday, …).  Use this in Dioxus components together with `t!()` to
+/// produce a localised relative date string.
+#[must_use]
+pub fn session_days_ago(timestamp: u64) -> i64 {
+    days_since(timestamp)
 }
 /// Returns the number of elapsed calendar days between the local midnight of
 /// `timestamp`'s day and the local midnight of today, using system’s local TZ
