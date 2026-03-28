@@ -1,8 +1,9 @@
 use crate::components::{ActiveTab, BottomNav, SessionView};
 use crate::models::{format_time, WorkoutSession};
-use crate::services::storage;
+use crate::services::{exercise_db, storage};
 use crate::{ExerciseSearchSignal, Route};
 use dioxus::prelude::*;
+use dioxus_i18n::prelude::i18n;
 use dioxus_i18n::t;
 /// Number of sessions loaded per scroll increment
 const PAGE_SIZE: usize = 20;
@@ -125,6 +126,9 @@ fn SessionCard(session: WorkoutSession, on_delete: EventHandler<String>) -> Elem
     let session_id = session.id.clone();
     let mut search_signal = use_context::<ExerciseSearchSignal>().0;
     let navigator = use_navigator();
+    let all_exercises = exercise_db::use_exercises();
+    let custom_exercises = storage::use_custom_exercises();
+    let lang_str = use_memo(move || i18n().language().to_string());
     let duration = session.duration_seconds();
     let date_str = {
         let days = crate::utils::session_days_ago(session.start_time);
@@ -136,18 +140,21 @@ fn SessionCard(session: WorkoutSession, on_delete: EventHandler<String>) -> Elem
     };
     let unique_exercises: Vec<(String, String, &'static str, &'static str)> = {
         let mut seen = std::collections::HashSet::new();
+        let all = all_exercises.read();
+        let custom = custom_exercises.read();
+        let lang = lang_str.read();
         session
             .exercise_logs
             .iter()
             .filter_map(|log| {
                 if seen.insert(log.exercise_id.clone()) {
                     let (tag_class, tag_icon) = log.type_tag();
-                    Some((
-                        log.exercise_id.clone(),
-                        log.exercise_name.clone(),
-                        tag_class,
-                        tag_icon,
-                    ))
+                    let name = exercise_db::resolve_exercise(&all, &custom, &log.exercise_id)
+                        .map_or_else(
+                            || log.exercise_name.clone(),
+                            |ex| ex.name_for_lang(&lang).to_owned(),
+                        );
+                    Some((log.exercise_id.clone(), name, tag_class, tag_icon))
                 } else {
                     None
                 }

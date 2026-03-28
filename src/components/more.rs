@@ -21,6 +21,8 @@ pub fn More() -> Element {
     // use_memo returns Memo<String> which is Copy, so these closures stay FnMut on WASM.
     let msg_sessions_invalid = use_memo(|| t!("toast-sessions-invalid"));
     let msg_exercises_invalid = use_memo(|| t!("toast-exercises-invalid"));
+    let msg_sessions_refused = use_memo(|| t!("more-sessions-refused"));
+    let msg_exercises_refused = use_memo(|| t!("more-exercises-refused"));
     let save_url = move |evt: Event<FormData>| {
         evt.prevent_default();
         let url = crate::utils::normalize_db_url(url_input.read().trim());
@@ -134,9 +136,8 @@ pub fn More() -> Element {
                     }
                 }
                 if refused > 0 {
-                    t.write().push_back(format!(
-                        "⚠️ {refused} session(s) refused: ID already exists",
-                    ));
+                    t.write()
+                        .push_back(format!("⚠️ {refused} {}", msg_sessions_refused(),));
                 }
             }
         }
@@ -169,9 +170,8 @@ pub fn More() -> Element {
                     storage::add_custom_exercise(exercise);
                 }
                 if refused > 0 {
-                    t.write().push_back(format!(
-                        "⚠️ {refused} exercise(s) refused: built-in ID conflict",
-                    ));
+                    t.write()
+                        .push_back(format!("⚠️ {refused} {}", msg_exercises_refused(),));
                 }
                 if !to_confirm.is_empty() {
                     exercises_to_confirm.set(to_confirm);
@@ -267,14 +267,16 @@ pub fn More() -> Element {
                 h2 { {t!("more-about-section")} }
                 p { {t!("app-subtitle")} }
                 p {
-                    "A simple, efficient and cross-platform workout "
-                    "logging application with "
+                    {t!("more-about-desc-a")}
+                    " "
                     a {
                         href: "https://github.com/yuhonas/free-exercise-db",
                         target: "_blank",
-                        "800+ exercises"
+                        {t!("more-about-exercises-link")}
                     }
-                    " built-in, by "
+                    " "
+                    {t!("more-about-desc-b")}
+                    " "
                     a { href: "https://www.guilhemfau.re", target: "_blank", "Guilhem Fauré." }
                 }
             }
@@ -299,20 +301,21 @@ pub fn More() -> Element {
             article {
                 h2 { {t!("more-oss-section")} }
                 p {
-                    "This project is open-source under the GPL-3.0, "
-                    "and uses other open-source projects. See its "
+                    {t!("more-oss-desc-a")}
+                    " "
                     a {
                         href: "https://github.com/gfauredev/LogOut",
                         target: "_blank",
                         rel: "noopener noreferrer",
-                        "code repository"
+                        {t!("more-oss-repo-link")}
                     }
-                    " for details. We happily accept contributions, "
-                    " including to the "
+                    " "
+                    {t!("more-oss-desc-b")}
+                    " "
                     a {
                         href: "https://github.com/gfauredev/free-exercise-db",
                         target: "_blank",
-                        "exercise database"
+                        {t!("more-oss-db-link")}
                     }
                     "."
                 }
@@ -322,11 +325,13 @@ pub fn More() -> Element {
                 ul {
                     li {
                         a { href: "https://rust-lang.org", target: "_blank", "Rust" }
-                        " — Systems programming language"
+                        " — "
+                        {t!("more-built-with-rust")}
                     }
                     li {
                         a { href: "https://dioxuslabs.com", target: "_blank", "Dioxus" }
-                        " — Rust framework for cross-platform apps"
+                        " — "
+                        {t!("more-built-with-dioxus")}
                     }
                     li {
                         a {
@@ -334,9 +339,10 @@ pub fn More() -> Element {
                             target: "_blank",
                             "Free Exercise DB"
                         }
-                        " — Exercise data and images, by yuhonas"
+                        " — "
+                        {t!("more-built-with-freeexdb")}
                     }
-                    li { "And many others …" }
+                    li { {t!("more-built-with-others")} }
                 }
             }
         }

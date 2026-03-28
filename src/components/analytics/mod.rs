@@ -1,7 +1,8 @@
 use crate::components::{ActiveTab, BottomNav};
 use crate::models::analytics::Metric;
-use crate::services::storage;
+use crate::services::{exercise_db, storage};
 use dioxus::prelude::*;
+use dioxus_i18n::prelude::i18n;
 use dioxus_i18n::t;
 
 mod chart;
@@ -18,6 +19,9 @@ const COLORS: [&str; 8] = [
 pub fn Analytics() -> Element {
     let selected_pairs: Signal<Vec<(Metric, Option<String>)>> =
         use_signal(|| vec![(Metric::Weight, None); 8]);
+    let all_exercises = exercise_db::use_exercises();
+    let custom_exercises = storage::use_custom_exercises();
+    let lang_str = use_memo(move || i18n().language().to_string());
 
     let sessions_resource = use_resource(move || async move {
         let mut all: Vec<crate::models::WorkoutSession> = Vec::new();
@@ -48,20 +52,28 @@ pub fn Analytics() -> Element {
     let available_by_metric = use_memo(move || {
         let res = sessions_resource.read();
         let sessions = res.as_deref().unwrap_or(&[]);
+        let all = all_exercises.read();
+        let custom = custom_exercises.read();
+        let lang = lang_str.read();
         let mut maps: [std::collections::HashMap<String, String>; 4] =
             std::array::from_fn(|_| std::collections::HashMap::new());
         for session in sessions {
             for log in &session.exercise_logs {
+                let name = exercise_db::resolve_exercise(&all, &custom, &log.exercise_id)
+                    .map_or_else(
+                        || log.exercise_name.clone(),
+                        |ex| ex.name_for_lang(&lang).to_owned(),
+                    );
                 if log.weight_hg.is_some() {
-                    maps[0].insert(log.exercise_id.clone(), log.exercise_name.clone());
+                    maps[0].insert(log.exercise_id.clone(), name.clone());
                 }
                 if log.reps.is_some() {
-                    maps[1].insert(log.exercise_id.clone(), log.exercise_name.clone());
+                    maps[1].insert(log.exercise_id.clone(), name.clone());
                 }
                 if log.distance_m.is_some() {
-                    maps[2].insert(log.exercise_id.clone(), log.exercise_name.clone());
+                    maps[2].insert(log.exercise_id.clone(), name.clone());
                 }
-                maps[3].insert(log.exercise_id.clone(), log.exercise_name.clone());
+                maps[3].insert(log.exercise_id.clone(), name);
             }
         }
         maps.map(|m| {

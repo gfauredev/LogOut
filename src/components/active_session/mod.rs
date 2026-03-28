@@ -9,6 +9,7 @@ use crate::services::exercise_db::{
 use crate::services::{exercise_db, storage};
 use crate::{RestDurationSignal, Route};
 use dioxus::prelude::*;
+use dioxus_i18n::prelude::i18n;
 use dioxus_i18n::t;
 use futures_channel::mpsc::UnboundedReceiver;
 use std::sync::Arc;
@@ -123,6 +124,7 @@ pub fn SessionView() -> Element {
     let custom_exercises = storage::use_custom_exercises();
     let all_exercises = exercise_db::use_exercises();
     let pending_ids = use_memo(move || session.read().pending_exercise_ids.clone());
+    let lang_str = use_memo(move || i18n().language().to_string());
 
     let debounce_handle = use_coroutine(move |mut rx: UnboundedReceiver<String>| async move {
         use futures_util::StreamExt as _;
@@ -183,16 +185,17 @@ pub fn SessionView() -> Element {
             return vec![];
         }
         let (custom_pool, all_pool) = filter_pool();
+        let lang = lang_str.read();
         let mut results: Vec<Arc<crate::models::Exercise>> = Vec::new();
         let mut seen_ids = std::collections::HashSet::new();
         if has_query {
-            let custom_results = exercise_db::search_exercises(&custom_pool, &query);
+            let custom_results = exercise_db::search_exercises(&custom_pool, &query, &lang);
             for ex in custom_results {
                 if seen_ids.insert(ex.id.clone()) {
                     results.push(Arc::clone(ex));
                 }
             }
-            let db_results = exercise_db::search_exercises(&all_pool, &query);
+            let db_results = exercise_db::search_exercises(&all_pool, &query, &lang);
             for ex in db_results.into_iter().take(MAX_TEXT_SEARCH_RESULTS) {
                 if seen_ids.insert(ex.id.clone()) {
                     results.push(Arc::clone(ex));
@@ -355,7 +358,7 @@ pub fn SessionView() -> Element {
                             li {
                                 key: "{ex.id}",
                                 onclick: move |_| start_exercise(ex.id.clone()),
-                                span { "{ex.name}" }
+                                span { "{ex.name_for_lang(&lang_str.read())}" }
                                 span { class: "category", "{ex.category}" }
                             }
                         }

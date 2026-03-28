@@ -2,6 +2,7 @@ use crate::components::CompletedExerciseLog;
 use crate::models::WorkoutSession;
 use crate::services::{exercise_db, storage};
 use dioxus::prelude::*;
+use dioxus_i18n::prelude::i18n;
 use dioxus_i18n::t;
 
 /// Antichronological list of completed exercise logs with replay and edit actions.
@@ -18,6 +19,7 @@ pub fn CompletedExercisesSection(
 ) -> Element {
     let all_exercises = exercise_db::use_exercises();
     let custom_exercises = storage::use_custom_exercises();
+    let lang_str = use_memo(move || i18n().language().to_string());
     let suggested_next = use_memo(move || {
         let logs = &session.read().exercise_logs;
         let last = logs.last()?;
@@ -36,8 +38,9 @@ pub fn CompletedExercisesSection(
         suggested_next().map(|(id, fallback_name)| {
             let all = all_exercises.read();
             let custom = custom_exercises.read();
+            let lang = lang_str.read();
             let name = exercise_db::resolve_exercise(&all, &custom, &id)
-                .map_or(fallback_name, |ex| ex.name.clone());
+                .map_or(fallback_name, |ex| ex.name_for_lang(&lang).to_owned());
             (id, name)
         })
     });

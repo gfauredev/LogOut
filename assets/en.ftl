@@ -96,13 +96,26 @@ more-import-section = 📥 Import
 more-import-exercises-btn = 📂 Custom Exercises
 more-import-sessions-btn = 📂 Sessions
 more-about-section = LogOut
+more-about-desc-a = A simple, efficient and cross-platform workout logging application with
+more-about-exercises-link = 800+ exercises
+more-about-desc-b = built-in, by
 more-db-url-section = ⚙️ Exercise Database URL
 more-db-url-desc = Override the exercise database source. Save to trigger a re-download on next reload.
 more-db-url-save-aria = Save
 more-oss-section = Open Source & Licences
+more-oss-desc-a = This project is open-source under the GPL-3.0, and uses other open-source projects. See its
+more-oss-repo-link = code repository
+more-oss-desc-b = for details. We happily accept contributions, including to the
+more-oss-db-link = exercise database
 more-built-with-section = Built With
+more-built-with-rust = Systems programming language
+more-built-with-dioxus = Rust framework for cross-platform apps
+more-built-with-freeexdb = Exercise data and images, by yuhonas
+more-built-with-others = And many others …
 more-replace-confirm = Replace custom exercise { $name }?
 more-replace-btn = 💾 Replace
+more-sessions-refused = session(s) refused: ID already exists
+more-exercises-refused = exercise(s) refused: built-in ID conflict
 
 ## Toast messages (static prefixes; technical error detail appended at runtime)
 toast-export-failed = ⚠️ Export failed

@@ -1,6 +1,7 @@
 use crate::models::Category;
 use crate::services::{exercise_db, storage};
 use dioxus::prelude::*;
+use dioxus_i18n::prelude::i18n;
 use dioxus_i18n::t;
 
 /// List of exercises pre-added to the session that haven't been started yet.
@@ -14,14 +15,16 @@ pub fn PendingExercisesSection(
 ) -> Element {
     let all_exercises = exercise_db::use_exercises();
     let custom_exercises = storage::use_custom_exercises();
+    let lang_str = use_memo(move || i18n().language().to_string());
     let resolved: Vec<(String, String, Category)> = {
         let all = all_exercises.read();
         let custom = custom_exercises.read();
+        let lang = lang_str.read();
         pending_ids
             .iter()
             .map(|id| {
                 if let Some(ex) = exercise_db::resolve_exercise(&all, &custom, id) {
-                    (id.clone(), ex.name.clone(), ex.category)
+                    (id.clone(), ex.name_for_lang(&lang).to_owned(), ex.category)
                 } else {
                     (id.clone(), "Unknown".to_string(), Category::Strength)
                 }
