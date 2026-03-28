@@ -110,6 +110,20 @@ toast-export-sessions-failed = ⚠️ Failed to export sessions
 toast-sessions-invalid = ⚠️ Invalid sessions JSON
 toast-exercises-invalid = ⚠️ Invalid exercises JSON
 
+## Relative date labels
+date-today = Today
+date-yesterday = Yesterday
+date-days-ago = { $count } days ago
+
+## Congratulations & notification toasts
+congratulations = 🎉 Great workout! Session complete!
+notif-permission-blocked = ⚠️ Notifications blocked
+notif-permission-enable = ⚠️ Tap here to enable notifications
+notif-duration-title = Duration reached
+notif-duration-body = Target exercise duration reached!
+notif-rest-title = Rest over
+notif-rest-body = Time to start your next set!
+
 ## Analytics page
 analytics-title = 📊 Analytics
 analytics-subtitle = Track your progress over time

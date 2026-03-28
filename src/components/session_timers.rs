@@ -1,5 +1,7 @@
 use crate::models::{format_time, format_time_i64, get_current_timestamp};
 use dioxus::prelude::*;
+#[cfg(target_arch = "wasm32")]
+use dioxus_i18n::t;
 /// Timer tick interval in milliseconds
 #[cfg(target_arch = "wasm32")]
 const TIMER_TICK_MS: u32 = 1_000;
@@ -7,26 +9,17 @@ const TIMER_TICK_MS: u32 = 1_000;
 /// worker registration. Using the service-worker path instead of `new
 /// Notification()` is required on mobile browsers (Android Chrome) to fire
 /// sound and vibration correctly.
-/// `is_duration_bell` selects a different message to distinguish from rest alerts.
 #[cfg(target_arch = "wasm32")]
-pub(crate) fn send_notification(is_duration_bell: bool) {
+pub(crate) fn send_notification(title: &str, body: &str, tag: &'static str) {
     use web_sys::{NotificationOptions, NotificationPermission};
     if web_sys::Notification::permission() != NotificationPermission::Granted {
         return;
     }
-    let (title, body) = if is_duration_bell {
-        ("Duration reached", "Target exercise duration reached!")
-    } else {
-        ("Rest over", "Time to start your next set!")
-    };
     let title = title.to_string();
+    let body = body.to_string();
     let opts = NotificationOptions::new();
-    opts.set_body(body);
-    opts.set_tag(if is_duration_bell {
-        "logout-duration"
-    } else {
-        "logout-rest"
-    });
+    opts.set_body(&body);
+    opts.set_tag(tag);
     let vibrate = serde_wasm_bindgen::to_value(&[200u32, 100, 200]).ok();
     if let Some(v) = vibrate {
         opts.set_vibrate(&v);
@@ -133,7 +126,11 @@ pub(super) fn RestTimerDisplay(
         if intervals > prev_count {
             bell_count.set(intervals);
             #[cfg(target_arch = "wasm32")]
-            send_notification(false);
+            send_notification(
+                &t!("notif-rest-title"),
+                &t!("notif-rest-body"),
+                "logout-rest",
+            );
         }
     }
     let remaining = rd.cast_signed() - elapsed.cast_signed();
@@ -174,7 +171,11 @@ pub(super) fn ExerciseElapsedTimer(
             if dur > 0 && elapsed >= dur {
                 duration_bell_rung.set(true);
                 #[cfg(target_arch = "wasm32")]
-                send_notification(true);
+                send_notification(
+                    &t!("notif-duration-title"),
+                    &t!("notif-duration-body"),
+                    "logout-duration",
+                );
             }
         }
     }
@@ -218,7 +219,11 @@ pub(super) fn InlineExerciseTimer(
             if dur > 0 && elapsed >= dur {
                 duration_bell_rung.set(true);
                 #[cfg(target_arch = "wasm32")]
-                send_notification(true);
+                send_notification(
+                    &t!("notif-duration-title"),
+                    &t!("notif-duration-body"),
+                    "logout-duration",
+                );
             }
         }
     }

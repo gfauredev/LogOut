@@ -7,6 +7,7 @@
 //! [Dioxus]: https://dioxuslabs.com
 use dioxus::prelude::*;
 use dioxus_i18n::prelude::*;
+use dioxus_i18n::t;
 use unic_langid::langid;
 mod components;
 mod models;
@@ -407,9 +408,7 @@ fn CongratulationsToast() -> Element {
     });
     if *show.read() {
         rsx! {
-            div { class: "snackbar", onclick: move |_| show.set(false),
-                "🎉 Great workout! Session complete!"
-            }
+            div { class: "snackbar", onclick: move |_| show.set(false), {t!("congratulations")} }
         }
     } else {
         rsx! {}
@@ -474,8 +473,8 @@ fn NotificationPermissionToast() -> Element {
     {
         use web_sys::NotificationPermission;
         let msg = match web_sys::Notification::permission() {
-            NotificationPermission::Denied => "⚠️ Notifications blocked",
-            _ => "⚠️ Tap here to enable notifications",
+            NotificationPermission::Denied => t!("notif-permission-blocked"),
+            _ => t!("notif-permission-enable"),
         };
         rsx! {
             div {
