@@ -1,8 +1,13 @@
 <!-- LTeX: language=en-GB -->
 
-[![Get it on Obtainium](https://img.shields.io/badge/Get_it_on-Obtainium-black?style=for-the-badge&logo=obtainium)](https://apps.obtainium.imranr.dev/redirect.html?r=obtainium://add/https://github.com/gfauredev/LogOut)
-[![Get it on GitHub](https://img.shields.io/badge/Get_it_on-GitHub-black?style=for-the-badge&logo=github)](https://github.com/gfauredev/LogOut/releases/latest)
-[![Garnix CI Status](https://img.shields.io/endpoint.svg?url=https%3A%2F%2Fgarnix.io%2Fapi%2Fbadges%2Fgfauredev%2FLogOut)](https://garnix.io/repo/gfauredev/LogOut)
+[![Obtainium Download](https://img.shields.io/badge/get%20it%20on%20Obtainium-black?logo=obtainium)](https://apps.obtainium.imranr.dev/redirect.html?r=obtainium://add/https://github.com/gfauredev/LogOut)
+[![GitHub Downloads](https://img.shields.io/github/downloads/gfauredev/LogOut/latest/total?sort=semver&logo=github&labelColor=black)](https://github.com/gfauredev/LogOut/releases/latest)
+[![Garnix CI status badge](https://img.shields.io/endpoint?url=https%3A%2F%2Fgarnix.io%2Fapi%2Fbadges%2Fgfauredev%2FLogOut)](https://garnix.io/repo/gfauredev/LogOut)
+![Deps.rs Repository Dependencies](https://img.shields.io/deps-rs/repo/github/gfauredev/LogOut?logo=rust&labelColor=black)
+
+<!-- https://apps.obtainium.imranr.dev/redirect.html?r=obtainium://add/https://github.com/gfauredev/LogOut -->
+<!-- https://github.com/gfauredev/LogOut/releases/latest -->
+<!-- https://garnix.io/api/badges/gfauredev/LogOut -->
 
 # LogOut
 
