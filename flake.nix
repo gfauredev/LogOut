@@ -405,14 +405,13 @@
             version = env.projectVersion;
             nativeBuildInputs = env.commonNativeBuildInputs ++ [ env.pkgs.lcov ];
             buildInputs = env.commonBuildInputs;
-            # TODO Measure durations with nextest and output them
             buildPhase = ''
               export HOME=$TMPDIR
               mkdir -p $out
-              cargo llvm-cov --bin log-out \
+              cargo llvm-cov nextest --bin log-out \
                 --ignore-filename-regex "(src/components/|\.cargo/registry/|/rustc/)" \
-                --html --output-dir $out # /html auto added
-              cargo llvm-cov --bin log-out \
+                --html --output-dir $out 2>&1 | tee $out/nextest.log
+              cargo llvm-cov report --bin log-out \
                 --ignore-filename-regex "(src/components/|\.cargo/registry/|/rustc/)" \
                 --json > $out/coverage.json
             '';
