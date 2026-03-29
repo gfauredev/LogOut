@@ -4,6 +4,8 @@
 #   html/index.html, coverage.json, and nextest.log
 set -e
 
+# Fail if unit tests take longer than this many seconds
+MAX_TEST_DURATION_SECS=10
 REPORT=$(grep -o "<table>.*</table>" coverage/html/index.html)
 PERCENT=$(jq '.data[0].totals.lines.percent' coverage/coverage.json)
 COVERED=$(jq '.data[0].totals.lines.covered' coverage/coverage.json)
@@ -41,10 +43,10 @@ fi
 
 if [ -n "$DURATION" ]; then
   echo "Tests completed in ${DURATION}s ($TESTS_COUNT tests)"
-  if awk "BEGIN {exit !($DURATION > 10)}"; then
-    echo "❌ Tests took ${DURATION}s (limit: 10s)"
+  if awk "BEGIN {exit !($DURATION > $MAX_TEST_DURATION_SECS)}"; then
+    echo "❌ Tests took ${DURATION}s (limit: ${MAX_TEST_DURATION_SECS}s)"
     echo "FAILED=true" >>"$GITHUB_OUTPUT"
   else
-    echo "✅ Tests within 10s limit"
+    echo "✅ Tests within ${MAX_TEST_DURATION_SECS}s limit"
   fi
 fi

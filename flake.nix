@@ -411,7 +411,7 @@
               cargo llvm-cov nextest --bin log-out \
                 --ignore-filename-regex "(src/components/|\.cargo/registry/|/rustc/)" \
                 --html --output-dir $out 2>&1 | tee $out/nextest.log
-              cargo llvm-cov report --bin log-out \
+              cargo llvm-cov report \
                 --ignore-filename-regex "(src/components/|\.cargo/registry/|/rustc/)" \
                 --json > $out/coverage.json
             '';
