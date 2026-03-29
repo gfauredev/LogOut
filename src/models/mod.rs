@@ -95,4 +95,37 @@ mod tests {
         assert_eq!(format_time_i64(-1), "-00:01");
         assert_eq!(format_time_i64(-90), "-01:30");
     }
+    #[test]
+    fn exercise_type_tag_cardio_ignores_force() {
+        assert_eq!(
+            exercise_type_tag(Category::Cardio, None),
+            ("tag-cardio", "🏃"),
+        );
+        assert_eq!(
+            exercise_type_tag(Category::Cardio, Some(Force::Push)),
+            ("tag-cardio", "🏃"),
+        );
+    }
+    #[test]
+    fn exercise_type_tag_strength_push_pull() {
+        assert_eq!(
+            exercise_type_tag(Category::Strength, Some(Force::Push)),
+            ("tag-strength", "💪"),
+        );
+        assert_eq!(
+            exercise_type_tag(Category::Strength, Some(Force::Pull)),
+            ("tag-strength", "💪"),
+        );
+    }
+    #[test]
+    fn exercise_type_tag_static_force_or_no_force() {
+        assert_eq!(
+            exercise_type_tag(Category::Strength, Some(Force::Static)),
+            ("tag-static", "⏱️"),
+        );
+        assert_eq!(
+            exercise_type_tag(Category::Stretching, None),
+            ("tag-static", "⏱️"),
+        );
+    }
 }

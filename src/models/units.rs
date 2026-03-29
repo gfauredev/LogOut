@@ -184,4 +184,46 @@ mod tests {
         let too_large = format!("{}", (f64::from(u32::MAX) / 1000.0) + 1.0);
         assert_eq!(parse_distance_km(&too_large), None);
     }
+    #[test]
+    fn parse_duration_seconds_empty_returns_none() {
+        assert_eq!(parse_duration_seconds(""), None);
+        assert_eq!(parse_duration_seconds("   "), None);
+    }
+    #[test]
+    fn parse_duration_seconds_plain_seconds() {
+        assert_eq!(parse_duration_seconds("0"), Some(0));
+        assert_eq!(parse_duration_seconds("30"), Some(30));
+        assert_eq!(parse_duration_seconds("90"), Some(90));
+    }
+    #[test]
+    fn parse_duration_seconds_mm_ss_format() {
+        assert_eq!(parse_duration_seconds("1:30"), Some(90));
+        assert_eq!(parse_duration_seconds("0:00"), Some(0));
+        assert_eq!(parse_duration_seconds("59:59"), Some(3599));
+    }
+    #[test]
+    fn parse_duration_seconds_mm_ss_invalid_secs() {
+        assert_eq!(parse_duration_seconds("1:60"), None);
+        assert_eq!(parse_duration_seconds("0:99"), None);
+    }
+    #[test]
+    fn parse_duration_seconds_hh_mm_ss_format() {
+        assert_eq!(parse_duration_seconds("1:00:00"), Some(3600));
+        assert_eq!(parse_duration_seconds("1:01:01"), Some(3661));
+        assert_eq!(parse_duration_seconds("0:59:59"), Some(3599));
+    }
+    #[test]
+    fn parse_duration_seconds_hh_mm_ss_invalid_parts() {
+        assert_eq!(parse_duration_seconds("1:60:00"), None);
+        assert_eq!(parse_duration_seconds("1:00:60"), None);
+    }
+    #[test]
+    fn parse_duration_seconds_too_many_parts_returns_none() {
+        assert_eq!(parse_duration_seconds("1:2:3:4"), None);
+    }
+    #[test]
+    fn parse_duration_seconds_non_numeric_returns_none() {
+        assert_eq!(parse_duration_seconds("abc"), None);
+        assert_eq!(parse_duration_seconds("1:ab"), None);
+    }
 }

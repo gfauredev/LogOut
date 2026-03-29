@@ -298,7 +298,7 @@ fn percent_decode(s: &str) -> String {
 }
 /// Map a human-readable route name (as used in `?dl_navigate=…`) to the
 /// corresponding URL path.
-#[cfg(target_arch = "wasm32")]
+#[cfg_attr(not(target_arch = "wasm32"), allow(dead_code))]
 fn route_name_to_path(name: &str) -> String {
     match name {
         "home" | "/" => "/".to_string(),
@@ -631,5 +631,35 @@ mod tests {
             super::normalize_db_url("  https://example.com  "),
             "https://example.com/",
         );
+    }
+    #[test]
+    fn route_name_to_path_known_routes() {
+        assert_eq!(super::route_name_to_path("home"), "/");
+        assert_eq!(super::route_name_to_path("/"), "/");
+        assert_eq!(super::route_name_to_path("exercises"), "/exercises");
+        assert_eq!(super::route_name_to_path("analytics"), "/analytics");
+        assert_eq!(super::route_name_to_path("credits"), "/more");
+        assert_eq!(super::route_name_to_path("more"), "/more");
+        assert_eq!(super::route_name_to_path("add-exercise"), "/add-exercise");
+        assert_eq!(super::route_name_to_path("add_exercise"), "/add-exercise");
+    }
+    #[test]
+    fn route_name_to_path_unknown_prefixes_slash() {
+        assert_eq!(super::route_name_to_path("custom"), "/custom");
+    }
+    #[test]
+    fn session_days_ago_today_is_zero() {
+        let midnight = today_midnight_local_secs();
+        assert_eq!(super::session_days_ago(midnight + SECONDS_IN_HOUR), 0);
+    }
+    #[test]
+    fn session_days_ago_yesterday_is_one() {
+        let midnight = today_midnight_local_secs();
+        assert_eq!(super::session_days_ago(midnight - 1), 1);
+    }
+    #[test]
+    fn session_days_ago_seven_days() {
+        let midnight = today_midnight_local_secs();
+        assert_eq!(super::session_days_ago(midnight - SECONDS_IN_DAY * 7), 7,);
     }
 }
