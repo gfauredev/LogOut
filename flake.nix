@@ -29,8 +29,7 @@
     }:
     let
       forAllSystems = nixpkgs.lib.genAttrs [
-        "x86_64-linux" # "aarch64-linux"
-        # "aarch64-darwin"
+        "x86_64-linux" # "aarch64-linux" # "aarch64-darwin"
       ];
       nixpkgsFor = forAllSystems (
         system:
@@ -283,7 +282,7 @@
             name = "logout-all";
             paths = [
               self.packages.${system}.web
-              # self.packages.${system}.server
+              self.packages.${system}.server
               self.packages.${system}.webE2eTester
               self.packages.${system}.androidBuilder
               self.packages.${system}.androidE2eTester
