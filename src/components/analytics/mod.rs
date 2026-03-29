@@ -64,7 +64,7 @@ pub fn Analytics() -> Element {
                         || log.exercise_name.clone(),
                         |ex| ex.name_for_lang(&lang).to_owned(),
                     );
-                if log.weight_hg.is_some() {
+                if log.weight_hg.0 > 0 {
                     maps[0].insert(log.exercise_id.clone(), name.clone());
                 }
                 if log.reps.is_some() {

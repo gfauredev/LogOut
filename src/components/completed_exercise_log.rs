@@ -28,11 +28,11 @@ pub fn CompletedExerciseLog(
     let start_edit = {
         let log = log.clone();
         move |_| {
-            edit_weight_input.set(
-                log.weight_hg
-                    .map(|w| format!("{:.1}", f64::from(w.0) / HG_PER_KG))
-                    .unwrap_or_default(),
-            );
+            edit_weight_input.set(if log.weight_hg.0 == 0 {
+                String::new()
+            } else {
+                format!("{:.1}", f64::from(log.weight_hg.0) / HG_PER_KG)
+            });
             edit_reps_input.set(log.reps.map(|r| r.to_string()).unwrap_or_default());
             edit_distance_input.set(
                 log.distance_m
@@ -106,7 +106,8 @@ pub fn CompletedExerciseLog(
                     on_complete: move |()| {
                         let mut current_session = session.read().clone();
                         if let Some(log) = current_session.exercise_logs.get_mut(idx) {
-                            log.weight_hg = parse_weight_kg(&edit_weight_input.read());
+                            log.weight_hg = parse_weight_kg(&edit_weight_input.read())
+                                .unwrap_or_default();
                             log.reps = if force.is_some_and(Force::has_reps) {
                                 edit_reps_input.read().parse().ok()
                             } else {
@@ -133,8 +134,8 @@ pub fn CompletedExerciseLog(
                 }
             } else {
                 ul {
-                    if let Some(w) = log.weight_hg {
-                        li { "{w}" }
+                    if log.weight_hg.0 > 0 {
+                        li { "{log.weight_hg}" }
                     }
                     if let Some(reps) = log.reps {
                         li { "{reps} reps" }

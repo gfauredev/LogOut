@@ -423,7 +423,8 @@ pub(crate) fn merge_log_into_bests(bests: &mut ExerciseBests, log: &ExerciseLog)
     if !log.is_complete() {
         return;
     }
-    if let Some(w) = log.weight_hg {
+    if log.weight_hg.0 > 0 {
+        let w = log.weight_hg;
         bests.weight_hg = Some(match bests.weight_hg {
             None => w,
             Some(prev) => {
@@ -463,7 +464,7 @@ pub(crate) fn merge_log_into_bests(bests: &mut ExerciseBests, log: &ExerciseLog)
     let log_end = log.end_time.unwrap_or(0);
     if log_end > bests.last_log_end_time.unwrap_or(0) {
         bests.last_log_end_time = Some(log_end);
-        bests.last_weight_hg = log.weight_hg;
+        bests.last_weight_hg = (log.weight_hg.0 > 0).then_some(log.weight_hg);
         bests.last_reps = log.reps;
         bests.last_distance_m = log.distance_m;
     }
@@ -477,7 +478,7 @@ pub(crate) fn log_was_personal_record(log: &ExerciseLog, bests: &ExerciseBests) 
     if !log.is_complete() {
         return false;
     }
-    (log.weight_hg.is_some() && log.weight_hg == bests.weight_hg)
+    (log.weight_hg.0 > 0 && bests.weight_hg.is_some_and(|b| b == log.weight_hg))
         || (log.reps.is_some() && log.reps == bests.reps)
         || (log.distance_m.is_some() && log.distance_m == bests.distance_m)
         || (log.duration_seconds().is_some() && log.duration_seconds() == bests.duration)

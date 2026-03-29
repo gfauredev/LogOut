@@ -144,7 +144,7 @@ mod tests {
                 category: crate::models::Category::Strength,
                 start_time: 1000,
                 end_time: Some(1120),
-                weight_hg: Some(crate::models::Weight(1000)),
+                weight_hg: crate::models::Weight(1000),
                 reps: Some(5),
                 distance_m: None,
                 force: Some(crate::models::Force::Push),

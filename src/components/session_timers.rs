@@ -1,4 +1,4 @@
-use crate::models::{format_time, format_time_i64, get_current_timestamp};
+use crate::models::{format_time, format_time_i64, get_current_timestamp, Force};
 use dioxus::prelude::*;
 #[cfg(target_arch = "wasm32")]
 use dioxus_i18n::t;
@@ -149,6 +149,9 @@ pub(super) fn ExerciseElapsedTimer(
     last_duration: Option<u64>,
     mut duration_bell_rung: Signal<bool>,
     paused_at: Option<u64>,
+    /// Force type of the exercise; the "reached" highlight is only applied for
+    /// `Force::Static` exercises.
+    force: Option<Force>,
 ) -> Element {
     let mut now_tick = use_signal(get_current_timestamp);
     use_coroutine(move |_: UnboundedReceiver<()>| async move {
@@ -179,7 +182,8 @@ pub(super) fn ExerciseElapsedTimer(
             }
         }
     }
-    let timer_reached = last_duration.is_some_and(|d| d > 0 && elapsed >= d);
+    let is_static = force == Some(Force::Static);
+    let timer_reached = is_static && last_duration.is_some_and(|d| d > 0 && elapsed >= d);
     rsx! {
         div { class: if timer_reached { "exercise-timer reached" } else { "exercise-timer" },
             "⏱ {format_time(elapsed)}"
@@ -197,6 +201,9 @@ pub(super) fn InlineExerciseTimer(
     last_duration: Option<u64>,
     mut duration_bell_rung: Signal<bool>,
     paused_at: Option<u64>,
+    /// Force type of the exercise; the "reached" highlight is only applied for
+    /// `Force::Static` exercises.
+    force: Option<Force>,
 ) -> Element {
     let mut now_tick = use_signal(get_current_timestamp);
     use_coroutine(move |_: UnboundedReceiver<()>| async move {
@@ -227,7 +234,8 @@ pub(super) fn InlineExerciseTimer(
             }
         }
     }
-    let timer_reached = last_duration.is_some_and(|d| d > 0 && elapsed >= d);
+    let is_static = force == Some(Force::Static);
+    let timer_reached = is_static && last_duration.is_some_and(|d| d > 0 && elapsed >= d);
     rsx! {
         time { class: if timer_reached { "exercise-timer reached" } else { "exercise-timer" },
             "{format_time(elapsed)}"

@@ -15,8 +15,10 @@ pub struct ExerciseLog {
     pub start_time: u64,
     /// Unix timestamp when the exercise was finished.  `None` while in progress.
     pub end_time: Option<u64>,
-    /// Weight used, stored in hectograms (see [`Weight`]).
-    pub weight_hg: Option<Weight>,
+    /// Weight used, stored in hectograms (see [`Weight`]).  Defaults to 0 when
+    /// no weight was entered.
+    #[serde(default)]
+    pub weight_hg: Weight,
     /// Number of repetitions performed.
     pub reps: Option<u32>,
     /// Distance covered, stored in meters (see [`Distance`]).
@@ -53,7 +55,7 @@ mod tests {
             category: Category::Strength,
             start_time: 1000,
             end_time: None,
-            weight_hg: None,
+            weight_hg: Weight(0),
             reps: None,
             distance_m: None,
             force: Some(Force::Push),
@@ -70,7 +72,7 @@ mod tests {
             category: Category::Strength,
             start_time: 1000,
             end_time: Some(1060),
-            weight_hg: None,
+            weight_hg: Weight(0),
             reps: None,
             distance_m: None,
             force: Some(Force::Push),
@@ -85,7 +87,7 @@ mod tests {
             category: Category::Strength,
             start_time: 1000,
             end_time: None,
-            weight_hg: None,
+            weight_hg: Weight(0),
             reps: None,
             distance_m: None,
             force: Some(Force::Push),
@@ -100,7 +102,7 @@ mod tests {
             category: Category::Strength,
             start_time: 2000,
             end_time: Some(1000),
-            weight_hg: None,
+            weight_hg: Weight(0),
             reps: None,
             distance_m: None,
             force: None,
@@ -115,7 +117,7 @@ mod tests {
             category: Category::Strength,
             start_time: 1000,
             end_time: Some(1120),
-            weight_hg: Some(Weight(1000)),
+            weight_hg: Weight(1000),
             reps: Some(5),
             distance_m: Some(Distance(50)),
             force: Some(Force::Push),
@@ -132,13 +134,20 @@ mod tests {
             category: Category::Cardio,
             start_time: 1000,
             end_time: Some(2000),
-            weight_hg: None,
+            weight_hg: Weight(0),
             reps: None,
             distance_m: Some(Distance(500)),
             force: None,
         };
         let json = serde_json::to_string(&log).unwrap();
         assert!(!json.contains("force"));
+    }
+    #[test]
+    fn exercise_log_weight_zero_default_roundtrip() {
+        // A log serialised without weight_hg (old format) must deserialise to Weight(0).
+        let json = r#"{"exercise_id":"ex1","exercise_name":"Run","category":"cardio","start_time":1000,"end_time":2000,"reps":null,"distance_m":null}"#;
+        let log: ExerciseLog = serde_json::from_str(json).unwrap();
+        assert_eq!(log.weight_hg, Weight(0));
     }
     #[test]
     fn exercise_log_type_tag_mirrors_exercise() {
@@ -149,7 +158,7 @@ mod tests {
             force: Some(Force::Push),
             start_time: 1000,
             end_time: Some(1060),
-            weight_hg: None,
+            weight_hg: Weight(0),
             reps: None,
             distance_m: None,
         };

@@ -5,7 +5,7 @@ pub const HG_PER_KG: f64 = 10.0;
 /// Distance stored as meters: 1 km = 1000 m
 pub const M_PER_KM: f64 = 1000.0;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
 pub struct Weight(pub u16);
 
 impl fmt::Display for Weight {
