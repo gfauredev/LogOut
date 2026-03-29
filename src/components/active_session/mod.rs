@@ -128,6 +128,32 @@ pub fn SessionView() -> Element {
     let all_exercises = exercise_db::use_exercises();
     let pending_ids = use_memo(move || session.read().pending_exercise_ids.clone());
     let lang_str = use_memo(move || i18n().language().to_string());
+    let mut notes_input = use_signal(|| session.read().notes.clone());
+    // Keep the notes signal in sync when the session changes (e.g. after load).
+    use_effect(move || {
+        notes_input.set(session.read().notes.clone());
+    });
+    let notes_debounce = use_coroutine(move |mut rx: UnboundedReceiver<String>| async move {
+        use futures_util::StreamExt as _;
+        while let Some(text) = rx.next().await {
+            let mut latest = text;
+            while let Ok(t) = rx.try_recv() {
+                latest = t;
+            }
+            crate::utils::sleep_ms(400).await;
+            while let Ok(t) = rx.try_recv() {
+                latest = t;
+            }
+            // Retrieve the current session, update notes, and persist.
+            let sessions_w = storage::use_sessions();
+            let active = sessions_w.read().iter().find(|s| s.is_active()).cloned();
+            let _ = sessions_w;
+            if let Some(mut s) = active {
+                s.notes = latest;
+                storage::save_session(s);
+            }
+        }
+    });
 
     let debounce_handle = use_coroutine(move |mut rx: UnboundedReceiver<String>| async move {
         use futures_util::StreamExt as _;
@@ -386,6 +412,16 @@ pub fn SessionView() -> Element {
                     no_exercise_active: current_exercise_id().is_none(),
                     on_replay: move |exercise_id: String| start_exercise(exercise_id),
                 }
+            }
+            textarea {
+                class: "session-notes",
+                placeholder: t!("session-notes-placeholder"),
+                value: "{notes_input}",
+                oninput: move |evt| {
+                    let text = evt.value();
+                    notes_input.set(text.clone());
+                    notes_debounce.send(text);
+                },
             }
         }
     }
