@@ -208,8 +208,8 @@ fn bests_rows_from_sessions(sessions: &[crate::models::WorkoutSession]) -> Vec<B
                         last_distance_m: None,
                         last_log_end_time: None,
                     });
-                if let Some(w) = log.weight_hg {
-                    update_max(&mut entry.max_weight_hg, w.0);
+                if log.weight_hg.0 > 0 {
+                    update_max(&mut entry.max_weight_hg, log.weight_hg.0);
                 }
                 if let Some(r) = log.reps {
                     update_max(&mut entry.max_reps, r);
@@ -224,7 +224,7 @@ fn bests_rows_from_sessions(sessions: &[crate::models::WorkoutSession]) -> Vec<B
                 let log_end = log.end_time.unwrap_or(0);
                 if log_end > entry.last_log_end_time.unwrap_or(0) {
                     entry.last_log_end_time = Some(log_end);
-                    entry.last_weight_hg = log.weight_hg.map(|w| w.0);
+                    entry.last_weight_hg = (log.weight_hg.0 > 0).then_some(log.weight_hg.0);
                     entry.last_reps = log.reps;
                     entry.last_distance_m = log.distance_m.map(|d| d.0);
                 }
@@ -1695,7 +1695,7 @@ mod tests {
             category: Category::Strength,
             start_time: start,
             end_time: end,
-            weight_hg: None,
+            weight_hg: Weight(0),
             reps: None,
             distance_m: None,
             force: Some(Force::Push),
@@ -1756,7 +1756,7 @@ mod tests {
             category: Category::Strength,
             start_time: 1_000,
             end_time: Some(1_060), // duration 60s
-            weight_hg: Some(Weight(1_000)),
+            weight_hg: Weight(1_000),
             reps: Some(10),
             distance_m: None,
             force: None,
@@ -1766,9 +1766,9 @@ mod tests {
             exercise_name: "Ex1".into(),
             category: Category::Strength,
             start_time: 2_000,
-            end_time: Some(2_090),        // duration 90s — should win
-            weight_hg: Some(Weight(800)), // lower than log1, should not win
-            reps: Some(12),               // higher reps
+            end_time: Some(2_090),  // duration 90s — should win
+            weight_hg: Weight(800), // lower than log1, should not win
+            reps: Some(12),         // higher reps
             distance_m: Some(Distance(500)),
             force: None,
         };

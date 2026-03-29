@@ -60,14 +60,14 @@ pub(super) fn ExerciseInputForm(
     let weight = weight_input.read();
     let weight_invalid = !weight.is_empty() && parse_weight_kg(&weight).is_none();
     let reps = reps_input.read();
-    let reps_invalid = !reps.is_empty() && reps.parse::<u32>().map(|r| r == 0).unwrap_or(true);
+    let reps_invalid = !reps.is_empty() && reps.parse::<u32>().is_err();
     let dist = distance_input.read();
     let distance_invalid = !dist.is_empty() && parse_distance_km(&dist).is_none();
     let time_str = time_input.map_or_else(String::new, |ti| ti.read().clone());
     let time_invalid =
         is_editing_time && !time_str.is_empty() && parse_duration_seconds(&time_str).is_none();
     let weight_valid = weight.is_empty() || parse_weight_kg(&weight).is_some();
-    let reps_valid = !show_reps || reps.parse::<u32>().map(|r| r > 0).unwrap_or(false);
+    let reps_valid = !show_reps || reps.parse::<u32>().is_ok();
     let distance_valid = !is_cardio || parse_distance_km(&dist).is_some();
     let time_valid = !time_invalid;
     let complete_disabled = !weight_valid || !reps_valid || !distance_valid || !time_valid;
@@ -115,6 +115,7 @@ pub(super) fn ExerciseInputForm(
                                 last_duration,
                                 duration_bell_rung: bell_sig,
                                 paused_at,
+                                force,
                             }
                         } else {
                             span {}
@@ -235,9 +236,7 @@ pub(super) fn ExerciseInputForm(
                         tabindex: -1,
                         onclick: move |_| {
                             let cur: u32 = reps_input.read().parse().unwrap_or(0);
-                            if cur > 1 {
-                                reps_input.set((cur - 1).to_string());
-                            }
+                            reps_input.set(cur.saturating_sub(1).to_string());
                         },
                         "−"
                     }

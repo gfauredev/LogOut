@@ -350,9 +350,9 @@ where
                 },
             );
         #[allow(clippy::cast_possible_truncation)]
-        let weight_hg = entry
-            .weight_hg
-            .map(|w| Weight(w.min(u32::from(u16::MAX)) as u16));
+        let weight_hg = entry.weight_hg.map_or(Weight::default(), |w| {
+            Weight(w.min(u32::from(u16::MAX)) as u16)
+        });
         let reps = if force.is_some_and(Force::has_reps) {
             entry.reps
         } else {
@@ -559,16 +559,10 @@ mod tests {
             session.exercise_logs[0].exercise_name,
             "Wide-Grip Barbell Bench Press",
         );
-        assert_eq!(
-            session.exercise_logs[0].weight_hg,
-            Some(models::Weight(800))
-        );
+        assert_eq!(session.exercise_logs[0].weight_hg, models::Weight(800));
         assert_eq!(session.exercise_logs[0].reps, Some(10));
         assert_eq!(session.exercise_logs[1].exercise_name, "Barbell Full Squat");
-        assert_eq!(
-            session.exercise_logs[1].weight_hg,
-            Some(models::Weight(600))
-        );
+        assert_eq!(session.exercise_logs[1].weight_hg, models::Weight(600));
         assert_eq!(session.exercise_logs[1].reps, Some(6));
         assert!(session.end_time.is_some());
     }
@@ -613,17 +607,11 @@ mod tests {
             session.exercise_logs[0].exercise_name,
             "Wide-Grip Barbell Bench Press",
         );
-        assert_eq!(
-            session.exercise_logs[0].weight_hg,
-            Some(models::Weight(800))
-        );
+        assert_eq!(session.exercise_logs[0].weight_hg, models::Weight(800));
         assert_eq!(
             session.exercise_logs[1].exercise_name,
             "Wide-Grip Barbell Bench Press",
         );
-        assert_eq!(
-            session.exercise_logs[1].weight_hg,
-            Some(models::Weight(775))
-        );
+        assert_eq!(session.exercise_logs[1].weight_hg, models::Weight(775));
     }
 }

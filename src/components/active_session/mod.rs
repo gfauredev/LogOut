@@ -60,8 +60,11 @@ fn prefill_inputs_from_last_log(
 
     if use_active {
         if let Some(last_log) = active_log {
-            if let Some(w) = last_log.weight_hg {
-                weight_input.set(format!("{:.1}", f64::from(w.0) / HG_PER_KG));
+            if last_log.weight_hg.0 > 0 {
+                weight_input.set(format!(
+                    "{:.1}",
+                    f64::from(last_log.weight_hg.0) / HG_PER_KG
+                ));
             } else {
                 weight_input.set(String::new());
             }
@@ -241,7 +244,7 @@ pub fn SessionView() -> Element {
             }
         };
         let end_time = get_current_timestamp();
-        let weight_hg = parse_weight_kg(&weight_input.read());
+        let weight_hg = parse_weight_kg(&weight_input.read()).unwrap_or_default();
         let reps = if force.is_some_and(Force::has_reps) {
             reps_input.read().parse().ok()
         } else {
