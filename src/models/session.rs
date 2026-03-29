@@ -38,6 +38,9 @@ pub struct WorkoutSession {
     /// [`WorkoutSession::duration_seconds`] so that `start_time` is never
     /// mutated after the session is created.
     pub total_paused_duration: u64,
+    #[serde(default)]
+    /// Free-form session notes written by the user (Markdown supported).
+    pub notes: String,
 }
 impl WorkoutSession {
     /// Create a new session with current timestamp and a unique ID.
@@ -55,6 +58,7 @@ impl WorkoutSession {
             current_exercise_start: None,
             paused_at: None,
             total_paused_duration: 0,
+            notes: String::new(),
         }
     }
     /// Returns true if the session is currently active (no end time).
@@ -156,6 +160,7 @@ mod tests {
             current_exercise_start: None,
             paused_at: None,
             total_paused_duration: 0,
+            notes: String::new(),
         };
         let json = serde_json::to_string(&session).unwrap();
         let back: WorkoutSession = serde_json::from_str(&json).unwrap();
@@ -177,6 +182,7 @@ mod tests {
             current_exercise_start: Some(1200),
             paused_at: None,
             total_paused_duration: 0,
+            notes: String::new(),
         };
         let json = serde_json::to_string(&session).unwrap();
         let back: WorkoutSession = serde_json::from_str(&json).unwrap();
@@ -205,6 +211,7 @@ mod tests {
             current_exercise_start: None,
             paused_at: None,
             total_paused_duration: 0,
+            notes: String::new(),
         };
         assert_eq!(s.duration_seconds(), 1000);
         s.paused_at = Some(1500);
@@ -225,6 +232,7 @@ mod tests {
             current_exercise_start: None,
             paused_at: Some(1500),
             total_paused_duration: 0,
+            notes: String::new(),
         };
         // Simulate resume at t=1700: pause_duration = 200s
         // Manually set total_paused_duration as resume() uses get_current_timestamp()
@@ -240,5 +248,20 @@ mod tests {
         let json = r#"{"id":"s1","start_time":1000,"end_time":null,"exercise_logs":[],"version":0,"pending_exercise_ids":[]}"#;
         let session: WorkoutSession = serde_json::from_str(json).unwrap();
         assert_eq!(session.total_paused_duration, 0);
+    }
+    #[test]
+    fn workout_session_notes_serde_default() {
+        // Old sessions without the notes field should default to empty string.
+        let json = r#"{"id":"s1","start_time":1000,"end_time":null,"exercise_logs":[],"version":0,"pending_exercise_ids":[]}"#;
+        let session: WorkoutSession = serde_json::from_str(json).unwrap();
+        assert_eq!(session.notes, "");
+    }
+    #[test]
+    fn workout_session_notes_round_trip() {
+        let mut s = WorkoutSession::new();
+        s.notes = "## Great workout\n- Heavy squats\n- New PR!".to_string();
+        let json = serde_json::to_string(&s).unwrap();
+        let back: WorkoutSession = serde_json::from_str(&json).unwrap();
+        assert_eq!(back.notes, s.notes);
     }
 }
