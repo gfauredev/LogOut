@@ -123,7 +123,10 @@ fn SessionCard(session: WorkoutSession, on_delete: EventHandler<String>) -> Elem
     const MAX_VISIBLE: usize = 9;
     let mut show_delete_confirm = use_signal(|| false);
     let mut show_all_exercises = use_signal(|| false);
+    let mut show_notes = use_signal(|| false);
     let session_id = session.id.clone();
+    let has_notes = !session.notes.is_empty();
+    let session_notes = session.notes.clone();
     let mut search_signal = use_context::<ExerciseSearchSignal>().0;
     let navigator = use_navigator();
     let all_exercises = exercise_db::use_exercises();
@@ -233,6 +236,17 @@ fn SessionCard(session: WorkoutSession, on_delete: EventHandler<String>) -> Elem
                             onclick: move |_| show_all_exercises.set(true),
                             {t!("session-show-more", count : hidden_count.to_string())}
                         }
+                    }
+                }
+            }
+            if has_notes {
+                if *show_notes.read() {
+                    pre { class: "session-notes", "{session_notes}" }
+                } else {
+                    button {
+                        class: "session-notes-unfold",
+                        onclick: move |_| show_notes.set(true),
+                        {t!("session-notes-unfold")}
                     }
                 }
             }

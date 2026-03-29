@@ -26,6 +26,10 @@ filter-remove = Supprimer le filtre
 exercise-edit = Modifier
 exercise-clone = Dupliquer puis modifier
 
+## Séance active – notes
+session-notes-placeholder = Notes de séance (Markdown supporté)…
+session-notes-unfold = 📝 Déplier les notes de séance
+
 ## Séance active – recherche
 session-search-placeholder = Rechercher un exercice...
 session-add-exercise-title = Ajouter un exercice personnalisé

@@ -105,15 +105,22 @@ async fn try_schedule_via_triggers_api(
     if !js_sys::Reflect::has(&global, &trigger_key).unwrap_or(false) {
         return false;
     }
+    // Construct `new TimestampTrigger(fire_at_ms)` via the Function ctor to
+    // avoid the `JsFunction` bound required by `Reflect::construct`.
     let trigger_cls = match js_sys::Reflect::get(&global, &trigger_key) {
         Ok(c) => c,
         Err(_) => return false,
     };
-    let args = js_sys::Array::of1(&wasm_bindgen::JsValue::from_f64(fire_at_ms));
-    let trigger = match js_sys::Reflect::construct(&trigger_cls.unchecked_into(), &args) {
-        Ok(t) => t,
+    let trigger_ctor: js_sys::Function = match trigger_cls.dyn_into() {
+        Ok(f) => f,
         Err(_) => return false,
     };
+    let args = js_sys::Array::of1(&wasm_bindgen::JsValue::from_f64(fire_at_ms));
+    let trigger =
+        match js_sys::Reflect::construct_with_new_target(&trigger_ctor, &args, &trigger_ctor) {
+            Ok(t) => t,
+            Err(_) => return false,
+        };
     let Some(window) = web_sys::window() else {
         return false;
     };
