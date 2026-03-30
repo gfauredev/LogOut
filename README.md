@@ -1,9 +1,14 @@
 <!-- LTeX: language=en-GB -->
 
-[![Obtainium Download](https://img.shields.io/badge/get%20it%20on%20Obtainium-black?logo=obtainium)](https://apps.obtainium.imranr.dev/redirect.html?r=obtainium://add/https://github.com/gfauredev/LogOut)
-[![GitHub Downloads](https://img.shields.io/github/downloads/gfauredev/LogOut/latest/total?sort=semver&logo=github&labelColor=black)](https://github.com/gfauredev/LogOut/releases/latest)
+<div align=center>
+
+[![Get it on Obtainium](https://img.shields.io/github/v/release/gfauredev/LogOut?sort=semver&logo=obtainium&label=get%20and%20update%20on%20Obtainium&labelColor=black)](https://apps.obtainium.imranr.dev/redirect.html?r=obtainium://add/https://github.com/gfauredev/LogOut)
+[![GitHub Release Date](https://img.shields.io/github/release-date/gfauredev/LogOut?logo=github&label=released%20on%20GitHub&labelColor=black)](https://github.com/gfauredev/LogOut/releases/latest)
+[![GitHub Pre-release Date](https://img.shields.io/github/release-date-pre/gfauredev/LogOut?logo=github&label=pre-released%20on%20GitHub&labelColor=black)](https://github.com/gfauredev/LogOut/releases)
 [![Garnix CI status badge](https://img.shields.io/endpoint?url=https%3A%2F%2Fgarnix.io%2Fapi%2Fbadges%2Fgfauredev%2FLogOut)](https://garnix.io/repo/gfauredev/LogOut)
-![Deps.rs Repository Dependencies](https://img.shields.io/deps-rs/repo/github/gfauredev/LogOut?logo=rust&labelColor=black)
+[![Deps.rs Repository Dependencies](https://img.shields.io/deps-rs/repo/github/gfauredev/LogOut?logo=rust&labelColor=black)](Cargo.lock)
+
+</div>
 
 <!-- https://apps.obtainium.imranr.dev/redirect.html?r=obtainium://add/https://github.com/gfauredev/LogOut -->
 <!-- https://github.com/gfauredev/LogOut/releases/latest -->
@@ -74,8 +79,8 @@ LogOut/
 | Commit messages    | [Conventional Commits] |
 | Branch naming      | [Conventional Branch]  |
 | Branching model    | [GitHub Flow]          |
-| Changes submission | GitHub Pull Requests   |
-| Issue tracking     | GitHub Issues          |
+| Changes submission | [GitHub Pull Requests] |
+| Issue tracking     | [GitHub Issues]        |
 
 | Purpose                      | Tool                                         |
 | ---------------------------- | -------------------------------------------- |
@@ -285,6 +290,8 @@ The [exercise database] is under the Unlicense (public domain).
 [old free-exercise-db]: https://github.com/yuhonas/free-exercise-db
 [Guilhem Fauré]: https://www.guilhemfau.re
 [Git]: https://git-scm.com
+[GitHub Pull Requests]: https://github.com/gfauredev/LogOut/pulls
+[GitHub Issues]: https://github.com/gfauredev/LogOut/issues
 [GitHub Flow]: https://githubflow.github.io
 [Helix]: https://helix-editor.com
 [lcov]: https://github.com/linux-test-project/lcov
