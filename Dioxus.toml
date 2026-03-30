@@ -1,34 +1,57 @@
 [application]
-name = "LogOut"
+# android_main_activity = "android/MainActivity.kt"
 # asset_dir = ""
+# ios_entitlements = ""
+# ios_info_plist = ""
+# macos_entitlements = ""
+# macos_info_plist = ""
 # out_dir = ""
 # public_dir = ""
 # tailwind_input = ""
 # tailwind_output = ""
-# ios_info_plist = ""
-# macos_info_plist = ""
-# ios_entitlements = ""
-# macos_entitlements = ""
-# android_manifest = "android/AndroidManifest.xml"
-# android_main_activity = "android/MainActivity.kt"
-# android_min_sdk_version = 33
+name = "LogOut" # TODO Remove for 0.7.4
 
 [bundle]
-identifier = "com.gfaure.logout"
-publisher = "Guilhem Fauré"
-icon = ["logo.png"]
-# resources = [""]
-copyright = "Copyright 2026 Guilhem Fauré"
 category = "Sports"
+copyright = "Copyright 2026 Guilhem Fauré"
+icon = ["logo.png"]
+identifier = "com.gfaure.logout"
+long_description = "A simple, efficient, cross-platform workout logging application with 800+ exercises built-in, by Guilhem Fauré"
+publisher = "Guilhem Fauré"
+# resources = [""]
 short_description = "Workout Logger"
-long_description = "A simple, efficient and cross-platform workout logging application with 800+ exercises built-in, by Guilhem Fauré"
-# external_bin = [""]
 
-[web.app]
-title = "LogOut - Workout Logger"
-# base_path = "/"
+# [deep_links] TODO See if this can replace/lighten custom implementation
+# hosts = []
+# paths = []
+# schemes = []
+
+# [permissions]
+# background-location.description = "" # Tracking cardio exercises distance?
+# calendar = { access = "read-write", description = "" } # Workout plannings?
+# health = { access = "read-write", description = "" } # Integration?
+# local-network.description = "" # P2P Syncing?
+# location = { precision = "fine", description = "" } # Workout loc/distance?
+# media-library.description = "" # Custom exercises images?
+# motion.description = "" # Tracking cardio exercises distance?
+# notifications.description = "" # Rest/Exercise duration alerts
+# photos = { access = "read", description = "" } # Images uploading?
+
+# [android] TODO Dioxus 0.7.4
+# compile_sdk = 36
+# features = [""]
+# foreground_service_types = [""]
+# manifest = "android/AndroidManifest.xml"
+# min_sdk = 33
+# proguard_rules = [""]
+# target_sdk = 36
+
+[web]
+# app.base_path = "/"
+app.title = "LogOut - Workout Logger"
+pre_compress = true
 
 [web.watcher]
-watch_path = ["assets", "public", "src"]
-reload_html = true
 index_on_404 = true
+reload_html = true
+watch_path = ["assets", "public", "src"]
