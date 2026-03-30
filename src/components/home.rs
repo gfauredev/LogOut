@@ -261,8 +261,9 @@ fn SessionCard(session: WorkoutSession, on_delete: EventHandler<String>) -> Elem
                 } else {
                     button {
                         class: "session-notes-unfold",
+                        title: t!("session-notes-unfold"),
                         onclick: move |_| show_notes.set(true),
-                        {t!("session-notes-unfold")}
+                        "📝"
                     }
                 }
             }
