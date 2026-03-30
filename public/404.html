@@ -5,16 +5,19 @@
   <meta charset="UTF-8">
   <title>Redirecting…</title>
   <script>
-    // When a direct URL is requested (e.g. /LogOut/exercises), GitHub Pages
-    // returns this 404 page
-    // Encode the full path in the query string and redirect to the app root
-    // so that the Dioxus router can handle it
     const l = window.location;
     const segments = l.pathname.split('/');
-    // Keep the first non-empty path segment as the base (e.g. "/LogOut")
-    // Fall back to '' for root deployments
-    const base = segments[1] ? '/' + segments[1] : '';
+    // Default to root deployment base
+    let base = '';
+    // Check if we are hosted under the specific GitHub Pages repo path
+    if (segments[1] === 'LogOut') {
+      base = '/LogOut';
+      // Also check for the nested preview environment
+      if (segments[2] === 'preview') base += '/preview';
+    }
+    // Extract the remaining app route (everything after the base)
     const rest = l.pathname.slice(base.length + 1);
+    // Redirect to the base path with the app route encoded in the query
     l.replace(
       l.protocol + '//' + l.host + base + '/' +
       '?redirect=' + encodeURIComponent(rest + l.search + l.hash)

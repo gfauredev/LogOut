@@ -5,8 +5,7 @@
   <meta name="description" content="{long_description}">
   <title>{app_title}</title>
   <script>
-    // Restore the original URL after a 404-redirect from GitHub Pages
-    (function () {
+    { // Restore the original URL after a 404-redirect from GitHub Pages
       const redir = new URLSearchParams(window.location.search).get('redirect');
       if (redir) {
         // Remove trailing slash from pathname, then join with redirect path
@@ -14,18 +13,15 @@
         const url = base + '/' + redir.replace(/^\//, '');
         window.history.replaceState(null, '', url);
       }
-    }());
-    // Pre-seed exercise DB URL from deep-link query param before WASM starts.
-    // The Dioxus router may replace the URL (stripping query params) before the
-    // Rust use_hook can read them, so we persist dl_db_url to localStorage here
-    (function () {
+    }
+    { // Pre-seed exercise DB URL from deep-link query param before WASM starts
       const db = new URLSearchParams(window.location.search).get('dl_db_url');
       if (db) {
         const normalized = db.endsWith('/') ? db : db + '/';
         localStorage.setItem('exercise_db_url', normalized);
         localStorage.removeItem('exercise_db_last_fetch');
       }
-    }());
+    }
   </script>
   <style>
     body {
