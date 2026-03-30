@@ -67,10 +67,7 @@ jobs:
           ⏱️ Tests: ${{ steps.coverage_report.outputs.TESTS_COUNT }} tests in ${{ steps.coverage_report.outputs.DURATION }}s
 
           ${{ steps.coverage_report.outputs.REPORT }}
-    - run: |
-        if [ "${{ steps.coverage_report.outputs.FAILED }}" == "true" ]; then
-          exit 1
-        fi
+    - run: exit "${{ steps.coverage_report.outputs.FAIL }}"
 
   lighthouse:
     if: github.event_name != 'pull_request' || github.event.pull_request.draft == false

@@ -36,17 +36,19 @@ echo "Coverage is $PERCENT% ($COVERED/$TOTAL lines)"
 
 if (($(echo "$PERCENT < 80" | bc -l))); then
   echo "❌ Coverage below 80%"
-  echo "FAILED=true" >>"$GITHUB_OUTPUT"
+  echo "FAIL=1" >>"$GITHUB_OUTPUT"
 else
   echo "✅ Coverage above 80%"
+  echo "FAIL=0" >>"$GITHUB_OUTPUT"
 fi
 
 if [ -n "$DURATION" ]; then
   echo "Tests completed in ${DURATION}s ($TESTS_COUNT tests)"
   if awk "BEGIN {exit !($DURATION > $MAX_TEST_DURATION_SECS)}"; then
     echo "❌ Tests took ${DURATION}s (limit: ${MAX_TEST_DURATION_SECS}s)"
-    echo "FAILED=true" >>"$GITHUB_OUTPUT"
+    echo "FAIL=1" >>"$GITHUB_OUTPUT"
   else
     echo "✅ Tests within ${MAX_TEST_DURATION_SECS}s limit"
+    echo "FAIL=0" >>"$GITHUB_OUTPUT"
   fi
 fi

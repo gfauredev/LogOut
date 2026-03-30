@@ -408,10 +408,10 @@
               export HOME=$TMPDIR
               mkdir -p $out
               cargo llvm-cov nextest --bin log-out \
-                --ignore-filename-regex "(src/components/|\.cargo/registry/|/rustc/)" \
+                --ignore-filename-regex "(src/components/|\.cargo/registry/|nix/store)" \
                 --html --output-dir $out 2>&1 | tee $out/nextest.log
               cargo llvm-cov report \
-                --ignore-filename-regex "(src/components/|\.cargo/registry/|/rustc/)" \
+                --ignore-filename-regex "(src/components/|\.cargo/registry/|nix/store)" \
                 --json > $out/coverage.json
             '';
             installPhase = "true";
