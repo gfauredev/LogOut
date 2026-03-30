@@ -196,7 +196,7 @@ jobs:
         ANDROID_KEYSTORE_PATH: ${{ steps.keystore.outputs.filePath }}
         ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
     - name: Publish Timestamped Pre-release # If no SemVer tag on last commit
-      run: .script/prerelease.sh
+      run: .script/android-prerelease.sh
       env:
         GH_TOKEN: ${{ github.token }}
 
