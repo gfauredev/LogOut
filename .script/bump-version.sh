@@ -13,8 +13,11 @@ major=$(echo "$current" | cut -d. -f1)
 minor=$(echo "$current" | cut -d. -f2)
 patch=$(echo "$current" | cut -d. -f3)
 
-# Collect commits between origin/main and HEAD (fall back to last 20 commits)
-if git rev-parse --verify origin/main >/dev/null 2>&1; then
+# Collect commits since the last SemVer tag (v*.*.*) or fallback to origin/main or last 20
+last_tag=$(git describe --tags --abbrev=0 --match "v[0-9]*.[0-9]*.[0-9]*" 2>/dev/null || true)
+if [[ -n "$last_tag" ]]; then
+  commits=$(git log "$last_tag..HEAD" --pretty=format:"%s%n%b" 2>/dev/null)
+elif git rev-parse --verify origin/main >/dev/null 2>&1; then
   commits=$(git log origin/main..HEAD --pretty=format:"%s%n%b" 2>/dev/null)
 else
   commits=$(git log --pretty=format:"%s%n%b" HEAD~20..HEAD 2>/dev/null || true)
