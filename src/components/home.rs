@@ -5,6 +5,19 @@ use crate::{ExerciseSearchSignal, Route};
 use dioxus::prelude::*;
 use dioxus_i18n::prelude::i18n;
 use dioxus_i18n::t;
+
+/// Convert a Markdown string to an HTML string using pulldown-cmark.
+fn markdown_to_html(md: &str) -> String {
+    use pulldown_cmark::{html, Options, Parser};
+    let mut opts = Options::empty();
+    opts.insert(Options::ENABLE_STRIKETHROUGH);
+    opts.insert(Options::ENABLE_TABLES);
+    opts.insert(Options::ENABLE_TASKLISTS);
+    let parser = Parser::new_ext(md, opts);
+    let mut output = String::new();
+    html::push_html(&mut output, parser);
+    output
+}
 /// Number of sessions loaded per scroll increment
 const PAGE_SIZE: usize = 20;
 #[component]
@@ -241,7 +254,10 @@ fn SessionCard(session: WorkoutSession, on_delete: EventHandler<String>) -> Elem
             }
             if has_notes {
                 if *show_notes.read() {
-                    pre { class: "session-notes", "{session_notes}" }
+                    div {
+                        class: "session-notes markdown",
+                        dangerous_inner_html: "{markdown_to_html(&session_notes)}",
+                    }
                 } else {
                     button {
                         class: "session-notes-unfold",
