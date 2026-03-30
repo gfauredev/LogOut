@@ -69,6 +69,9 @@ async fn load_storage_data(
         Ok(v) => v,
         Err(e) => {
             log::error!("Failed to compute exercise bests: {e}");
+            toast
+                .write()
+                .push_back(format!("⚠️ Failed to load exercise bests: {e}"));
             vec![]
         }
     };
