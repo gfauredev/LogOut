@@ -2,11 +2,11 @@
 
 <div align=center>
 
-[![Get it on Obtainium](https://img.shields.io/github/v/release/gfauredev/LogOut?sort=semver&logo=obtainium&label=get%20and%20update%20on%20Obtainium&labelColor=black)](https://apps.obtainium.imranr.dev/redirect.html?r=obtainium://add/https://github.com/gfauredev/LogOut)
-[![GitHub Release Date](https://img.shields.io/github/release-date/gfauredev/LogOut?logo=github&label=released%20on%20GitHub&labelColor=black)](https://github.com/gfauredev/LogOut/releases/latest)
-[![GitHub Pre-release Date](https://img.shields.io/github/release-date-pre/gfauredev/LogOut?logo=github&label=pre-released%20on%20GitHub&labelColor=black)](https://github.com/gfauredev/LogOut/releases)
+[![Get it on Obtainium](https://img.shields.io/github/v/release/gfauredev/LogOut?sort=semver&logo=obtainium&label=get%20and%20update%20on%20Obtainium)](https://apps.obtainium.imranr.dev/redirect.html?r=obtainium://add/https://github.com/gfauredev/LogOut)
+[![GitHub Release Date](https://img.shields.io/github/release-date/gfauredev/LogOut?logo=github&label=released%20on%20GitHub)](https://github.com/gfauredev/LogOut/releases/latest)
+[![GitHub Pre-release Date](https://img.shields.io/github/release-date-pre/gfauredev/LogOut?logo=github&label=pre-released%20on%20GitHub)](https://github.com/gfauredev/LogOut/releases)
 [![Garnix CI status badge](https://img.shields.io/endpoint?url=https%3A%2F%2Fgarnix.io%2Fapi%2Fbadges%2Fgfauredev%2FLogOut)](https://garnix.io/repo/gfauredev/LogOut)
-[![Deps.rs Repository Dependencies](https://img.shields.io/deps-rs/repo/github/gfauredev/LogOut?logo=rust&labelColor=black)](Cargo.lock)
+[![Deps.rs Repository Dependencies](https://img.shields.io/deps-rs/repo/github/gfauredev/LogOut?logo=rust&labelColor=black)](https://github.com/gfauredev/LogOut/blob/main/Cargo.toml#L12)
 
 </div>
 
