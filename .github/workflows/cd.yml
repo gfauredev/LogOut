@@ -62,6 +62,9 @@ jobs:
     - run: |
         nix build .#web --out-link web
         tar -czvf web.tar.gz -C web LogOut
+        mkdir --mode 775 --parents --verbose release/preview
+        cp --dereference --recursive -v web/LogOut release/LogOut
+        cp --dereference --recursive -v web/LogOut release/preview/LogOut
     - uses: actions/upload-pages-artifact@v4
       with: { path: ./web/LogOut }
     - uses: actions/deploy-pages@v5
