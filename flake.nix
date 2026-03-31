@@ -82,18 +82,14 @@
             cargo-mutants
             clang
             dioxus-cli
-            wasm-bindgen-cli_0_2_114
             patchelf
             pkg-config
             rustToolchain
             unzip
           ];
-          webTestInputs = with pkgs; [
-            curl
-            chromedriver
-            maestro
-            selenium-manager
-            ungoogled-chromium
+          webNativeBuildInputs = with pkgs; [
+            esbuild
+            wasm-bindgen-cli_0_2_114
           ];
           commonBuildInputs = [
             pkgs.openssl
@@ -101,6 +97,13 @@
           ++ pkgs.lib.optionals pkgs.stdenv.isDarwin [
             pkgs.darwin.apple_sdk.frameworks.Security
             pkgs.darwin.apple_sdk.frameworks.SystemConfiguration
+          ];
+          webTestInputs = with pkgs; [
+            curl
+            chromedriver
+            maestro
+            selenium-manager
+            ungoogled-chromium
           ];
           cargoArtifactsHost = craneLib.buildDepsOnly {
             src = filteredSrc;
@@ -111,14 +114,14 @@
           cargoArtifactsServer = craneLib.buildDepsOnly {
             src = filteredSrc;
             cargoExtraArgs = "--features server-platform";
-            nativeBuildInputs = commonNativeBuildInputs;
+            nativeBuildInputs = commonNativeBuildInputs + webNativeBuildInputs;
             buildInputs = commonBuildInputs;
             doCheck = false;
           };
           cargoArtifactsWeb = craneLib.buildDepsOnly {
             src = filteredSrc;
             cargoExtraArgs = "--target wasm32-unknown-unknown";
-            nativeBuildInputs = commonNativeBuildInputs;
+            nativeBuildInputs = commonNativeBuildInputs + webNativeBuildInputs;
             buildInputs = commonBuildInputs;
             doCheck = false;
           };
@@ -165,6 +168,7 @@
             cargoArtifactsWeb
             androidComposition
             commonNativeBuildInputs
+            webNativeBuildInputs
             androidNativeBuildInputs
             webTestInputs
             commonBuildInputs
@@ -202,7 +206,7 @@
               src = env.filteredSrc;
               pname = "logout-${platform}";
               version = env.projectVersion;
-              nativeBuildInputs = env.commonNativeBuildInputs;
+              nativeBuildInputs = env.commonNativeBuildInputs + env.webNativeBuildInputs;
               buildInputs = env.commonBuildInputs;
               buildPhase = ''
                 export HOME=$TMPDIR/fake-home
@@ -332,13 +336,16 @@
           default = env.pkgs.mkShell {
             packages = devTools ++ [
               (agents-jail.lib.${system}.mkCrush {
-                extraPkgs = devTools ++ env.commonNativeBuildInputs ++ env.androidNativeBuildInputs;
+                extraPkgs =
+                  devTools ++ env.commonNativeBuildInputs ++ env.webNativeBuildInputs ++ env.androidNativeBuildInputs;
               })
               (agents-jail.lib.${system}.mkOpencode {
-                extraPkgs = devTools ++ env.commonNativeBuildInputs ++ env.androidNativeBuildInputs;
+                extraPkgs =
+                  devTools ++ env.commonNativeBuildInputs ++ env.webNativeBuildInputs ++ env.androidNativeBuildInputs;
               })
             ];
-            nativeBuildInputs = env.commonNativeBuildInputs ++ env.androidNativeBuildInputs;
+            nativeBuildInputs =
+              env.commonNativeBuildInputs ++ env.webNativeBuildInputs ++ env.androidNativeBuildInputs;
             buildInputs = env.commonBuildInputs;
             ANDROID_HOME = "${env.androidComposition.androidsdk}/libexec/android-sdk";
             ANDROID_NDK_HOME = "${env.androidComposition.ndk-bundle}/libexec/android-sdk/ndk-bundle";
