@@ -114,14 +114,14 @@
           cargoArtifactsServer = craneLib.buildDepsOnly {
             src = filteredSrc;
             cargoExtraArgs = "--features server-platform";
-            nativeBuildInputs = commonNativeBuildInputs + webNativeBuildInputs;
+            nativeBuildInputs = commonNativeBuildInputs ++ webNativeBuildInputs;
             buildInputs = commonBuildInputs;
             doCheck = false;
           };
           cargoArtifactsWeb = craneLib.buildDepsOnly {
             src = filteredSrc;
             cargoExtraArgs = "--target wasm32-unknown-unknown";
-            nativeBuildInputs = commonNativeBuildInputs + webNativeBuildInputs;
+            nativeBuildInputs = commonNativeBuildInputs ++ webNativeBuildInputs;
             buildInputs = commonBuildInputs;
             doCheck = false;
           };
@@ -206,7 +206,7 @@
               src = env.filteredSrc;
               pname = "logout-${platform}";
               version = env.projectVersion;
-              nativeBuildInputs = env.commonNativeBuildInputs + env.webNativeBuildInputs;
+              nativeBuildInputs = env.commonNativeBuildInputs ++ env.webNativeBuildInputs;
               buildInputs = env.commonBuildInputs;
               buildPhase = ''
                 export HOME=$TMPDIR/fake-home
