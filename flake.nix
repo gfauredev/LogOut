@@ -323,6 +323,7 @@
           devTools = with env.pkgs; [
             # biome python3 sass strace
             cachix # Nix binary cache
+            fastlane # Mobile app publishing automation
             kotlin-language-server # Kotlin LSP
             lightningcss # CSS linter & optimizer
             scss-lint # SCSS linter
