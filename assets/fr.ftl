@@ -9,6 +9,7 @@ no-sessions = Aucune séance passée
 start-first-workout = Appuie sur + pour démarrer ta première séance
 start-new-workout = Nouvelle séance
 session-repeat-title = Démarrer une nouvelle séance basée sur celle-ci
+session-repeat-weekday-title = Répéter la séance du même jour de la semaine
 session-delete-title = Supprimer la séance
 session-show-more = +{ $count } autres
 session-delete-confirm = Supprimer cette séance ?

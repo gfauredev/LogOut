@@ -268,14 +268,49 @@ pub(crate) async fn download_db_i18n() -> Result<DbI18n, String> {
         .await
         .map_err(|e| format!("JSON parse error in i18n.json: {e}"))
 }
-/// Normalises a string for error-tolerant search: lowercases and strips
-/// hyphens, apostrophes, and spaces so that e.g. "push-ups", "Pushups", and
-/// "Push Ups" all collapse to the same canonical form.
+/// Normalises a string for error-tolerant search: lowercases, strips hyphens,
+/// apostrophes, spaces and periods, and maps common Latin diacritics to their
+/// ASCII base form so that e.g. "push-ups", "Pushups", "Push Ups",
+/// "Développé" and "developpe", or "œuvre" and "oeuvre", all collapse to the
+/// same canonical form, enabling accent-insensitive and order-insensitive
+/// matching across all supported languages.
+///
+/// Ligatures that expand to two letters ('æ'→"ae", 'œ'→"oe", 'ß'→"ss") are
+/// handled with `push_str` inside an imperative loop so that the output length
+/// can exceed the input length.
 fn normalize_for_search(s: &str) -> String {
-    s.chars()
+    let mut result = String::with_capacity(s.len());
+    for c in s
+        .chars()
         .filter(|c| !matches!(c, '-' | '\'' | ' ' | '.'))
         .flat_map(char::to_lowercase)
-        .collect()
+    {
+        match c {
+            'à' | 'â' | 'ä' | 'á' | 'ã' | 'å' | 'ā' | 'ă' | 'ą' => result.push('a'),
+            'æ' => result.push_str("ae"),
+            'è' | 'ê' | 'ë' | 'é' | 'ē' | 'ĕ' | 'ę' | 'ě' => result.push('e'),
+            'ì' | 'î' | 'ï' | 'í' | 'ī' | 'ĭ' | 'į' => result.push('i'),
+            'ò' | 'ô' | 'ö' | 'ó' | 'õ' | 'ø' | 'ō' | 'ŏ' | 'ő' => result.push('o'),
+            'œ' => result.push_str("oe"),
+            'ù' | 'û' | 'ü' | 'ú' | 'ū' | 'ŭ' | 'ů' | 'ű' | 'ų' => result.push('u'),
+            'ß' => result.push_str("ss"),
+            'ç' | 'ć' | 'ĉ' | 'č' => result.push('c'),
+            'ñ' | 'ń' | 'ņ' | 'ň' => result.push('n'),
+            'ý' | 'ÿ' => result.push('y'),
+            'ž' | 'ź' | 'ż' => result.push('z'),
+            'š' | 'ś' | 'ŝ' | 'ş' => result.push('s'),
+            'ř' | 'ŗ' => result.push('r'),
+            'ľ' | 'ĺ' | 'ļ' | 'ł' => result.push('l'),
+            'ğ' | 'ĝ' | 'ġ' | 'ģ' => result.push('g'),
+            'đ' | 'ď' => result.push('d'),
+            'ħ' | 'ĥ' => result.push('h'),
+            'ĵ' => result.push('j'),
+            'ķ' => result.push('k'),
+            'ţ' | 'ť' => result.push('t'),
+            _ => result.push(c),
+        }
+    }
+    result
 }
 /// Returns true if an already-lowercased `name_lc` matches the given
 /// pre-computed search components (all lowercase / normalised).
@@ -757,6 +792,59 @@ mod tests {
         assert_eq!(normalize_for_search("Pull-Up"), "pullup");
         assert_eq!(normalize_for_search("farmer's walk"), "farmerswalk");
         assert_eq!(normalize_for_search("Bench Press"), "benchpress");
+    }
+    #[test]
+    fn normalize_strips_diacritics() {
+        assert_eq!(normalize_for_search("Développé"), "developpe");
+        assert_eq!(normalize_for_search("couché"), "couche");
+        assert_eq!(normalize_for_search("Flexión"), "flexion");
+        assert_eq!(normalize_for_search("Ñoño"), "nono");
+        assert_eq!(normalize_for_search("Über"), "uber");
+        assert_eq!(normalize_for_search("Æsop"), "aesop");
+        assert_eq!(normalize_for_search("œuvre"), "oeuvre");
+        assert_eq!(normalize_for_search("Straße"), "strasse");
+    }
+    #[test]
+    fn search_accent_insensitive_query_finds_accented_name() {
+        let mut i18n_map = std::collections::HashMap::new();
+        i18n_map.insert(
+            "fr".to_string(),
+            crate::models::ExerciseI18n {
+                name: Some("Développé couché".to_string()),
+                instructions: None,
+            },
+        );
+        let exercises = vec![Exercise {
+            id: "bench_press".into(),
+            name: "Bench Press".into(),
+            name_lower: String::new(),
+            force: Some(Force::Push),
+            level: Some(Level::Intermediate),
+            mechanic: None,
+            equipment: Some(Equipment::Barbell),
+            primary_muscles: vec![Muscle::Chest],
+            secondary_muscles: vec![],
+            instructions: vec![],
+            category: Category::Strength,
+            images: vec![],
+            i18n: Some(i18n_map),
+        }
+        .with_lowercase()];
+        // Searching without accents should find exercises whose localized name has accents.
+        let results = search_exercises(&exercises, "couche developpe", "fr");
+        assert_eq!(results.len(), 1, "accent-insensitive search should work");
+        assert_eq!(results[0].id, "bench_press");
+    }
+    #[test]
+    fn search_reversed_words_finds_exercise() {
+        // "press bench" (reversed) should still find "Bench Press".
+        let exercises = sample_exercises();
+        let results = search_exercises(&exercises, "press bench", "");
+        assert!(
+            !results.is_empty(),
+            "reversed word order should still find the exercise"
+        );
+        assert_eq!(results[0].id, "bench_press");
     }
     #[test]
     fn search_empty_query_returns_all() {
