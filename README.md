@@ -115,8 +115,8 @@ LogOut/
 The project uses [Nix] to download all (proper versions of) required
 dependencies, configure the development environment (shell) and build the
 application, reproducibly. The [Nix] environment and tooling is defined in
-[`flake.nix`](flake.nix), enable it with `nix develop` or automatically with an
-allowed [`.envrc`](.envrc) (`direnv allow`) via [`direnv`] (recommended).
+[`flake.nix`], enable it with `nix develop` or automatically with an allowed
+[`.envrc`](.envrc) (`direnv allow`) via [`direnv`] (recommended).
 
 For release builds, we prefer pure reproducible `nix build`, but for development
 speed, it is recommended to use the hot-reloading `dx serve` ([PWA] by default).
@@ -223,7 +223,7 @@ Follow this contribution process, based on [GitHub Flow], [Conventional Branch]:
 pass through a pull-request (PR), and every below check (that runs on pushes on
 PRs) must pass (for some, at a certain level) for it to be merged into `main`.
 
-- Run isolated in Garnix via (`flake.nix`)[flake.nix], for every push on PR
+- Run isolated in Garnix via [`flake.nix`], for every push on PR
   - Check if the code is properly **formatted** `cargo fmt --all -- --check`
   - **Lint** `cargo clippy -- -D warnings -W clippy::all -W clippy::pedantic`
   - **Unit test** while measuring **coverage** with `cargo llvm-cov nextest`
@@ -286,6 +286,7 @@ The [exercise database] is under the Unlicense (public domain).
 [`direnv`]: https://direnv.net
 [exercise database]: https://gfauredev.github.io/free-exercise-db
 [exercise db]: https://gfauredev.github.io/free-exercise-db
+[`flake.nix`]: flake.nix
 [free-exercise-db]: https://gfauredev.github.io/free-exercise-db
 [old free-exercise-db]: https://github.com/yuhonas/free-exercise-db
 [Guilhem Fauré]: https://www.guilhemfau.re
