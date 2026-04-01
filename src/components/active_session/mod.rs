@@ -414,7 +414,6 @@ pub fn SessionView() -> Element {
                 }
             }
             textarea {
-                class: "session-notes",
                 placeholder: t!("session-notes-placeholder"),
                 value: "{notes_input}",
                 oninput: move |evt| {

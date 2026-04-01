@@ -254,13 +254,9 @@ fn SessionCard(session: WorkoutSession, on_delete: EventHandler<String>) -> Elem
             }
             if has_notes {
                 if *show_notes.read() {
-                    div {
-                        class: "session-notes markdown",
-                        dangerous_inner_html: "{markdown_to_html(&session_notes)}",
-                    }
+                    div { dangerous_inner_html: "{markdown_to_html(&session_notes)}" }
                 } else {
                     button {
-                        class: "session-notes-unfold",
                         title: t!("session-notes-unfold"),
                         onclick: move |_| show_notes.set(true),
                         "📝"

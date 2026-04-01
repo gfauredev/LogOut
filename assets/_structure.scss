@@ -95,7 +95,8 @@ textarea {
 
 textarea {
   width: 100%;
-  resize: vertical;
+  height: max(50vh, 12rem);
+  resize: none;
 }
 
 input[type=number] {
