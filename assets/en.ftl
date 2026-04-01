@@ -9,6 +9,7 @@ no-sessions = No past sessions yet
 start-first-workout = Tap + to start your first workout
 start-new-workout = Start New Workout
 session-repeat-title = Start a new session based on this one
+session-repeat-weekday-title = Repeat same-weekday session
 session-delete-title = Delete session
 session-show-more = +{ $count } more
 session-delete-confirm = Delete this session?

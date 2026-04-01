@@ -329,6 +329,64 @@ pub fn format_session_date(timestamp: u64) -> String {
 pub fn session_days_ago(timestamp: u64) -> i64 {
     days_since(timestamp)
 }
+/// Returns the local [`time::OffsetDateTime`] for a Unix-seconds timestamp,
+/// adjusted to the system's local timezone.  Used by [`is_same_weekday_as_today`]
+/// and [`format_short_date`].
+fn ts_to_local_datetime(timestamp_secs: u64) -> time::OffsetDateTime {
+    use time::OffsetDateTime;
+    #[cfg(not(target_arch = "wasm32"))]
+    let offset = OffsetDateTime::now_local()
+        .unwrap_or_else(|_| OffsetDateTime::now_utc())
+        .offset();
+    #[cfg(target_arch = "wasm32")]
+    let offset = {
+        let tz_offset_secs = -(js_sys::Date::new_0().get_timezone_offset() as i32) * 60;
+        time::UtcOffset::from_whole_seconds(tz_offset_secs).unwrap_or(time::UtcOffset::UTC)
+    };
+    OffsetDateTime::from_unix_timestamp(timestamp_secs.cast_signed())
+        .unwrap_or(OffsetDateTime::UNIX_EPOCH)
+        .to_offset(offset)
+}
+/// Returns `true` when `timestamp` falls on the same weekday as today in the
+/// local timezone (e.g. both are Monday), regardless of the calendar week.
+/// Used to suggest repeating a session performed on the same day of the week.
+#[must_use]
+pub fn is_same_weekday_as_today(timestamp: u64) -> bool {
+    use time::OffsetDateTime;
+    #[cfg(not(target_arch = "wasm32"))]
+    let today = OffsetDateTime::now_local()
+        .unwrap_or_else(|_| OffsetDateTime::now_utc())
+        .weekday();
+    #[cfg(target_arch = "wasm32")]
+    let today = {
+        let millis = js_sys::Date::now();
+        let tz_offset_secs = -(js_sys::Date::new_0().get_timezone_offset() as i32) * 60;
+        let offset =
+            time::UtcOffset::from_whole_seconds(tz_offset_secs).unwrap_or(time::UtcOffset::UTC);
+        OffsetDateTime::from_unix_timestamp_nanos((millis as i128) * 1_000_000)
+            .unwrap_or(OffsetDateTime::now_utc())
+            .to_offset(offset)
+            .weekday()
+    };
+    ts_to_local_datetime(timestamp).weekday() == today
+}
+/// Returns a short, locale-sensitive date string for `timestamp_secs` suitable
+/// for display on a compact button (e.g. "03/28" for English or "28/03" for
+/// French / Spanish).
+///
+/// The format is `MM/DD` when `lang` starts with `"en"`, and `DD/MM` for all
+/// other language tags, matching common European conventions.
+#[must_use]
+pub fn format_short_date(timestamp_secs: u64, lang: &str) -> String {
+    let dt = ts_to_local_datetime(timestamp_secs);
+    let day = dt.day();
+    let month = dt.month() as u8;
+    if lang.starts_with("en") {
+        format!("{month:02}/{day:02}")
+    } else {
+        format!("{day:02}/{month:02}")
+    }
+}
 /// Returns the number of elapsed calendar days between the local midnight of
 /// `timestamp`'s day and the local midnight of today, using system’s local TZ
 fn days_since(timestamp: u64) -> i64 {
@@ -661,5 +719,42 @@ mod tests {
     fn session_days_ago_seven_days() {
         let midnight = today_midnight_local_secs();
         assert_eq!(super::session_days_ago(midnight - SECONDS_IN_DAY * 7), 7,);
+    }
+    #[test]
+    fn is_same_weekday_as_today_for_today() {
+        let midnight = today_midnight_local_secs();
+        // A timestamp from earlier today must share today's weekday.
+        assert!(super::is_same_weekday_as_today(midnight + SECONDS_IN_HOUR));
+    }
+    #[test]
+    fn is_same_weekday_as_today_for_yesterday() {
+        let midnight = today_midnight_local_secs();
+        // Yesterday has a different weekday (unless two days differ by 7, but
+        // yesterday is exactly 1 day ago so different weekday).
+        assert!(!super::is_same_weekday_as_today(midnight - 1));
+    }
+    #[test]
+    fn is_same_weekday_as_today_for_same_weekday_last_week() {
+        let midnight = today_midnight_local_secs();
+        // Exactly 7 days ago is the same weekday.
+        assert!(super::is_same_weekday_as_today(
+            midnight - SECONDS_IN_DAY * 7 + SECONDS_IN_HOUR
+        ));
+    }
+    #[test]
+    fn format_short_date_en() {
+        let midnight = today_midnight_local_secs();
+        let s = super::format_short_date(midnight + SECONDS_IN_HOUR, "en");
+        // Format should be MM/DD with two digits each.
+        assert_eq!(s.len(), 5, "en short date should be 5 chars: {s}");
+        assert_eq!(&s[2..3], "/");
+    }
+    #[test]
+    fn format_short_date_fr() {
+        let midnight = today_midnight_local_secs();
+        let s = super::format_short_date(midnight + SECONDS_IN_HOUR, "fr");
+        // Format should be DD/MM with two digits each.
+        assert_eq!(s.len(), 5, "fr short date should be 5 chars: {s}");
+        assert_eq!(&s[2..3], "/");
     }
 }

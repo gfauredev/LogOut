@@ -167,6 +167,11 @@ pub(super) fn ExerciseInputForm(
                     placeholder: t!("weight-placeholder"),
                     value: "{weight_input}",
                     oninput: move |evt| weight_input.set(evt.value()),
+                    onkeydown: move |evt| {
+                        if evt.key() == Key::Enter && !complete_disabled {
+                            on_complete.call(());
+                        }
+                    },
                     class: if weight_invalid { "invalid" } else { "" },
                 }
                 button {
@@ -207,6 +212,11 @@ pub(super) fn ExerciseInputForm(
                         placeholder: t!("distance-placeholder"),
                         value: "{distance_input}",
                         oninput: move |evt| distance_input.set(evt.value()),
+                        onkeydown: move |evt| {
+                            if evt.key() == Key::Enter && !complete_disabled {
+                                on_complete.call(());
+                            }
+                        },
                         class: if distance_invalid { "invalid" } else { "" },
                     }
                     button {
@@ -246,6 +256,11 @@ pub(super) fn ExerciseInputForm(
                         placeholder: t!("reps-placeholder"),
                         value: "{reps_input}",
                         oninput: move |evt| reps_input.set(evt.value()),
+                        onkeydown: move |evt| {
+                            if evt.key() == Key::Enter && !complete_disabled {
+                                on_complete.call(());
+                            }
+                        },
                         class: if reps_invalid { "invalid" } else { "" },
                     }
                     button {
@@ -321,6 +336,17 @@ pub(super) fn ExerciseFormPanel(
     let last_duration = last_log.as_ref().and_then(ExerciseLog::duration_seconds);
     rsx! {
         article {
+            onmounted: move |evt: Event<MountedData>| {
+                #[cfg(target_arch = "wasm32")]
+                {
+                    use wasm_bindgen::JsCast as _;
+                    if let Some(element) = evt.downcast::<web_sys::Element>().cloned() {
+                        element.scroll_into_view_with_bool(false);
+                    }
+                }
+                #[cfg(not(target_arch = "wasm32"))]
+                let _ = evt;
+            },
             ExerciseInputForm {
                 exercise_id,
                 exercise_name,

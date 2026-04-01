@@ -84,6 +84,20 @@ pub fn Home() -> Element {
         let new_session = WorkoutSession::new();
         storage::save_session(new_session);
     };
+    // Find the most recent completed session performed on the same weekday as today
+    // (from those already loaded in the viewport) to show a quick-repeat button.
+    let same_weekday_session = use_memo(move || {
+        let sessions = completed_sessions.read();
+        sessions
+            .iter()
+            .find(|s| {
+                !s.exercise_logs.is_empty()
+                    && crate::utils::is_same_weekday_as_today(s.start_time)
+                    && crate::utils::session_days_ago(s.start_time) > 0
+            })
+            .cloned()
+    });
+    let lang_for_date = use_memo(move || i18n().language().to_string());
     rsx! {
         if *has_active.read() {
             SessionView {}
@@ -121,11 +135,47 @@ pub fn Home() -> Element {
                     }
                 }
             }
-            button {
-                class: "icon more",
-                onclick: start_new_session,
-                title: t!("start-new-workout"),
-                "+"
+            div { class: "session-actions",
+                if let Some(ref sw_session) = *same_weekday_session.read() {
+                    {
+                        let pending_ids: Vec<String> = {
+                            let mut seen = std::collections::HashSet::new();
+                            sw_session
+                                .exercise_logs
+                                .iter()
+                                .filter_map(|log| {
+                                    if seen.insert(log.exercise_id.clone()) {
+                                        Some(log.exercise_id.clone())
+                                    } else {
+                                        None
+                                    }
+                                })
+                                .collect()
+                        };
+                        let short_date = crate::utils::format_short_date(
+                            sw_session.start_time,
+                            &lang_for_date.read(),
+                        );
+                        rsx! {
+                            button {
+                                class: "icon edit",
+                                onclick: move |_| {
+                                    let mut new_session = WorkoutSession::new();
+                                    new_session.pending_exercise_ids.clone_from(&pending_ids);
+                                    storage::save_session(new_session);
+                                },
+                                title: t!("session-repeat-weekday-title"),
+                                "🔁 {short_date}"
+                            }
+                        }
+                    }
+                }
+                button {
+                    class: "icon more",
+                    onclick: start_new_session,
+                    title: t!("start-new-workout"),
+                    "+"
+                }
             }
         }
         BottomNav { active_tab: ActiveTab::Sessions }
