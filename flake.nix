@@ -3,7 +3,7 @@
   nixConfig = {
     extra-substituters = [
       "https://cache.garnix.io"
-      # "https://gfauredev.cachix.org"
+      "https://gfauredev.cachix.org"
     ];
     extra-trusted-public-keys = [
       "cache.garnix.io:CTFPyKSLcx5RMJKfLo5EEPUObbA78b0YQ2DTCJXqr9g="
@@ -246,7 +246,7 @@
               target ? "aarch64-linux-android",
             }:
             env.pkgs.writeShellApplication {
-              name = "logout-android-builder";
+              name = "logout-android-builder-${env.projectVersion}";
               runtimeInputs = env.commonNativeBuildInputs ++ env.androidNativeBuildInputs;
               # LD_LIBRARY_PATH = with env.pkgs; lib.makeLibraryPath [ stdenv.cc.cc.lib zlib ];
               text = ''
@@ -270,7 +270,7 @@
           preWeb = mkLogOut { basePath = "LogOut/preview"; };
           server = mkLogOut { platform = "server"; };
           webE2eTester = env.pkgs.writeShellApplication {
-            name = "logout-web-e2e-tester";
+            name = "logout-web-e2e-tester-${env.projectVersion}";
             runtimeInputs = env.webTestInputs ++ [
               chromiumWrapper
             ];
@@ -291,7 +291,7 @@
           };
           androidBuilder = mkAndroidBuilder { };
           androidE2eTester = env.pkgs.writeShellApplication {
-            name = "logout-android-e2e-tester";
+            name = "logout-android-e2e-tester-${env.projectVersion}";
             runtimeInputs = [ env.pkgs.maestro ];
             # TODO Android emulator…
             text = ''
@@ -299,7 +299,7 @@
             '';
           };
           default = env.pkgs.symlinkJoin {
-            name = "logout-all";
+            name = "logout-all-${env.projectVersion}";
             paths = [
               self.packages.${system}.web
               self.packages.${system}.server
@@ -400,8 +400,8 @@
           env = sharedEnvFor system;
         in
         {
-          fmt =
-            env.pkgs.runCommand "cargo-fmt-check"
+          format =
+            env.pkgs.runCommand "logout-fmt-${env.projectVersion}"
               {
                 nativeBuildInputs = env.commonNativeBuildInputs;
               }
@@ -412,7 +412,7 @@
                 cargo fmt --all -- --check >> $out
               '';
           build = self.packages.${system}.default;
-          clippy = env.craneLib.cargoClippy {
+          lint = env.craneLib.cargoClippy {
             cargoArtifacts = env.cargoArtifactsHost;
             src = env.filteredSrc;
             pname = "logout"; # -clippy auto added by craneLib.cargoClippy
@@ -440,6 +440,14 @@
             '';
             installPhase = "true";
             doCheck = false;
+          };
+          default = env.pkgs.symlinkJoin {
+            name = "logout-quick-checks";
+            paths = [
+              self.checks.${system}.format # dx fmt + cargo fmt
+              self.checks.${system}.coverage # LLVM Cov + Nextest
+              self.checks.${system}.lint # Clippy
+            ];
           };
         }
       );
