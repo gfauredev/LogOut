@@ -1,5 +1,9 @@
 builds:
+- branch: main
   include:
   - packages.x86_64-linux.*
   - devShells.*.default
   - checks.x86_64-linux.*
+- include:
+  - packages.x86_64-linux.preWeb
+  - checks.x86_64-linux.default
