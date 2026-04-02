@@ -73,6 +73,23 @@
             src = craneLib.path ./.;
             filter = sourceFilter;
           };
+          wasm-bindgen-cli = rustPlatform.buildRustPackage rec {
+            pname = "wasm-bindgen-cli";
+            version = "0.2.117";
+            src = pkgs.fetchCrate {
+              inherit pname version;
+              hash = "sha256-vtDQXL8FSgdutqXG7/rBUWgrYCtzdmeVQQkWkjasvZU=";
+            };
+            cargoHash = "sha256-eKe7uwneUYxejSbG/1hKqg6bSmtL0KQ9ojlazeqTi88=";
+            nativeBuildInputs = [ pkgs.pkg-config ];
+            buildInputs = [
+              pkgs.openssl
+            ]
+            ++ pkgs.lib.optionals pkgs.stdenv.isDarwin [
+              pkgs.darwin.apple_sdk.frameworks.Security
+              pkgs.darwin.apple_sdk.frameworks.SystemConfiguration
+            ];
+          };
           commonNativeBuildInputs = with pkgs; [
             binaryen
             cargo-binutils
@@ -87,9 +104,9 @@
             rustToolchain
             unzip
           ];
-          webNativeBuildInputs = with pkgs; [
-            esbuild
-            wasm-bindgen-cli_0_2_114
+          webNativeBuildInputs = [
+            # pkgs.esbuild
+            wasm-bindgen-cli
           ];
           commonBuildInputs = [
             pkgs.openssl

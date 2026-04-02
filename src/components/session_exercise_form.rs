@@ -339,7 +339,7 @@ pub(super) fn ExerciseFormPanel(
             onmounted: move |evt: Event<MountedData>| {
                 #[cfg(target_arch = "wasm32")]
                 {
-                    use wasm_bindgen::JsCast as _;
+                    // use wasm_bindgen::JsCast as _;
                     if let Some(element) = evt.downcast::<web_sys::Element>().cloned() {
                         element.scroll_into_view_with_bool(false);
                     }
