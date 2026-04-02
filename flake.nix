@@ -3,7 +3,7 @@
   nixConfig = {
     extra-substituters = [
       "https://cache.garnix.io"
-      "https://gfauredev.cachix.org"
+      # "https://gfauredev.cachix.org"
     ];
     extra-trusted-public-keys = [
       "cache.garnix.io:CTFPyKSLcx5RMJKfLo5EEPUObbA78b0YQ2DTCJXqr9g="
@@ -209,7 +209,7 @@
                 if platform == "web" then
                   "target/dx/log-out/release/${platform}/public/*"
                 else if platform == "server" then
-                  "target/dx/log-out/release/web/log-out"
+                  "target/dx/log-out/release/web/${platform}"
                 else
                   "target/dx/log-out/release/${platform}/*";
               out =
