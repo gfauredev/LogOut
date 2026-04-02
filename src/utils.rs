@@ -460,7 +460,11 @@ mod tests {
     fn get_exercise_db_url_returns_default_on_native() {
         #[cfg(not(target_arch = "wasm32"))]
         {
-            let _g = crate::services::storage::native_storage::test_lock();
+            use crate::services::storage::native_storage;
+            let _g = native_storage::test_lock();
+            // Clear any value left by a concurrent test process so this test is
+            // not affected by parallel nextest runs writing to the same SQLite DB.
+            let _ = native_storage::remove_config_value(super::EXERCISE_DB_URL_STORAGE_KEY);
             let url = super::get_exercise_db_url();
             assert_eq!(url, super::EXERCISE_DB_BASE_URL);
         }
@@ -489,7 +493,11 @@ mod tests {
     fn get_exercise_images_base_url_returns_images_url_by_default() {
         #[cfg(not(target_arch = "wasm32"))]
         {
-            let _g = crate::services::storage::native_storage::test_lock();
+            use crate::services::storage::native_storage;
+            let _g = native_storage::test_lock();
+            // Clear any value left by a concurrent test process so this test is
+            // not affected by parallel nextest runs writing to the same SQLite DB.
+            let _ = native_storage::remove_config_value(super::EXERCISE_DB_URL_STORAGE_KEY);
             let url = super::get_exercise_images_base_url();
             assert_eq!(url, super::EXERCISE_IMAGES_BASE_URL);
         }

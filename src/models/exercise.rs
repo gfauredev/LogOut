@@ -237,6 +237,12 @@ impl Exercise {
         #[cfg(not(target_arch = "wasm32"))]
         {
             use percent_encoding::{utf8_percent_encode, NON_ALPHANUMERIC};
+            // Characters kept unencoded in each path component (RFC 3986 unreserved).
+            const PATH_SEGMENT: &percent_encoding::AsciiSet = &NON_ALPHANUMERIC
+                .remove(b'-')
+                .remove(b'_')
+                .remove(b'.')
+                .remove(b'~');
             let cached = crate::services::storage::native_storage::data_dir()
                 .join("images")
                 .join(key);
@@ -253,11 +259,6 @@ impl Exercise {
                             if !acc.is_empty() && !acc.ends_with('/') {
                                 acc.push('/');
                             }
-                            const PATH_SEGMENT: &percent_encoding::AsciiSet = &NON_ALPHANUMERIC
-                                .remove(b'-')
-                                .remove(b'_')
-                                .remove(b'.')
-                                .remove(b'~');
                             acc.push_str(
                                 &utf8_percent_encode(&seg.to_string_lossy(), PATH_SEGMENT)
                                     .to_string(),
