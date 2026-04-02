@@ -37,13 +37,13 @@ short_description = "Workout Logger"
 # photos = { access = "read", description = "Images uploading?" } 
 
 [android]
-compile_sdk = 35
+compile_sdk = 36
 # features = [""]
 # foreground_service_types = [""]
 # manifest = "android/AndroidManifest.xml"
 min_sdk = 28
 # proguard_rules = [""]
-target_sdk = 35
+target_sdk = 36
 
 [android.permissions]
 internet = { description = "Download exercises and translations" }
