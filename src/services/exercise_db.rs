@@ -268,6 +268,71 @@ pub(crate) async fn download_db_i18n() -> Result<DbI18n, String> {
         .await
         .map_err(|e| format!("JSON parse error in i18n.json: {e}"))
 }
+/// Downloads all exercise images referenced by `exercises` that are not yet
+/// cached on disk, saving them to `data_dir/images/`.
+///
+/// Only runs on non-WASM native targets (Android, desktop).  Each image is
+/// fetched from the configured exercise-images base URL and written to
+/// `<data_dir>/images/<relative_path>` (e.g. `Squat/0.jpg`).  Intermediate
+/// directories are created as needed.  Already-present files are skipped so the
+/// function is safe to call on every launch or refresh.
+///
+/// Errors for individual images are logged but do not abort the overall
+/// download; the function always returns after attempting every image.
+#[cfg(not(target_arch = "wasm32"))]
+pub(crate) async fn download_db_images(exercises: &[Exercise]) {
+    use crate::models::EXERCISES_IMAGE_SUB_PATH;
+    use crate::services::storage::native_storage;
+    let images_dir = native_storage::data_dir().join("images");
+    let base_url = crate::utils::get_exercise_images_base_url();
+    // Collect unique relative image paths that don't already exist locally.
+    let mut to_download: Vec<String> = exercises
+        .iter()
+        .flat_map(|e| e.images.iter())
+        .filter(|key| {
+            // Only download plain relative paths from the built-in DB.
+            // Skip absolute URLs, idb: keys, local: prefixes, etc.
+            !key.contains("://") && !key.starts_with("idb:") && !key.starts_with("local:")
+        })
+        .map(String::clone)
+        .collect::<std::collections::HashSet<_>>()
+        .into_iter()
+        .filter(|key| !images_dir.join(key).exists())
+        .collect();
+    if to_download.is_empty() {
+        return;
+    }
+    to_download.sort();
+    log::info!(
+        "Downloading {} exercise image(s) to {}",
+        to_download.len(),
+        images_dir.display()
+    );
+    for key in &to_download {
+        let url = format!("{base_url}{EXERCISES_IMAGE_SUB_PATH}{key}");
+        let dest = images_dir.join(key);
+        // Create parent directories (e.g. `images/Squat/`).
+        if let Some(parent) = dest.parent() {
+            if let Err(e) = std::fs::create_dir_all(parent) {
+                log::warn!("Failed to create image dir {}: {e}", parent.display());
+                continue;
+            }
+        }
+        match reqwest::get(&url).await {
+            Ok(resp) if resp.status().is_success() => match resp.bytes().await {
+                Ok(bytes) => {
+                    if let Err(e) = std::fs::write(&dest, &bytes) {
+                        log::warn!("Failed to write image {}: {e}", dest.display());
+                    }
+                }
+                Err(e) => log::warn!("Failed to read image body for {key}: {e}"),
+            },
+            Ok(resp) => log::warn!("HTTP {} fetching image {key}", resp.status()),
+            Err(e) => log::warn!("Network error fetching image {key}: {e}"),
+        }
+    }
+    log::info!("Finished downloading exercise images");
+}
 /// Normalises a string for error-tolerant search: lowercases, strips hyphens,
 /// apostrophes, spaces and periods, and maps common Latin diacritics to their
 /// ASCII base form so that e.g. "push-ups", "Pushups", "Push Ups",

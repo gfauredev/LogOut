@@ -231,6 +231,46 @@ impl Exercise {
             return Some(format!("file://{encoded}"));
         }
 
+        // On native, serve the image from the local cache (`data_dir/images/`)
+        // when it has already been downloaded by `download_db_images`.  Fall
+        // back to the remote URL for images not yet cached (first launch, etc.).
+        #[cfg(not(target_arch = "wasm32"))]
+        {
+            use percent_encoding::{utf8_percent_encode, NON_ALPHANUMERIC};
+            let cached = crate::services::storage::native_storage::data_dir()
+                .join("images")
+                .join(key);
+            if cached.exists() {
+                // Percent-encode each path component but keep slashes.
+                let encoded = cached.components().fold(String::new(), |mut acc, c| {
+                    use std::path::Component;
+                    match c {
+                        Component::Prefix(p) => {
+                            acc.push_str(&p.as_os_str().to_string_lossy());
+                        }
+                        Component::RootDir => acc.push('/'),
+                        Component::Normal(seg) => {
+                            if !acc.is_empty() && !acc.ends_with('/') {
+                                acc.push('/');
+                            }
+                            const PATH_SEGMENT: &percent_encoding::AsciiSet = &NON_ALPHANUMERIC
+                                .remove(b'-')
+                                .remove(b'_')
+                                .remove(b'.')
+                                .remove(b'~');
+                            acc.push_str(
+                                &utf8_percent_encode(&seg.to_string_lossy(), PATH_SEGMENT)
+                                    .to_string(),
+                            );
+                        }
+                        _ => {}
+                    }
+                    acc
+                });
+                return Some(format!("file://{encoded}"));
+            }
+        }
+
         let base_url = crate::utils::get_exercise_images_base_url();
         Some(format!("{base_url}{EXERCISES_IMAGE_SUB_PATH}{key}"))
     }

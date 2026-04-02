@@ -705,7 +705,9 @@ pub(crate) use super::native_queue;
 /// `SQLite`-backed storage for Android and desktop builds.
 ///
 /// A single `log-out.db` `SQLite` database file is kept inside the app-
-/// specific data directory (`dirs::data_local_dir()/log-out/`).
+/// specific data directory.  On Android this is `Context.getFilesDir()`
+/// (queried via `ndk-context` at runtime); on other platforms it is
+/// `dirs::data_local_dir()/log-out/`.
 /// Each "store" maps to a table with columns `id TEXT PRIMARY KEY, data TEXT`.
 /// A separate `config` table holds arbitrary key/value string pairs.
 ///
@@ -715,23 +717,38 @@ pub(crate) mod native_storage {
     use rusqlite::{params, Connection};
     use serde::{de::DeserializeOwned, Serialize};
     use std::path::PathBuf;
+    /// On Android, ask the OS for the app's internal files directory via JNI.
+    ///
+    /// Uses `ndk_context::android_context()` (which Dioxus already sets up)
+    /// to obtain the `JavaVM` and `Activity` pointers without requiring any
+    /// custom `MainActivity.kt`.  Calls `Activity.getFilesDir()` and then
+    /// `File.getAbsolutePath()` to get a `String` path back.
+    ///
+    /// Returns `None` on any JNI error; `data_dir()` will then fall back to
+    /// `dirs::data_local_dir()`.
     #[cfg(target_os = "android")]
-    static ANDROID_DATA_DIR: std::sync::OnceLock<String> = std::sync::OnceLock::new();
-    #[cfg(target_os = "android")]
-    #[no_mangle]
-    pub extern "C" fn Java_dev_dioxus_main_MainActivity_setDataDir(
-        mut env: jni::JNIEnv,
-        _class: jni::objects::JClass,
-        data_dir: jni::objects::JString,
-    ) {
-        let dir: String = match env.get_string(&data_dir) {
-            Ok(s) => s.into(),
-            Err(e) => {
-                log::error!("setDataDir: failed to read Java data_dir string: {e:?}");
-                return;
-            }
-        };
-        let _ = ANDROID_DATA_DIR.set(dir);
+    fn android_files_dir() -> Option<PathBuf> {
+        use jni::{objects::JObject, JavaVM};
+        let ctx = ndk_context::android_context();
+        // SAFETY: pointers are valid for the lifetime of the process and were
+        // set up by the Dioxus / Android runtime before Rust code runs.
+        let vm = unsafe { JavaVM::from_raw(ctx.vm().cast()) }.ok()?;
+        let mut env = vm.attach_current_thread().ok()?;
+        let activity = unsafe { JObject::from_raw(ctx.context() as jni::sys::jobject) };
+        let files_dir = env
+            .call_method(&activity, "getFilesDir", "()Ljava/io/File;", &[])
+            .ok()?
+            .l()
+            .ok()?;
+        let path_jobj = env
+            .call_method(&files_dir, "getAbsolutePath", "()Ljava/lang/String;", &[])
+            .ok()?
+            .l()
+            .ok()?;
+        let path_str: jni::objects::JString = path_jobj.into();
+        env.get_string(&path_str)
+            .ok()
+            .map(|s| PathBuf::from(String::from(s)))
     }
     pub const STORE_SESSIONS: &str = "sessions";
     pub const STORE_CUSTOM_EXERCISES: &str = "custom_exercises";
@@ -781,10 +798,8 @@ pub(crate) mod native_storage {
     /// Returns the application data directory, creating it if necessary.
     pub fn data_dir() -> PathBuf {
         #[cfg(target_os = "android")]
-        {
-            if let Some(dir) = ANDROID_DATA_DIR.get() {
-                return PathBuf::from(dir);
-            }
+        if let Some(dir) = android_files_dir() {
+            return dir;
         }
         dirs::data_local_dir()
             .unwrap_or_else(|| PathBuf::from("."))

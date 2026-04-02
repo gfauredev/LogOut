@@ -55,6 +55,9 @@ dirs = "6"
 rusqlite = { version = "0.32", features = ["bundled"] }
 jni = "0.21"
 
+[target.'cfg(target_os = "android")'.dependencies]
+ndk-context = "0.1"
+
 [[bin]]
 name = "log-out"
 path = "src/main.rs"

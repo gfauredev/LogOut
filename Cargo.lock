@@ -3053,6 +3053,7 @@ dependencies = [
  "jni 0.21.1",
  "js-sys",
  "log",
+ "ndk-context",
  "percent-encoding",
  "pulldown-cmark",
  "reqwest",
