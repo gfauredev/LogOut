@@ -103,6 +103,7 @@ pub async fn reload_exercises(
                 );
                 native_exercises::store_all_exercises(&exercises);
                 exercise_db::record_fetch_timestamp();
+                exercise_db::download_db_images(&exercises).await;
                 sig.set(
                     exercises
                         .into_iter()
@@ -205,6 +206,7 @@ async fn load_exercises(mut sig: Signal<Vec<Arc<Exercise>>>) {
                 );
                 native_exercises::store_all_exercises(&exercises);
                 exercise_db::record_fetch_timestamp();
+                exercise_db::download_db_images(&exercises).await;
                 sig.set(
                     exercises
                         .into_iter()
