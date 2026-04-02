@@ -1,4 +1,4 @@
-[application]
+# [application]
 # android_main_activity = "android/MainActivity.kt"
 # asset_dir = ""
 # ios_entitlements = ""
@@ -9,7 +9,6 @@
 # public_dir = ""
 # tailwind_input = ""
 # tailwind_output = ""
-name = "LogOut"
 
 [bundle]
 category = "Sports"
@@ -27,29 +26,27 @@ short_description = "Workout Logger"
 # schemes = []
 
 # [permissions]
-# background-location.description = "" # Tracking cardio exercises distance?
-# calendar = { access = "read-write", description = "" } # Workout plannings?
-# health = { access = "read-write", description = "" } # Integration?
-# local-network.description = "" # P2P Syncing?
-# location = { precision = "fine", description = "" } # Workout loc/distance?
-# media-library.description = "" # Custom exercises images?
-# motion.description = "" # Tracking cardio exercises distance?
-# notifications.description = "" # Rest/Exercise duration alerts
-# photos = { access = "read", description = "" } # Images uploading?
+# background-location.description = "Tracking cardio exercises distance?"
+# calendar = { access = "read-write", description = "Workout plannings?" } 
+# health = { access = "read-write", description = "Integration?" } 
+# local-network.description = "P2P Syncing?" 
+# location = { precision = "fine", description = "Workout loc/distance?" } 
+# media-library.description = "Custom exercises images?" 
+# motion.description = "Tracking cardio exercises distance?" 
+# notifications.description = "Rest/Exercise duration alerts" 
+# photos = { access = "read", description = "Images uploading?" } 
 
 [android]
 compile_sdk = 36
-min_sdk = 33
-target_sdk = 36
 # features = [""]
 # foreground_service_types = [""]
 # manifest = "android/AndroidManifest.xml"
+min_sdk = 26 # TEST This
 # proguard_rules = [""]
+target_sdk = 36
 
-# Use the DayNight variant so the WebView reports the system dark/light setting
-# to CSS `prefers-color-scheme` media queries.  `androidx.appcompat` is already
-# bundled by `dx`, so no extra Gradle dependency is needed.
 [android.application]
+# Ensure WebView reports system dark/light setting to CSS `prefers-color-scheme`
 theme = "@style/Theme.AppCompat.DayNight.NoActionBar"
 
 [web]
