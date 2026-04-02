@@ -201,7 +201,6 @@
             {
               basePath ? "LogOut", # Needed for GitHub Pages
               platform ? "web",
-              # Use cargoArtifactsServer for server, cargoArtifactsWeb for wasm, cargoArtifactsHost for clippy/tests.
               cargoArtifacts ? (if platform == "server" then env.cargoArtifactsServer else env.cargoArtifactsWeb),
             }:
             let
@@ -209,7 +208,7 @@
                 if platform == "web" then
                   "target/dx/log-out/release/${platform}/public/*"
                 else if platform == "server" then
-                  "target/dx/log-out/release/web/${platform}"
+                  "target/dx/log-out/release/web/*" # Server bin plus assets
                 else
                   "target/dx/log-out/release/${platform}/*";
               out =
