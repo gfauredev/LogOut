@@ -1,9 +1,9 @@
-mkdir --mode 775 --verbose dist
+mkdir --mode 775 --verbose web
 gh release download --pattern "web.tar.gz" --dir .
 if [ -f "web.tar.gz" ]; then
-  tar -xzvf web.tar.gz -C dist/
-  if [ -d "dist/LogOut" ]; then
-    chmod 775 dist/LogOut
+  tar -xzvf web.tar.gz -C web/
+  if [ -d "web/LogOut" ]; then
+    chmod 775 web/LogOut
   else
     echo "WARNING: No LogOut directory found in web archive, stopping now"
     exit 1
@@ -13,4 +13,4 @@ else
   exit 1
 fi
 nix build .#preWeb --out-link preWeb
-cp --dereference --recursive -v preWeb/LogOut/preview dist/LogOut/preview
+cp --dereference --recursive -v preWeb/LogOut/preview web/LogOut/preview
