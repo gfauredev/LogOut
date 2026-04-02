@@ -123,7 +123,6 @@ jobs:
 
   release:
     needs: [pwa-build, android-build]
-    # Run when at least one build job succeeded; tolerate one failure.
     if: >-
       always() &&
       startsWith(github.ref, 'refs/tags/v') &&
