@@ -127,7 +127,7 @@ jobs:
       run: sudo apt-get remove -y google-chrome-stable
     - run: |
         set -o pipefail
-        nix run .#webTest |& tee maestro_console.log
+        nix run .#webE2eTest |& tee maestro_console.log
     - if: failure() && github.event_name == 'pull_request'
       env:
         CLOUDINARY_CLOUD_NAME: ${{ secrets.CLOUDINARY_CLOUD_NAME }}
