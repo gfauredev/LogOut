@@ -36,6 +36,7 @@ jobs:
 
   pwa-build-deploy:
     needs: check-tag
+    if: always() # Wait for check-tag to finish but always run anyway
     timeout-minutes: 20
     runs-on: ubuntu-latest
     environment:
@@ -55,7 +56,7 @@ jobs:
     - uses: cachix/install-nix-action@v31
       with:
         github_access_token: ${{ secrets.GITHUB_TOKEN }}
-        extra_nix_config: |
+        extra_nix_config: | # TODO Ensure nix uses the most performant cache between Garnix and Cachix every time
           extra-substituters = https://cache.garnix.io
           extra-trusted-public-keys = cache.garnix.io:CTFPyKSLcx5RMJKfLo5EEPUObbA78b0YQ2DTCJXqr9g=
     - uses: cachix/cachix-action@v17
@@ -106,7 +107,7 @@ jobs:
     - uses: cachix/install-nix-action@v31
       with:
         github_access_token: ${{ secrets.GITHUB_TOKEN }}
-        extra_nix_config: |
+        extra_nix_config: | # TODO Ensure nix uses the most performant cache between Garnix and Cachix every time
           extra-substituters = https://cache.garnix.io
           extra-trusted-public-keys = cache.garnix.io:CTFPyKSLcx5RMJKfLo5EEPUObbA78b0YQ2DTCJXqr9g=
     - uses: cachix/cachix-action@v17
@@ -150,6 +151,7 @@ jobs:
       checks: read    # Required by wait-on-check-action
       statuses: read  # Required by wait-on-check-action
     steps:
+    - uses: actions/checkout@v6
     - uses: actions/download-artifact@v4
       with: { name: android }
     - name: Publish Timestamped Pre-release # If no SemVer tag on last commit
