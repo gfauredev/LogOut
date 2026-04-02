@@ -172,11 +172,11 @@ jobs:
         GH_TOKEN: ${{ github.token }}
 
   release:
-    needs: [pwa-build, android-build]
+    needs: [pwa-build-deploy, android-build]
     if: >-
       always() &&
       startsWith(github.ref, 'refs/tags/v') &&
-      (needs.pwa-build.result == 'success' || needs.android-build.result == 'success')
+      (needs.pwa-build-deploy.result == 'success' || needs.android-build.result == 'success')
     timeout-minutes: 5
     runs-on: ubuntu-latest
     permissions:
@@ -184,7 +184,7 @@ jobs:
     steps:
     - uses: actions/checkout@v6
     - uses: actions/download-artifact@v4
-      if: needs.pwa-build.result == 'success'
+      if: needs.pwa-build-deploy.result == 'success'
       with: { name: web }
     - uses: actions/download-artifact@v4
       if: needs.android-build.result == 'success'
