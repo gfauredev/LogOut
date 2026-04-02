@@ -17,8 +17,8 @@ concurrency:
 
 jobs:
   check-tag:
-    timeout-minutes: 3
-    if: github.ref == 'refs/heads/main' # <- TODO Assess usefulness
+    timeout-minutes: 1
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     outputs:
       is_tagged: ${{ steps.check.outputs.is_tagged }}
@@ -36,7 +36,7 @@ jobs:
 
   pwa-build-deploy:
     needs: check-tag
-    timeout-minutes: 30
+    timeout-minutes: 20
     runs-on: ubuntu-latest
     environment:
       name: github-pages
@@ -94,9 +94,8 @@ jobs:
       id: deployment
 
   android-build:
-    # if: startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 30
     permissions:
       checks: read    # Required by wait-on-check-action
       statuses: read  # Required by wait-on-check-action
@@ -145,14 +144,13 @@ jobs:
     needs: [check-tag, android-build]
     if: needs.check-tag.outputs.is_tagged == 'false'
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 3
     permissions:
       contents: write # Required by 'gh release'
       checks: read    # Required by wait-on-check-action
       statuses: read  # Required by wait-on-check-action
     steps:
     - uses: actions/download-artifact@v4
-      if: needs.android-build.result == 'success'
       with: { name: android }
     - name: Publish Timestamped Pre-release # If no SemVer tag on last commit
       run: .script/prerelease.sh
@@ -161,7 +159,7 @@ jobs:
 
   prerelease-cleanup:
     if: github.ref == 'refs/heads/main' && !startsWith(github.ref, 'refs/tags/v')
-    timeout-minutes: 5
+    timeout-minutes: 1
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -177,7 +175,7 @@ jobs:
       always() &&
       startsWith(github.ref, 'refs/tags/v') &&
       (needs.pwa-build-deploy.result == 'success' || needs.android-build.result == 'success')
-    timeout-minutes: 5
+    timeout-minutes: 3
     runs-on: ubuntu-latest
     permissions:
       contents: write # Required by 'gh release'
