@@ -732,23 +732,49 @@ pub(crate) mod native_storage {
         let ctx = ndk_context::android_context();
         // SAFETY: pointers are valid for the lifetime of the process and were
         // set up by the Dioxus / Android runtime before Rust code runs.
-        let vm = unsafe { JavaVM::from_raw(ctx.vm().cast()) }.ok()?;
-        let mut env = vm.attach_current_thread().ok()?;
+        let vm = match unsafe { JavaVM::from_raw(ctx.vm().cast()) } {
+            Ok(vm) => vm,
+            Err(e) => {
+                log::error!("android_files_dir: JavaVM::from_raw failed: {e:?}");
+                return None;
+            }
+        };
+        let mut env = match vm.attach_current_thread() {
+            Ok(env) => env,
+            Err(e) => {
+                log::error!("android_files_dir: attach_current_thread failed: {e:?}");
+                return None;
+            }
+        };
         let activity = unsafe { JObject::from_raw(ctx.context() as jni::sys::jobject) };
-        let files_dir = env
+        let files_dir = match env
             .call_method(&activity, "getFilesDir", "()Ljava/io/File;", &[])
-            .ok()?
-            .l()
-            .ok()?;
-        let path_jobj = env
+            .and_then(|v| v.l())
+        {
+            Ok(obj) => obj,
+            Err(e) => {
+                log::error!("android_files_dir: getFilesDir() failed: {e:?}");
+                return None;
+            }
+        };
+        let path_jobj = match env
             .call_method(&files_dir, "getAbsolutePath", "()Ljava/lang/String;", &[])
-            .ok()?
-            .l()
-            .ok()?;
+            .and_then(|v| v.l())
+        {
+            Ok(obj) => obj,
+            Err(e) => {
+                log::error!("android_files_dir: getAbsolutePath() failed: {e:?}");
+                return None;
+            }
+        };
         let path_str: jni::objects::JString = path_jobj.into();
-        env.get_string(&path_str)
-            .ok()
-            .map(|s| PathBuf::from(String::from(s)))
+        match env.get_string(&path_str) {
+            Ok(s) => Some(PathBuf::from(String::from(s))),
+            Err(e) => {
+                log::error!("android_files_dir: get_string failed: {e:?}");
+                None
+            }
+        }
     }
     pub const STORE_SESSIONS: &str = "sessions";
     pub const STORE_CUSTOM_EXERCISES: &str = "custom_exercises";
