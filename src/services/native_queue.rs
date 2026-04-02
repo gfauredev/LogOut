@@ -1,161 +1,229 @@
-use super::storage::native_storage;
 use crate::models::{Exercise, WorkoutSession};
-use dioxus::prelude::WritableExt;
-use dioxus::signals::Signal;
-use std::cell::RefCell;
+use dioxus::prelude::*;
 use std::collections::VecDeque;
-/// A pending write operation, including the toast signal for error reporting.
+use std::sync::{Arc, Mutex, OnceLock};
+
+/// A pending write operation. Data only, no signals.
 pub enum NativeOp {
-    /// Upsert a session.  On write failure the sessions signal is reverted to
-    /// `previous` (the value before the optimistic update).
     PutSession {
         session: WorkoutSession,
-        toast: Signal<std::collections::VecDeque<String>>,
-        sessions_sig: Signal<Vec<WorkoutSession>>,
-        /// `None` means the session was newly inserted; reverting removes it.
-        /// `Some(old)` means it was an update; reverting restores `old`.
         previous: Option<WorkoutSession>,
     },
-    /// Delete a session by ID.  On failure the sessions signal is restored
-    /// using `snapshot` (if the session was present in the signal).
     DeleteSession {
         id: String,
-        toast: Signal<std::collections::VecDeque<String>>,
-        sessions_sig: Signal<Vec<WorkoutSession>>,
-        /// The session that was removed from the signal, for revert on failure.
         snapshot: Option<WorkoutSession>,
     },
-    PutExercise(Exercise, Signal<std::collections::VecDeque<String>>),
+    PutExercise(Exercise),
 }
-thread_local! {
-    /// (draining, pending_ops)
-    static QUEUE: RefCell<(bool, VecDeque<NativeOp>)> = const {
-        RefCell::new((false, VecDeque::new()))
-    };
+
+/// Result of a native operation, to be sent back to the UI.
+pub enum NativeResult {
+    PutSession {
+        id: String,
+        result: Result<(), String>,
+        previous: Option<WorkoutSession>,
+    },
+    DeleteSession {
+        id: String,
+        result: Result<(), String>,
+        snapshot: Option<WorkoutSession>,
+    },
+    PutExercise {
+        id: String,
+        result: Result<(), String>,
+    },
 }
-/// Enqueue a write operation. If no drain is currently running, starts one.
+
+struct QueueState {
+    draining: bool,
+    pending: VecDeque<NativeOp>,
+}
+
+fn queue() -> &'static Arc<Mutex<QueueState>> {
+    static QUEUE: OnceLock<Arc<Mutex<QueueState>>> = OnceLock::new();
+    QUEUE.get_or_init(|| {
+        Arc::new(Mutex::new(QueueState {
+            draining: false,
+            pending: VecDeque::new(),
+        }))
+    })
+}
+
+type ResultChannel = (
+    tokio::sync::mpsc::UnboundedSender<NativeResult>,
+    Mutex<Option<tokio::sync::mpsc::UnboundedReceiver<NativeResult>>>,
+);
+
+/// Global channel for reporting results back to the UI.
+static RESULT_CHANNEL: OnceLock<ResultChannel> = OnceLock::new();
+
+fn get_result_channel() -> &'static ResultChannel {
+    RESULT_CHANNEL.get_or_init(|| {
+        let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
+        (tx, Mutex::new(Some(rx)))
+    })
+}
+
 pub fn enqueue(op: NativeOp) {
-    QUEUE.with(|q| {
-        let mut q = q.borrow_mut();
-        q.1.push_back(op);
-        if !q.0 {
-            q.0 = true;
-            dioxus::prelude::spawn(drain());
+    let mut q = queue().lock().unwrap();
+    q.pending.push_back(op);
+    if !q.draining {
+        q.draining = true;
+        tokio::spawn(drain());
+    }
+}
+
+/// Hook to listen for native operation results and update signals.
+pub fn use_native_results() {
+    let mut toast = use_context::<crate::ToastSignal>().0;
+    let mut sessions_sig = use_context::<Signal<Vec<WorkoutSession>>>();
+
+    use_resource(move || async move {
+        let rx = {
+            let mut lock = get_result_channel().1.lock().unwrap();
+            lock.take()
+        };
+
+        if let Some(mut rx) = rx {
+            while let Some(res) = rx.recv().await {
+                match res {
+                    NativeResult::PutSession {
+                        id,
+                        result,
+                        previous,
+                    } => match result {
+                        Ok(()) => {
+                            log::info!("Successfully saved session {id}");
+                        }
+                        Err(e) => {
+                            log::error!("Failed to save session {id}: {e}");
+                            toast
+                                .write()
+                                .push_back(format!("⚠️ Failed to save session: {e}"));
+                            let mut sessions = sessions_sig.write();
+                            match previous {
+                                None => sessions.retain(|x| x.id != id),
+                                Some(old) => {
+                                    if let Some(pos) = sessions.iter().position(|x| x.id == id) {
+                                        sessions[pos] = old;
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    NativeResult::DeleteSession {
+                        id,
+                        result,
+                        snapshot,
+                    } => match result {
+                        Ok(()) => {
+                            log::info!("Successfully deleted session {id}");
+                        }
+                        Err(e) => {
+                            log::error!("Failed to delete session {id}: {e}");
+                            toast
+                                .write()
+                                .push_back(format!("⚠️ Failed to delete session: {e}"));
+                            if let Some(session) = snapshot {
+                                sessions_sig.write().push(session);
+                            }
+                        }
+                    },
+                    NativeResult::PutExercise { id, result } => match result {
+                        Ok(()) => {
+                            log::info!("Successfully saved exercise {id}");
+                        }
+                        Err(e) => {
+                            log::error!("Failed to save exercise {id}: {e}");
+                            toast
+                                .write()
+                                .push_back(format!("⚠️ Failed to save exercise: {e}"));
+                        }
+                    },
+                }
+            }
+            // Put it back if we ever exit the loop (though we shouldn't)
+            let mut lock = get_result_channel().1.lock().unwrap();
+            *lock = Some(rx);
         }
     });
 }
-#[allow(clippy::too_many_lines)]
+
 async fn drain() {
+    let tx = &get_result_channel().0;
     loop {
-        let op = QUEUE.with(|q| q.borrow_mut().1.pop_front());
-        match op {
-            None => {
-                QUEUE.with(|q| q.borrow_mut().0 = false);
+        let op = {
+            let mut q = queue().lock().unwrap();
+            if let Some(op) = q.pending.pop_front() {
+                op
+            } else {
+                q.draining = false;
                 break;
             }
-            Some(NativeOp::PutSession {
+        };
+
+        match op {
+            NativeOp::PutSession {
                 session: s,
-                mut toast,
-                mut sessions_sig,
                 previous,
-            }) => {
+            } => {
                 let id = s.id.clone();
-                let result = tokio::task::spawn_blocking(move || {
-                    native_storage::put_item(native_storage::STORE_SESSIONS, &s.id, &s)
+                let res = tokio::task::spawn_blocking(move || {
+                    super::storage::native_storage::put_item(
+                        super::storage::native_storage::STORE_SESSIONS,
+                        &s.id,
+                        &s,
+                    )
                 })
                 .await;
-                match result {
-                    Ok(Err(e)) => {
-                        log::error!("Native queue: failed to put session {id}: {e}");
-                        toast
-                            .write()
-                            .push_back(format!("⚠️ Failed to save session: {e}"));
-                        // Revert the optimistic signal update.
-                        let mut sessions = sessions_sig.write();
-                        match previous {
-                            None => sessions.retain(|x| x.id != id),
-                            Some(old) => {
-                                if let Some(pos) = sessions.iter().position(|x| x.id == id) {
-                                    sessions[pos] = old;
-                                }
-                            }
-                        }
-                    }
-                    Err(e) => {
-                        log::error!("Native queue: spawn_blocking panicked for session {id}: {e}");
-                        toast
-                            .write()
-                            .push_back("⚠️ Failed to save session (internal error)".into());
-                        // Revert optimistic update even on panic.
-                        let mut sessions = sessions_sig.write();
-                        match previous {
-                            None => sessions.retain(|x| x.id != id),
-                            Some(old) => {
-                                if let Some(pos) = sessions.iter().position(|x| x.id == id) {
-                                    sessions[pos] = old;
-                                }
-                            }
-                        }
-                    }
-                    Ok(Ok(())) => {}
-                }
+
+                let result = match res {
+                    Ok(Ok(())) => Ok(()),
+                    Ok(Err(e)) => Err(e.to_string()),
+                    Err(e) => Err(format!("Task panicked: {e}")),
+                };
+                let _ = tx.send(NativeResult::PutSession {
+                    id,
+                    result,
+                    previous,
+                });
             }
-            Some(NativeOp::DeleteSession {
-                id,
-                mut toast,
-                mut sessions_sig,
-                snapshot,
-            }) => {
+            NativeOp::DeleteSession { id, snapshot } => {
                 let id2 = id.clone();
-                let result = tokio::task::spawn_blocking(move || {
-                    native_storage::delete_item(native_storage::STORE_SESSIONS, &id)
+                let res = tokio::task::spawn_blocking(move || {
+                    super::storage::native_storage::delete_item(
+                        super::storage::native_storage::STORE_SESSIONS,
+                        &id,
+                    )
                 })
                 .await;
-                match result {
-                    Ok(Err(e)) => {
-                        log::error!("Native queue: failed to delete session {id2}: {e}");
-                        toast
-                            .write()
-                            .push_back(format!("⚠️ Failed to delete session: {e}"));
-                        if let Some(session) = snapshot {
-                            sessions_sig.write().push(session);
-                        }
-                    }
-                    Err(e) => {
-                        log::error!("Native queue: spawn_blocking panicked for delete {id2}: {e}");
-                        toast
-                            .write()
-                            .push_back("⚠️ Failed to delete session (internal error)".into());
-                        if let Some(session) = snapshot {
-                            sessions_sig.write().push(session);
-                        }
-                    }
-                    Ok(Ok(())) => {}
-                }
+                let result = match res {
+                    Ok(Ok(())) => Ok(()),
+                    Ok(Err(e)) => Err(e.to_string()),
+                    Err(e) => Err(format!("Task panicked: {e}")),
+                };
+                let _ = tx.send(NativeResult::DeleteSession {
+                    id: id2,
+                    result,
+                    snapshot,
+                });
             }
-            Some(NativeOp::PutExercise(ex, mut toast)) => {
-                let ex_id = ex.id.clone();
-                let result = tokio::task::spawn_blocking(move || {
-                    native_storage::put_item(native_storage::STORE_CUSTOM_EXERCISES, &ex.id, &ex)
+            NativeOp::PutExercise(ex) => {
+                let id = ex.id.clone();
+                let res = tokio::task::spawn_blocking(move || {
+                    super::storage::native_storage::put_item(
+                        super::storage::native_storage::STORE_CUSTOM_EXERCISES,
+                        &ex.id,
+                        &ex,
+                    )
                 })
                 .await;
-                match result {
-                    Ok(Err(e)) => {
-                        log::error!("Native queue: failed to put exercise {ex_id}: {e}");
-                        toast
-                            .write()
-                            .push_back(format!("⚠️ Failed to save exercise: {e}"));
-                    }
-                    Err(e) => {
-                        log::error!(
-                            "Native queue: spawn_blocking panicked for exercise {ex_id}: {e}"
-                        );
-                        toast
-                            .write()
-                            .push_back("⚠️ Failed to save exercise (internal error)".into());
-                    }
-                    Ok(Ok(())) => {}
-                }
+                let result = match res {
+                    Ok(Ok(())) => Ok(()),
+                    Ok(Err(e)) => Err(e.to_string()),
+                    Err(e) => Err(format!("Task panicked: {e}")),
+                };
+                let _ = tx.send(NativeResult::PutExercise { id, result });
             }
         }
         tokio::task::yield_now().await;

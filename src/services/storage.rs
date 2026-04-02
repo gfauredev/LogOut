@@ -251,12 +251,10 @@ pub fn enqueue_put_session(
         previous,
     });
     #[cfg(not(target_arch = "wasm32"))]
-    native_queue::enqueue(native_queue::NativeOp::PutSession {
-        session,
-        toast,
-        sessions_sig,
-        previous,
-    });
+    {
+        let _ = (toast, sessions_sig); // Used via use_native_results
+        native_queue::enqueue(native_queue::NativeOp::PutSession { session, previous });
+    }
 }
 /// Enqueue a session deletion on the platform-specific background write queue.
 pub fn enqueue_delete_session(
@@ -273,12 +271,10 @@ pub fn enqueue_delete_session(
         snapshot,
     });
     #[cfg(not(target_arch = "wasm32"))]
-    native_queue::enqueue(native_queue::NativeOp::DeleteSession {
-        id,
-        toast,
-        sessions_sig,
-        snapshot,
-    });
+    {
+        let _ = (toast, sessions_sig); // Used via use_native_results
+        native_queue::enqueue(native_queue::NativeOp::DeleteSession { id, snapshot });
+    }
 }
 /// Enqueue a custom-exercise upsert on the platform-specific background write queue.
 pub fn enqueue_put_exercise(
@@ -288,7 +284,10 @@ pub fn enqueue_put_exercise(
     #[cfg(target_arch = "wasm32")]
     idb_queue::enqueue(idb_queue::IdbOp::PutExercise(exercise, toast));
     #[cfg(not(target_arch = "wasm32"))]
-    native_queue::enqueue(native_queue::NativeOp::PutExercise(exercise, toast));
+    {
+        let _ = toast; // Used via use_native_results
+        native_queue::enqueue(native_queue::NativeOp::PutExercise(exercise));
+    }
 }
 
 #[cfg(target_arch = "wasm32")]
@@ -730,6 +729,14 @@ pub(crate) mod native_storage {
     fn android_files_dir() -> Option<PathBuf> {
         use jni::{objects::JObject, JavaVM};
         let ctx = ndk_context::android_context();
+        if ctx.vm().is_null() {
+            log::error!("android_files_dir: JavaVM pointer is NULL! ndk-context not initialized?");
+            return None;
+        }
+        if ctx.context().is_null() {
+            log::error!("android_files_dir: Context pointer is NULL! ndk-context not initialized?");
+            return None;
+        }
         // SAFETY: pointers are valid for the lifetime of the process and were
         // set up by the Dioxus / Android runtime before Rust code runs.
         let vm = match unsafe { JavaVM::from_raw(ctx.vm().cast()) } {
@@ -769,7 +776,11 @@ pub(crate) mod native_storage {
         };
         let path_str: jni::objects::JString = path_jobj.into();
         let result = match env.get_string(&path_str) {
-            Ok(s) => Some(PathBuf::from(String::from(s))),
+            Ok(s) => {
+                let p = PathBuf::from(String::from(s));
+                log::info!("android_files_dir: Success! Path: {}", p.display());
+                Some(p)
+            }
             Err(e) => {
                 log::error!("android_files_dir: get_string failed: {e:?}");
                 None
@@ -824,6 +835,9 @@ pub(crate) mod native_storage {
     }
     /// Returns the application data directory, creating it if necessary.
     pub fn data_dir() -> PathBuf {
+        if let Ok(custom) = std::env::var("LOGOUT_DATA_DIR") {
+            return PathBuf::from(custom);
+        }
         #[cfg(target_os = "android")]
         if let Some(dir) = android_files_dir() {
             return dir;
@@ -891,10 +905,20 @@ pub(crate) mod native_storage {
             std::sync::OnceLock::new();
         let result = DB.get_or_init(|| {
             (|| {
-                std::fs::create_dir_all(data_dir())
-                    .map_err(|e| format!("open_db: failed to create data directory: {e}"))?;
-                let conn = Connection::open(db_path())
-                    .map_err(|e| format!("open_db: failed to open SQLite database: {e}"))?;
+                let dir = data_dir();
+                std::fs::create_dir_all(&dir).map_err(|e| {
+                    format!(
+                        "open_db: failed to create data directory {}: {e}",
+                        dir.display()
+                    )
+                })?;
+                let path = db_path();
+                let conn = Connection::open(&path).map_err(|e| {
+                    format!(
+                        "open_db: failed to open SQLite database at {}: {e}",
+                        path.display()
+                    )
+                })?;
                 apply_migration_if_needed(&conn)
                     .map_err(|e| format!("open_db: failed to apply schema migration: {e}"))?;
                 Ok(std::sync::Mutex::new(conn))
@@ -1220,8 +1244,23 @@ pub(crate) mod native_storage {
     #[cfg(test)]
     pub(crate) fn test_lock() -> std::sync::MutexGuard<'static, ()> {
         static LOCK: std::sync::OnceLock<std::sync::Mutex<()>> = std::sync::OnceLock::new();
+        setup_test_env();
         let m = LOCK.get_or_init(|| std::sync::Mutex::new(()));
         m.lock().unwrap_or_else(std::sync::PoisonError::into_inner)
+    }
+    #[cfg(test)]
+    fn setup_test_env() {
+        use std::sync::Once;
+        static START: Once = Once::new();
+        START.call_once(|| {
+            let tmp_dir = std::env::current_dir()
+                .unwrap()
+                .join("target")
+                .join("test-data")
+                .join("log-out");
+            std::fs::create_dir_all(&tmp_dir).ok();
+            std::env::set_var("LOGOUT_DATA_DIR", tmp_dir.to_str().unwrap());
+        });
     }
 }
 /// Zero-size marker type that binds [`AsyncStorageProvider`] to the `SQLite`

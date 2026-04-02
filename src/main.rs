@@ -142,6 +142,10 @@ fn App() -> Element {
     use_context_provider(|| PendingDeepLinkSignal(Signal::new(None)));
     use_context_provider(|| ShowRestInputSignal(Signal::new(false)));
     use_context_provider(|| RestDurationSignal(Signal::new(DEFAULT_REST_SECONDS)));
+
+    #[cfg(not(target_arch = "wasm32"))]
+    services::storage::native_queue::use_native_results();
+
     // Services that consume contexts (must run after context providers above).
     services::storage::provide_app_state();
     #[cfg(target_arch = "wasm32")]
@@ -166,7 +170,7 @@ fn App() -> Element {
         document::Meta { charset: "UTF-8" }
         document::Meta {
             name: "viewport",
-            content: "width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no",
+            content: "width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover",
         }
         document::Meta { name: "mobile-web-app-capable", content: "yes" }
         document::Meta { name: "mobile-web-app-status-bar-style", content: "black" }

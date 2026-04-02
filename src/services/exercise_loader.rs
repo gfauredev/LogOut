@@ -16,6 +16,13 @@ pub fn provide_exercises() {
     let sig = wrapper.0;
     let mut i18n_sig = use_context::<DbI18nSignal>().0;
     let mut toast = use_context::<ToastSignal>().0;
+
+    // Load cached exercises immediately
+    spawn(async move {
+        load_exercises(sig).await;
+    });
+
+    // Download i18n data in background
     spawn(async move {
         match exercise_db::download_db_i18n().await {
             Ok(i18n_data) if !i18n_data.is_empty() => {
@@ -31,7 +38,6 @@ pub fn provide_exercises() {
                     .push_back(format!("⚠️ Failed to load i18n data: {e}"));
             }
         }
-        load_exercises(sig).await;
     });
 }
 /// Consumes the exercises signal from the Dioxus context.

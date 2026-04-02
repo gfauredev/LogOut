@@ -37,13 +37,18 @@ short_description = "Workout Logger"
 # photos = { access = "read", description = "Images uploading?" } 
 
 [android]
-compile_sdk = 36
+compile_sdk = 35
 # features = [""]
 # foreground_service_types = [""]
 # manifest = "android/AndroidManifest.xml"
-min_sdk = 26 # TEST This
+min_sdk = 28
 # proguard_rules = [""]
-target_sdk = 36
+target_sdk = 35
+
+[android.permissions]
+internet = { description = "Download exercises and translations" }
+wake_lock = { description = "Keep screen on during workouts" }
+post_notifications = { description = "Rest/Exercise duration alerts" }
 
 [android.application]
 # Ensure WebView reports system dark/light setting to CSS `prefers-color-scheme`
