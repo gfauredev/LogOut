@@ -286,6 +286,8 @@ pub(crate) async fn download_db_images(exercises: &[Exercise]) {
     use crate::services::storage::native_storage;
     use futures_util::StreamExt as _;
     use std::collections::HashSet;
+    // Download up to 8 images concurrently.
+    const CONCURRENCY: usize = 8;
     let images_dir = native_storage::data_dir().join("images");
     let base_url = crate::utils::get_exercise_images_base_url();
     // Deduplicate in a single pass, then filter out already-cached files.
@@ -310,8 +312,6 @@ pub(crate) async fn download_db_images(exercises: &[Exercise]) {
         to_download.len(),
         images_dir.display()
     );
-    // Download up to 8 images concurrently.
-    const CONCURRENCY: usize = 8;
     futures_util::stream::iter(to_download.iter().map(|key| {
         let url = format!("{base_url}{EXERCISES_IMAGE_SUB_PATH}{key}");
         let dest = images_dir.join(key);
