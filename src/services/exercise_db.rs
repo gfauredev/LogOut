@@ -277,16 +277,19 @@ pub(crate) async fn download_db_i18n() -> Result<DbI18n, String> {
 /// directories are created as needed.  Already-present files are skipped so the
 /// function is safe to call on every launch or refresh.
 ///
-/// Errors for individual images are logged but do not abort the overall
-/// download; the function always returns after attempting every image.
+/// Up to 8 images are fetched concurrently to balance throughput against
+/// memory and connection overhead.  Errors for individual images are logged
+/// but do not abort the overall download.
 #[cfg(not(target_arch = "wasm32"))]
 pub(crate) async fn download_db_images(exercises: &[Exercise]) {
     use crate::models::EXERCISES_IMAGE_SUB_PATH;
     use crate::services::storage::native_storage;
+    use futures_util::StreamExt as _;
+    use std::collections::HashSet;
     let images_dir = native_storage::data_dir().join("images");
     let base_url = crate::utils::get_exercise_images_base_url();
-    // Collect unique relative image paths that don't already exist locally.
-    let mut to_download: Vec<String> = exercises
+    // Deduplicate in a single pass, then filter out already-cached files.
+    let to_download: Vec<String> = exercises
         .iter()
         .flat_map(|e| e.images.iter())
         .filter(|key| {
@@ -294,43 +297,49 @@ pub(crate) async fn download_db_images(exercises: &[Exercise]) {
             // Skip absolute URLs, idb: keys, local: prefixes, etc.
             !key.contains("://") && !key.starts_with("idb:") && !key.starts_with("local:")
         })
-        .map(String::clone)
-        .collect::<std::collections::HashSet<_>>()
+        .collect::<HashSet<_>>()
         .into_iter()
         .filter(|key| !images_dir.join(key).exists())
+        .map(String::clone)
         .collect();
     if to_download.is_empty() {
         return;
     }
-    to_download.sort();
     log::info!(
         "Downloading {} exercise image(s) to {}",
         to_download.len(),
         images_dir.display()
     );
-    for key in &to_download {
+    // Download up to 8 images concurrently.
+    const CONCURRENCY: usize = 8;
+    futures_util::stream::iter(to_download.iter().map(|key| {
         let url = format!("{base_url}{EXERCISES_IMAGE_SUB_PATH}{key}");
         let dest = images_dir.join(key);
-        // Create parent directories (e.g. `images/Squat/`).
-        if let Some(parent) = dest.parent() {
-            if let Err(e) = std::fs::create_dir_all(parent) {
-                log::warn!("Failed to create image dir {}: {e}", parent.display());
-                continue;
+        let key = key.clone();
+        async move {
+            if let Some(parent) = dest.parent() {
+                if let Err(e) = std::fs::create_dir_all(parent) {
+                    log::warn!("Failed to create image dir {}: {e}", parent.display());
+                    return;
+                }
+            }
+            match reqwest::get(&url).await {
+                Ok(resp) if resp.status().is_success() => match resp.bytes().await {
+                    Ok(bytes) => {
+                        if let Err(e) = std::fs::write(&dest, &bytes) {
+                            log::warn!("Failed to write image {}: {e}", dest.display());
+                        }
+                    }
+                    Err(e) => log::warn!("Failed to read image body for {key}: {e}"),
+                },
+                Ok(resp) => log::warn!("HTTP {} fetching image {key}", resp.status()),
+                Err(e) => log::warn!("Network error fetching image {key}: {e}"),
             }
         }
-        match reqwest::get(&url).await {
-            Ok(resp) if resp.status().is_success() => match resp.bytes().await {
-                Ok(bytes) => {
-                    if let Err(e) = std::fs::write(&dest, &bytes) {
-                        log::warn!("Failed to write image {}: {e}", dest.display());
-                    }
-                }
-                Err(e) => log::warn!("Failed to read image body for {key}: {e}"),
-            },
-            Ok(resp) => log::warn!("HTTP {} fetching image {key}", resp.status()),
-            Err(e) => log::warn!("Network error fetching image {key}: {e}"),
-        }
-    }
+    }))
+    .buffer_unordered(CONCURRENCY)
+    .collect::<()>()
+    .await;
     log::info!("Finished downloading exercise images");
 }
 /// Normalises a string for error-tolerant search: lowercases, strips hyphens,
