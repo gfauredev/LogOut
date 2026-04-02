@@ -428,6 +428,7 @@
             version = env.projectVersion;
             nativeBuildInputs = env.commonNativeBuildInputs ++ [ env.pkgs.lcov ];
             buildInputs = env.commonBuildInputs;
+            # FIXME Flaky DB tests sometimes fail depending on their concurrency
             buildPhase = ''
               export HOME=$TMPDIR
               mkdir -p $out
@@ -441,14 +442,20 @@
             installPhase = "true";
             doCheck = false;
           };
-          default = env.pkgs.symlinkJoin {
-            name = "logout-quick-checks";
-            paths = [
-              self.checks.${system}.format # dx fmt + cargo fmt
-              self.checks.${system}.coverage # LLVM Cov + Nextest
-              self.checks.${system}.lint # Clippy
-            ];
-          };
+          default = env.pkgs.linkFarm "logout-quick-checks" [
+            {
+              name = "format";
+              path = self.checks.${system}.format; # dx fmt + cargo fmt
+            }
+            {
+              name = "coverage";
+              path = self.checks.${system}.coverage; # LLVM Cov + Nextest
+            }
+            {
+              name = "lint";
+              path = self.checks.${system}.lint; # Clippy
+            }
+          ];
         }
       );
     };
