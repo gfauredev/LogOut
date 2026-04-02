@@ -768,13 +768,14 @@ pub(crate) mod native_storage {
             }
         };
         let path_str: jni::objects::JString = path_jobj.into();
-        match env.get_string(&path_str) {
+        let result = match env.get_string(&path_str) {
             Ok(s) => Some(PathBuf::from(String::from(s))),
             Err(e) => {
                 log::error!("android_files_dir: get_string failed: {e:?}");
                 None
             }
-        }
+        };
+        result
     }
     pub const STORE_SESSIONS: &str = "sessions";
     pub const STORE_CUSTOM_EXERCISES: &str = "custom_exercises";

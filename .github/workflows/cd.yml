@@ -181,6 +181,8 @@ jobs:
       contents: write # Required by 'gh release'
     steps:
     - uses: actions/checkout@v6
+      with:
+        fetch-depth: 0
     - uses: actions/download-artifact@v4
       if: needs.pwa-build-deploy.result == 'success'
       with: { name: web }
@@ -189,8 +191,14 @@ jobs:
       with: { name: android }
     - run: |
         TAG=${GITHUB_REF#refs/tags/}
+        PREV_TAG=$(git tag --sort=-version:refname | grep -Fxv "$TAG" | head -n 1)
+        if [ -n "$PREV_TAG" ]; then
+          NOTES=$(git log "$PREV_TAG..$TAG" --pretty=format:'- %s' --no-merges)
+        else
+          NOTES=$(git log "$TAG" --pretty=format:'- %s' --no-merges)
+        fi
         ASSETS=$(ls *.apk web.tar.gz 2>/dev/null | tr '\n' ' ')
-        gh release create "$TAG" $ASSETS --title "$TAG" --notes "Release $TAG"
+        gh release create "$TAG" $ASSETS --title "$TAG" --notes "$NOTES"
       env:
         GH_TOKEN: ${{ github.token }}
 
