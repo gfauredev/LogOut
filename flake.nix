@@ -246,7 +246,7 @@
               target ? "aarch64-linux-android",
             }:
             env.pkgs.writeShellApplication {
-              name = "logout-android-builder-${env.projectVersion}";
+              name = "logout-android-build-${env.projectVersion}";
               runtimeInputs = env.commonNativeBuildInputs ++ env.androidNativeBuildInputs;
               # LD_LIBRARY_PATH = with env.pkgs; lib.makeLibraryPath [ stdenv.cc.cc.lib zlib ];
               text = ''
@@ -269,8 +269,8 @@
           web = mkLogOut { };
           preWeb = mkLogOut { basePath = "LogOut/preview"; };
           server = mkLogOut { platform = "server"; };
-          webE2eTester = env.pkgs.writeShellApplication {
-            name = "logout-web-e2e-tester-${env.projectVersion}";
+          webE2eTest = env.pkgs.writeShellApplication {
+            name = "logout-web-e2e-test-${env.projectVersion}";
             runtimeInputs = env.webTestInputs ++ [
               chromiumWrapper
             ];
@@ -283,15 +283,15 @@
                 fi
               }
               trap cleanup EXIT
-              ${self.apps.${system}.web.program} &
+              ${self.packages.${system}.server}/bin/logout-server &
               SERVER_PID=$!
               timeout 60 bash -c 'until curl -sf http://localhost:8080/LogOut/ > /dev/null 2>&1; do sleep 1; done'
               maestro test --headless "${self}/maestro/web"
             '';
           };
-          androidBuilder = mkAndroidBuilder { };
-          androidE2eTester = env.pkgs.writeShellApplication {
-            name = "logout-android-e2e-tester-${env.projectVersion}";
+          androidBuild = mkAndroidBuilder { };
+          androidE2eTest = env.pkgs.writeShellApplication {
+            name = "logout-android-e2e-test-${env.projectVersion}";
             runtimeInputs = [ env.pkgs.maestro ];
             # TODO Android emulator…
             text = ''
@@ -303,35 +303,19 @@
             paths = [
               self.packages.${system}.web
               self.packages.${system}.server
-              self.packages.${system}.webE2eTester
-              self.packages.${system}.androidBuilder
-              self.packages.${system}.androidE2eTester
+              self.packages.${system}.webE2eTest
+              self.packages.${system}.androidBuild
+              self.packages.${system}.androidE2eTest
             ];
           };
         }
       );
-      apps = forAllSystems (system: rec {
-        web = {
+      apps = forAllSystems (system: {
+        default = {
           type = "app";
-          program = "${self.packages.${system}.server}/bin/logout-server";
-          meta.description = "Serve PWA";
+          program = "${self.packages.${system}.server}/bin/server";
+          meta.description = "Serve the LogOut Progressive Web App with Axum Server";
         };
-        webTest = {
-          type = "app";
-          program = "${self.packages.${system}.webE2eTester}/bin/logout-web-e2e-tester";
-          meta.description = "Run Maestro E2E tests against PWA";
-        };
-        androidBuild = {
-          type = "app";
-          program = "${self.packages.${system}.androidBuilder}/bin/logout-android-builder";
-          meta.description = "Build and sign Android APK";
-        };
-        androidTest = {
-          type = "app";
-          program = "${self.packages.${system}.androidE2eTester}/bin/logout-android-e2e-tester";
-          meta.description = "Run Maestro E2E tests against Android App";
-        };
-        default = web;
       });
       devShells = forAllSystems (
         system:
@@ -340,7 +324,7 @@
           devTools = with env.pkgs; [
             # biome python3 sass strace
             cachix # Nix binary cache
-            fastlane # Mobile app publishing automation
+            fastlane # Mobile app publishing automation TODO
             kotlin-language-server # Kotlin LSP
             lightningcss # CSS linter & optimizer
             scss-lint # SCSS linter
