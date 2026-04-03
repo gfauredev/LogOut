@@ -792,6 +792,7 @@ pub(crate) mod native_storage {
     pub const STORE_CUSTOM_EXERCISES: &str = "custom_exercises";
     pub const STORE_EXERCISES: &str = "exercises";
     /// Name of the application data sub-directory under the OS data dir.
+    #[cfg(not(test))]
     const APP_DATA_DIR_NAME: &str = "log-out";
     /// File name of the `SQLite` database within the application data directory.
     pub const DB_FILENAME: &str = "log-out.db";
@@ -835,16 +836,39 @@ pub(crate) mod native_storage {
     }
     /// Returns the application data directory, creating it if necessary.
     pub fn data_dir() -> PathBuf {
-        if let Ok(custom) = std::env::var("LOGOUT_DATA_DIR") {
-            return PathBuf::from(custom);
+        // In test builds each nextest process gets its own isolated directory
+        // so concurrent test runs never share the same SQLite file.
+        #[cfg(test)]
+        return test_data_dir();
+        #[cfg(not(test))]
+        {
+            if let Ok(custom) = std::env::var("LOGOUT_DATA_DIR") {
+                return PathBuf::from(custom);
+            }
+            #[cfg(target_os = "android")]
+            if let Some(dir) = android_files_dir() {
+                return dir;
+            }
+            dirs::data_local_dir()
+                .unwrap_or_else(|| PathBuf::from("."))
+                .join(APP_DATA_DIR_NAME)
         }
-        #[cfg(target_os = "android")]
-        if let Some(dir) = android_files_dir() {
-            return dir;
-        }
-        dirs::data_local_dir()
-            .unwrap_or_else(|| PathBuf::from("."))
-            .join(APP_DATA_DIR_NAME)
+    }
+    /// Returns a per-process temporary directory for test isolation.
+    ///
+    /// Each nextest invocation runs in its own process, so using the process
+    /// ID as a unique suffix guarantees that concurrent tests never share the
+    /// same `SQLite` database file.
+    #[cfg(test)]
+    fn test_data_dir() -> PathBuf {
+        static DIR: std::sync::OnceLock<PathBuf> = std::sync::OnceLock::new();
+        DIR.get_or_init(|| {
+            let dir = std::env::temp_dir().join(format!("logout-test-{}", std::process::id()));
+            std::fs::create_dir_all(&dir)
+                .expect("failed to create per-process test data directory");
+            dir
+        })
+        .clone()
     }
     fn db_path() -> PathBuf {
         data_dir().join(DB_FILENAME)
@@ -1235,32 +1259,21 @@ pub(crate) mod native_storage {
             last_log_end_time: lts.and_then(|v| u64::try_from(v).ok()),
         }
     }
-    /// Global mutex that serialises all tests touching native storage.
+    /// Global mutex that serialises all tests touching native storage within a
+    /// single process.
     ///
-    /// Tests in any module that read or write native-storage config or data
-    /// should hold this guard for their duration to prevent data races.
+    /// With nextest each test runs in its own process, so cross-process
+    /// isolation is handled by [`test_data_dir`]'s per-process directory.
+    /// This mutex provides additional within-process serialisation for the
+    /// (rare) case where multiple storage tests share a process.
+    ///
     /// Recovers from a poisoned mutex so a previous test failure does not
     /// cascade into every subsequent test that needs storage isolation.
     #[cfg(test)]
     pub(crate) fn test_lock() -> std::sync::MutexGuard<'static, ()> {
         static LOCK: std::sync::OnceLock<std::sync::Mutex<()>> = std::sync::OnceLock::new();
-        setup_test_env();
         let m = LOCK.get_or_init(|| std::sync::Mutex::new(()));
         m.lock().unwrap_or_else(std::sync::PoisonError::into_inner)
-    }
-    #[cfg(test)]
-    fn setup_test_env() {
-        use std::sync::Once;
-        static START: Once = Once::new();
-        START.call_once(|| {
-            let tmp_dir = std::env::current_dir()
-                .unwrap()
-                .join("target")
-                .join("test-data")
-                .join("log-out");
-            std::fs::create_dir_all(&tmp_dir).ok();
-            std::env::set_var("LOGOUT_DATA_DIR", tmp_dir.to_str().unwrap());
-        });
     }
 }
 /// Zero-size marker type that binds [`AsyncStorageProvider`] to the `SQLite`
@@ -1354,7 +1367,7 @@ mod tests {
         let _g = lock();
         let p = native_storage::data_dir();
         assert!(p.to_str().is_some());
-        assert!(p.ends_with("log-out"));
+        assert!(p.is_absolute(), "data_dir must return an absolute path");
     }
     #[test]
     fn put_and_get_session() {
