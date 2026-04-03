@@ -9,6 +9,12 @@ CREATED_AT=$(gh release list --json publishedAt,isPrerelease \
 
 if [ -z "$CREATED_AT" ] ||
   [ "$(date -d "$CREATED_AT" +%s)" -le "$(date -d 'a hour ago' +%s)" ]; then
+  LAST_PRE=$(git tag --sort=-creatordate | grep '^pre-' | head -n 1)
+  if [ -n "$LAST_PRE" ]; then
+    NOTES=$(git log "$LAST_PRE..HEAD" --pretty=format:'- %s' --no-merges)
+  else
+    NOTES=$(git log HEAD --pretty=format:'- %s' --no-merges)
+  fi
   gh release create "pre-$NOW" *.apk --prerelease \
-    --title "$NOW" --notes "Automated pre-release for $NOW"
+    --title "$NOW" --notes "${NOTES:-Automated pre-release for $NOW}"
 fi
