@@ -2,6 +2,8 @@ pub mod android_notifications;
 pub mod app_state;
 pub mod exercise_db;
 pub mod exercise_loader;
+#[cfg(feature = "mobile-platform")]
+pub(crate) mod imgcache;
 #[cfg(not(target_arch = "wasm32"))]
 pub(crate) mod native_queue;
 pub mod service_worker;

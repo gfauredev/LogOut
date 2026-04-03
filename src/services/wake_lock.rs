@@ -71,7 +71,97 @@ async fn request_wake_lock() -> Result<(), String> {
         .map_err(|e| format!("{:?}", e))
 }
 #[cfg(not(all(target_arch = "wasm32", feature = "web-platform")))]
-pub fn enable_wake_lock() {}
+pub fn enable_wake_lock() {
+    #[cfg(target_os = "android")]
+    acquire_android_wake_lock();
+}
+
+/// Acquires an Android `PARTIAL_WAKE_LOCK` via JNI so that the CPU is not
+/// suspended while the app is downloading images in the background (even when
+/// the screen turns off).
+///
+/// The lock is acquired with a one-hour timeout as a safety net; in normal
+/// usage it will be held until the process exits.  The `WAKE_LOCK` permission
+/// is already declared in `Dioxus.toml`.
+#[cfg(target_os = "android")]
+fn acquire_android_wake_lock() {
+    use jni::{objects::JObject, JavaVM};
+    use ndk_context::android_context;
+
+    let result = (|| -> Result<(), String> {
+        let ctx = android_context();
+        // SAFETY: the raw pointers come from the Android runtime and are valid
+        // for the lifetime of the process.
+        let vm = unsafe { JavaVM::from_raw(ctx.vm().cast()) }
+            .map_err(|e| format!("JavaVM::from_raw: {e}"))?;
+        let mut env = vm
+            .attach_current_thread()
+            .map_err(|e| format!("attach_current_thread: {e}"))?;
+        let activity = unsafe { JObject::from_raw(ctx.context() as jni::sys::jobject) };
+
+        // val powerManager = context.getSystemService(Context.POWER_SERVICE)
+        let power_service_str = env
+            .get_static_field(
+                "android/content/Context",
+                "POWER_SERVICE",
+                "Ljava/lang/String;",
+            )
+            .map_err(|e| format!("get POWER_SERVICE: {e}"))?
+            .l()
+            .map_err(|e| format!("POWER_SERVICE as object: {e}"))?;
+        let power_manager = env
+            .call_method(
+                &activity,
+                "getSystemService",
+                "(Ljava/lang/String;)Ljava/lang/Object;",
+                &[(&power_service_str).into()],
+            )
+            .map_err(|e| format!("getSystemService: {e}"))?
+            .l()
+            .map_err(|e| format!("PowerManager as object: {e}"))?;
+
+        // val PARTIAL_WAKE_LOCK = PowerManager.PARTIAL_WAKE_LOCK  (= 1)
+        let partial_wake_lock_flag = env
+            .get_static_field("android/os/PowerManager", "PARTIAL_WAKE_LOCK", "I")
+            .map_err(|e| format!("get PARTIAL_WAKE_LOCK: {e}"))?
+            .i()
+            .map_err(|e| format!("PARTIAL_WAKE_LOCK as int: {e}"))?;
+
+        // val wl = powerManager.newWakeLock(PARTIAL_WAKE_LOCK, "logout:download")
+        let tag = env
+            .new_string("logout:download")
+            .map_err(|e| format!("new_string: {e}"))?;
+        let wake_lock = env
+            .call_method(
+                &power_manager,
+                "newWakeLock",
+                "(ILjava/lang/String;)Landroid/os/PowerManager$WakeLock;",
+                &[
+                    jni::objects::JValue::from(partial_wake_lock_flag),
+                    (&tag).into(),
+                ],
+            )
+            .map_err(|e| format!("newWakeLock: {e}"))?
+            .l()
+            .map_err(|e| format!("WakeLock as object: {e}"))?;
+
+        // wl.acquire(3_600_000)  — 1-hour safety timeout
+        env.call_method(
+            &wake_lock,
+            "acquire",
+            "(J)V",
+            &[jni::objects::JValue::from(3_600_000i64)],
+        )
+        .map_err(|e| format!("acquire: {e}"))?;
+
+        Ok(())
+    })();
+
+    match result {
+        Ok(()) => log::info!("Android PARTIAL_WAKE_LOCK acquired"),
+        Err(e) => log::warn!("Failed to acquire Android wake lock: {e}"),
+    }
+}
 #[cfg(test)]
 mod tests {
     use super::*;

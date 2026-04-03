@@ -183,95 +183,16 @@ impl Exercise {
         {
             return Some(key.to_owned());
         }
-
-        #[cfg(not(target_arch = "wasm32"))]
-        if let Some(filename) = key.strip_prefix("local:") {
-            use percent_encoding::{utf8_percent_encode, CONTROLS};
-            // Encodes characters that are unsafe in URL path segments while preserving
-            // all chars that are valid in paths (slashes are kept by encoding each
-            // component separately).
-            const PATH_SEGMENT: &percent_encoding::AsciiSet = &CONTROLS
-                .add(b' ')
-                .add(b'"')
-                .add(b'#')
-                .add(b'%')
-                .add(b'<')
-                .add(b'>')
-                .add(b'?')
-                .add(b'[')
-                .add(b'\\')
-                .add(b']')
-                .add(b'^')
-                .add(b'`')
-                .add(b'{')
-                .add(b'|')
-                .add(b'}');
-            let path = crate::services::storage::native_storage::data_dir()
-                .join("images")
-                .join(filename);
-            let encoded = path.components().fold(String::new(), |mut acc, c| {
-                use std::path::Component;
-                match c {
-                    Component::Prefix(p) => {
-                        acc.push_str(&p.as_os_str().to_string_lossy());
-                    }
-                    Component::RootDir => acc.push('/'),
-                    Component::Normal(seg) => {
-                        if !acc.is_empty() && !acc.ends_with('/') {
-                            acc.push('/');
-                        }
-                        acc.push_str(
-                            &utf8_percent_encode(&seg.to_string_lossy(), PATH_SEGMENT).to_string(),
-                        );
-                    }
-                    _ => {}
-                }
-                acc
-            });
-            return Some(format!("file://{encoded}"));
-        }
-
-        // On native, serve the image from the local cache (`data_dir/images/`)
-        // when it has already been downloaded by `download_db_images`.  Fall
-        // back to the remote URL for images not yet cached (first launch, etc.).
+        // Resolve `local:` and cached-DB images to native filesystem URLs.
         #[cfg(not(target_arch = "wasm32"))]
         {
-            use percent_encoding::{utf8_percent_encode, NON_ALPHANUMERIC};
-            // Characters kept unencoded in each path component (RFC 3986 unreserved).
-            const PATH_SEGMENT: &percent_encoding::AsciiSet = &NON_ALPHANUMERIC
-                .remove(b'-')
-                .remove(b'_')
-                .remove(b'.')
-                .remove(b'~');
-            let cached = crate::services::storage::native_storage::data_dir()
-                .join("images")
-                .join(key);
-            if cached.exists() {
-                // Percent-encode each path component but keep slashes.
-                let encoded = cached.components().fold(String::new(), |mut acc, c| {
-                    use std::path::Component;
-                    match c {
-                        Component::Prefix(p) => {
-                            acc.push_str(&p.as_os_str().to_string_lossy());
-                        }
-                        Component::RootDir => acc.push('/'),
-                        Component::Normal(seg) => {
-                            if !acc.is_empty() && !acc.ends_with('/') {
-                                acc.push('/');
-                            }
-                            acc.push_str(
-                                &utf8_percent_encode(&seg.to_string_lossy(), PATH_SEGMENT)
-                                    .to_string(),
-                            );
-                        }
-                        _ => {}
-                    }
-                    acc
-                });
-                return Some(format!("file://{encoded}"));
+            if let Some(filename) = key.strip_prefix("local:") {
+                return Some(local_image_url(filename));
+            }
+            if let Some(url) = cached_db_image_url(key) {
+                return Some(url);
             }
         }
-
         let base_url = crate::utils::get_exercise_images_base_url();
         Some(format!("{base_url}{EXERCISES_IMAGE_SUB_PATH}{key}"))
     }
@@ -291,6 +212,125 @@ impl Exercise {
         exercise_type_tag(self.category, self.force)
     }
 }
+/// Builds a displayable URL for a `local:` user-uploaded image.
+///
+/// On mobile, returns an `imgcache://` URL served by the custom protocol handler.
+/// On other native targets, returns a `file://` URL.
+#[cfg(not(target_arch = "wasm32"))]
+fn local_image_url(filename: &str) -> String {
+    #[cfg(feature = "mobile-platform")]
+    {
+        use percent_encoding::{utf8_percent_encode, NON_ALPHANUMERIC};
+        const COMPONENT: &percent_encoding::AsciiSet = &NON_ALPHANUMERIC
+            .remove(b'-')
+            .remove(b'_')
+            .remove(b'.')
+            .remove(b'~');
+        let encoded = utf8_percent_encode(filename, COMPONENT).to_string();
+        return format!("imgcache://localhost/{encoded}");
+    }
+    #[cfg(not(feature = "mobile-platform"))]
+    {
+        use percent_encoding::{utf8_percent_encode, CONTROLS};
+        const PATH_SEG: &percent_encoding::AsciiSet = &CONTROLS
+            .add(b' ')
+            .add(b'"')
+            .add(b'#')
+            .add(b'%')
+            .add(b'<')
+            .add(b'>')
+            .add(b'?')
+            .add(b'[')
+            .add(b'\\')
+            .add(b']')
+            .add(b'^')
+            .add(b'`')
+            .add(b'{')
+            .add(b'|')
+            .add(b'}');
+        let path = crate::services::storage::native_storage::data_dir()
+            .join("images")
+            .join(filename);
+        let encoded = path.components().fold(String::new(), |mut acc, c| {
+            use std::path::Component;
+            match c {
+                Component::Prefix(p) => acc.push_str(&p.as_os_str().to_string_lossy()),
+                Component::RootDir => acc.push('/'),
+                Component::Normal(seg) => {
+                    if !acc.is_empty() && !acc.ends_with('/') {
+                        acc.push('/');
+                    }
+                    acc.push_str(
+                        &utf8_percent_encode(&seg.to_string_lossy(), PATH_SEG).to_string(),
+                    );
+                }
+                _ => {}
+            }
+            acc
+        });
+        format!("file://{encoded}")
+    }
+}
+
+/// Returns a displayable URL for a cached DB image key if the file exists
+/// in `data_dir()/images/`, or `None` if it has not been downloaded yet.
+///
+/// On mobile, returns an `imgcache://` URL.  On other native targets, returns
+/// a `file://` URL.
+#[cfg(not(target_arch = "wasm32"))]
+fn cached_db_image_url(key: &str) -> Option<String> {
+    let cached = crate::services::storage::native_storage::data_dir()
+        .join("images")
+        .join(key);
+    if !cached.exists() {
+        return None;
+    }
+    #[cfg(feature = "mobile-platform")]
+    {
+        use percent_encoding::{utf8_percent_encode, NON_ALPHANUMERIC};
+        const COMPONENT: &percent_encoding::AsciiSet = &NON_ALPHANUMERIC
+            .remove(b'-')
+            .remove(b'_')
+            .remove(b'.')
+            .remove(b'~');
+        // Preserve `/` as path separator; percent-encode only within each segment.
+        let encoded = key
+            .split('/')
+            .map(|seg| utf8_percent_encode(seg, COMPONENT).to_string())
+            .collect::<Vec<_>>()
+            .join("/");
+        return Some(format!("imgcache://localhost/{encoded}"));
+    }
+    #[cfg(not(feature = "mobile-platform"))]
+    {
+        use percent_encoding::{utf8_percent_encode, NON_ALPHANUMERIC};
+        const COMPONENT: &percent_encoding::AsciiSet = &NON_ALPHANUMERIC
+            .remove(b'-')
+            .remove(b'_')
+            .remove(b'.')
+            .remove(b'~');
+        // Percent-encode each path component, preserving slashes.
+        let encoded = cached.components().fold(String::new(), |mut acc, c| {
+            use std::path::Component;
+            match c {
+                Component::Prefix(p) => acc.push_str(&p.as_os_str().to_string_lossy()),
+                Component::RootDir => acc.push('/'),
+                Component::Normal(seg) => {
+                    if !acc.is_empty() && !acc.ends_with('/') {
+                        acc.push('/');
+                    }
+                    acc.push_str(
+                        &utf8_percent_encode(&seg.to_string_lossy(), COMPONENT).to_string(),
+                    );
+                }
+                _ => {}
+            }
+            acc
+        });
+        Some(format!("file://{encoded}"))
+    }
+}
+
 impl AsRef<Exercise> for Exercise {
     fn as_ref(&self) -> &Exercise {
         self
