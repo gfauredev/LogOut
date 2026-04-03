@@ -274,7 +274,7 @@
                 fi
               }
               trap cleanup EXIT
-              ${self.packages.${system}.server}/bin/logout-server &
+              ${self.packages.${system}.server}/bin/server &
               SERVER_PID=$!
               timeout 60 bash -c 'until curl -sf http://localhost:8080/LogOut/ > /dev/null 2>&1; do sleep 1; done'
               maestro test --headless "${self}/maestro/web"
