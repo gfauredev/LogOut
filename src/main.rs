@@ -127,6 +127,22 @@ fn main() {
     services::android_notifications::setup_notification_channel();
     services::service_worker::register_service_worker();
     services::wake_lock::enable_wake_lock();
+    // On mobile (Android) the Dioxus WebView runs under the `https://dioxus.index.html/`
+    // origin.  Android's WebView security policy blocks loading `file://` resources from
+    // that origin, so we register a custom `imgcache://` protocol that serves locally-
+    // cached exercise images directly from the native process.
+    #[cfg(feature = "mobile-platform")]
+    {
+        LaunchBuilder::new()
+            .with_cfg(
+                dioxus::mobile::Config::new()
+                    .with_custom_protocol("imgcache", |_webview_id, request| {
+                        services::imgcache::handle_imgcache_request(request)
+                    }),
+            )
+            .launch(App);
+    }
+    #[cfg(not(feature = "mobile-platform"))]
     launch(App);
 }
 /// Default rest time in seconds offered to the user in the rest input form.
