@@ -67,7 +67,8 @@
           craneLib = (crane.mkLib pkgs).overrideToolchain rustToolchain;
           assetFilter =
             path: type:
-            builtins.match ".*(/public/.*|/assets/.*|Dioxus\\.toml|index\\.html|.*\\.png)$" path != null;
+            builtins.match ".*(/public/.*|/assets/.*|/icon/.*|Dioxus\\.toml|index\\.html|.*\\.png)$" path
+            != null;
           sourceFilter = path: type: (assetFilter path type) || (craneLib.filterCargoSources path type);
           filteredSrc = pkgs.lib.cleanSourceWith {
             src = craneLib.path ./.;
