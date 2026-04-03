@@ -93,10 +93,7 @@ pub fn More() -> Element {
             let exercises = custom_exercises.read().clone();
             match serde_json::to_string_pretty(&exercises) {
                 Ok(json) => {
-                    #[cfg(target_arch = "wasm32")]
                     trigger_download("custom_exercises.json", &json);
-                    #[cfg(not(target_arch = "wasm32"))]
-                    log::info!("Export exercises (native): {}", json.len());
                 }
                 Err(e) => {
                     let mut t = toast;
@@ -134,10 +131,7 @@ pub fn More() -> Element {
             all.sort_by(|a, b| a.start_time.cmp(&b.start_time));
             match serde_json::to_string_pretty(&all) {
                 Ok(json) => {
-                    #[cfg(target_arch = "wasm32")]
                     trigger_download("sessions.json", &json);
-                    #[cfg(not(target_arch = "wasm32"))]
-                    log::info!("Export sessions (native): {}", json.len());
                 }
                 Err(e) => {
                     t.write().push_back(format!("{msg_export_failed}: {e}"));
@@ -208,35 +202,25 @@ pub fn More() -> Element {
         }
     };
     let open_sessions_import = move |_| {
-        #[cfg(target_arch = "wasm32")]
         click_file_input("import-sessions-input");
     };
     let open_exercises_import = move |_| {
-        #[cfg(target_arch = "wasm32")]
         click_file_input("import-exercises-input");
     };
     let on_sessions_file_change = move |_| {
-        #[cfg(target_arch = "wasm32")]
         spawn(async move {
             if let Some(json) = read_file_input("import-sessions-input").await {
                 handle_sessions_json(json);
             }
         });
-        #[cfg(not(target_arch = "wasm32"))]
-        let _ = handle_sessions_json;
     };
     let on_exercises_file_change = move |_| {
-        #[cfg(target_arch = "wasm32")]
-        {
-            let mut handler = handle_exercises_json;
-            spawn(async move {
-                if let Some(json) = read_file_input("import-exercises-input").await {
-                    handler(json);
-                }
-            });
-        }
-        #[cfg(not(target_arch = "wasm32"))]
-        let _ = handle_exercises_json;
+        let mut handler = handle_exercises_json;
+        spawn(async move {
+            if let Some(json) = read_file_input("import-exercises-input").await {
+                handler(json);
+            }
+        });
     };
     let confirm_replace = move |_| {
         let queue = exercises_to_confirm.read();
@@ -392,90 +376,151 @@ pub fn More() -> Element {
     }
 }
 /// Trigger a file download in the browser by creating a temporary anchor element.
-#[cfg(target_arch = "wasm32")]
+///
+/// On WASM the `web_sys` DOM APIs are used directly for efficiency.
+/// On native (Android/desktop) the same Blob/anchor download is driven through
+/// `document::eval` so the Dioxus `WebView` executes identical JavaScript.
 fn trigger_download(filename: &str, content: &str) {
-    use wasm_bindgen::JsCast;
-    let Some(window) = web_sys::window() else {
-        return;
-    };
-    let Some(document) = window.document() else {
-        return;
-    };
-    let Ok(blob_parts) = js_sys::Array::new().dyn_into::<js_sys::Array>() else {
-        return;
-    };
-    blob_parts.push(&wasm_bindgen::JsValue::from_str(content));
-    let props = web_sys::BlobPropertyBag::new();
-    props.set_type("application/json");
-    let Ok(blob) = web_sys::Blob::new_with_str_sequence_and_options(&blob_parts, &props) else {
-        return;
-    };
-    let Ok(url) = web_sys::Url::create_object_url_with_blob(&blob) else {
-        return;
-    };
-    let Ok(anchor): Result<web_sys::HtmlAnchorElement, _> =
-        document.create_element("a").and_then(|el| {
-            el.dyn_into::<web_sys::HtmlAnchorElement>()
-                .map_err(|_| wasm_bindgen::JsValue::NULL)
-        })
-    else {
+    #[cfg(target_arch = "wasm32")]
+    {
+        use wasm_bindgen::JsCast;
+        let Some(window) = web_sys::window() else {
+            return;
+        };
+        let Some(document) = window.document() else {
+            return;
+        };
+        let Ok(blob_parts) = js_sys::Array::new().dyn_into::<js_sys::Array>() else {
+            return;
+        };
+        blob_parts.push(&wasm_bindgen::JsValue::from_str(content));
+        let props = web_sys::BlobPropertyBag::new();
+        props.set_type("application/json");
+        let Ok(blob) = web_sys::Blob::new_with_str_sequence_and_options(&blob_parts, &props) else {
+            return;
+        };
+        let Ok(url) = web_sys::Url::create_object_url_with_blob(&blob) else {
+            return;
+        };
+        let Ok(anchor): Result<web_sys::HtmlAnchorElement, _> =
+            document.create_element("a").and_then(|el| {
+                el.dyn_into::<web_sys::HtmlAnchorElement>()
+                    .map_err(|_| wasm_bindgen::JsValue::NULL)
+            })
+        else {
+            let _ = web_sys::Url::revoke_object_url(&url);
+            return;
+        };
+        anchor.set_href(&url);
+        anchor.set_download(filename);
+        if let Some(body) = document.body() {
+            let _ = body.append_child(&anchor);
+            anchor.click();
+            let _ = body.remove_child(&anchor);
+        }
         let _ = web_sys::Url::revoke_object_url(&url);
-        return;
-    };
-    anchor.set_href(&url);
-    anchor.set_download(filename);
-    if let Some(body) = document.body() {
-        let _ = body.append_child(&anchor);
-        anchor.click();
-        let _ = body.remove_child(&anchor);
     }
-    let _ = web_sys::Url::revoke_object_url(&url);
+    #[cfg(not(target_arch = "wasm32"))]
+    {
+        // Encode content and filename as JSON strings so they are safely embedded
+        // in the JavaScript snippet without any injection risk.
+        let content_js = serde_json::to_string(content).unwrap_or_default();
+        let filename_js = serde_json::to_string(filename).unwrap_or_default();
+        document::eval(&format!(
+            r"(function(){{
+  var b=new Blob([{content_js}],{{type:'application/json'}});
+  var u=URL.createObjectURL(b);
+  var a=document.createElement('a');
+  a.href=u; a.download={filename_js};
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  setTimeout(function(){{URL.revokeObjectURL(u);}},100);
+}})();"
+        ));
+    }
 }
 /// Programmatically click the file input element with the given id.
-#[cfg(target_arch = "wasm32")]
+///
+/// On WASM the DOM APIs are used directly.  On native the click is dispatched
+/// via `document::eval` so the Android/desktop `WebView` handles file selection.
 fn click_file_input(id: &str) {
-    use wasm_bindgen::JsCast;
-    let Some(window) = web_sys::window() else {
-        return;
-    };
-    let Some(document) = window.document() else {
-        return;
-    };
-    if let Some(element) = document.get_element_by_id(id) {
-        if let Ok(input) = element.dyn_into::<web_sys::HtmlInputElement>() {
-            input.click();
+    #[cfg(target_arch = "wasm32")]
+    {
+        use wasm_bindgen::JsCast;
+        let Some(window) = web_sys::window() else {
+            return;
+        };
+        let Some(document) = window.document() else {
+            return;
+        };
+        if let Some(element) = document.get_element_by_id(id) {
+            if let Ok(input) = element.dyn_into::<web_sys::HtmlInputElement>() {
+                input.click();
+            }
         }
+    }
+    #[cfg(not(target_arch = "wasm32"))]
+    {
+        document::eval(&format!("document.getElementById('{id}')?.click();"));
     }
 }
 /// Read the text content of the first selected file from a file input element.
 ///
 /// Returns `None` if no file is selected or an error occurs.
-#[cfg(target_arch = "wasm32")]
+///
+/// On WASM the `web_sys` `FileReader` API is used.  On native the read is
+/// performed inside the `WebView` via `document::eval` and the result is
+/// returned through `dioxus.send()`.
 async fn read_file_input(id: &str) -> Option<String> {
-    use wasm_bindgen::JsCast;
-    let document = web_sys::window()?.document()?;
-    let input: web_sys::HtmlInputElement = document.get_element_by_id(id)?.dyn_into().ok()?;
-    let files = input.files()?;
-    let file = files.get(0)?;
-    let promise = js_sys::Promise::new(&mut |resolve, reject| {
-        let Ok(reader) = web_sys::FileReader::new() else {
-            let _ = reject.call0(&wasm_bindgen::JsValue::NULL);
-            return;
-        };
-        let reader_clone = reader.clone();
-        let onload = wasm_bindgen::closure::Closure::once(move |_: web_sys::ProgressEvent| {
-            let result = reader_clone.result().unwrap_or(wasm_bindgen::JsValue::NULL);
-            let _ = resolve.call1(&wasm_bindgen::JsValue::NULL, &result);
+    #[cfg(target_arch = "wasm32")]
+    {
+        use wasm_bindgen::JsCast;
+        let document = web_sys::window()?.document()?;
+        let input: web_sys::HtmlInputElement = document.get_element_by_id(id)?.dyn_into().ok()?;
+        let files = input.files()?;
+        let file = files.get(0)?;
+        let promise = js_sys::Promise::new(&mut |resolve, reject| {
+            let Ok(reader) = web_sys::FileReader::new() else {
+                let _ = reject.call0(&wasm_bindgen::JsValue::NULL);
+                return;
+            };
+            let reader_clone = reader.clone();
+            let onload = wasm_bindgen::closure::Closure::once(move |_: web_sys::ProgressEvent| {
+                let result = reader_clone.result().unwrap_or(wasm_bindgen::JsValue::NULL);
+                let _ = resolve.call1(&wasm_bindgen::JsValue::NULL, &result);
+            });
+            let onerror = wasm_bindgen::closure::Closure::once(move |_: wasm_bindgen::JsValue| {
+                let _ = reject.call0(&wasm_bindgen::JsValue::NULL);
+            });
+            reader.set_onload(Some(onload.as_ref().unchecked_ref()));
+            reader.set_onerror(Some(onerror.as_ref().unchecked_ref()));
+            onload.forget();
+            onerror.forget();
+            let _ = reader.read_as_text(&file);
         });
-        let onerror = wasm_bindgen::closure::Closure::once(move |_: wasm_bindgen::JsValue| {
-            let _ = reject.call0(&wasm_bindgen::JsValue::NULL);
-        });
-        reader.set_onload(Some(onload.as_ref().unchecked_ref()));
-        reader.set_onerror(Some(onerror.as_ref().unchecked_ref()));
-        onload.forget();
-        onerror.forget();
-        let _ = reader.read_as_text(&file);
-    });
-    let result = wasm_bindgen_futures::JsFuture::from(promise).await.ok()?;
-    result.as_string()
+        let result = wasm_bindgen_futures::JsFuture::from(promise).await.ok()?;
+        result.as_string()
+    }
+    #[cfg(not(target_arch = "wasm32"))]
+    {
+        // Use the WebView's FileReader API via eval; send the text (or null) back.
+        let js = format!(
+            r"(function(){{
+  var input=document.getElementById('{id}');
+  var file=input&&input.files&&input.files[0];
+  if(!file){{dioxus.send(null);return;}}
+  var r=new FileReader();
+  r.onload=function(e){{dioxus.send(e.target.result);}};
+  r.onerror=function(){{dioxus.send(null);}};
+  r.readAsText(file);
+}})();"
+        );
+        let mut eval = document::eval(&js);
+        eval.recv::<serde_json::Value>().await.ok().and_then(|v| {
+            if v.is_null() {
+                None
+            } else {
+                v.as_str().map(str::to_owned)
+            }
+        })
+    }
 }

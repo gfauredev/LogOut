@@ -136,6 +136,10 @@ fn main() {
         LaunchBuilder::new()
             .with_cfg(
                 dioxus::mobile::Config::new()
+                    // Allow native text-selection actions (copy / paste / cut) in the
+                    // Android WebView.  The default in release builds is `true`
+                    // (context menu disabled), which prevents long-press selection.
+                    .with_disable_context_menu(false)
                     .with_custom_protocol("imgcache", |_webview_id, request| {
                         services::imgcache::handle_imgcache_request(request)
                     }),
@@ -172,6 +176,19 @@ fn App() -> Element {
 
     // Services that consume contexts (must run after context providers above).
     services::storage::provide_app_state();
+
+    // On Android: show the app over the lock screen and keep the screen on
+    // while a session is active, so the user can leave the phone on the bench
+    // at the gym.  The effect fires whenever the sessions signal changes (start
+    // or end of a session) and enables/disables the lock-screen wake lock.
+    #[cfg(target_os = "android")]
+    {
+        let sessions = services::storage::use_sessions();
+        use_effect(move || {
+            let has_active = sessions.read().iter().any(|s| s.is_active());
+            services::wake_lock::set_active_session_lock_screen(has_active);
+        });
+    }
 
     #[cfg(not(target_arch = "wasm32"))]
     services::storage::native_queue::use_native_results();
