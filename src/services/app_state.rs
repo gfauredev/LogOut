@@ -10,6 +10,23 @@ use crate::models::{
 use crate::ToastSignal;
 use dioxus::prelude::*;
 use std::sync::Arc;
+
+/// Returns `true` when the screen is currently locked and a write would be
+/// restricted to the active session only.
+///
+/// On Android the check is driven by [`crate::ScreenLockedSignal`] which
+/// polls `KeyguardManager.isKeyguardLocked()` once per second.
+/// On all other platforms this always returns `false`.
+fn screen_is_locked() -> bool {
+    #[cfg(target_os = "android")]
+    {
+        *consume_context::<crate::ScreenLockedSignal>().0.read()
+    }
+    #[cfg(not(target_os = "android"))]
+    {
+        false
+    }
+}
 /// Provide the shared workout-session and custom-exercise signals at the top of
 /// the component tree.  Call exactly once inside the root `App` component.
 pub fn provide_app_state() {

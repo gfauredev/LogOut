@@ -303,6 +303,77 @@ pub fn set_active_session_lock_screen(active: bool) {
     }
 }
 
+/// Returns `true` when the Android keyguard (lock screen) is currently active,
+/// i.e. the screen is locked and the user has not yet authenticated.
+///
+/// Uses `KeyguardManager.isKeyguardLocked()` via JNI.  Returns `false` on any
+/// JNI error so that permission checks fail open rather than blocking all writes.
+#[cfg(target_os = "android")]
+pub fn is_keyguard_locked() -> bool {
+    use jni::{objects::JObject, JavaVM};
+    use ndk_context::android_context;
+
+    let result = (|| -> Result<bool, String> {
+        let ctx = android_context();
+        // SAFETY: raw pointers come from the Android runtime; valid for process lifetime.
+        let vm = unsafe { JavaVM::from_raw(ctx.vm().cast()) }
+            .map_err(|e| format!("JavaVM::from_raw: {e}"))?;
+        let mut env = vm
+            .attach_current_thread()
+            .map_err(|e| format!("attach_current_thread: {e}"))?;
+        let activity = unsafe { JObject::from_raw(ctx.context() as jni::sys::jobject) };
+
+        // val KEYGUARD_SERVICE: String = Context.KEYGUARD_SERVICE
+        let kg_service_str = env
+            .get_static_field(
+                "android/content/Context",
+                "KEYGUARD_SERVICE",
+                "Ljava/lang/String;",
+            )
+            .map_err(|e| format!("get KEYGUARD_SERVICE: {e}"))?
+            .l()
+            .map_err(|e| format!("KEYGUARD_SERVICE as object: {e}"))?;
+
+        // val km = context.getSystemService(KEYGUARD_SERVICE) as KeyguardManager
+        let km = env
+            .call_method(
+                &activity,
+                "getSystemService",
+                "(Ljava/lang/String;)Ljava/lang/Object;",
+                &[(&kg_service_str).into()],
+            )
+            .map_err(|e| format!("getSystemService: {e}"))?
+            .l()
+            .map_err(|e| format!("KeyguardManager as object: {e}"))?;
+
+        // km.isKeyguardLocked(): Boolean
+        let locked = env
+            .call_method(&km, "isKeyguardLocked", "()Z", &[])
+            .map_err(|e| format!("isKeyguardLocked: {e}"))?
+            .z()
+            .map_err(|e| format!("isKeyguardLocked as bool: {e}"))?;
+
+        Ok(locked)
+    })();
+
+    match result {
+        Ok(locked) => locked,
+        Err(e) => {
+            log::warn!("is_keyguard_locked JNI error: {e}");
+            false
+        }
+    }
+}
+
+/// Returns `true` when the app is currently in "shown over lock screen" mode
+/// (i.e. the screen wake lock acquired by [`set_active_session_lock_screen`]
+/// is held).  This is `true` only on Android when there is an active session
+/// and the lock-screen override is in effect.
+#[cfg(target_os = "android")]
+pub fn is_shown_over_lock_screen() -> bool {
+    SCREEN_WAKE_LOCK.lock().unwrap().is_some()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
