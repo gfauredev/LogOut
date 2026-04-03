@@ -6,4 +6,5 @@ builds:
   - checks.x86_64-linux.*
 - include:
   - packages.x86_64-linux.preWeb
+  - devShells.x86_64-linux.default
   - checks.x86_64-linux.default
