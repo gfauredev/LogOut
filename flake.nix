@@ -292,11 +292,12 @@
           default = env.pkgs.symlinkJoin {
             name = "logout-all-${env.projectVersion}";
             paths = [
-              self.packages.${system}.web
-              self.packages.${system}.server
-              self.packages.${system}.webE2eTest
               self.packages.${system}.androidBuild
-              self.packages.${system}.androidE2eTest
+              # self.packages.${system}.androidE2eTest
+              self.packages.${system}.preWeb
+              self.packages.${system}.server
+              # self.packages.${system}.web
+              self.packages.${system}.webE2eTest
             ];
           };
         }
