@@ -5,6 +5,7 @@ target
 result
 *.apk
 *.apk.idsig
+*.aab
 dist
 .cargo/
 .local/
