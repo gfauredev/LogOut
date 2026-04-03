@@ -95,8 +95,8 @@ form-save-aria = Enregistrer
 ## Page Plus
 more-title = ⚙️ Plus
 more-export-section = 📤 Exporter
-more-export-exercises-btn = 💾 Exercices personnalisés
-more-export-sessions-btn = 💾 Séances
+more-export-exercises-btn = 💾 { $count } Exercices personnalisés
+more-export-sessions-btn = 💾 { $count } Séances
 more-import-section = 📥 Importer
 more-import-exercises-btn = 📂 Exercices personnalisés
 more-import-sessions-btn = 📂 Séances
@@ -105,8 +105,10 @@ more-about-desc-a = Une application simple, efficace et multiplateforme de suivi
 more-about-exercises-link = 800+ exercices
 more-about-desc-b = intégrés, par
 more-db-url-section = ⚙️ URL de la base de données d'exercices
-more-db-url-desc = Remplace la source de données d'exercices. Enregistre pour forcer un nouveau téléchargement au prochain rechargement.
+more-db-url-desc = Remplace la source de données d'exercices. Enregistre pour télécharger depuis cette URL.
 more-db-url-save-aria = Enregistrer
+more-db-exercises-count = 📦 { $count } exercices
+more-db-images-count = 🖼️ { $count } images
 more-oss-section = Open Source & Licences
 more-oss-desc-a = Ce projet est open-source sous licence GPL-3.0 et utilise d'autres projets open-source. Voir son
 more-oss-repo-link = dépôt de code
@@ -127,6 +129,7 @@ toast-export-failed = ⚠️ Échec de l'export
 toast-export-sessions-failed = ⚠️ Échec de l'export des séances
 toast-sessions-invalid = ⚠️ JSON de séances invalide
 toast-exercises-invalid = ⚠️ JSON d'exercices invalide
+db-empty-toast = 📥 Base de données d'exercices vide — appuyez pour télécharger
 
 ## Étiquettes de date relative
 date-today = Aujourd'hui

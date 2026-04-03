@@ -6,20 +6,22 @@
 /// Dioxus virtual-DOM.
 use crate::models::Exercise;
 use crate::services::exercise_db;
-use crate::{DbI18nSignal, ToastSignal};
+use crate::{DbEmptyToastSignal, DbI18nSignal, ToastSignal};
 use dioxus::prelude::*;
 use std::sync::Arc;
-/// Provides the exercises signal and kicks off the background load.
+/// Provides the exercises signal and kicks off the background load from cache.
+/// Never auto-downloads; if the cache is empty a toast is shown instead.
 /// Call once inside the root `App` component.
 pub fn provide_exercises() {
     let wrapper = use_context_provider(|| exercise_db::AllExercisesSignal(Signal::new(Vec::new())));
     let sig = wrapper.0;
     let mut i18n_sig = use_context::<DbI18nSignal>().0;
     let mut toast = use_context::<ToastSignal>().0;
+    let db_empty_toast = use_context::<DbEmptyToastSignal>().0;
 
-    // Load cached exercises immediately
+    // Load cached exercises immediately (no network call).
     spawn(async move {
-        load_exercises(sig).await;
+        load_exercises(sig, db_empty_toast).await;
     });
 
     // Download i18n data in background
@@ -54,10 +56,14 @@ pub fn use_exercises() -> Signal<Vec<Arc<Exercise>>> {
 pub async fn reload_exercises(
     mut sig: Signal<Vec<Arc<Exercise>>>,
     mut toast: Signal<std::collections::VecDeque<String>>,
+    img_progress: Signal<Option<(usize, usize)>>,
 ) {
     #[cfg(target_arch = "wasm32")]
     {
         use crate::services::storage::idb_exercises;
+        toast
+            .write()
+            .push_back("⬇️ Downloading exercise database…".to_string());
         idb_exercises::clear_all_exercises().await;
         match exercise_db::download_exercises().await {
             Ok(Some(exercises)) if !exercises.is_empty() => {
@@ -66,7 +72,6 @@ pub async fn reload_exercises(
                     exercises.len()
                 );
                 idb_exercises::store_all_exercises(&exercises).await;
-                exercise_db::record_fetch_timestamp();
                 sig.set(
                     exercises
                         .into_iter()
@@ -100,6 +105,9 @@ pub async fn reload_exercises(
     #[cfg(not(target_arch = "wasm32"))]
     {
         use crate::services::storage::native_exercises;
+        toast
+            .write()
+            .push_back("⬇️ Downloading exercise database…".to_string());
         native_exercises::clear_all_exercises();
         match exercise_db::download_exercises().await {
             Ok(Some(exercises)) if !exercises.is_empty() => {
@@ -108,8 +116,7 @@ pub async fn reload_exercises(
                     exercises.len()
                 );
                 native_exercises::store_all_exercises(&exercises);
-                exercise_db::record_fetch_timestamp();
-                exercise_db::download_db_images(&exercises).await;
+                exercise_db::download_db_images(&exercises, img_progress).await;
                 sig.set(
                     exercises
                         .into_iter()
@@ -141,13 +148,18 @@ pub async fn reload_exercises(
         }
     }
 }
-async fn load_exercises(mut sig: Signal<Vec<Arc<Exercise>>>) {
+/// Loads exercises from the local cache into the signal.
+/// If the cache is empty the `db_empty_toast` signal is set to `true` so the
+/// UI can prompt the user to download the database.
+async fn load_exercises(mut sig: Signal<Vec<Arc<Exercise>>>, mut db_empty_toast: Signal<bool>) {
     #[cfg(target_arch = "wasm32")]
     {
         use crate::services::storage::idb_exercises;
         let cached = idb_exercises::get_all_exercises().await.unwrap_or_default();
-        let needs_refresh = !cached.is_empty() && exercise_db::is_refresh_due();
-        if !cached.is_empty() {
+        if cached.is_empty() {
+            log::info!("Exercise cache empty — showing download prompt");
+            db_empty_toast.set(true);
+        } else {
             log::info!("Loaded {} exercises from IndexedDB", cached.len());
             sig.set(
                 cached
@@ -155,43 +167,23 @@ async fn load_exercises(mut sig: Signal<Vec<Arc<Exercise>>>) {
                     .map(|e| Arc::new(Exercise::with_lowercase(e)))
                     .collect(),
             );
-            if !needs_refresh {
-                return;
-            }
-            log::info!("Exercise database is stale – refreshing in background");
-        }
-        match exercise_db::download_exercises().await {
-            Ok(Some(exercises)) if !exercises.is_empty() => {
-                log::info!(
-                    "Downloaded {} exercises, storing in IndexedDB",
-                    exercises.len()
-                );
-                idb_exercises::store_all_exercises(&exercises).await;
-                exercise_db::record_fetch_timestamp();
-                sig.set(
-                    exercises
-                        .into_iter()
-                        .map(|e| Arc::new(Exercise::with_lowercase(e)))
-                        .collect(),
-                );
-                return;
-            }
-            Ok(Some(_)) => log::warn!("Downloaded exercises file was empty"),
-            Ok(None) => {
-                // 304 Not Modified: cached copy in IndexedDB is still current.
-                log::info!("exercises.json unchanged (304) – using IndexedDB cache");
-                exercise_db::record_fetch_timestamp();
-                return;
-            }
-            Err(e) => log::warn!("Failed to download exercises: {e:?}"),
         }
     }
     #[cfg(not(target_arch = "wasm32"))]
     {
         use crate::services::storage::native_exercises;
-        let cached = native_exercises::get_all_exercises();
-        let needs_refresh = !cached.is_empty() && exercise_db::is_refresh_due();
-        if !cached.is_empty() {
+        // Use spawn_blocking so the function is properly async on native.
+        let cached = match tokio::task::spawn_blocking(native_exercises::get_all_exercises).await {
+            Ok(exercises) => exercises,
+            Err(e) => {
+                log::warn!("Failed to load exercises from local file: {e}");
+                Vec::new()
+            }
+        };
+        if cached.is_empty() {
+            log::info!("Exercise cache empty — showing download prompt");
+            db_empty_toast.set(true);
+        } else {
             log::info!("Loaded {} exercises from local file", cached.len());
             sig.set(
                 cached
@@ -199,37 +191,6 @@ async fn load_exercises(mut sig: Signal<Vec<Arc<Exercise>>>) {
                     .map(|e| Arc::new(Exercise::with_lowercase(e)))
                     .collect(),
             );
-            if !needs_refresh {
-                return;
-            }
-            log::info!("Exercise database is stale – refreshing in background");
-        }
-        match exercise_db::download_exercises().await {
-            Ok(Some(exercises)) if !exercises.is_empty() => {
-                log::info!(
-                    "Downloaded {} exercises, storing in local file",
-                    exercises.len()
-                );
-                native_exercises::store_all_exercises(&exercises);
-                exercise_db::record_fetch_timestamp();
-                exercise_db::download_db_images(&exercises).await;
-                sig.set(
-                    exercises
-                        .into_iter()
-                        .map(|e| Arc::new(Exercise::with_lowercase(e)))
-                        .collect(),
-                );
-                return;
-            }
-            Ok(Some(_)) => log::warn!("Downloaded exercises file was empty"),
-            Ok(None) => {
-                // 304 Not Modified: cached copy on disk is still current.
-                log::info!("exercises.json unchanged (304) – using local cache");
-                exercise_db::record_fetch_timestamp();
-                return;
-            }
-            Err(e) => log::warn!("Failed to download exercises: {e:?}"),
         }
     }
-    log::warn!("No exercises available: failed to load from cache and download from API");
 }

@@ -119,7 +119,9 @@ fn ExerciseImage(exercise: Arc<Exercise>, display_name: String) -> Element {
             }
         }
     } else {
-        rsx! {}
+        rsx! {
+            span { class: "img-loading", "⬇️" }
+        }
     }
 }
 

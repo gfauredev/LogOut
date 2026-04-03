@@ -95,8 +95,8 @@ form-save-aria = Save
 ## More page
 more-title = ⚙️ More
 more-export-section = 📤 Export
-more-export-exercises-btn = 💾 Custom Exercises
-more-export-sessions-btn = 💾 Sessions
+more-export-exercises-btn = 💾 { $count } Custom Exercises
+more-export-sessions-btn = 💾 { $count } Sessions
 more-import-section = 📥 Import
 more-import-exercises-btn = 📂 Custom Exercises
 more-import-sessions-btn = 📂 Sessions
@@ -105,8 +105,10 @@ more-about-desc-a = A simple, efficient and cross-platform workout logging appli
 more-about-exercises-link = 800+ exercises
 more-about-desc-b = built-in, by
 more-db-url-section = ⚙️ Exercise Database URL
-more-db-url-desc = Override the exercise database source. Save to trigger a re-download on next reload.
+more-db-url-desc = Override the exercise database source. Save to trigger a download from this URL.
 more-db-url-save-aria = Save
+more-db-exercises-count = 📦 { $count } exercises
+more-db-images-count = 🖼️ { $count } images
 more-oss-section = Open Source & Licences
 more-oss-desc-a = This project is open-source under the GPL-3.0, and uses other open-source projects. See its
 more-oss-repo-link = code repository
@@ -127,6 +129,7 @@ toast-export-failed = ⚠️ Export failed
 toast-export-sessions-failed = ⚠️ Failed to export sessions
 toast-sessions-invalid = ⚠️ Invalid sessions JSON
 toast-exercises-invalid = ⚠️ Invalid exercises JSON
+db-empty-toast = 📥 Exercise database empty — tap to download
 
 ## Relative date labels
 date-today = Today

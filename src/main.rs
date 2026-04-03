@@ -57,6 +57,15 @@ pub struct PendingDeepLinkSignal(pub Signal<Option<utils::DeepLinkAction>>);
 /// names in the user's preferred language.
 #[derive(Clone, Copy)]
 pub struct DbI18nSignal(pub Signal<models::DbI18n>);
+/// Global context signal shown as a persistent toast when the exercise database
+/// is empty (never downloaded).  The user can tap it to trigger a download at
+/// the currently configured URL.
+#[derive(Clone, Copy)]
+pub struct DbEmptyToastSignal(pub Signal<bool>);
+/// Global context signal tracking image-download progress on native platforms.
+/// `None` when idle; `Some((downloaded, total))` while downloading images.
+#[derive(Clone, Copy)]
+pub struct ImageDownloadProgressSignal(pub Signal<Option<(usize, usize)>>);
 #[derive(Clone, Routable, Debug, PartialEq)]
 #[rustfmt::skip]
 enum Route {
@@ -138,6 +147,8 @@ fn App() -> Element {
     use_context_provider(|| CongratulationsSignal(Signal::new(false)));
     use_context_provider(|| ToastSignal(Signal::new(std::collections::VecDeque::new())));
     use_context_provider(|| NotificationPermissionToastSignal(Signal::new(false)));
+    use_context_provider(|| DbEmptyToastSignal(Signal::new(false)));
+    use_context_provider(|| ImageDownloadProgressSignal(Signal::new(None)));
     use_context_provider(|| ExerciseSearchSignal(Signal::new(None)));
     use_context_provider(|| PendingDeepLinkSignal(Signal::new(None)));
     use_context_provider(|| ShowRestInputSignal(Signal::new(false)));
@@ -186,6 +197,8 @@ fn App() -> Element {
         CongratulationsToast {}
         Toast {}
         NotificationPermissionToast {}
+        DbEmptyToast {}
+        ImageDownloadProgressToast {}
     }
 }
 /// Layout component rendered inside the Router context for all routes.
@@ -235,8 +248,10 @@ fn DeepLinkLayout() -> Element {
                     }
                     services::exercise_db::clear_fetch_cache();
                     let toast = consume_context::<ToastSignal>().0;
+                    let img_progress = consume_context::<ImageDownloadProgressSignal>().0;
                     spawn(async move {
-                        services::exercise_db::reload_exercises(exercises_sig, toast).await;
+                        services::exercise_db::reload_exercises(exercises_sig, toast, img_progress)
+                            .await;
                     });
                 }
                 DeepLinkAction::StartSession(exercise_ids) => {
@@ -485,6 +500,53 @@ fn NotificationPermissionToast() -> Element {
     }
     #[cfg(not(all(target_arch = "wasm32", feature = "web-platform")))]
     rsx! {}
+}
+/// Persistent toast shown when the exercise database has never been downloaded.
+/// Tapping it triggers a download from the currently configured URL.
+#[component]
+fn DbEmptyToast() -> Element {
+    let mut show = use_context::<DbEmptyToastSignal>().0;
+    let exercises_sig = services::exercise_db::use_exercises();
+    let toast = consume_context::<ToastSignal>().0;
+    let img_progress = consume_context::<ImageDownloadProgressSignal>().0;
+    // Hide automatically once exercises have been loaded (e.g. after a successful download).
+    use_effect(move || {
+        if !exercises_sig.read().is_empty() {
+            show.set(false);
+        }
+    });
+    if !*show.read() {
+        return rsx! {};
+    }
+    rsx! {
+        div {
+            class: "snackbar",
+            onclick: move |_| {
+                show.set(false);
+                let sig = exercises_sig;
+                let t = toast;
+                let p = img_progress;
+                spawn(async move {
+                    services::exercise_db::reload_exercises(sig, t, p).await;
+                });
+            },
+            {t!("db-empty-toast")}
+        }
+    }
+}
+/// Non-dismissing toast that shows image-download progress while active.
+/// Disappears automatically when the download completes (progress is set to `None`).
+#[component]
+fn ImageDownloadProgressToast() -> Element {
+    let progress = use_context::<ImageDownloadProgressSignal>().0;
+    let current = *progress.read();
+    if let Some((n, total)) = current {
+        rsx! {
+            div { class: "snackbar", "⬇️ {n}/{total} images…" }
+        }
+    } else {
+        rsx! {}
+    }
 }
 #[cfg(test)]
 mod tests {
