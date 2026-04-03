@@ -31,7 +31,7 @@ short_description = "Workout Logger"
 # health = { access = "read-write", description = "Integration?" } 
 # local-network.description = "P2P Syncing?" 
 # location = { precision = "fine", description = "Workout loc/distance?" } 
-media-library.description = "Import/Export Exercises/Sessions" 
+# media-library.description = "Import/Export Exercises/Sessions" 
 # motion.description = "Tracking cardio exercises distance?" 
 # nerby-wifi.description = "P2P Syncing?" 
 notifications.description = "Rest/Exercise duration alerts"
