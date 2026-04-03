@@ -1,6 +1,5 @@
 use crate::models::{format_time, format_time_i64, get_current_timestamp, Force};
 use dioxus::prelude::*;
-#[cfg(target_arch = "wasm32")]
 use dioxus_i18n::t;
 /// Timer tick interval in milliseconds
 #[cfg(target_arch = "wasm32")]
@@ -234,6 +233,25 @@ pub(super) fn RestTimerDisplay(
                 schedule_notification_at(title, body, "logout-rest", target_unix_ms);
             }
         }
+        // On native (Android), schedule a precise one-shot notification via tokio.
+        #[cfg(not(target_arch = "wasm32"))]
+        if let Some(start) = start_time {
+            if rest_duration > 0 {
+                let title = t!("notif-rest-title").to_string();
+                let body = t!("notif-rest-body").to_string();
+                let fire_at_secs = start + rest_duration;
+                tokio::spawn(async move {
+                    let now = crate::models::get_current_timestamp();
+                    if fire_at_secs > now {
+                        let delay = std::time::Duration::from_secs(fire_at_secs - now);
+                        tokio::time::sleep(delay).await;
+                    }
+                    crate::services::android_notifications::send_notification(
+                        &title, &body, "logout-rest",
+                    );
+                });
+            }
+        }
     }
     let Some(start) = start_time else {
         return rsx! {
@@ -251,6 +269,12 @@ pub(super) fn RestTimerDisplay(
             bell_count.set(intervals);
             #[cfg(target_arch = "wasm32")]
             send_notification(
+                &t!("notif-rest-title"),
+                &t!("notif-rest-body"),
+                "logout-rest",
+            );
+            #[cfg(not(target_arch = "wasm32"))]
+            crate::services::android_notifications::send_notification(
                 &t!("notif-rest-title"),
                 &t!("notif-rest-body"),
                 "logout-rest",
@@ -295,6 +319,27 @@ pub(super) fn ExerciseElapsedTimer(
                 }
             }
         }
+        // On native (Android), schedule a precise one-shot notification via tokio.
+        #[cfg(not(target_arch = "wasm32"))]
+        if !*duration_bell_rung.read() {
+            if let (Some(start), Some(dur)) = (exercise_start, last_duration) {
+                if dur > 0 {
+                    let title = t!("notif-duration-title").to_string();
+                    let body = t!("notif-duration-body").to_string();
+                    let fire_at_secs = start + dur;
+                    tokio::spawn(async move {
+                        let now = crate::models::get_current_timestamp();
+                        if fire_at_secs > now {
+                            let delay = std::time::Duration::from_secs(fire_at_secs - now);
+                            tokio::time::sleep(delay).await;
+                        }
+                        crate::services::android_notifications::send_notification(
+                            &title, &body, "logout-duration",
+                        );
+                    });
+                }
+            }
+        }
     });
     let mut now_tick = use_signal(get_current_timestamp);
     use_coroutine(move |_: UnboundedReceiver<()>| async move {
@@ -319,6 +364,12 @@ pub(super) fn ExerciseElapsedTimer(
                 duration_bell_rung.set(true);
                 #[cfg(target_arch = "wasm32")]
                 send_notification(
+                    &t!("notif-duration-title"),
+                    &t!("notif-duration-body"),
+                    "logout-duration",
+                );
+                #[cfg(not(target_arch = "wasm32"))]
+                crate::services::android_notifications::send_notification(
                     &t!("notif-duration-title"),
                     &t!("notif-duration-body"),
                     "logout-duration",
@@ -362,6 +413,27 @@ pub(super) fn InlineExerciseTimer(
                 }
             }
         }
+        // On native (Android), schedule a precise one-shot notification via tokio.
+        #[cfg(not(target_arch = "wasm32"))]
+        if !*duration_bell_rung.read() {
+            if let (Some(start), Some(dur)) = (exercise_start, last_duration) {
+                if dur > 0 {
+                    let title = t!("notif-duration-title").to_string();
+                    let body = t!("notif-duration-body").to_string();
+                    let fire_at_secs = start + dur;
+                    tokio::spawn(async move {
+                        let now = crate::models::get_current_timestamp();
+                        if fire_at_secs > now {
+                            let delay = std::time::Duration::from_secs(fire_at_secs - now);
+                            tokio::time::sleep(delay).await;
+                        }
+                        crate::services::android_notifications::send_notification(
+                            &title, &body, "logout-duration",
+                        );
+                    });
+                }
+            }
+        }
     });
     let mut now_tick = use_signal(get_current_timestamp);
     use_coroutine(move |_: UnboundedReceiver<()>| async move {
@@ -386,6 +458,12 @@ pub(super) fn InlineExerciseTimer(
                 duration_bell_rung.set(true);
                 #[cfg(target_arch = "wasm32")]
                 send_notification(
+                    &t!("notif-duration-title"),
+                    &t!("notif-duration-body"),
+                    "logout-duration",
+                );
+                #[cfg(not(target_arch = "wasm32"))]
+                crate::services::android_notifications::send_notification(
                     &t!("notif-duration-title"),
                     &t!("notif-duration-body"),
                     "logout-duration",

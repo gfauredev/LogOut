@@ -66,6 +66,12 @@ pub struct DbEmptyToastSignal(pub Signal<bool>);
 /// `None` when idle; `Some((downloaded, total))` while downloading images.
 #[derive(Clone, Copy)]
 pub struct ImageDownloadProgressSignal(pub Signal<Option<(usize, usize)>>);
+/// Global context signal that is `true` while the Android keyguard (lock screen)
+/// is active **and** the app is being shown over it (i.e. there is or was an
+/// active session).  While this is `true`, all writes except those targeting the
+/// currently active session are refused.
+#[derive(Clone, Copy)]
+pub struct ScreenLockedSignal(pub Signal<bool>);
 #[derive(Clone, Routable, Debug, PartialEq)]
 #[rustfmt::skip]
 enum Route {
@@ -173,6 +179,7 @@ fn App() -> Element {
     use_context_provider(|| PendingDeepLinkSignal(Signal::new(None)));
     use_context_provider(|| ShowRestInputSignal(Signal::new(false)));
     use_context_provider(|| RestDurationSignal(Signal::new(DEFAULT_REST_SECONDS)));
+    use_context_provider(|| ScreenLockedSignal(Signal::new(false)));
 
     // Services that consume contexts (must run after context providers above).
     services::storage::provide_app_state();
@@ -187,6 +194,25 @@ fn App() -> Element {
         use_effect(move || {
             let has_active = sessions.read().iter().any(|s| s.is_active());
             services::wake_lock::set_active_session_lock_screen(has_active);
+        });
+    }
+
+    // On Android: poll the keyguard (lock screen) state every second and update
+    // `ScreenLockedSignal` so that write guards throughout the app can react.
+    // The poll only runs while the app is shown over the lock screen (i.e. a
+    // screen-wake-lock is held); otherwise the check is a no-op.
+    #[cfg(target_os = "android")]
+    {
+        let mut screen_locked = consume_context::<ScreenLockedSignal>().0;
+        use_coroutine(move |_: futures_channel::mpsc::UnboundedReceiver<()>| async move {
+            loop {
+                tokio::time::sleep(std::time::Duration::from_secs(1)).await;
+                let locked = services::wake_lock::is_shown_over_lock_screen()
+                    && services::wake_lock::is_keyguard_locked();
+                if *screen_locked.peek() != locked {
+                    screen_locked.set(locked);
+                }
+            }
         });
     }
 
