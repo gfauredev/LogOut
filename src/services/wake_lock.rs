@@ -214,20 +214,10 @@ pub fn set_active_session_lock_screen(active: bool) {
             let mut guard = SCREEN_WAKE_LOCK.lock().unwrap();
             if guard.is_none() {
                 // Show the app over the lock screen and turn on the screen.
-                env.call_method(
-                    &activity,
-                    "setShowWhenLocked",
-                    "(Z)V",
-                    &[JValue::Bool(1u8)],
-                )
-                .map_err(|e| format!("setShowWhenLocked(true): {e}"))?;
-                env.call_method(
-                    &activity,
-                    "setTurnScreenOn",
-                    "(Z)V",
-                    &[JValue::Bool(1u8)],
-                )
-                .map_err(|e| format!("setTurnScreenOn(true): {e}"))?;
+                env.call_method(&activity, "setShowWhenLocked", "(Z)V", &[JValue::Bool(1u8)])
+                    .map_err(|e| format!("setShowWhenLocked(true): {e}"))?;
+                env.call_method(&activity, "setTurnScreenOn", "(Z)V", &[JValue::Bool(1u8)])
+                    .map_err(|e| format!("setTurnScreenOn(true): {e}"))?;
 
                 // Acquire SCREEN_BRIGHT_WAKE_LOCK | ACQUIRE_CAUSES_WAKEUP.
                 // SCREEN_BRIGHT_WAKE_LOCK (0x0a) keeps the screen bright.
@@ -298,20 +288,10 @@ pub fn set_active_session_lock_screen(active: bool) {
                 let _ = env.call_method(wake_lock, "release", "()V", &[]);
             }
             // Restore normal lock-screen behaviour.
-            env.call_method(
-                &activity,
-                "setShowWhenLocked",
-                "(Z)V",
-                &[JValue::Bool(0u8)],
-            )
-            .map_err(|e| format!("setShowWhenLocked(false): {e}"))?;
-            env.call_method(
-                &activity,
-                "setTurnScreenOn",
-                "(Z)V",
-                &[JValue::Bool(0u8)],
-            )
-            .map_err(|e| format!("setTurnScreenOn(false): {e}"))?;
+            env.call_method(&activity, "setShowWhenLocked", "(Z)V", &[JValue::Bool(0u8)])
+                .map_err(|e| format!("setShowWhenLocked(false): {e}"))?;
+            env.call_method(&activity, "setTurnScreenOn", "(Z)V", &[JValue::Bool(0u8)])
+                .map_err(|e| format!("setTurnScreenOn(false): {e}"))?;
         }
 
         Ok(())
