@@ -13,7 +13,7 @@
 [bundle]
 category = "Sports"
 copyright = "Copyright 2026 Guilhem Fauré"
-icon = ["logo.png"]
+icon = ["logo.svg"]
 identifier = "com.gfaure.logout"
 long_description = "A simple, efficient, cross-platform workout logging application with 800+ exercises built-in, by Guilhem Fauré"
 publisher = "Guilhem Fauré"
@@ -31,8 +31,9 @@ short_description = "Workout Logger"
 # health = { access = "read-write", description = "Integration?" } 
 # local-network.description = "P2P Syncing?" 
 # location = { precision = "fine", description = "Workout loc/distance?" } 
-# media-library.description = "Custom exercises images?" 
+media-library.description = "Import/Export Exercises/Sessions" 
 # motion.description = "Tracking cardio exercises distance?" 
+# nerby-wifi.description = "P2P Syncing?" 
 notifications.description = "Rest/Exercise duration alerts"
 photos = { access = "read", description = "Custom exercises images" } 
 
