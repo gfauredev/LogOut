@@ -1,7 +1,7 @@
 use crate::components::{ActiveTab, BottomNav};
 use crate::models::Exercise;
 use crate::services::{exercise_db, storage};
-use crate::ToastSignal;
+use crate::{ImageDownloadProgressSignal, ToastSignal};
 use dioxus::prelude::*;
 use dioxus_i18n::t;
 #[component]
@@ -13,6 +13,34 @@ pub fn More() -> Element {
     let sessions = storage::use_sessions();
     let custom_exercises = storage::use_custom_exercises();
     let all_exercises = exercise_db::use_exercises();
+    let img_progress = consume_context::<ImageDownloadProgressSignal>().0;
+    // Count of cached images on native (computed asynchronously from the image directory).
+    #[cfg(not(target_arch = "wasm32"))]
+    let image_count_resource = use_resource(move || {
+        let exercises = exercises_sig.read().clone();
+        async move {
+            use crate::services::storage::native_storage;
+            let images_dir = native_storage::data_dir().join("images");
+            exercises
+                .iter()
+                .flat_map(|e| e.images.iter())
+                .filter(|key| {
+                    !key.contains("://") && !key.starts_with("idb:") && !key.starts_with("local:")
+                })
+                .collect::<std::collections::HashSet<_>>()
+                .into_iter()
+                .filter(|key| images_dir.join(key).exists())
+                .count()
+        }
+    });
+    // Flatten the platform-specific resource into a simple Option<usize> for use in rsx!.
+    #[cfg(not(target_arch = "wasm32"))]
+    let image_count_opt: Option<usize> = {
+        let guard = image_count_resource.read();
+        *guard
+    };
+    #[cfg(target_arch = "wasm32")]
+    let image_count_opt: Option<usize> = None;
     // Pre-compute translated toast message prefixes at render time.
     // Export-failed strings are used in closures that clone before capture, so String is OK.
     let msg_export_failed = t!("toast-export-failed");
@@ -56,7 +84,7 @@ pub fn More() -> Element {
         }
         let sig = exercises_sig;
         spawn(async move {
-            exercise_db::reload_exercises(sig, toast).await;
+            exercise_db::reload_exercises(sig, toast, img_progress).await;
         });
     };
     let export_exercises = {
@@ -231,10 +259,10 @@ pub fn More() -> Element {
                 h2 { {t!("more-export-section")} }
                 div { class: "inputs",
                     button { class: "label save", onclick: export_exercises,
-                        {t!("more-export-exercises-btn")}
+                        {t!("more-export-exercises-btn", count : custom_exercises.read().len())}
                     }
                     button { class: "label save", onclick: export_sessions,
-                        {t!("more-export-sessions-btn")}
+                        {t!("more-export-sessions-btn", count : sessions.read().len())}
                     }
                 }
             }
@@ -283,6 +311,10 @@ pub fn More() -> Element {
             article {
                 h2 { {t!("more-db-url-section")} }
                 p { {t!("more-db-url-desc")} }
+                p { {t!("more-db-exercises-count", count : exercises_sig.read().len())} }
+                if let Some(img_count) = image_count_opt {
+                    p { {t!("more-db-images-count", count : img_count)} }
+                }
                 form { onsubmit: save_url,
                     input {
                         r#type: "url",

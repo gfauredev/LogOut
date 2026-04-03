@@ -11,11 +11,6 @@ use std::sync::Arc;
 /// exercises, and all exercises being treated as custom.
 #[derive(Clone, Copy)]
 pub(crate) struct AllExercisesSignal(pub(crate) Signal<Vec<Arc<Exercise>>>);
-/// Number of seconds between automatic exercise database refreshes (7 days).
-const EXERCISE_DB_REFRESH_INTERVAL_SECS: u64 = 7 * 24 * 60 * 60;
-/// Storage key used to track when exercises were last downloaded
-/// (localStorage on WASM, config file on native).
-const LAST_FETCH_KEY: &str = "exercise_db_last_fetch";
 /// Storage key used to persist the `ETag` returned by the last successful
 /// `exercises.json` download (localStorage on WASM, config on native).
 const EXERCISES_ETAG_KEY: &str = "exercise_db_etag";
@@ -40,75 +35,12 @@ fn db_i18n_url() -> String {
     format!("{base_url}i18n.json")
 }
 /// Provide the exercises signal in the Dioxus context.
-/// On first launch, downloads exercises from the API and stores them in `IndexedDB`
-/// (web) or a local file (native).  On subsequent launches, loads from cache.
+/// Loads from the local cache on startup; never auto-downloads.
+/// If the cache is empty a toast is shown inviting the user to download.
 pub use crate::services::exercise_loader::{provide_exercises, reload_exercises, use_exercises};
-/// Returns true when the locally-cached exercise list is older than
-/// [`EXERCISE_DB_REFRESH_INTERVAL_SECS`] or has never been fetched.
-#[cfg(target_arch = "wasm32")]
-pub(crate) fn is_refresh_due() -> bool {
-    let Some(window) = web_sys::window() else {
-        return true;
-    };
-    let Ok(Some(storage)) = window.local_storage() else {
-        return true;
-    };
-    let Ok(Some(ts_str)) = storage.get_item(LAST_FETCH_KEY) else {
-        return true;
-    };
-    let Ok(last_fetch) = ts_str.parse::<f64>() else {
-        return true;
-    };
-    let now_secs = time::OffsetDateTime::now_utc()
-        .unix_timestamp()
-        .max(0)
-        .cast_unsigned();
-    let last_secs = last_fetch as u64;
-    now_secs.saturating_sub(last_secs) >= EXERCISE_DB_REFRESH_INTERVAL_SECS
-}
-/// Returns true when the locally-cached exercise list is older than
-/// [`EXERCISE_DB_REFRESH_INTERVAL_SECS`] or has never been fetched.
-#[cfg(not(target_arch = "wasm32"))]
-pub(crate) fn is_refresh_due() -> bool {
-    use crate::services::storage::native_storage;
-    let last_fetch =
-        native_storage::get_config_value(LAST_FETCH_KEY).and_then(|s| s.parse::<u64>().ok());
-    let now = time::OffsetDateTime::now_utc()
-        .unix_timestamp()
-        .max(0)
-        .cast_unsigned();
-    is_refresh_due_for(now, last_fetch)
-}
-/// Pure helper: returns true when a refresh is due given the current time and the
-/// last-fetch timestamp (both as Unix seconds).  Extracted for unit-testability.
-#[cfg(not(target_arch = "wasm32"))]
-fn is_refresh_due_for(now_secs: u64, last_fetch_secs: Option<u64>) -> bool {
-    match last_fetch_secs {
-        None => true,
-        Some(last) => now_secs.saturating_sub(last) >= EXERCISE_DB_REFRESH_INTERVAL_SECS,
-    }
-}
-/// Stores the current timestamp as the last exercise-fetch time.
-#[cfg(target_arch = "wasm32")]
-pub(crate) fn record_fetch_timestamp() {
-    let Some(window) = web_sys::window() else {
-        return;
-    };
-    let Ok(Some(storage)) = window.local_storage() else {
-        return;
-    };
-    let now = time::OffsetDateTime::now_utc().unix_timestamp().to_string();
-    let _ = storage.set_item(LAST_FETCH_KEY, &now);
-}
-/// Stores the current timestamp as the last exercise-fetch time.
-#[cfg(not(target_arch = "wasm32"))]
-pub(crate) fn record_fetch_timestamp() {
-    use crate::services::storage::native_storage;
-    let now = time::OffsetDateTime::now_utc().unix_timestamp().to_string();
-    let _ = native_storage::set_config_value(LAST_FETCH_KEY, &now);
-}
-/// Clears the locally-cached fetch timestamp so that the exercise database is
-/// re-downloaded from the current URL on the next application load.
+/// Clears the stored `ETag` so that the next download fetches fresh data
+/// regardless of whether the server considers the content unchanged.
+/// Call this when the database URL changes.
 #[cfg(target_arch = "wasm32")]
 pub fn clear_fetch_cache() {
     let Some(window) = web_sys::window() else {
@@ -117,15 +49,14 @@ pub fn clear_fetch_cache() {
     let Ok(Some(storage)) = window.local_storage() else {
         return;
     };
-    let _ = storage.remove_item(LAST_FETCH_KEY);
     let _ = storage.remove_item(EXERCISES_ETAG_KEY);
 }
-/// Clears the locally-cached fetch timestamp so that the exercise database is
-/// re-downloaded from the current URL on the next application load.
+/// Clears the stored `ETag` so that the next download fetches fresh data
+/// regardless of whether the server considers the content unchanged.
+/// Call this when the database URL changes.
 #[cfg(not(target_arch = "wasm32"))]
 pub fn clear_fetch_cache() {
     use crate::services::storage::native_storage;
-    let _ = native_storage::remove_config_value(LAST_FETCH_KEY);
     let _ = native_storage::remove_config_value(EXERCISES_ETAG_KEY);
 }
 /// Returns the stored `ETag` for `exercises.json`, if any.
@@ -280,8 +211,14 @@ pub(crate) async fn download_db_i18n() -> Result<DbI18n, String> {
 /// Up to 8 images are fetched concurrently to balance throughput against
 /// memory and connection overhead.  Errors for individual images are logged
 /// but do not abort the overall download.
+///
+/// `progress` is updated after each image completes so the UI can show a
+/// running `(downloaded, total)` counter.  It is reset to `None` when done.
 #[cfg(not(target_arch = "wasm32"))]
-pub(crate) async fn download_db_images(exercises: &[Exercise]) {
+pub(crate) async fn download_db_images(
+    exercises: &[Exercise],
+    mut progress: dioxus::prelude::Signal<Option<(usize, usize)>>,
+) {
     use crate::models::EXERCISES_IMAGE_SUB_PATH;
     use crate::services::storage::native_storage;
     use futures_util::StreamExt as _;
@@ -307,11 +244,13 @@ pub(crate) async fn download_db_images(exercises: &[Exercise]) {
     if to_download.is_empty() {
         return;
     }
+    let total = to_download.len();
     log::info!(
         "Downloading {} exercise image(s) to {}",
-        to_download.len(),
+        total,
         images_dir.display()
     );
+    progress.set(Some((0, total)));
     futures_util::stream::iter(to_download.iter().map(|key| {
         let url = format!("{base_url}{EXERCISES_IMAGE_SUB_PATH}{key}");
         let dest = images_dir.join(key);
@@ -338,8 +277,13 @@ pub(crate) async fn download_db_images(exercises: &[Exercise]) {
         }
     }))
     .buffer_unordered(CONCURRENCY)
-    .collect::<()>()
+    .enumerate()
+    .for_each(|(i, ())| {
+        progress.set(Some((i + 1, total)));
+        futures_util::future::ready(())
+    })
     .await;
+    progress.set(None);
     log::info!("Finished downloading exercise images");
 }
 /// Normalises a string for error-tolerant search: lowercases, strips hyphens,
@@ -1082,34 +1026,6 @@ mod tests {
         );
         assert!(url.ends_with("exercises.json"));
     }
-    #[cfg(not(target_arch = "wasm32"))]
-    #[test]
-    fn is_refresh_due_true_when_no_timestamp() {
-        assert!(is_refresh_due_for(1_000_000, None));
-    }
-    #[cfg(not(target_arch = "wasm32"))]
-    #[test]
-    fn is_refresh_due_false_when_recent() {
-        let now = 1_000_000u64;
-        let last_fetch = now - 60;
-        assert!(!is_refresh_due_for(now, Some(last_fetch)));
-    }
-    #[cfg(not(target_arch = "wasm32"))]
-    #[test]
-    fn is_refresh_due_true_when_stale() {
-        let interval = EXERCISE_DB_REFRESH_INTERVAL_SECS;
-        let now = interval + 1_000_000;
-        let last_fetch = 1_000_000u64;
-        assert!(is_refresh_due_for(now, Some(last_fetch)));
-    }
-    #[cfg(not(target_arch = "wasm32"))]
-    #[test]
-    fn is_refresh_due_false_at_exact_interval_boundary() {
-        let interval = EXERCISE_DB_REFRESH_INTERVAL_SECS;
-        let now = interval + 999_999u64;
-        let last_fetch = 999_999u64;
-        assert!(is_refresh_due_for(now, Some(last_fetch)));
-    }
     #[test]
     fn search_custom_exercise_by_muscle_returns_empty() {
         let exercises = vec![Exercise {
@@ -1311,42 +1227,12 @@ mod tests {
             }
         }
         #[test]
-        fn record_fetch_timestamp_writes_numeric_value() {
-            let _g = cfg_lock();
-            let _ = native_storage::remove_config_value(LAST_FETCH_KEY);
-            record_fetch_timestamp();
-            let val = native_storage::get_config_value(LAST_FETCH_KEY)
-                .expect("timestamp should be written");
-            let ts: u64 = val.parse().expect("value should be a numeric timestamp");
-            assert!(ts > 0, "timestamp should be positive");
-        }
-        #[test]
         fn clear_fetch_cache_removes_config_value() {
             let _g = cfg_lock();
-            record_fetch_timestamp();
-            assert!(native_storage::get_config_value(LAST_FETCH_KEY).is_some());
             clear_fetch_cache();
             assert!(
-                native_storage::get_config_value(LAST_FETCH_KEY).is_none(),
-                "config value should be removed after clear_fetch_cache",
-            );
-        }
-        #[test]
-        fn is_refresh_due_true_when_no_config_entry() {
-            let _g = cfg_lock();
-            let _ = native_storage::remove_config_value(LAST_FETCH_KEY);
-            assert!(
-                is_refresh_due(),
-                "refresh should be due with no cached timestamp"
-            );
-        }
-        #[test]
-        fn is_refresh_due_false_after_fresh_timestamp() {
-            let _g = cfg_lock();
-            record_fetch_timestamp();
-            assert!(
-                !is_refresh_due(),
-                "refresh should not be due immediately after recording a fresh timestamp",
+                native_storage::get_config_value(EXERCISES_ETAG_KEY).is_none(),
+                "etag should be removed after clear_fetch_cache",
             );
         }
         /// Starts a minimal TCP server in a background thread that sends
