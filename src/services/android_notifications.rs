@@ -1,4 +1,5 @@
 /// Notification channel ID used for workout alerts (rest-over, duration-reached).
+#[cfg(target_os = "android")]
 pub const WORKOUT_CHANNEL_ID: &str = "workout_reminders";
 
 /// Android-specific notification channel setup.
@@ -47,11 +48,7 @@ pub fn setup_notification_channel() {
 
         // IMPORTANCE_HIGH = 4
         let importance_high = env
-            .get_static_field(
-                "android/app/NotificationManager",
-                "IMPORTANCE_HIGH",
-                "I",
-            )
+            .get_static_field("android/app/NotificationManager", "IMPORTANCE_HIGH", "I")
             .map_err(|e| format!("get IMPORTANCE_HIGH: {e}"))?
             .i()
             .map_err(|e| format!("IMPORTANCE_HIGH as int: {e}"))?;
@@ -88,7 +85,10 @@ pub fn setup_notification_channel() {
     })();
 
     match result {
-        Ok(()) => log::info!("Android notification channel '{}' created", WORKOUT_CHANNEL_ID),
+        Ok(()) => log::info!(
+            "Android notification channel '{}' created",
+            WORKOUT_CHANNEL_ID
+        ),
         Err(e) => log::warn!("Failed to create Android notification channel: {e}"),
     }
 }
@@ -214,12 +214,7 @@ pub fn send_notification(title: &str, body: &str, tag: &str) {
 
         // notification = builder.build()
         let notification = env
-            .call_method(
-                &builder,
-                "build",
-                "()Landroid/app/Notification;",
-                &[],
-            )
+            .call_method(&builder, "build", "()Landroid/app/Notification;", &[])
             .map_err(|e| format!("build: {e}"))?
             .l()
             .map_err(|e| format!("Notification obj: {e}"))?;
@@ -239,7 +234,11 @@ pub fn send_notification(title: &str, body: &str, tag: &str) {
             &nm,
             "notify",
             "(Ljava/lang/String;ILandroid/app/Notification;)V",
-            &[(&jtag).into(), jni::objects::JValue::Int(notif_id), (&notification).into()],
+            &[
+                (&jtag).into(),
+                jni::objects::JValue::Int(notif_id),
+                (&notification).into(),
+            ],
         )
         .map_err(|e| format!("notify: {e}"))?;
 

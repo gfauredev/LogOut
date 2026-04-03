@@ -125,6 +125,7 @@ toast-export-failed = ⚠️ Error al exportar
 toast-export-sessions-failed = ⚠️ Error al exportar sesiones
 toast-sessions-invalid = ⚠️ JSON de sesiones no válido
 toast-exercises-invalid = ⚠️ JSON de ejercicios no válido
+toast-screen-locked = 🔒 Pantalla bloqueada — solo se permiten ediciones de la sesión activa
 db-empty-toast = 📥 Base de datos de ejercicios vacía — toca para descargar
 
 ## Etiquetas de fecha relativa

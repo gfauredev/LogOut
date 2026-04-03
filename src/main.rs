@@ -204,16 +204,18 @@ fn App() -> Element {
     #[cfg(target_os = "android")]
     {
         let mut screen_locked = consume_context::<ScreenLockedSignal>().0;
-        use_coroutine(move |_: futures_channel::mpsc::UnboundedReceiver<()>| async move {
-            loop {
-                tokio::time::sleep(std::time::Duration::from_secs(1)).await;
-                let locked = services::wake_lock::is_shown_over_lock_screen()
-                    && services::wake_lock::is_keyguard_locked();
-                if *screen_locked.peek() != locked {
-                    screen_locked.set(locked);
+        use_coroutine(
+            move |_: futures_channel::mpsc::UnboundedReceiver<()>| async move {
+                loop {
+                    tokio::time::sleep(std::time::Duration::from_secs(1)).await;
+                    let locked = services::wake_lock::is_shown_over_lock_screen()
+                        && services::wake_lock::is_keyguard_locked();
+                    if *screen_locked.peek() != locked {
+                        screen_locked.set(locked);
+                    }
                 }
-            }
-        });
+            },
+        );
     }
 
     #[cfg(not(target_arch = "wasm32"))]
