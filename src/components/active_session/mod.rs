@@ -129,9 +129,26 @@ pub fn SessionView() -> Element {
     let pending_ids = use_memo(move || session.read().pending_exercise_ids.clone());
     let lang_str = use_memo(move || i18n().language().to_string());
     let mut notes_input = use_signal(|| session.read().notes.clone());
-    // Keep the notes signal in sync when the session changes (e.g. after load).
+    // Keep the notes signal in sync when the session changes from an external
+    // source (e.g. a different session is loaded or the active session is
+    // reloaded from storage).  We compare against `notes_input` — which is
+    // kept up-to-date on every `oninput` event — so that a save triggered by
+    // the debounce coroutine does NOT cause an eval-based DOM update (which
+    // would reset the cursor position on Android).
     use_effect(move || {
-        notes_input.set(session.read().notes.clone());
+        let session_notes = session.read().notes.clone();
+        if session_notes != *notes_input.peek() {
+            notes_input.set(session_notes.clone());
+            // Update the textarea value via JavaScript so the DOM is updated
+            // without a full re-render.  A full re-render would reset the
+            // cursor to the end of the text on Android's WebView.
+            spawn(async move {
+                let val_js = serde_json::to_string(&session_notes).unwrap_or_default();
+                document::eval(&format!(
+                    "var el=document.getElementById('session-notes-input');if(el)el.value={val_js};"
+                ));
+            });
+        }
     });
     let notes_debounce = use_coroutine(move |mut rx: UnboundedReceiver<String>| async move {
         use futures_util::StreamExt as _;
@@ -414,8 +431,15 @@ pub fn SessionView() -> Element {
                 }
             }
             textarea {
+                id: "session-notes-input",
                 placeholder: t!("session-notes-placeholder"),
-                value: "{notes_input}",
+                // Do NOT bind `value` here.  A controlled textarea causes
+                // Dioxus to overwrite the DOM value on every re-render, which
+                // resets the cursor position to the end on Android's WebView
+                // (especially visible when typing fast with the IME).
+                // Instead we drive the initial / external value via eval in the
+                // `use_effect` above, and keep `notes_input` in sync via
+                // `oninput` so the effect can detect external changes.
                 oninput: move |evt| {
                     let text = evt.value();
                     notes_input.set(text.clone());
