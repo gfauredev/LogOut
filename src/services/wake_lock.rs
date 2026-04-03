@@ -303,9 +303,6 @@ pub fn set_active_session_lock_screen(active: bool) {
     }
 }
 
-/// No-op shim for non-Android targets.
-#[cfg(not(target_os = "android"))]
-pub fn set_active_session_lock_screen(_active: bool) {}
 #[cfg(test)]
 mod tests {
     use super::*;
