@@ -129,6 +129,29 @@ async fn load_storage_data(
 ///   are evicted and a background task re-reads storage to recompute them
 ///   accurately.
 pub fn save_session(session: WorkoutSession) {
+    // When the screen is locked, only writes to the currently active session
+    // are allowed.  Specifically: exercise logs, notes, finish/cancel of the
+    // active session, and new exercises added within it.
+    // Importing historical (never-active) sessions is blocked.
+    // We identify "active-session writes" by checking whether the session
+    // being saved matches the ID of the current active session in the signal
+    // (covers both mid-session updates and the final save that sets end_time).
+    if screen_is_locked() {
+        let sig = use_sessions();
+        let active_id: Option<String> = sig
+            .read()
+            .iter()
+            .find(|s| s.is_active())
+            .map(|s| s.id.clone());
+        let is_active_session = active_id.as_deref() == Some(session.id.as_str());
+        if !is_active_session {
+            let mut toast = consume_context::<ToastSignal>().0;
+            toast
+                .write()
+                .push_back(dioxus_i18n::t!("toast-screen-locked").to_string());
+            return;
+        }
+    }
     let mut sig = use_sessions();
     let previous;
     let is_update;
@@ -244,6 +267,14 @@ pub fn save_session(session: WorkoutSession) {
 /// query.  Otherwise the entire cache is rebuilt from storage so no stale
 /// personal-record values remain after deletion.
 pub fn delete_session(id: &str) {
+    // Deleting any session while the screen is locked is not allowed.
+    if screen_is_locked() {
+        let mut toast = consume_context::<ToastSignal>().0;
+        toast
+            .write()
+            .push_back(dioxus_i18n::t!("toast-screen-locked").to_string());
+        return;
+    }
     let mut sig = use_sessions();
     // Capture the full session for potential revert and for exercise_id lookup.
     let snapshot: Option<WorkoutSession> = sig.read().iter().find(|s| s.id == id).cloned();
@@ -356,14 +387,39 @@ pub fn start_pending_exercise_in_session(exercise_id: String, exercise_start: u6
     save_session(updated);
 }
 /// Append `exercise` to the custom-exercises signal and persist it to the backend.
+///
+/// **Lock-screen guard**: adding a new custom exercise is only allowed when the
+/// screen is unlocked OR there is a currently active session (the user may need
+/// to create a new exercise during a locked-screen gym session).
 pub fn add_custom_exercise(exercise: Exercise) {
+    if screen_is_locked() {
+        // Allow creating new exercises only when there is an active session.
+        let has_active = use_sessions().read().iter().any(|s| s.is_active());
+        if !has_active {
+            let mut toast = consume_context::<ToastSignal>().0;
+            toast
+                .write()
+                .push_back(dioxus_i18n::t!("toast-screen-locked").to_string());
+            return;
+        }
+    }
     let mut sig = use_custom_exercises();
     sig.write().push(Arc::new(exercise.clone()));
     let toast = consume_context::<ToastSignal>().0;
     super::storage::enqueue_put_exercise(exercise, toast);
 }
 /// Replace the custom exercise with the same `id` in the signal and persist the update.
+///
+/// **Lock-screen guard**: updating an existing custom exercise is only allowed
+/// when the screen is unlocked.
 pub fn update_custom_exercise(exercise: Exercise) {
+    if screen_is_locked() {
+        let mut toast = consume_context::<ToastSignal>().0;
+        toast
+            .write()
+            .push_back(dioxus_i18n::t!("toast-screen-locked").to_string());
+        return;
+    }
     let mut sig = use_custom_exercises();
     {
         let mut exercises = sig.write();

@@ -247,7 +247,9 @@ pub(super) fn RestTimerDisplay(
                         tokio::time::sleep(delay).await;
                     }
                     crate::services::android_notifications::send_notification(
-                        &title, &body, "logout-rest",
+                        &title,
+                        &body,
+                        "logout-rest",
                     );
                 });
             }
@@ -334,7 +336,9 @@ pub(super) fn ExerciseElapsedTimer(
                             tokio::time::sleep(delay).await;
                         }
                         crate::services::android_notifications::send_notification(
-                            &title, &body, "logout-duration",
+                            &title,
+                            &body,
+                            "logout-duration",
                         );
                     });
                 }
@@ -428,7 +432,9 @@ pub(super) fn InlineExerciseTimer(
                             tokio::time::sleep(delay).await;
                         }
                         crate::services::android_notifications::send_notification(
-                            &title, &body, "logout-duration",
+                            &title,
+                            &body,
+                            "logout-duration",
                         );
                     });
                 }
