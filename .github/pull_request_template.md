@@ -1,10 +1,4 @@
-# PR Title
-
-Pull Request Description
-
-## Related Issue
-
-Resolves #ENTER_ISSUE_NUMBER
+This Pull Request…
 
 ## Engineering Principles
 
@@ -15,10 +9,12 @@ Resolves #ENTER_ISSUE_NUMBER
 ## CI/CD Readiness
 
 - [ ] Branch follows Conventional Branch: `feat/…`, `fix/…`, `refactor/…`, …
-- [ ] Code is formatted with `dx fmt` AND `cargo fmt --all`
+- [ ] Code is formatted with `dx fmt; cargo fmt`
 - [ ] All checks pass, `nix flake checks` succeeds without warnings
-  - [ ] Code compiles, `dx build` succeeds (with necessary platform flags)
-  - [ ] NO `cargo clippy -- -D warnings -W clippy::all -W clippy::pedantic`
-        warnings
-  - [ ] All unit tests pass without warnings (`cargo llvm-cov nextest`)
-  - [ ] End-to-end tests pass (`maestro test --headless maestro/{web,android}`)
+  - [ ] Code compiles, `dx build` with necessary platform flags succeeds
+  - [ ] `cargo clippy -- -D warnings -W clippy::all -W clippy::pedantic`
+        produces zero warnings
+  - [ ] All unit tests pass without warnings
+        `cargo llvm-cov nextest --ignore-filename-regex '(src/components/|\.cargo/registry/|nix/store)'`
+  - [ ] End-to-end tests pass `maestro test --headless maestro/web`
+        `maestro test --headless maestro/android`
