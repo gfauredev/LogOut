@@ -143,11 +143,11 @@ fn App() -> Element {
     use_context_provider(|| ShowRestInputSignal(Signal::new(false)));
     use_context_provider(|| RestDurationSignal(Signal::new(DEFAULT_REST_SECONDS)));
 
-    #[cfg(not(target_arch = "wasm32"))]
-    services::storage::native_queue::use_native_results();
-
     // Services that consume contexts (must run after context providers above).
     services::storage::provide_app_state();
+
+    #[cfg(not(target_arch = "wasm32"))]
+    services::storage::native_queue::use_native_results();
     #[cfg(target_arch = "wasm32")]
     use_hook(|| {
         services::storage::idb_queue::register_pagehide_flush();
