@@ -272,7 +272,8 @@ that can be triggered manually to run on the `main` branch.
 The [exercise database] is under the Unlicense (public domain).
 
 [LogOut]: https://gfauredev.github.io/LogOut
-[800+ exercises]: https://gfauredev.github.io/free-exercise-db
+[800+ exercises]: https://github.com/gfauredev/free-exercise-db
+[800+ exercises site]: https://gfauredev.github.io/free-exercise-db
 [old 800+ exercises]: https://github.com/yuhonas/free-exercise-db
 [Cargo]: https://doc.rust-lang.org/cargo
 [cargo test]: https://doc.rust-lang.org/cargo/commands/cargo-test.html
@@ -284,10 +285,10 @@ The [exercise database] is under the Unlicense (public domain).
 [dx]: https://dioxuslabs.com
 [direnv]: https://direnv.net
 [`direnv`]: https://direnv.net
-[exercise database]: https://gfauredev.github.io/free-exercise-db
-[exercise db]: https://gfauredev.github.io/free-exercise-db
+[exercise database]: https://github.com/gfauredev/free-exercise-db
+[exercise db]: https://github.com/gfauredev/free-exercise-db
 [`flake.nix`]: flake.nix
-[free-exercise-db]: https://gfauredev.github.io/free-exercise-db
+[free-exercise-db]: https://github.com/gfauredev/free-exercise-db
 [old free-exercise-db]: https://github.com/yuhonas/free-exercise-db
 [Guilhem Fauré]: https://www.guilhemfau.re
 [Git]: https://git-scm.com
