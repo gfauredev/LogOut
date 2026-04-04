@@ -381,7 +381,7 @@ pub fn More() -> Element {
 /// On WASM the `web_sys` DOM APIs are used directly for efficiency.
 /// On Android, the file is written to the app's exports directory and
 /// `Some(message)` is returned so the caller can show a toast with the path.
-/// `<a download>` does not work reliably in Android WebView, so native I/O
+/// `<a download>` does not work reliably in Android `WebView`, so native I/O
 /// is used instead.
 /// On other native targets (desktop) the same Blob/anchor download is driven
 /// through `document::eval` so the Dioxus `WebView` executes JavaScript.
