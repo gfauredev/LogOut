@@ -48,8 +48,8 @@ pub(super) fn ExerciseInputForm(
     let mut weight_input = weight_input;
     let mut reps_input = reps_input;
     let mut distance_input = distance_input;
-    let show_reps = force.is_some_and(Force::has_reps);
     let is_cardio = category == Category::Cardio;
+    let show_reps = !is_cardio && force.is_some_and(Force::has_reps);
     let is_editing_time = time_input.is_some();
     let is_perform_mode = !is_editing_time && exercise_start.is_some();
     let bests = storage::get_exercise_bests(&exercise_id);

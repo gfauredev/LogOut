@@ -106,7 +106,9 @@ pub fn CompletedExerciseLog(
                         if let Some(log) = current_session.exercise_logs.get_mut(idx) {
                             log.weight_hg = parse_weight_kg(&edit_weight_input.read())
                                 .unwrap_or_default();
-                            log.reps = if force.is_some_and(Force::has_reps) {
+                            log.reps = if category != Category::Cardio
+                                && force.is_some_and(Force::has_reps)
+                            {
                                 edit_reps_input.read().parse().ok()
                             } else {
                                 None
