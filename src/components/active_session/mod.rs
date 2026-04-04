@@ -287,7 +287,11 @@ pub fn SessionView() -> Element {
             }
         };
         let end_time = get_current_timestamp();
-        let weight_hg = parse_weight_kg(&weight_input.read()).unwrap_or_default();
+        let weight_hg = if category != Category::Stretching {
+            parse_weight_kg(&weight_input.read()).unwrap_or_default()
+        } else {
+            Default::default()
+        };
         let reps = if category != Category::Cardio && force.is_some_and(Force::has_reps) {
             reps_input.read().parse().ok()
         } else {

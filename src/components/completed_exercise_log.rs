@@ -104,8 +104,11 @@ pub fn CompletedExerciseLog(
                     on_complete: move |()| {
                         let mut current_session = session.read().clone();
                         if let Some(log) = current_session.exercise_logs.get_mut(idx) {
-                            log.weight_hg = parse_weight_kg(&edit_weight_input.read())
-                                .unwrap_or_default();
+                            log.weight_hg = if category != Category::Stretching {
+                                parse_weight_kg(&edit_weight_input.read()).unwrap_or_default()
+                            } else {
+                                Default::default()
+                            };
                             log.reps = if category != Category::Cardio
                                 && force.is_some_and(Force::has_reps)
                             {

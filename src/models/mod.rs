@@ -14,8 +14,6 @@ pub use exercise::*;
 pub use log::*;
 pub use session::*;
 pub use units::*;
-/// Current schema version for the workout-session data format.
-pub const DATA_VERSION: u32 = 1;
 /// Returns the current Unix timestamp in seconds.
 /// Cross-platform: uses `js_sys` on Web and `SystemTime` on Native.
 #[must_use]

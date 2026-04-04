@@ -1343,9 +1343,7 @@ impl AsyncStorageProvider for NativeStorage {
 mod tests {
     use super::native_exercises;
     use super::native_storage;
-    use crate::models::{
-        Category, Distance, Exercise, ExerciseLog, Force, Weight, WorkoutSession, DATA_VERSION,
-    };
+    use crate::models::{Category, Distance, Exercise, ExerciseLog, Force, Weight, WorkoutSession};
     /// All tests that touch native storage must hold this guard.
     fn lock() -> std::sync::MutexGuard<'static, ()> {
         native_storage::test_lock()
@@ -1387,7 +1385,6 @@ mod tests {
             start_time: 1_000,
             end_time: None,
             exercise_logs: vec![],
-            version: DATA_VERSION,
             pending_exercise_ids: vec![],
             rest_start_time: None,
             current_exercise_id: None,
@@ -1414,7 +1411,6 @@ mod tests {
             start_time: 1_000,
             end_time: None,
             exercise_logs: vec![],
-            version: DATA_VERSION,
             pending_exercise_ids: vec![],
             rest_start_time: None,
             current_exercise_id: None,
@@ -1428,7 +1424,6 @@ mod tests {
             start_time: 2_000,
             end_time: Some(3_000),
             exercise_logs: vec![],
-            version: DATA_VERSION,
             pending_exercise_ids: vec![],
             rest_start_time: None,
             current_exercise_id: None,
@@ -1462,7 +1457,6 @@ mod tests {
             start_time: 500,
             end_time: None,
             exercise_logs: vec![],
-            version: DATA_VERSION,
             pending_exercise_ids: vec![],
             rest_start_time: None,
             current_exercise_id: None,
@@ -1641,7 +1635,6 @@ mod tests {
             start_time: 1_000,
             end_time: None,
             exercise_logs: vec![],
-            version: DATA_VERSION,
             pending_exercise_ids: vec![],
             rest_start_time: None,
             current_exercise_id: None,
@@ -1696,7 +1689,6 @@ mod tests {
             start_time: 5_000,
             end_time: None,
             exercise_logs: vec![],
-            version: DATA_VERSION,
             pending_exercise_ids: vec![],
             rest_start_time: None,
             current_exercise_id: None,
@@ -1710,7 +1702,6 @@ mod tests {
             start_time: 4_000,
             end_time: Some(5_000),
             exercise_logs: vec![],
-            version: DATA_VERSION,
             pending_exercise_ids: vec![],
             rest_start_time: None,
             current_exercise_id: None,
@@ -1743,7 +1734,6 @@ mod tests {
                 start_time: (i as u64 + 1) * 1_000,
                 end_time: Some((i as u64 + 1) * 1_000 + 60),
                 exercise_logs: vec![],
-                version: DATA_VERSION,
                 pending_exercise_ids: vec![],
                 rest_start_time: None,
                 current_exercise_id: None,
@@ -1791,7 +1781,6 @@ mod tests {
             start_time: 1_000,
             end_time: None,
             exercise_logs: logs,
-            version: DATA_VERSION,
             pending_exercise_ids: vec![],
             rest_start_time: None,
             current_exercise_id: None,
@@ -1824,7 +1813,6 @@ mod tests {
             start_time: 100,
             end_time: None,
             exercise_logs: vec![],
-            version: DATA_VERSION,
             pending_exercise_ids: vec![],
             rest_start_time: None,
             current_exercise_id: None,
@@ -1838,7 +1826,6 @@ mod tests {
             start_time: 200,
             end_time: Some(300),
             exercise_logs: vec![],
-            version: DATA_VERSION,
             pending_exercise_ids: vec![],
             rest_start_time: None,
             current_exercise_id: None,
@@ -1892,7 +1879,6 @@ mod tests {
             start_time: 1_000,
             end_time: Some(3_000),
             exercise_logs: vec![log1, log2],
-            version: DATA_VERSION,
             pending_exercise_ids: vec![],
             rest_start_time: None,
             current_exercise_id: None,

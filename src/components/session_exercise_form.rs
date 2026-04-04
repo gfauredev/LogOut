@@ -49,7 +49,9 @@ pub(super) fn ExerciseInputForm(
     let mut reps_input = reps_input;
     let mut distance_input = distance_input;
     let is_cardio = category == Category::Cardio;
+    let is_stretching = category == Category::Stretching;
     let show_reps = !is_cardio && force.is_some_and(Force::has_reps);
+    let show_weight = !is_cardio && !is_stretching;
     let is_editing_time = time_input.is_some();
     let is_perform_mode = !is_editing_time && exercise_start.is_some();
     let bests = storage::get_exercise_bests(&exercise_id);
@@ -62,7 +64,7 @@ pub(super) fn ExerciseInputForm(
     let time_str = time_input.map_or_else(String::new, |ti| ti.read().clone());
     let time_invalid =
         is_editing_time && !time_str.is_empty() && parse_duration_seconds(&time_str).is_none();
-    let weight_valid = weight.is_empty() || parse_weight_kg(&weight).is_some();
+    let weight_valid = !show_weight || weight.is_empty() || parse_weight_kg(&weight).is_some();
     let reps_valid = !show_reps || reps.parse::<u32>().is_ok();
     let distance_valid = !is_cardio || parse_distance_km(&dist).is_some();
     let time_valid = !time_invalid;
@@ -138,52 +140,54 @@ pub(super) fn ExerciseInputForm(
                     time { "{format_time(bests.duration.unwrap_or(0))}" }
                 }
             }
-            // ⚖️ Weight input and ATH
-            div { class: "input-row",
-                span { "⚖️" }
-                button {
-                    class: "less",
-                    r#type: "button",
-                    tabindex: -1,
-                    onclick: move |_| {
-                        let cur: f64 = weight_input.read().parse().unwrap_or(0.0);
-                        let next = cur - 0.5;
-                        if next <= 0.0 {
-                            weight_input.set(String::new());
-                        } else {
-                            weight_input.set(format!("{next:.1}"));
-                        }
-                    },
-                    "−"
-                }
-                input {
-                    r#type: "number",
-                    inputmode: "decimal",
-                    step: "0.1",
-                    placeholder: t!("weight-placeholder"),
-                    value: "{weight_input}",
-                    oninput: move |evt| weight_input.set(evt.value()),
-                    onkeydown: move |evt| {
-                        if evt.key() == Key::Enter && !complete_disabled {
-                            on_complete.call(());
-                        }
-                    },
-                    class: if weight_invalid { "invalid" } else { "" },
-                }
-                button {
-                    class: "more",
-                    r#type: "button",
-                    tabindex: -1,
-                    onclick: move |_| {
-                        let cur: f64 = weight_input.read().parse().unwrap_or(0.0);
-                        weight_input.set(format!("{:.1}", cur + 0.5));
-                    },
-                    "+"
-                }
-                if let Some(best) = bests.weight_hg {
-                    span { "{best}" }
-                } else {
-                    span { "0" }
+            // ⚖️ Weight input and ATH (not shown for stretching exercises)
+            if show_weight {
+                div { class: "input-row",
+                    span { "⚖️" }
+                    button {
+                        class: "less",
+                        r#type: "button",
+                        tabindex: -1,
+                        onclick: move |_| {
+                            let cur: f64 = weight_input.read().parse().unwrap_or(0.0);
+                            let next = cur - 0.5;
+                            if next <= 0.0 {
+                                weight_input.set(String::new());
+                            } else {
+                                weight_input.set(format!("{next:.1}"));
+                            }
+                        },
+                        "−"
+                    }
+                    input {
+                        r#type: "number",
+                        inputmode: "decimal",
+                        step: "0.1",
+                        placeholder: t!("weight-placeholder"),
+                        value: "{weight_input}",
+                        oninput: move |evt| weight_input.set(evt.value()),
+                        onkeydown: move |evt| {
+                            if evt.key() == Key::Enter && !complete_disabled {
+                                on_complete.call(());
+                            }
+                        },
+                        class: if weight_invalid { "invalid" } else { "" },
+                    }
+                    button {
+                        class: "more",
+                        r#type: "button",
+                        tabindex: -1,
+                        onclick: move |_| {
+                            let cur: f64 = weight_input.read().parse().unwrap_or(0.0);
+                            weight_input.set(format!("{:.1}", cur + 0.5));
+                        },
+                        "+"
+                    }
+                    if let Some(best) = bests.weight_hg {
+                        span { "{best}" }
+                    } else {
+                        span { "0" }
+                    }
                 }
             }
             // 📏 Distance input (cardio exercises only) and ATH
