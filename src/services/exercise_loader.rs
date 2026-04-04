@@ -32,7 +32,7 @@ pub fn provide_exercises() {
         // rest of the startup sequence.
         #[cfg(not(target_arch = "wasm32"))]
         {
-            let exercises: Vec<Exercise> = sig.read().iter().map(|e| (**e).clone()).collect();
+            let exercises: Vec<Exercise> = sig.read().iter().map(|e| e.as_ref().clone()).collect();
             if !exercises.is_empty() {
                 spawn(async move {
                     exercise_db::download_db_images(&exercises, img_progress).await;
