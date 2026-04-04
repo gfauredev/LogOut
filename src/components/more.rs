@@ -361,6 +361,10 @@ pub fn More() -> Element {
                     li { {t!("more-built-with-others")} }
                 }
             }
+            article {
+                h2 { {t!("more-privacy-section")} }
+                p { {t!("more-privacy-desc")} }
+            }
         }
         if let Some(exercise) = exercises_to_confirm.read().first().cloned() {
             div { class: "backdrop", onclick: skip_replace }

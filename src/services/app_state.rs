@@ -167,7 +167,26 @@ pub fn save_session(session: WorkoutSession) {
             is_update = false;
         }
     }
-    let mut cache_sig = consume_context::<Signal<BestsCache>>();
+    let cache_sig = consume_context::<Signal<BestsCache>>();
+    update_bests_cache_on_session_save(&session, previous.as_ref(), is_update, cache_sig);
+    let toast = consume_context::<ToastSignal>().0;
+    super::storage::enqueue_put_session(session, toast, sig, previous);
+}
+/// Update the [`BestsCache`] after a session has been upserted.
+///
+/// Called by [`save_session`] once the signal has already been mutated.
+/// Handles three cases:
+/// * Session **just completed** for the first time: merge logs incrementally.
+/// * **Updated** completed session: evict stale PR entries and recompute if
+///   needed; otherwise merge incrementally.
+/// * **Active session updated**: check for removed logs that held a PR, evict
+///   and recompute those entries from storage.
+fn update_bests_cache_on_session_save(
+    session: &WorkoutSession,
+    previous: Option<&WorkoutSession>,
+    is_update: bool,
+    mut cache_sig: Signal<BestsCache>,
+) {
     if !session.is_active() {
         if is_update {
             // Only evict exercises whose old log held the personal record.
@@ -177,7 +196,6 @@ pub fn save_session(session: WorkoutSession) {
             let affected_ids: Vec<String> = {
                 let cache = cache_sig.read();
                 previous
-                    .as_ref()
                     .map(|prev_session| {
                         prev_session
                             .exercise_logs
@@ -222,7 +240,6 @@ pub fn save_session(session: WorkoutSession) {
         let affected_ids: Vec<String> = {
             let cache = cache_sig.read();
             previous
-                .as_ref()
                 .map(|prev_session| {
                     let new_log_ids: std::collections::HashSet<_> = session
                         .exercise_logs
@@ -253,8 +270,6 @@ pub fn save_session(session: WorkoutSession) {
             recompute_bests_for_exercises(affected_ids, cache_sig);
         }
     }
-    let toast = consume_context::<ToastSignal>().0;
-    super::storage::enqueue_put_session(session, toast, sig, previous);
 }
 /// Remove the session with `id` from the in-memory signal and from the backend.
 ///
@@ -394,7 +409,7 @@ pub fn start_pending_exercise_in_session(exercise_id: String, exercise_start: u6
 pub fn add_custom_exercise(exercise: Exercise) {
     if screen_is_locked() {
         // Allow creating new exercises only when there is an active session.
-        let has_active = use_sessions().read().iter().any(|s| s.is_active());
+        let has_active = use_sessions().read().iter().any(WorkoutSession::is_active);
         if !has_active {
             let mut toast = consume_context::<ToastSignal>().0;
             toast
