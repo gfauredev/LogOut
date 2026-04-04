@@ -18,10 +18,27 @@ pub fn provide_exercises() {
     let mut i18n_sig = use_context::<DbI18nSignal>().0;
     let mut toast = use_context::<ToastSignal>().0;
     let db_empty_toast = use_context::<DbEmptyToastSignal>().0;
+    #[cfg(not(target_arch = "wasm32"))]
+    let img_progress = use_context::<crate::ImageDownloadProgressSignal>().0;
 
-    // Load cached exercises immediately (no network call).
+    // Load cached exercises immediately (no network call), then download any
+    // missing images in the background.
     spawn(async move {
         load_exercises(sig, db_empty_toast).await;
+        // After loading from cache, download any images that are missing on
+        // disk.  This handles the case where a previous image download was
+        // interrupted (e.g. by the screen locking).  A separate Dioxus task
+        // is spawned so the download runs concurrently without blocking the
+        // rest of the startup sequence.
+        #[cfg(not(target_arch = "wasm32"))]
+        {
+            let exercises: Vec<Exercise> = sig.read().iter().map(|e| (**e).clone()).collect();
+            if !exercises.is_empty() {
+                spawn(async move {
+                    exercise_db::download_db_images(&exercises, img_progress).await;
+                });
+            }
+        }
     });
 
     // Download i18n data in background
@@ -116,7 +133,9 @@ pub async fn reload_exercises(
                     exercises.len()
                 );
                 native_exercises::store_all_exercises(&exercises);
-                exercise_db::download_db_images(&exercises, img_progress).await;
+                // Clone for the background image download before consuming exercises.
+                let exercises_for_download = exercises.clone();
+                // Show exercises immediately — do not block on image download.
                 sig.set(
                     exercises
                         .into_iter()
@@ -126,6 +145,13 @@ pub async fn reload_exercises(
                 toast
                     .write()
                     .push_back("💾 Exercise database reloaded successfully".to_string());
+                // Spawn image download as a separate Dioxus task so that it
+                // continues running after reload_exercises returns and so that
+                // exercises are visible immediately without waiting for all
+                // images to download first.
+                spawn(async move {
+                    exercise_db::download_db_images(&exercises_for_download, img_progress).await;
+                });
             }
             Ok(Some(_)) => {
                 log::warn!("Reloaded exercises file was empty");

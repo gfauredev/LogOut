@@ -60,7 +60,6 @@ pub fn CompletedExerciseLog(
     let force = log.force;
     let category = log.category;
     let exercise_id = log.exercise_id.clone();
-    let last_duration = log.duration_seconds();
     rsx! {
         article {
             header {
@@ -101,7 +100,6 @@ pub fn CompletedExerciseLog(
                     distance_input: edit_distance_input,
                     force,
                     category,
-                    last_duration,
                     time_input: Some(edit_time_input),
                     on_complete: move |()| {
                         let mut current_session = session.read().clone();

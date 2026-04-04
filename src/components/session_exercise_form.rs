@@ -1,7 +1,6 @@
 use super::session_timers::InlineExerciseTimer;
 use crate::models::{
-    format_time, parse_distance_km, parse_duration_seconds, parse_weight_kg, Category, ExerciseLog,
-    Force,
+    format_time, parse_distance_km, parse_duration_seconds, parse_weight_kg, Category, Force,
 };
 use crate::services::{exercise_db, storage};
 use dioxus::prelude::*;
@@ -30,9 +29,6 @@ pub(super) fn ExerciseInputForm(
     distance_input: Signal<String>,
     force: Option<Force>,
     category: Category,
-    /// Duration of the most recent log for this exercise (previous set or
-    /// current log when editing).  Used for ATH comparison in perform mode.
-    last_duration: Option<u64>,
     /// When `Some`, enables editing the exercise duration via an inline input
     /// field (edit mode).  When `None` the ⏱️ row shows the live elapsed timer.
     #[props(default)]
@@ -112,7 +108,7 @@ pub(super) fn ExerciseInputForm(
                         if let Some(bell_sig) = duration_bell_rung {
                             InlineExerciseTimer {
                                 exercise_start,
-                                last_duration,
+                                last_duration: bests.duration,
                                 duration_bell_rung: bell_sig,
                                 paused_at,
                                 force,
@@ -332,8 +328,6 @@ pub(super) fn ExerciseFormPanel(
             ("Unknown".to_string(), Category::Strength, None)
         }
     };
-    let last_log = storage::get_last_exercise_log(&exercise_id);
-    let last_duration = last_log.as_ref().and_then(ExerciseLog::duration_seconds);
     rsx! {
         article {
             onmounted: move |evt: Event<MountedData>| {
@@ -355,7 +349,6 @@ pub(super) fn ExerciseFormPanel(
                 distance_input,
                 force,
                 category,
-                last_duration,
                 exercise_start: *current_exercise_start.read(),
                 duration_bell_rung: Some(duration_bell_rung),
                 paused_at,
