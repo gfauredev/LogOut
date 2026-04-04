@@ -1,7 +1,7 @@
 use super::session_exercise_form::ExerciseFormPanel;
 use crate::models::{
     get_current_timestamp, parse_distance_km, parse_weight_kg, Category, ExerciseLog, Force,
-    WorkoutSession, HG_PER_KG, M_PER_KM,
+    Weight, WorkoutSession, HG_PER_KG, M_PER_KM,
 };
 use crate::services::exercise_db::{
     detect_filter_suggestions, exercise_matches_filters, SearchFilter,
@@ -287,10 +287,10 @@ pub fn SessionView() -> Element {
             }
         };
         let end_time = get_current_timestamp();
-        let weight_hg = if category != Category::Stretching {
-            parse_weight_kg(&weight_input.read()).unwrap_or_default()
+        let weight_hg = if category == Category::Stretching {
+            Weight::default()
         } else {
-            Default::default()
+            parse_weight_kg(&weight_input.read()).unwrap_or_default()
         };
         let reps = if category != Category::Cardio && force.is_some_and(Force::has_reps) {
             reps_input.read().parse().ok()

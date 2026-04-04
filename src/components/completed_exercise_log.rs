@@ -1,7 +1,7 @@
 use super::session_exercise_form::ExerciseInputForm;
 use crate::models::{
     format_time, parse_distance_km, parse_duration_seconds, parse_weight_kg, Category, ExerciseLog,
-    Force, WorkoutSession, HG_PER_KG, M_PER_KM,
+    Force, Weight, WorkoutSession, HG_PER_KG, M_PER_KM,
 };
 use crate::services::{exercise_db, storage};
 use dioxus::prelude::*;
@@ -104,10 +104,10 @@ pub fn CompletedExerciseLog(
                     on_complete: move |()| {
                         let mut current_session = session.read().clone();
                         if let Some(log) = current_session.exercise_logs.get_mut(idx) {
-                            log.weight_hg = if category != Category::Stretching {
-                                parse_weight_kg(&edit_weight_input.read()).unwrap_or_default()
+                            log.weight_hg = if category == Category::Stretching {
+                                Weight::default()
                             } else {
-                                Default::default()
+                                parse_weight_kg(&edit_weight_input.read()).unwrap_or_default()
                             };
                             log.reps = if category != Category::Cardio
                                 && force.is_some_and(Force::has_reps)
