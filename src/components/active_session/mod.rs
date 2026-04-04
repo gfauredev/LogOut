@@ -288,7 +288,7 @@ pub fn SessionView() -> Element {
         };
         let end_time = get_current_timestamp();
         let weight_hg = parse_weight_kg(&weight_input.read()).unwrap_or_default();
-        let reps = if force.is_some_and(Force::has_reps) {
+        let reps = if category != Category::Cardio && force.is_some_and(Force::has_reps) {
             reps_input.read().parse().ok()
         } else {
             None
