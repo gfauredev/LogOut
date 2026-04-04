@@ -41,19 +41,27 @@ fn ExerciseImage(exercise: Arc<Exercise>, display_name: String) -> Element {
     let image_count = exercise.images.len();
 
     // On native platforms, subscribe to image-download progress so that the
-    // URL is re-evaluated each time a new image is saved to disk.  This lets
-    // images appear progressively as they are downloaded.
+    // URL is re-evaluated once the full download cycle completes.  Using a
+    // boolean "idle" memo instead of reading `img_progress` directly prevents
+    // the URL from being recomputed (and the `<img>` src from changing) on
+    // every individual image.  Changing src mid-download briefly blanks the
+    // element on Android before the new imgcache:// request completes.
     #[cfg(not(target_arch = "wasm32"))]
     let img_progress = use_context::<crate::ImageDownloadProgressSignal>().0;
+
+    // True while no download is in flight; flips false→true when the batch
+    // finishes, triggering a single URL re-evaluation with all files present.
+    #[cfg(not(target_arch = "wasm32"))]
+    let download_idle = use_memo(move || img_progress.read().is_none());
 
     // Synchronous URL via the shared model method (covers all non-idb: keys).
     let sync_url = {
         let ex = exercise.clone();
         use_memo(move || {
-            // Track download progress as a reactive dependency so the URL is
-            // recomputed whenever a new image finishes downloading.
+            // Re-evaluate the URL only when the download cycle transitions
+            // (idle ↔ active), not on every intermediate progress update.
             #[cfg(not(target_arch = "wasm32"))]
-            let _ = img_progress.read();
+            let _ = download_idle.read();
             ex.get_image_url(*img_index.read())
         })
     };

@@ -229,11 +229,7 @@ jobs:
     - run: |
         TAG=${GITHUB_REF#refs/tags/}
         PREV_TAG=$(git tag --sort=-version:refname | grep -Fxv "$TAG" | head -n 1)
-        if [ -n "$PREV_TAG" ]; then
-          NOTES=$(git log "$PREV_TAG..$TAG" --pretty=format:'- %s' --no-merges)
-        else
-          NOTES=$(git log "$TAG" --pretty=format:'- %s' --no-merges)
-        fi
+        NOTES=$(.script/changelog-notes.sh "$PREV_TAG" "$TAG")
         ASSETS=$(ls *.apk web.tar.gz 2>/dev/null | tr '\n' ' ')
         gh release create "$TAG" $ASSETS --title "$TAG" --notes "$NOTES"
       env:

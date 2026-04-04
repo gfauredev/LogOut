@@ -7,7 +7,7 @@ use dioxus_i18n::t;
 #[component]
 pub fn More() -> Element {
     let mut url_input = use_signal(crate::utils::get_exercise_db_url);
-    let toast = consume_context::<ToastSignal>().0;
+    let mut toast = consume_context::<ToastSignal>().0;
     let exercises_sig = exercise_db::use_exercises();
     let mut exercises_to_confirm: Signal<Vec<Exercise>> = use_signal(Vec::new);
     let sessions = storage::use_sessions();
@@ -93,11 +93,12 @@ pub fn More() -> Element {
             let exercises = custom_exercises.read().clone();
             match serde_json::to_string_pretty(&exercises) {
                 Ok(json) => {
-                    trigger_download("custom_exercises.json", &json);
+                    if let Some(msg) = trigger_download("custom_exercises.json", &json) {
+                        toast.write().push_back(msg);
+                    }
                 }
                 Err(e) => {
-                    let mut t = toast;
-                    t.write().push_back(format!("{msg_export_failed}: {e}"));
+                    toast.write().push_back(format!("{msg_export_failed}: {e}"));
                 }
             }
         }
@@ -131,7 +132,9 @@ pub fn More() -> Element {
             all.sort_by(|a, b| a.start_time.cmp(&b.start_time));
             match serde_json::to_string_pretty(&all) {
                 Ok(json) => {
-                    trigger_download("sessions.json", &json);
+                    if let Some(msg) = trigger_download("sessions.json", &json) {
+                        t.write().push_back(msg);
+                    }
                 }
                 Err(e) => {
                     t.write().push_back(format!("{msg_export_failed}: {e}"));
@@ -201,12 +204,6 @@ pub fn More() -> Element {
             }
         }
     };
-    let open_sessions_import = move |_| {
-        click_file_input("import-sessions-input");
-    };
-    let open_exercises_import = move |_| {
-        click_file_input("import-exercises-input");
-    };
     let on_sessions_file_change = move |_| {
         spawn(async move {
             if let Some(json) = read_file_input("import-sessions-input").await {
@@ -253,10 +250,10 @@ pub fn More() -> Element {
             article {
                 h2 { {t!("more-import-section")} }
                 div { class: "inputs",
-                    button { class: "label more", onclick: open_exercises_import,
+                    label { class: "label more", r#for: "import-exercises-input",
                         {t!("more-import-exercises-btn")}
                     }
-                    button { class: "label more", onclick: open_sessions_import,
+                    label { class: "label more", r#for: "import-sessions-input",
                         {t!("more-import-sessions-btn")}
                     }
                 }
@@ -379,32 +376,39 @@ pub fn More() -> Element {
         BottomNav { active_tab: ActiveTab::More }
     }
 }
-/// Trigger a file download in the browser by creating a temporary anchor element.
+/// Trigger a file download.
 ///
 /// On WASM the `web_sys` DOM APIs are used directly for efficiency.
-/// On native (Android/desktop) the same Blob/anchor download is driven through
-/// `document::eval` so the Dioxus `WebView` executes identical JavaScript.
-fn trigger_download(filename: &str, content: &str) {
+/// On Android, the file is written to the app's exports directory and
+/// `Some(message)` is returned so the caller can show a toast with the path.
+/// `<a download>` does not work reliably in Android WebView, so native I/O
+/// is used instead.
+/// On other native targets (desktop) the same Blob/anchor download is driven
+/// through `document::eval` so the Dioxus `WebView` executes JavaScript.
+///
+/// Returns `Some(message)` when there is something worth reporting to the user
+/// (Android: the path the file was saved to), `None` otherwise.
+fn trigger_download(filename: &str, content: &str) -> Option<String> {
     #[cfg(target_arch = "wasm32")]
     {
         use wasm_bindgen::JsCast;
         let Some(window) = web_sys::window() else {
-            return;
+            return None;
         };
         let Some(document) = window.document() else {
-            return;
+            return None;
         };
         let Ok(blob_parts) = js_sys::Array::new().dyn_into::<js_sys::Array>() else {
-            return;
+            return None;
         };
         blob_parts.push(&wasm_bindgen::JsValue::from_str(content));
         let props = web_sys::BlobPropertyBag::new();
         props.set_type("application/json");
         let Ok(blob) = web_sys::Blob::new_with_str_sequence_and_options(&blob_parts, &props) else {
-            return;
+            return None;
         };
         let Ok(url) = web_sys::Url::create_object_url_with_blob(&blob) else {
-            return;
+            return None;
         };
         let Ok(anchor): Result<web_sys::HtmlAnchorElement, _> =
             document.create_element("a").and_then(|el| {
@@ -413,7 +417,7 @@ fn trigger_download(filename: &str, content: &str) {
             })
         else {
             let _ = web_sys::Url::revoke_object_url(&url);
-            return;
+            return None;
         };
         anchor.set_href(&url);
         anchor.set_download(filename);
@@ -423,8 +427,32 @@ fn trigger_download(filename: &str, content: &str) {
             let _ = body.remove_child(&anchor);
         }
         let _ = web_sys::Url::revoke_object_url(&url);
+        None
     }
-    #[cfg(not(target_arch = "wasm32"))]
+    #[cfg(target_os = "android")]
+    {
+        // `<a download>` is not handled by Android WebView without a custom
+        // DownloadListener.  Write the file directly to the app's exports
+        // directory instead and return a message for the caller to toast.
+        use crate::services::storage::native_storage;
+        let exports_dir = native_storage::data_dir().join("exports");
+        if let Err(e) = std::fs::create_dir_all(&exports_dir) {
+            log::warn!("Failed to create exports dir: {e}");
+            return None;
+        }
+        let path = exports_dir.join(filename);
+        match std::fs::write(&path, content.as_bytes()) {
+            Ok(()) => {
+                log::info!("Exported {} to {}", filename, path.display());
+                Some(format!("💾 {}", path.display()))
+            }
+            Err(e) => {
+                log::warn!("Failed to write export {filename}: {e}");
+                None
+            }
+        }
+    }
+    #[cfg(all(not(target_arch = "wasm32"), not(target_os = "android")))]
     {
         // Encode content and filename as JSON strings so they are safely embedded
         // in the JavaScript snippet without any injection risk.
@@ -440,31 +468,7 @@ fn trigger_download(filename: &str, content: &str) {
   setTimeout(function(){{URL.revokeObjectURL(u);}},100);
 }})();"
         ));
-    }
-}
-/// Programmatically click the file input element with the given id.
-///
-/// On WASM the DOM APIs are used directly.  On native the click is dispatched
-/// via `document::eval` so the Android/desktop `WebView` handles file selection.
-fn click_file_input(id: &str) {
-    #[cfg(target_arch = "wasm32")]
-    {
-        use wasm_bindgen::JsCast;
-        let Some(window) = web_sys::window() else {
-            return;
-        };
-        let Some(document) = window.document() else {
-            return;
-        };
-        if let Some(element) = document.get_element_by_id(id) {
-            if let Ok(input) = element.dyn_into::<web_sys::HtmlInputElement>() {
-                input.click();
-            }
-        }
-    }
-    #[cfg(not(target_arch = "wasm32"))]
-    {
-        document::eval(&format!("document.getElementById('{id}')?.click();"));
+        None
     }
 }
 /// Read the text content of the first selected file from a file input element.
