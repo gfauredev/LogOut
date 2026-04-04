@@ -1,5 +1,5 @@
+use super::get_current_timestamp;
 use super::log::ExerciseLog;
-use super::{get_current_timestamp, DATA_VERSION};
 use serde::{Deserialize, Serialize};
 /// A collection of exercise logs performed in one workout bout.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -15,8 +15,6 @@ pub struct WorkoutSession {
     pub end_time: Option<u64>,
     /// Chronological list of exercise logs performed during this session.
     pub exercise_logs: Vec<ExerciseLog>,
-    /// Schema version, used for future data migrations.
-    pub version: u32,
     #[serde(default)]
     /// List of exercise IDs pre-added to the session but not yet started.
     pub pending_exercise_ids: Vec<String>,
@@ -51,7 +49,6 @@ impl WorkoutSession {
             start_time: now,
             end_time: None,
             exercise_logs: Vec::new(),
-            version: DATA_VERSION,
             pending_exercise_ids: Vec::new(),
             rest_start_time: None,
             current_exercise_id: None,
@@ -153,7 +150,6 @@ mod tests {
                 distance_m: None,
                 force: Some(crate::models::Force::Push),
             }],
-            version: DATA_VERSION,
             pending_exercise_ids: vec![],
             rest_start_time: None,
             current_exercise_id: None,
@@ -175,7 +171,6 @@ mod tests {
             start_time: 1000,
             end_time: None,
             exercise_logs: vec![],
-            version: DATA_VERSION,
             pending_exercise_ids: vec![],
             rest_start_time: Some(1500),
             current_exercise_id: Some("bench_press".into()),
@@ -192,7 +187,7 @@ mod tests {
     }
     #[test]
     fn workout_session_rest_start_time_defaults_none() {
-        let json = r#"{"id":"s1","start_time":1000,"end_time":null,"exercise_logs":[],"version":0,"pending_exercise_ids":[]}"#;
+        let json = r#"{"id":"s1","start_time":1000,"end_time":null,"exercise_logs":[],"pending_exercise_ids":[]}"#;
         let session: WorkoutSession = serde_json::from_str(json).unwrap();
         assert!(session.rest_start_time.is_none());
         assert_eq!(session.total_paused_duration, 0);
@@ -204,7 +199,6 @@ mod tests {
             start_time: 1000,
             end_time: Some(2000),
             exercise_logs: vec![],
-            version: DATA_VERSION,
             pending_exercise_ids: vec![],
             rest_start_time: None,
             current_exercise_id: None,
@@ -225,7 +219,6 @@ mod tests {
             start_time: 1000,
             end_time: Some(2200),
             exercise_logs: vec![],
-            version: DATA_VERSION,
             pending_exercise_ids: vec![],
             rest_start_time: None,
             current_exercise_id: None,
@@ -245,14 +238,14 @@ mod tests {
     #[test]
     fn workout_session_total_paused_duration_serde_default() {
         // Old sessions without the field should default to 0
-        let json = r#"{"id":"s1","start_time":1000,"end_time":null,"exercise_logs":[],"version":0,"pending_exercise_ids":[]}"#;
+        let json = r#"{"id":"s1","start_time":1000,"end_time":null,"exercise_logs":[],"pending_exercise_ids":[]}"#;
         let session: WorkoutSession = serde_json::from_str(json).unwrap();
         assert_eq!(session.total_paused_duration, 0);
     }
     #[test]
     fn workout_session_notes_serde_default() {
         // Old sessions without the notes field should default to empty string.
-        let json = r#"{"id":"s1","start_time":1000,"end_time":null,"exercise_logs":[],"version":0,"pending_exercise_ids":[]}"#;
+        let json = r#"{"id":"s1","start_time":1000,"end_time":null,"exercise_logs":[],"pending_exercise_ids":[]}"#;
         let session: WorkoutSession = serde_json::from_str(json).unwrap();
         assert_eq!(session.notes, "");
     }
