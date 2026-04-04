@@ -14,7 +14,7 @@
 category = "Sports"
 copyright = "Copyright 2026 Guilhem Fauré"
 icon = ["logo.svg"]
-identifier = "com.gfaure.logout"
+identifier = "re.guilhemfau.logout"
 long_description = "A simple, efficient, cross-platform workout logging application with 800+ exercises built-in, by Guilhem Fauré"
 publisher = "Guilhem Fauré"
 # resources = [""]
