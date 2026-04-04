@@ -40,10 +40,22 @@ fn ExerciseImage(exercise: Arc<Exercise>, display_name: String) -> Element {
     let mut img_index = use_signal(|| 0usize);
     let image_count = exercise.images.len();
 
+    // On native platforms, subscribe to image-download progress so that the
+    // URL is re-evaluated each time a new image is saved to disk.  This lets
+    // images appear progressively as they are downloaded.
+    #[cfg(not(target_arch = "wasm32"))]
+    let img_progress = use_context::<crate::ImageDownloadProgressSignal>().0;
+
     // Synchronous URL via the shared model method (covers all non-idb: keys).
     let sync_url = {
         let ex = exercise.clone();
-        use_memo(move || ex.get_image_url(*img_index.read()))
+        use_memo(move || {
+            // Track download progress as a reactive dependency so the URL is
+            // recomputed whenever a new image finishes downloading.
+            #[cfg(not(target_arch = "wasm32"))]
+            let _ = img_progress.read();
+            ex.get_image_url(*img_index.read())
+        })
     };
 
     // Async blob URL for `idb:`-prefixed keys (web only).

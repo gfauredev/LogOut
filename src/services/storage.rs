@@ -835,6 +835,11 @@ pub(crate) mod native_storage {
         }
     }
     /// Returns the application data directory, creating it if necessary.
+    ///
+    /// The result is computed once and cached in a process-wide `OnceLock` so
+    /// that all call sites — including the `imgcache://` custom-protocol handler
+    /// running on a `WebView` thread — always see the same path regardless of
+    /// whether the JNI call succeeds on every thread.
     pub fn data_dir() -> PathBuf {
         // In test builds each nextest process gets its own isolated directory
         // so concurrent test runs never share the same SQLite file.
@@ -842,16 +847,21 @@ pub(crate) mod native_storage {
         return test_data_dir();
         #[cfg(not(test))]
         {
-            if let Ok(custom) = std::env::var("LOGOUT_DATA_DIR") {
-                return PathBuf::from(custom);
-            }
-            #[cfg(target_os = "android")]
-            if let Some(dir) = android_files_dir() {
-                return dir;
-            }
-            dirs::data_local_dir()
-                .unwrap_or_else(|| PathBuf::from("."))
-                .join(APP_DATA_DIR_NAME)
+            static DATA_DIR: std::sync::OnceLock<PathBuf> = std::sync::OnceLock::new();
+            DATA_DIR
+                .get_or_init(|| {
+                    if let Ok(custom) = std::env::var("LOGOUT_DATA_DIR") {
+                        return PathBuf::from(custom);
+                    }
+                    #[cfg(target_os = "android")]
+                    if let Some(dir) = android_files_dir() {
+                        return dir;
+                    }
+                    dirs::data_local_dir()
+                        .unwrap_or_else(|| PathBuf::from("."))
+                        .join(APP_DATA_DIR_NAME)
+                })
+                .clone()
         }
     }
     /// Returns a per-process temporary directory for test isolation.
