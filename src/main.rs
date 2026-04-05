@@ -192,7 +192,10 @@ fn App() -> Element {
     {
         let sessions = services::storage::use_sessions();
         use_effect(move || {
-            let has_active = sessions.read().iter().any(|s| s.is_active());
+            let has_active = sessions
+                .read()
+                .iter()
+                .any(models::WorkoutSession::is_active);
             services::wake_lock::set_active_session_lock_screen(has_active);
         });
     }

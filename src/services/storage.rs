@@ -756,7 +756,7 @@ pub(crate) mod native_storage {
         let activity = unsafe { JObject::from_raw(ctx.context() as jni::sys::jobject) };
         let files_dir = match env
             .call_method(&activity, "getFilesDir", "()Ljava/io/File;", &[])
-            .and_then(|v| v.l())
+            .and_then(jni::objects::JValueGen::l)
         {
             Ok(obj) => obj,
             Err(e) => {
@@ -766,7 +766,7 @@ pub(crate) mod native_storage {
         };
         let path_jobj = match env
             .call_method(&files_dir, "getAbsolutePath", "()Ljava/lang/String;", &[])
-            .and_then(|v| v.l())
+            .and_then(jni::objects::JValueGen::l)
         {
             Ok(obj) => obj,
             Err(e) => {
@@ -794,6 +794,11 @@ pub(crate) mod native_storage {
     /// `/storage/emulated/0/Android/data/<package>/files/`.  The directory is
     /// readable by the user via a file manager without any special permissions.
     /// Returns `None` on any JNI error.
+    ///
+    /// SAFETY: the `JavaVM` pointer is process-lifetime, set up by the Android /
+    /// Dioxus runtime before Rust code runs.  `JavaVM::from_raw` wraps the raw
+    /// pointer without taking ownership; the JVM is not destroyed when `vm` is
+    /// dropped because `jni::JavaVM::drop` is a no-op for attached VMs.
     #[cfg(target_os = "android")]
     pub fn android_external_files_dir() -> Option<std::path::PathBuf> {
         use jni::{objects::JObject, JavaVM};
@@ -801,12 +806,8 @@ pub(crate) mod native_storage {
         if ctx.vm().is_null() || ctx.context().is_null() {
             return None;
         }
-        // SAFETY: the JavaVM pointer is process-lifetime, set up by the Android/
-        // Dioxus runtime before Rust code runs.  We wrap it in `ManuallyDrop` so
-        // the Rust `JavaVM` wrapper is never dropped (which would call
-        // `DestroyJavaVM` and tear down the runtime).
         let vm = match unsafe { JavaVM::from_raw(ctx.vm().cast()) } {
-            Ok(vm) => std::mem::ManuallyDrop::new(vm),
+            Ok(vm) => vm,
             Err(e) => {
                 log::error!("android_external_files_dir: JavaVM::from_raw: {e:?}");
                 return None;
@@ -828,7 +829,7 @@ pub(crate) mod native_storage {
                 "(Ljava/lang/String;)Ljava/io/File;",
                 &[jni::objects::JValue::Object(&null_obj)],
             )
-            .and_then(|v| v.l())
+            .and_then(jni::objects::JValueGen::l)
         {
             Ok(obj) => obj,
             Err(e) => {
@@ -842,7 +843,7 @@ pub(crate) mod native_storage {
         }
         let path_jobj = match env
             .call_method(&files_dir, "getAbsolutePath", "()Ljava/lang/String;", &[])
-            .and_then(|v| v.l())
+            .and_then(jni::objects::JValueGen::l)
         {
             Ok(obj) => obj,
             Err(e) => {
@@ -851,7 +852,9 @@ pub(crate) mod native_storage {
             }
         };
         let path_str: jni::objects::JString = path_jobj.into();
-        match env.get_string(&path_str) {
+        // Bind to a local so the `JavaStr` temporary is dropped before `vm`
+        // and `path_str` go out of scope (avoids E0597).
+        let result = match env.get_string(&path_str) {
             Ok(s) => {
                 let p = std::path::PathBuf::from(String::from(s));
                 log::info!("android_external_files_dir: {}", p.display());
@@ -861,7 +864,8 @@ pub(crate) mod native_storage {
                 log::error!("android_external_files_dir: get_string: {e:?}");
                 None
             }
-        }
+        };
+        result
     }
     pub const STORE_SESSIONS: &str = "sessions";
     pub const STORE_CUSTOM_EXERCISES: &str = "custom_exercises";
