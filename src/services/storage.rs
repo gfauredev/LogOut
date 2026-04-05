@@ -788,6 +788,81 @@ pub(crate) mod native_storage {
         };
         result
     }
+    /// Returns the app's external files directory via JNI (`getExternalFilesDir(null)`).
+    ///
+    /// On Android, this resolves to a path like
+    /// `/storage/emulated/0/Android/data/<package>/files/`.  The directory is
+    /// readable by the user via a file manager without any special permissions.
+    /// Returns `None` on any JNI error.
+    #[cfg(target_os = "android")]
+    pub fn android_external_files_dir() -> Option<std::path::PathBuf> {
+        use jni::{objects::JObject, JavaVM};
+        let ctx = ndk_context::android_context();
+        if ctx.vm().is_null() || ctx.context().is_null() {
+            return None;
+        }
+        // SAFETY: the JavaVM pointer is process-lifetime, set up by the Android/
+        // Dioxus runtime before Rust code runs.  We wrap it in `ManuallyDrop` so
+        // the Rust `JavaVM` wrapper is never dropped (which would call
+        // `DestroyJavaVM` and tear down the runtime).
+        let vm = match unsafe { JavaVM::from_raw(ctx.vm().cast()) } {
+            Ok(vm) => std::mem::ManuallyDrop::new(vm),
+            Err(e) => {
+                log::error!("android_external_files_dir: JavaVM::from_raw: {e:?}");
+                return None;
+            }
+        };
+        let mut env = match vm.attach_current_thread() {
+            Ok(env) => env,
+            Err(e) => {
+                log::error!("android_external_files_dir: attach_current_thread: {e:?}");
+                return None;
+            }
+        };
+        let activity = unsafe { JObject::from_raw(ctx.context() as jni::sys::jobject) };
+        let null_obj = JObject::null();
+        let files_dir = match env
+            .call_method(
+                &activity,
+                "getExternalFilesDir",
+                "(Ljava/lang/String;)Ljava/io/File;",
+                &[jni::objects::JValue::Object(&null_obj)],
+            )
+            .and_then(|v| v.l())
+        {
+            Ok(obj) => obj,
+            Err(e) => {
+                log::error!("android_external_files_dir: getExternalFilesDir: {e:?}");
+                return None;
+            }
+        };
+        if files_dir.is_null() {
+            log::error!("android_external_files_dir: getExternalFilesDir returned null");
+            return None;
+        }
+        let path_jobj = match env
+            .call_method(&files_dir, "getAbsolutePath", "()Ljava/lang/String;", &[])
+            .and_then(|v| v.l())
+        {
+            Ok(obj) => obj,
+            Err(e) => {
+                log::error!("android_external_files_dir: getAbsolutePath: {e:?}");
+                return None;
+            }
+        };
+        let path_str: jni::objects::JString = path_jobj.into();
+        match env.get_string(&path_str) {
+            Ok(s) => {
+                let p = std::path::PathBuf::from(String::from(s));
+                log::info!("android_external_files_dir: {}", p.display());
+                Some(p)
+            }
+            Err(e) => {
+                log::error!("android_external_files_dir: get_string: {e:?}");
+                None
+            }
+        }
+    }
     pub const STORE_SESSIONS: &str = "sessions";
     pub const STORE_CUSTOM_EXERCISES: &str = "custom_exercises";
     pub const STORE_EXERCISES: &str = "exercises";
