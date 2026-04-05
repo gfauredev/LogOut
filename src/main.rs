@@ -251,8 +251,14 @@ fn App() -> Element {
         document::Meta { name: "mobile-web-app-status-bar-style", content: "black" }
         document::Meta { name: "theme-color", content: "#000000" }
         document::Link {
-            href: asset!("/icon/web/favicon.ico"),
+            // href: asset!("/icon/web/favicon.ico"),
+            href: "favicon.ico", // Already in public/
             rel: "icon",
+            r#type: "image/x-icon",
+        }
+        document::Link {
+            href: asset!("/icon/web/apple-touch-icon.png"),
+            rel: "apple-touch-icon",
             r#type: "image/x-icon",
         }
         document::Link { href: asset!("/assets/manifest.json"), rel: "manifest" }

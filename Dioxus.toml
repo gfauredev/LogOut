@@ -1,12 +1,12 @@
-# [application]
+[application]
 # android_main_activity = "android/MainActivity.kt"
-# asset_dir = ""
+asset_dir = "public"
 # ios_entitlements = ""
 # ios_info_plist = ""
 # macos_entitlements = ""
 # macos_info_plist = ""
 # out_dir = ""
-# public_dir = ""
+# public_dir = "public"
 # tailwind_input = ""
 # tailwind_output = ""
 
