@@ -434,14 +434,13 @@ fn trigger_download(filename: &str, content: &str) -> Option<String> {
         // (accessible via any file manager without special permissions) in a
         // "Downloads" sub-folder, then return a short toast path.
         use crate::services::storage::native_storage;
-        let base = match native_storage::android_external_files_dir() {
-            Some(dir) => dir,
-            None => {
-                log::warn!(
-                    "android_external_files_dir unavailable; export falls back to internal storage"
-                );
-                native_storage::data_dir()
-            }
+        let base = if let Some(dir) = native_storage::android_external_files_dir() {
+            dir
+        } else {
+            log::warn!(
+                "android_external_files_dir unavailable; export falls back to internal storage"
+            );
+            native_storage::data_dir()
         };
         let downloads_dir = base.join("Downloads");
         if let Err(e) = std::fs::create_dir_all(&downloads_dir) {

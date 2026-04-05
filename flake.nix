@@ -344,7 +344,6 @@
             buildInputs = env.commonBuildInputs;
             ANDROID_HOME = "${env.androidComposition.androidsdk}/libexec/android-sdk";
             ANDROID_NDK_HOME = "${env.androidComposition.ndk-bundle}/libexec/android-sdk/ndk-bundle";
-            GRADLE_USER_HOME = "$PWD/.gradle";
             LD_LIBRARY_PATH =
               with env.pkgs;
               lib.makeLibraryPath [
@@ -353,7 +352,21 @@
               ];
             shellHook = ''
               unset ANDROID_SDK_ROOT # Conflicts with Home in GitHub Runners
+              # Use an absolute path so Java subprocesses (Gradle wrapper) resolve it correctly.
+              export GRADLE_USER_HOME="$PWD/.gradle"
               export SE_CACHE_PATH="$PWD/.selenium"
+              # If the system has a Temurin/Adoptium JDK with a broader CA trust store,
+              # point the nix JVM at it so the Gradle wrapper can reach services.gradle.org.
+              for _cacerts in \
+                /usr/lib/jvm/temurin-21-jdk-amd64/lib/security/cacerts \
+                /usr/lib/jvm/temurin-17-jdk-amd64/lib/security/cacerts \
+                /usr/lib/jvm/temurin-8-jdk-amd64/jre/lib/security/cacerts \
+                /etc/ssl/certs/java/cacerts; do
+                if [ -f "$_cacerts" ]; then
+                  export JAVA_TOOL_OPTIONS="-Djavax.net.ssl.trustStore=$_cacerts -Djavax.net.ssl.trustStorePassword=changeit"
+                  break
+                fi
+              done
               find "$GRADLE_USER_HOME/caches" "$PWD/target" -name aapt2 -type f -executable 2>/dev/null | while read -r aapt2; do
                 if ! patchelf --print-interpreter "$aapt2" >/dev/null 2>&1 || [[ "$(patchelf --print-interpreter "$aapt2")" == /lib* ]]; then
                   echo "🔧 Patching aapt2 at $aapt2"
