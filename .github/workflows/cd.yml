@@ -167,6 +167,7 @@ jobs:
       with: { name: android, path: '*.apk' }
 
   prerelease:
+    if: github.ref == 'refs/heads/main'
     needs: [no-concurrent-tag-workflow, android-build]
     runs-on: ubuntu-latest
     timeout-minutes: 3
@@ -180,8 +181,7 @@ jobs:
         fetch-depth: 0
     - uses: actions/download-artifact@v4
       with: { name: android }
-    - name: Publish Timestamped Pre-release # If no SemVer tag on last commit
-      run: .script/prerelease.sh
+    - run: .script/prerelease.sh
       env:
         GH_TOKEN: ${{ github.token }}
 
