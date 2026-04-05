@@ -18,12 +18,12 @@ concurrency:
 jobs:
   no-concurrent-tag-workflow:
     timeout-minutes: 1
-    if: github.ref == 'refs/heads/main' # Skip (pass) if triggered by tags: [v*]
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v6
       with: {fetch-depth: 0}
-    - run: "! git describe --tags --exact-match HEAD" # Fail if on main and tag
+    - if: github.ref == 'refs/heads/main' # Skip (pass) if triggered by tags: [v*]
+      run: "! git describe --tags --exact-match HEAD" # Fail if on main and tag
 
   pwa-build-deploy:
     needs: no-concurrent-tag-workflow
