@@ -99,6 +99,7 @@ pub fn Home() -> Element {
     });
     let lang_for_date = use_memo(move || i18n().language().to_string());
     rsx! {
+        Stylesheet { href: asset!("/assets/sessions.scss") }
         if *has_active.read() {
             SessionView {}
         } else {
@@ -106,11 +107,11 @@ pub fn Home() -> Element {
                 h1 { tabindex: 0, {t!("app-title")} }
                 p { tabindex: 0, {t!("app-subtitle")} }
             }
-            if completed_sessions.read().is_empty() && !*is_loading.read() {
-                p { {t!("no-sessions")} }
-                p { {t!("start-first-workout")} }
-            } else {
-                main { class: "sessions",
+            main { class: "sessions",
+                if completed_sessions.read().is_empty() && !*is_loading.read() {
+                    p { {t!("no-sessions")} }
+                    p { {t!("start-first-workout")} }
+                } else {
                     for session in completed_sessions.read().iter() {
                         SessionCard {
                             key: "{session.id}",
@@ -135,7 +136,13 @@ pub fn Home() -> Element {
                     }
                 }
             }
-            div { class: "session-actions",
+            div { class: "main-actions",
+                button {
+                    class: "icon more",
+                    onclick: start_new_session,
+                    title: t!("start-new-workout"),
+                    "+"
+                }
                 if let Some(ref sw_session) = *same_weekday_session.read() {
                     {
                         let pending_ids: Vec<String> = {
@@ -158,7 +165,7 @@ pub fn Home() -> Element {
                         );
                         rsx! {
                             button {
-                                class: "icon edit",
+                                class: "icon edit label",
                                 onclick: move |_| {
                                     let mut new_session = WorkoutSession::new();
                                     new_session.pending_exercise_ids.clone_from(&pending_ids);
@@ -169,12 +176,6 @@ pub fn Home() -> Element {
                             }
                         }
                     }
-                }
-                button {
-                    class: "icon more",
-                    onclick: start_new_session,
-                    title: t!("start-new-workout"),
-                    "+"
                 }
             }
         }

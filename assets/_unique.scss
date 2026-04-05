@@ -8,7 +8,12 @@
   min-height: 100dvh;
   margin: 0 auto;
   max-width: var(--max-width);
-  padding: env(safe-area-inset-top, 0) env(safe-area-inset-right, var(--spacing)) env(safe-area-inset-bottom, 0) env(safe-area-inset-left, var(--spacing));
+  padding:
+    /* max(env(safe-area-inset-top, 0), var(--spacing)) // */
+    env(safe-area-inset-top, 0) //
+    max(env(safe-area-inset-right, 0), var(--spacing)) //
+    env(safe-area-inset-bottom, 0) //
+    max(env(safe-area-inset-left, 0), var(--spacing));
 }
 
 #main>header {

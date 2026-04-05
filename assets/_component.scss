@@ -1,6 +1,17 @@
 // Self-contained reusable individual components
 // Selector: Class, eventually preceded by a Type, eventual pseudo-element(s)
 
+.main-actions {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: var(--spacing);
+  position: sticky;
+  bottom: calc(2rem + 3 * var(--spacing));
+  width: max-content;
+  margin: 0 auto;
+}
+
 // ── Link and button styled variants ───────────────────────────────────────
 a.edit,
 a.more {
