@@ -329,14 +329,15 @@
         {
           default = env.pkgs.mkShell {
             packages = devTools ++ [
-              (agents-jail.lib.${system}.mkCrush {
-                extraPkgs =
-                  devTools ++ env.commonNativeBuildInputs ++ env.webNativeBuildInputs ++ env.androidNativeBuildInputs;
-              })
-              (agents-jail.lib.${system}.mkOpencode {
-                extraPkgs =
-                  devTools ++ env.commonNativeBuildInputs ++ env.webNativeBuildInputs ++ env.androidNativeBuildInputs;
-              })
+              # TODO: Uncomment when sourcehut is back up (jail-nix dependency)
+              # (agents-jail.lib.${system}.mkCrush {
+              #   extraPkgs =
+              #     devTools ++ env.commonNativeBuildInputs ++ env.webNativeBuildInputs ++ env.androidNativeBuildInputs;
+              # })
+              # (agents-jail.lib.${system}.mkOpencode {
+              #   extraPkgs =
+              #     devTools ++ env.commonNativeBuildInputs ++ env.webNativeBuildInputs ++ env.androidNativeBuildInputs;
+              # })
             ];
             nativeBuildInputs =
               env.commonNativeBuildInputs ++ env.webNativeBuildInputs ++ env.androidNativeBuildInputs;
