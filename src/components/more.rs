@@ -250,26 +250,24 @@ pub fn More() -> Element {
             article {
                 h2 { {t!("more-import-section")} }
                 div { class: "inputs",
-                    label { class: "label more", r#for: "import-exercises-input",
-                        {t!("more-import-exercises-btn")}
+                    div { class: "file-upload-btn",
+                        label { class: "label more", {t!("more-import-exercises-btn")} }
+                        input {
+                            r#type: "file",
+                            id: "import-exercises-input",
+                            accept: ".json",
+                            onchange: on_exercises_file_change,
+                        }
                     }
-                    label { class: "label more", r#for: "import-sessions-input",
-                        {t!("more-import-sessions-btn")}
+                    div { class: "file-upload-btn",
+                        label { class: "label more", {t!("more-import-sessions-btn")} }
+                        input {
+                            r#type: "file",
+                            id: "import-sessions-input",
+                            accept: ".json",
+                            onchange: on_sessions_file_change,
+                        }
                     }
-                }
-                input {
-                    r#type: "file",
-                    id: "import-exercises-input",
-                    accept: ".json",
-                    style: "display:none",
-                    onchange: on_exercises_file_change,
-                }
-                input {
-                    r#type: "file",
-                    id: "import-sessions-input",
-                    accept: ".json",
-                    style: "display:none",
-                    onchange: on_sessions_file_change,
                 }
             }
             article {
@@ -432,15 +430,25 @@ fn trigger_download(filename: &str, content: &str) -> Option<String> {
     #[cfg(target_os = "android")]
     {
         // `<a download>` is not handled by Android WebView without a custom
-        // DownloadListener.  Write the file directly to the app's exports
-        // directory instead and return a message for the caller to toast.
+        // DownloadListener.  Write the file to the app's external files dir
+        // (accessible via any file manager without special permissions) in a
+        // "Downloads" sub-folder, then return a short toast path.
         use crate::services::storage::native_storage;
-        let exports_dir = native_storage::data_dir().join("exports");
-        if let Err(e) = std::fs::create_dir_all(&exports_dir) {
-            log::warn!("Failed to create exports dir: {e}");
+        let base = match native_storage::android_external_files_dir() {
+            Some(dir) => dir,
+            None => {
+                log::warn!(
+                    "android_external_files_dir unavailable; export falls back to internal storage"
+                );
+                native_storage::data_dir()
+            }
+        };
+        let downloads_dir = base.join("Downloads");
+        if let Err(e) = std::fs::create_dir_all(&downloads_dir) {
+            log::warn!("Failed to create downloads dir: {e}");
             return None;
         }
-        let path = exports_dir.join(filename);
+        let path = downloads_dir.join(filename);
         match std::fs::write(&path, content.as_bytes()) {
             Ok(()) => {
                 log::info!("Exported {} to {}", filename, path.display());
