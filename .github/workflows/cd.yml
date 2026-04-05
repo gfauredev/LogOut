@@ -16,27 +16,17 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  check-tag:
+  no-concurrent-tag-workflow:
     timeout-minutes: 1
-    if: github.ref == 'refs/heads/main'
+    if: github.ref == 'refs/heads/main' # Skip (pass) if triggered by tags: [v*]
     runs-on: ubuntu-latest
-    outputs:
-      is_tagged: ${{ steps.check.outputs.is_tagged }}
     steps:
     - uses: actions/checkout@v6
-      with:
-        fetch-depth: 0
-    - id: check
-      run: |
-        if git describe --tags --exact-match HEAD >/dev/null 2>&1; then
-          echo "is_tagged=true" >> $GITHUB_OUTPUT
-        else
-          echo "is_tagged=false" >> $GITHUB_OUTPUT
-        fi
+      with: {fetch-depth: 0}
+    - run: "! git describe --tags --exact-match HEAD" # Fail if on main and tag
 
   pwa-build-deploy:
-    needs: check-tag
-    if: always() # Wait for check-tag to finish but always run anyway
+    needs: no-concurrent-tag-workflow
     timeout-minutes: 20
     runs-on: ubuntu-latest
     environment:
@@ -79,7 +69,7 @@ jobs:
         repo-token: ${{ secrets.GITHUB_TOKEN }}
         fail-on-no-checks: false
         allowed-conclusions: success,failure,cancelled,skipped,timed_out,neutral
-    - if: needs.check-tag.outputs.is_tagged == 'false'
+    - if: github.ref == 'refs/heads/main'
       run: .script/web-preview-deploy.sh
       env:
         GH_TOKEN: ${{ github.token }}
@@ -95,6 +85,7 @@ jobs:
       id: deployment
 
   android-build:
+    needs: no-concurrent-tag-workflow
     runs-on: ubuntu-latest
     timeout-minutes: 30
     permissions:
@@ -176,8 +167,7 @@ jobs:
       with: { name: android, path: '*.apk' }
 
   prerelease:
-    needs: [check-tag, android-build]
-    if: needs.check-tag.outputs.is_tagged == 'false'
+    needs: [no-concurrent-tag-workflow, android-build]
     runs-on: ubuntu-latest
     timeout-minutes: 3
     permissions:
@@ -196,6 +186,7 @@ jobs:
         GH_TOKEN: ${{ github.token }}
 
   prerelease-cleanup:
+    needs: no-concurrent-tag-workflow
     timeout-minutes: 1
     runs-on: ubuntu-latest
     permissions:
