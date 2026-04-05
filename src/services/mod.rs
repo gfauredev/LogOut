@@ -1,4 +1,3 @@
-pub mod android_notifications;
 pub mod app_state;
 pub mod exercise_db;
 pub mod exercise_loader;
@@ -6,6 +5,7 @@ pub mod exercise_loader;
 pub(crate) mod imgcache;
 #[cfg(not(target_arch = "wasm32"))]
 pub(crate) mod native_queue;
+pub mod notifications;
 pub mod service_worker;
 pub mod storage;
 pub mod wake_lock;

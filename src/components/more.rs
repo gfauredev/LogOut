@@ -13,6 +13,7 @@ pub fn More() -> Element {
     let sessions = storage::use_sessions();
     let custom_exercises = storage::use_custom_exercises();
     let all_exercises = exercise_db::use_exercises();
+    #[cfg(not(target_arch = "wasm32"))]
     let img_progress = consume_context::<ImageDownloadProgressSignal>().0;
 
     // Total session count (active + completed) from storage.
@@ -90,6 +91,9 @@ pub fn More() -> Element {
         }
         let sig = exercises_sig;
         spawn(async move {
+            #[cfg(target_arch = "wasm32")]
+            exercise_db::reload_exercises(sig, toast).await;
+            #[cfg(not(target_arch = "wasm32"))]
             exercise_db::reload_exercises(sig, toast, img_progress).await;
         });
     };
@@ -211,25 +215,17 @@ pub fn More() -> Element {
         }
     };
     let on_sessions_file_change = move |_| {
-        let mut t = toast;
         spawn(async move {
             if let Some(json) = read_file_input("import-sessions-input").await {
                 handle_sessions_json(json);
-            } else {
-                t.write()
-                    .push_back("⚠️ Failed to read session import file.".into());
             }
         });
     };
     let on_exercises_file_change = move |_| {
-        let mut t = toast;
         let mut handler = handle_exercises_json;
         spawn(async move {
             if let Some(json) = read_file_input("import-exercises-input").await {
                 handler(json);
-            } else {
-                t.write()
-                    .push_back("⚠️ Failed to read exercise import file.".into());
             }
         });
     };
@@ -267,7 +263,9 @@ pub fn More() -> Element {
                     div { class: "file-upload-btn",
                         label {
                             class: "label more",
-                            r#for: "import-exercises-input",
+                            onclick: move |_| {
+                                document::eval("document.getElementById('import-exercises-input').click()");
+                            },
                             {t!("more-import-exercises-btn")}
                         }
                         input {
@@ -280,7 +278,9 @@ pub fn More() -> Element {
                     div { class: "file-upload-btn",
                         label {
                             class: "label more",
-                            r#for: "import-sessions-input",
+                            onclick: move |_| {
+                                document::eval("document.getElementById('import-sessions-input').click()");
+                            },
                             {t!("more-import-sessions-btn")}
                         }
                         input {

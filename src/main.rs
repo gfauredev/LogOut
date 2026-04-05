@@ -130,7 +130,7 @@ fn detect_preferred_language() -> unic_langid::LanguageIdentifier {
 /// registers the service worker (PWA), and launches the Dioxus UI application.
 fn main() {
     dioxus_logger::init(dioxus_logger::tracing::Level::INFO).expect("failed to init logger");
-    services::android_notifications::setup_notification_channel();
+    services::notifications::setup_notification_channel();
     services::service_worker::register_service_worker();
     services::wake_lock::enable_wake_lock();
     // On mobile (Android) the Dioxus WebView runs under the `https://dioxus.index.html/`
@@ -312,8 +312,12 @@ fn DeepLinkLayout() -> Element {
                     }
                     services::exercise_db::clear_fetch_cache();
                     let toast = consume_context::<ToastSignal>().0;
+                    #[cfg(not(target_arch = "wasm32"))]
                     let img_progress = consume_context::<ImageDownloadProgressSignal>().0;
                     spawn(async move {
+                        #[cfg(target_arch = "wasm32")]
+                        services::exercise_db::reload_exercises(exercises_sig, toast).await;
+                        #[cfg(not(target_arch = "wasm32"))]
                         services::exercise_db::reload_exercises(exercises_sig, toast, img_progress)
                             .await;
                     });
@@ -589,8 +593,12 @@ fn DbEmptyToast() -> Element {
                 show.set(false);
                 let sig = exercises_sig;
                 let t = toast;
+                #[cfg(not(target_arch = "wasm32"))]
                 let p = img_progress;
                 spawn(async move {
+                    #[cfg(target_arch = "wasm32")]
+                    services::exercise_db::reload_exercises(sig, t).await;
+                    #[cfg(not(target_arch = "wasm32"))]
                     services::exercise_db::reload_exercises(sig, t, p).await;
                 });
             },

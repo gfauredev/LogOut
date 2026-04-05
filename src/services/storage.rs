@@ -1150,11 +1150,16 @@ pub(crate) mod native_storage {
     /// gallery.  Falls back to the internal data directory if external storage
     /// is unavailable.
     pub fn images_dir() -> PathBuf {
-        #[cfg(target_os = "android")]
-        if let Some(dir) = android_external_files_dir() {
-            return dir.join("images");
-        }
-        data_dir().join("images")
+        static IMAGES_DIR: std::sync::OnceLock<PathBuf> = std::sync::OnceLock::new();
+        IMAGES_DIR
+            .get_or_init(|| {
+                #[cfg(target_os = "android")]
+                if let Some(dir) = android_external_files_dir() {
+                    return dir.join("images");
+                }
+                data_dir().join("images")
+            })
+            .clone()
     }
     /// Runs incremental schema migrations to bring the database up to the current version.
     ///

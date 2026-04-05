@@ -73,7 +73,7 @@ pub fn use_exercises() -> Signal<Vec<Arc<Exercise>>> {
 pub async fn reload_exercises(
     mut sig: Signal<Vec<Arc<Exercise>>>,
     mut toast: Signal<std::collections::VecDeque<String>>,
-    img_progress: Signal<Option<(usize, usize)>>,
+    #[cfg(not(target_arch = "wasm32"))] img_progress: Signal<Option<(usize, usize)>>,
 ) {
     #[cfg(target_arch = "wasm32")]
     {
