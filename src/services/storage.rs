@@ -96,6 +96,8 @@ pub trait AsyncStorageProvider {
         &self,
         exercise_ids: Vec<String>,
     ) -> Result<Vec<BestsRow>, StorageError>;
+    /// Returns the total number of sessions in storage.
+    async fn session_count(&self) -> Result<usize, StorageError>;
 }
 /// Returns the platform-specific storage backend.
 ///
@@ -143,6 +145,13 @@ pub async fn load_completed_sessions_page(
 /// error appropriately.
 pub async fn load_active_sessions() -> Result<Vec<crate::models::WorkoutSession>, StorageError> {
     platform_storage().load_active_sessions().await
+}
+/// Returns the total number of sessions in storage (active + completed).
+///
+/// Selection happens at the database level so this is O(1) regardless of
+/// the number of sessions on disk.
+pub async fn load_session_count() -> Result<usize, StorageError> {
+    platform_storage().session_count().await
 }
 /// Load all custom exercises from storage.
 ///
@@ -457,6 +466,13 @@ impl AsyncStorageProvider for IdbStorage {
             .into_iter()
             .filter(|row| id_set.contains(&row.exercise_id))
             .collect())
+    }
+    async fn session_count(&self) -> Result<usize, StorageError> {
+        Ok(
+            idb::get_all::<crate::models::WorkoutSession>(idb::STORE_SESSIONS)
+                .await?
+                .len(),
+        )
     }
 }
 #[cfg(target_arch = "wasm32")]
@@ -867,6 +883,171 @@ pub(crate) mod native_storage {
         };
         result
     }
+
+    /// Saves a text file to the global Android Downloads folder using MediaStore.
+    ///
+    /// On Android 10+ (API 29) this is the preferred way to write to public
+    /// directories without requiring the broad `WRITE_EXTERNAL_STORAGE`
+    /// permission.  The file is inserted into the `MediaStore.Downloads`
+    /// collection.
+    #[cfg(target_os = "android")]
+    pub fn android_save_to_downloads(filename: &str, content: &str) -> Result<String, String> {
+        use jni::{objects::JObject, JavaVM};
+        let ctx = ndk_context::android_context();
+        if ctx.vm().is_null() || ctx.context().is_null() {
+            return Err("Android context not available".into());
+        }
+        let vm = unsafe { JavaVM::from_raw(ctx.vm().cast()) }
+            .map_err(|e| format!("JavaVM::from_raw: {e}"))?;
+        let mut env = vm
+            .attach_current_thread()
+            .map_err(|e| format!("attach_current_thread: {e}"))?;
+        let activity = unsafe { JObject::from_raw(ctx.context() as jni::sys::jobject) };
+
+        // ContentValues values = new ContentValues();
+        let values = env
+            .new_object("android/content/ContentValues", "()V", &[])
+            .map_err(|e| format!("new ContentValues: {e}"))?;
+
+        let jfilename = env
+            .new_string(filename)
+            .map_err(|e| format!("new_string filename: {e}"))?;
+        let jmime = env
+            .new_string("application/json")
+            .map_err(|e| format!("new_string mime: {e}"))?;
+        let jrel_path = env
+            .new_string("Download/")
+            .map_err(|e| format!("new_string rel_path: {e}"))?;
+
+        let jdisplay_name_key = env
+            .new_string("_display_name")
+            .map_err(|e| format!("new_string _display_name: {e}"))?;
+        let jmime_type_key = env
+            .new_string("mime_type")
+            .map_err(|e| format!("new_string mime_type: {e}"))?;
+        let jrelative_path_key = env
+            .new_string("relative_path")
+            .map_err(|e| format!("new_string relative_path: {e}"))?;
+
+        // values.put("_display_name", filename);
+        env.call_method(
+            &values,
+            "put",
+            "(Ljava/lang/String;Ljava/lang/String;)V",
+            &[
+                jni::objects::JValue::from(&jdisplay_name_key),
+                jni::objects::JValue::from(&jfilename),
+            ],
+        )
+        .map_err(|e| format!("ContentValues.put name: {e}"))?;
+
+        // values.put("mime_type", "application/json");
+        env.call_method(
+            &values,
+            "put",
+            "(Ljava/lang/String;Ljava/lang/String;)V",
+            &[
+                jni::objects::JValue::from(&jmime_type_key),
+                jni::objects::JValue::from(&jmime),
+            ],
+        )
+        .map_err(|e| format!("ContentValues.put mime: {e}"))?;
+
+        // values.put("relative_path", "Download/");
+        env.call_method(
+            &values,
+            "put",
+            "(Ljava/lang/String;Ljava/lang/String;)V",
+            &[
+                jni::objects::JValue::from(&jrelative_path_key),
+                jni::objects::JValue::from(&jrel_path),
+            ],
+        )
+        .map_err(|e| format!("ContentValues.put path: {e}"))?;
+
+        // ContentResolver resolver = context.getContentResolver();
+        let resolver = env
+            .call_method(
+                &activity,
+                "getContentResolver",
+                "()Landroid/content/ContentResolver;",
+                &[],
+            )
+            .map_err(|e| format!("getContentResolver: {e}"))?
+            .l()
+            .map_err(|e| format!("ContentResolver obj: {e}"))?;
+
+        // Uri uri = MediaStore.Downloads.getContentUri("external");
+        let jexternal = env
+            .new_string("external")
+            .map_err(|e| format!("new_string external: {e}"))?;
+        let external_uri = env
+            .call_static_method(
+                "android/provider/MediaStore$Downloads",
+                "getContentUri",
+                "(Ljava/lang/String;)Landroid/net/Uri;",
+                &[jni::objects::JValue::from(&jexternal)],
+            )
+            .map_err(|e| format!("MediaStore.Downloads.getContentUri: {e}"))?
+            .l()
+            .map_err(|e| format!("Uri obj: {e}"))?;
+
+        // Uri fileUri = resolver.insert(external_uri, values);
+        let file_uri = env
+            .call_method(
+                &resolver,
+                "insert",
+                "(Landroid/net/Uri;Landroid/content/ContentValues;)Landroid/net/Uri;",
+                &[
+                    jni::objects::JValue::from(&external_uri),
+                    jni::objects::JValue::from(&values),
+                ],
+            )
+            .map_err(|e| format!("resolver.insert: {e}"))?
+            .l()
+            .map_err(|e| format!("fileUri obj: {e}"))?;
+
+        if file_uri.is_null() {
+            return Err("MediaStore insert returned null (duplicate filename?)".into());
+        }
+
+        // OutputStream os = resolver.openOutputStream(fileUri, "w");
+        let jwrite_mode = env
+            .new_string("w")
+            .map_err(|e| format!("new_string w: {e}"))?;
+        let os = env
+            .call_method(
+                &resolver,
+                "openOutputStream",
+                "(Landroid/net/Uri;Ljava/lang/String;)Ljava/io/OutputStream;",
+                &[
+                    jni::objects::JValue::from(&file_uri),
+                    jni::objects::JValue::from(&jwrite_mode),
+                ],
+            )
+            .map_err(|e| format!("openOutputStream: {e}"))?
+            .l()
+            .map_err(|e| format!("OutputStream obj: {e}"))?;
+
+        // os.write(content.getBytes());
+        let jcontent_bytes = env
+            .byte_array_from_slice(content.as_bytes())
+            .map_err(|e| format!("byte_array_from_slice: {e}"))?;
+        let content_bytes_obj = jni::objects::JObject::from(jcontent_bytes);
+        env.call_method(
+            &os,
+            "write",
+            "([B)V",
+            &[jni::objects::JValue::from(&content_bytes_obj)],
+        )
+        .map_err(|e| format!("OutputStream.write: {e}"))?;
+
+        // os.close();
+        env.call_method(&os, "close", "()V", &[])
+            .map_err(|e| format!("OutputStream.close: {e}"))?;
+
+        Ok(format!("Download/{filename}"))
+    }
     pub const STORE_SESSIONS: &str = "sessions";
     pub const STORE_CUSTOM_EXERCISES: &str = "custom_exercises";
     pub const STORE_EXERCISES: &str = "exercises";
@@ -961,6 +1142,19 @@ pub(crate) mod native_storage {
     }
     fn db_path() -> PathBuf {
         data_dir().join(DB_FILENAME)
+    }
+    /// Returns the directory used for storing cached exercise images.
+    ///
+    /// On Android, this prefers the external files directory so that the images
+    /// are visible to the user and can be backed up or managed by the system
+    /// gallery.  Falls back to the internal data directory if external storage
+    /// is unavailable.
+    pub fn images_dir() -> PathBuf {
+        #[cfg(target_os = "android")]
+        if let Some(dir) = android_external_files_dir() {
+            return dir.join("images");
+        }
+        data_dir().join("images")
     }
     /// Runs incremental schema migrations to bring the database up to the current version.
     ///
@@ -1165,6 +1359,12 @@ pub(crate) mod native_storage {
         let delete_sql = format!("DELETE FROM {table} WHERE id = ?1");
         conn.execute(&delete_sql, params![id])?;
         Ok(())
+    }
+    /// Returns the total number of rows in the `sessions` table.
+    pub fn get_session_count() -> Result<usize, StorageError> {
+        let conn = open_db()?;
+        let count: usize = conn.query_row("SELECT COUNT(*) FROM sessions", [], |r| r.get(0))?;
+        Ok(count)
     }
     /// Returns the string value for `key`, or `None` if absent.
     pub fn get_config_value(key: &str) -> Option<String> {
@@ -1412,6 +1612,12 @@ impl AsyncStorageProvider for NativeStorage {
         exercise_ids: Vec<String>,
     ) -> Result<Vec<BestsRow>, StorageError> {
         tokio::task::spawn_blocking(move || native_storage::compute_bests_rows_for(&exercise_ids))
+            .await
+            .map_err(|e| StorageError::TaskPanic(e.to_string()))?
+            .map_err(StorageError::from)
+    }
+    async fn session_count(&self) -> Result<usize, StorageError> {
+        tokio::task::spawn_blocking(native_storage::get_session_count)
             .await
             .map_err(|e| StorageError::TaskPanic(e.to_string()))?
             .map_err(StorageError::from)

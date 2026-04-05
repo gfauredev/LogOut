@@ -14,13 +14,19 @@ pub fn More() -> Element {
     let custom_exercises = storage::use_custom_exercises();
     let all_exercises = exercise_db::use_exercises();
     let img_progress = consume_context::<ImageDownloadProgressSignal>().0;
+
+    // Total session count (active + completed) from storage.
+    let session_count_resource =
+        use_resource(move || async move { storage::load_session_count().await.unwrap_or(0) });
+    let total_session_count = *session_count_resource.read();
+
     // Count of cached images on native (computed asynchronously from the image directory).
     #[cfg(not(target_arch = "wasm32"))]
     let image_count_resource = use_resource(move || {
         let exercises = exercises_sig.read().clone();
         async move {
             use crate::services::storage::native_storage;
-            let images_dir = native_storage::data_dir().join("images");
+            let images_dir = native_storage::images_dir();
             exercises
                 .iter()
                 .flat_map(|e| e.images.iter())
@@ -205,17 +211,25 @@ pub fn More() -> Element {
         }
     };
     let on_sessions_file_change = move |_| {
+        let mut t = toast;
         spawn(async move {
             if let Some(json) = read_file_input("import-sessions-input").await {
                 handle_sessions_json(json);
+            } else {
+                t.write()
+                    .push_back("⚠️ Failed to read session import file.".into());
             }
         });
     };
     let on_exercises_file_change = move |_| {
+        let mut t = toast;
         let mut handler = handle_exercises_json;
         spawn(async move {
             if let Some(json) = read_file_input("import-exercises-input").await {
                 handler(json);
+            } else {
+                t.write()
+                    .push_back("⚠️ Failed to read exercise import file.".into());
             }
         });
     };
@@ -243,7 +257,7 @@ pub fn More() -> Element {
                         {t!("more-export-exercises-btn", count : custom_exercises.read().len())}
                     }
                     button { class: "label save", onclick: export_sessions,
-                        {t!("more-export-sessions-btn", count : sessions.read().len())}
+                        {t!("more-export-sessions-btn", count : total_session_count.unwrap_or(0))}
                     }
                 }
             }
@@ -251,7 +265,11 @@ pub fn More() -> Element {
                 h2 { {t!("more-import-section")} }
                 div { class: "inputs",
                     div { class: "file-upload-btn",
-                        label { class: "label more", {t!("more-import-exercises-btn")} }
+                        label {
+                            class: "label more",
+                            r#for: "import-exercises-input",
+                            {t!("more-import-exercises-btn")}
+                        }
                         input {
                             r#type: "file",
                             id: "import-exercises-input",
@@ -260,7 +278,11 @@ pub fn More() -> Element {
                         }
                     }
                     div { class: "file-upload-btn",
-                        label { class: "label more", {t!("more-import-sessions-btn")} }
+                        label {
+                            class: "label more",
+                            r#for: "import-sessions-input",
+                            {t!("more-import-sessions-btn")}
+                        }
                         input {
                             r#type: "file",
                             id: "import-sessions-input",
@@ -430,32 +452,31 @@ fn trigger_download(filename: &str, content: &str) -> Option<String> {
     #[cfg(target_os = "android")]
     {
         // `<a download>` is not handled by Android WebView without a custom
-        // DownloadListener.  Write the file to the app's external files dir
-        // (accessible via any file manager without special permissions) in a
-        // "Downloads" sub-folder, then return a short toast path.
+        // DownloadListener.  Instead, we use JNI to insert the file into the
+        // system's MediaStore Downloads collection so it appears in the
+        // global Downloads folder and is accessible to all file managers.
         use crate::services::storage::native_storage;
-        let base = if let Some(dir) = native_storage::android_external_files_dir() {
-            dir
-        } else {
-            log::warn!(
-                "android_external_files_dir unavailable; export falls back to internal storage"
-            );
-            native_storage::data_dir()
-        };
-        let downloads_dir = base.join("Downloads");
-        if let Err(e) = std::fs::create_dir_all(&downloads_dir) {
-            log::warn!("Failed to create downloads dir: {e}");
-            return None;
-        }
-        let path = downloads_dir.join(filename);
-        match std::fs::write(&path, content.as_bytes()) {
-            Ok(()) => {
-                log::info!("Exported {} to {}", filename, path.display());
-                Some(format!("💾 {}", path.display()))
+        match native_storage::android_save_to_downloads(filename, content) {
+            Ok(relative_path) => {
+                log::info!("Exported {filename} to {relative_path}");
+                Some(format!("💾 {relative_path}"))
             }
             Err(e) => {
-                log::warn!("Failed to write export {filename}: {e}");
-                None
+                log::warn!("Failed to export {filename} via MediaStore: {e}");
+                // Fallback: write to the app-private external storage directory.
+                let base = if let Some(dir) = native_storage::android_external_files_dir() {
+                    dir
+                } else {
+                    native_storage::data_dir()
+                };
+                let downloads_dir = base.join("Downloads");
+                let _ = std::fs::create_dir_all(&downloads_dir);
+                let path = downloads_dir.join(filename);
+                if std::fs::write(&path, content.as_bytes()).is_ok() {
+                    Some(format!("💾 {}", path.display()))
+                } else {
+                    None
+                }
             }
         }
     }

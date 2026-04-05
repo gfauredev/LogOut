@@ -225,7 +225,7 @@ pub(crate) async fn download_db_images(
     use std::collections::HashSet;
     // Download up to 8 images concurrently.
     const CONCURRENCY: usize = 8;
-    let images_dir = native_storage::data_dir().join("images");
+    let images_dir = native_storage::images_dir();
     let base_url = crate::utils::get_exercise_images_base_url();
     // Deduplicate in a single pass, then filter out already-cached files.
     let to_download: Vec<String> = exercises

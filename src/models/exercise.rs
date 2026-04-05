@@ -279,9 +279,7 @@ fn local_image_url(filename: &str) -> String {
 /// a `file://` URL.
 #[cfg(not(target_arch = "wasm32"))]
 fn cached_db_image_url(key: &str) -> Option<String> {
-    let cached = crate::services::storage::native_storage::data_dir()
-        .join("images")
-        .join(key);
+    let cached = crate::services::storage::native_storage::images_dir().join(key);
     if !cached.exists() {
         return None;
     }

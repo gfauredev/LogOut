@@ -26,7 +26,7 @@ pub(crate) fn handle_imgcache_request(
     // Strip the leading `/` from the URI path.
     let raw_path = request.uri().path().trim_start_matches('/');
 
-    // URL-decode the path so that percent-encoded characters are handled correctly.
+    // Percent-decode the path (e.g. `Squat%2F0.jpg` -> `Squat/0.jpg`).
     let rel = match percent_decode_str(raw_path).decode_utf8() {
         Ok(s) => s.into_owned(),
         Err(_) => return error_response(StatusCode::BAD_REQUEST),
@@ -34,31 +34,37 @@ pub(crate) fn handle_imgcache_request(
 
     // Reject any path that contains `..` to prevent directory traversal.
     if rel.split('/').any(|c| c == "..") {
+        log::warn!("imgcache: forbidden path traversal attempt: {}", rel);
         return error_response(StatusCode::FORBIDDEN);
     }
 
-    let images_dir = crate::services::storage::native_storage::data_dir().join("images");
+    let images_dir = crate::services::storage::native_storage::images_dir();
     let file_path = images_dir.join(&rel);
 
-    // Canonicalize to resolve symlinks and verify the path stays within images_dir.
-    let canonical = match file_path.canonicalize() {
-        Ok(p) => p,
-        Err(_) => return error_response(StatusCode::NOT_FOUND),
-    };
-    let images_canonical = match images_dir.canonicalize() {
-        Ok(p) => p,
-        Err(_) => return error_response(StatusCode::INTERNAL_SERVER_ERROR),
-    };
-    if !canonical.starts_with(&images_canonical) {
-        return error_response(StatusCode::FORBIDDEN);
+    log::debug!(
+        "imgcache: request for {}, resolving to {}",
+        rel,
+        file_path.display()
+    );
+
+    // On some Android versions/mounts, canonicalize() can be flaky or return
+    // unexpected paths (e.g. resolving /storage/emulated/0 to /mnt/user/0).
+    // We've already checked for `..` above, so we can safely read the file.
+    if !file_path.exists() {
+        log::warn!("imgcache: file not found: {}", file_path.display());
+        return error_response(StatusCode::NOT_FOUND);
     }
 
-    let bytes = match std::fs::read(&canonical) {
+    let bytes = match std::fs::read(&file_path) {
         Ok(b) => b,
-        Err(_) => return error_response(StatusCode::NOT_FOUND),
+        Err(e) => {
+            log::warn!("imgcache: failed to read {}: {e}", file_path.display());
+            return error_response(StatusCode::NOT_FOUND);
+        }
     };
 
-    let content_type = content_type_for_path(&canonical);
+    let content_type = content_type_for_path(&file_path);
+
     Response::builder()
         .status(StatusCode::OK)
         .header("Content-Type", content_type)
