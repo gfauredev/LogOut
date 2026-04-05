@@ -3,7 +3,7 @@ gh release download --pattern "web.tar.gz" --dir .
 if [ -f "web.tar.gz" ]; then
   tar -xzvf web.tar.gz -C web/
   if [ -d "web/LogOut" ]; then
-    chmod 775 web/LogOut
+    chmod --recursive 775 web/LogOut
   else
     echo "WARNING: No LogOut directory found in web archive, stopping now"
     exit 1
