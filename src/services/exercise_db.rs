@@ -250,12 +250,19 @@ pub(crate) async fn download_db_images(
         total,
         images_dir.display()
     );
+    if let Err(e) = std::fs::create_dir_all(&images_dir) {
+        log::error!(
+            "Failed to create main images directory {}: {e}",
+            images_dir.display()
+        );
+    }
     progress.set(Some((0, total)));
     futures_util::stream::iter(to_download.iter().map(|key| {
         let url = format!("{base_url}{EXERCISES_IMAGE_SUB_PATH}{key}");
         let dest = images_dir.join(key);
         let key = key.clone();
         async move {
+            log::debug!("Downloading image {} to {}", url, dest.display());
             if let Some(parent) = dest.parent() {
                 if let Err(e) = std::fs::create_dir_all(parent) {
                     log::warn!("Failed to create image dir {}: {e}", parent.display());
@@ -265,8 +272,11 @@ pub(crate) async fn download_db_images(
             match reqwest::get(&url).await {
                 Ok(resp) if resp.status().is_success() => match resp.bytes().await {
                     Ok(bytes) => {
+                        log::debug!("Successfully fetched {} bytes for {}", bytes.len(), key);
                         if let Err(e) = std::fs::write(&dest, &bytes) {
                             log::warn!("Failed to write image {}: {e}", dest.display());
+                        } else {
+                            log::debug!("Successfully wrote image to {}", dest.display());
                         }
                     }
                     Err(e) => log::warn!("Failed to read image body for {key}: {e}"),

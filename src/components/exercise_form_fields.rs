@@ -176,7 +176,7 @@ pub fn ExerciseFormFields(
             log::warn!("Local image file not found: {}", src.display());
             return;
         }
-        let images_dir = crate::services::storage::native_storage::data_dir().join("images");
+        let images_dir = crate::services::storage::native_storage::images_dir();
         if let Err(e) = std::fs::create_dir_all(&images_dir) {
             log::error!(
                 "Failed to create images directory {}: {e}",

@@ -129,7 +129,7 @@ fn detect_preferred_language() -> unic_langid::LanguageIdentifier {
 /// Initializes logging, sets up platform-specific notification channels (Android),
 /// registers the service worker (PWA), and launches the Dioxus UI application.
 fn main() {
-    dioxus_logger::init(dioxus_logger::tracing::Level::INFO).expect("failed to init logger");
+    dioxus_logger::init(dioxus_logger::tracing::Level::DEBUG).expect("failed to init logger");
     services::notifications::setup_notification_channel();
     services::service_worker::register_service_worker();
     services::wake_lock::enable_wake_lock();
@@ -228,16 +228,12 @@ fn App() -> Element {
         services::storage::idb_queue::register_pagehide_flush();
     });
     services::exercise_db::provide_exercises();
-    #[cfg(all(target_arch = "wasm32", feature = "web-platform"))]
+    #[cfg(any(target_arch = "wasm32", target_os = "android"))]
     {
         let mut notif_toast = use_context::<NotificationPermissionToastSignal>().0;
-        use_hook(move || {
-            use web_sys::NotificationPermission;
-            match web_sys::Notification::permission() {
-                NotificationPermission::Default | NotificationPermission::Denied => {
-                    notif_toast.set(true);
-                }
-                _ => {}
+        use_effect(move || {
+            if !services::notifications::is_notification_permission_granted() {
+                notif_toast.set(true);
             }
         });
     }
@@ -550,30 +546,44 @@ fn NotificationPermissionToast() -> Element {
     if !*show.read() {
         return rsx! {};
     }
-    #[cfg(all(target_arch = "wasm32", feature = "web-platform"))]
-    {
-        use web_sys::NotificationPermission;
-        let msg = match web_sys::Notification::permission() {
-            NotificationPermission::Denied => t!("notif-permission-blocked"),
-            _ => t!("notif-permission-enable"),
-        };
-        rsx! {
-            div {
-                class: "snackbar",
-                onclick: move |_| {
-                    show.set(false);
+
+    let msg = if services::notifications::is_notification_permission_granted() {
+        // Should not be shown if granted, but handle just in case.
+        return rsx! {};
+    } else {
+        #[cfg(target_arch = "wasm32")]
+        {
+            use web_sys::NotificationPermission;
+            match web_sys::Notification::permission() {
+                NotificationPermission::Denied => t!("notif-permission-blocked"),
+                _ => t!("notif-permission-enable"),
+            }
+        }
+        #[cfg(not(target_arch = "wasm32"))]
+        t!("notif-permission-enable")
+    };
+
+    rsx! {
+        div {
+            class: "snackbar",
+            onclick: move |_| {
+                show.set(false);
+                #[cfg(target_arch = "wasm32")]
+                {
                     if let Ok(promise) = web_sys::Notification::request_permission() {
                         wasm_bindgen_futures::spawn_local(async move {
                             let _ = wasm_bindgen_futures::JsFuture::from(promise).await;
                         });
                     }
-                },
-                "{msg}"
-            }
+                }
+                #[cfg(target_os = "android")]
+                {
+                    services::notifications::open_notification_settings();
+                }
+            },
+            "{msg}"
         }
     }
-    #[cfg(not(all(target_arch = "wasm32", feature = "web-platform")))]
-    rsx! {}
 }
 /// Persistent toast shown when the exercise database has never been downloaded.
 /// Tapping it triggers a download from the currently configured URL.
