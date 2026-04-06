@@ -165,7 +165,7 @@
           ];
         in
         {
-          projectVersion = "0.4.2";
+          projectVersion = "0.4.3";
           inherit
             pkgs
             rustToolchain
