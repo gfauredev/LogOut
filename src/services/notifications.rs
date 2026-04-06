@@ -17,7 +17,10 @@ pub const WORKOUT_CHANNEL_ID: &str = "workout_reminders";
 pub fn is_notification_permission_granted() -> bool {
     #[cfg(target_os = "android")]
     {
-        check_android_notification_permission().unwrap_or(true)
+        check_android_notification_permission().unwrap_or_else(|e| {
+            log::warn!("Failed to check Android notification permission: {e}");
+            false
+        })
     }
     #[cfg(target_arch = "wasm32")]
     {
