@@ -39,6 +39,9 @@ fn check_android_notification_permission() -> Result<bool, String> {
     use ndk_context::android_context;
 
     let ctx = android_context();
+    if ctx.vm().is_null() || ctx.context().is_null() {
+        return Err("Android context not available".into());
+    }
     let vm = unsafe { JavaVM::from_raw(ctx.vm().cast()) }
         .map_err(|e| format!("JavaVM::from_raw: {e}"))?;
     let mut env = vm
