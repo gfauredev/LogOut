@@ -35,8 +35,7 @@ short_description = "Workout Logger"
 # motion.description = "Tracking cardio exercises distance?" 
 # nerby-wifi.description = "P2P Syncing?" 
 notifications.description = "Rest/Exercise duration alerts"
-# TODO Consider removing in favor of just the Photo Picker
-photos = { access = "read", description = "Custom exercises images" } 
+# photos = { access = "read", description = "Custom exercises images" } 
 
 [android]
 compile_sdk = 36
