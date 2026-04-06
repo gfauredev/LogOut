@@ -255,6 +255,8 @@ pub(crate) async fn download_db_images(
             "Failed to create main images directory {}: {e}",
             images_dir.display()
         );
+        progress.set(None);
+        return;
     }
     progress.set(Some((0, total)));
     futures_util::stream::iter(to_download.iter().map(|key| {
