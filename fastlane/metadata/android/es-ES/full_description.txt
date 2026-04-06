@@ -1,0 +1,23 @@
+LogOut es una aplicación de registro de entrenamiento simple, eficiente y multiplataforma.
+
+Cierra tu ordenador, registra tu entrenamiento.
+
+FUNCIONALIDADES
+
+• Registra tus sesiones con series, repeticiones, pesos, distancias y duraciones
+• Más de 870 ejercicios incluidos con imágenes e instrucciones
+• Añade ejercicios personalizados o modifica los existentes
+• Búsqueda de texto potente y filtrado por atributos
+• Sigue tu progreso en la vista de análisis
+• Diseño responsive y navegación ergonómica
+• Local-first: todos tus datos permanecen en tu dispositivo
+• Funciona sin conexión
+
+PRIVACIDAD
+
+LogOut es local-first: tus datos de entrenamiento nunca salen de tu dispositivo a menos que los exportes explícitamente. No se requiere cuenta, sin sincronización en la nube, sin seguimiento.
+
+CÓDIGO ABIERTO
+
+LogOut es software libre bajo licencia EUPL-1.2.
+Código fuente: https://github.com/gfauredev/LogOut

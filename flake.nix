@@ -65,14 +65,27 @@
             rustc = rustToolchain;
           };
           craneLib = (crane.mkLib pkgs).overrideToolchain rustToolchain;
+          # Assets used by every target (web, server, Android).
           assetFilter =
             path: type:
             builtins.match ".*(/public/.*|/assets/.*|/icon/.*|Dioxus\\.toml|index\\.html|.*\\.png)$" path
             != null;
+          # Extra assets only needed by the server build: the bundled example
+          # exercise database served alongside the binary.
+          serverAssetFilter =
+            path: type:
+            (assetFilter path type)
+            || (builtins.match ".*/database\\.example(/.*)?$" path != null);
           sourceFilter = path: type: (assetFilter path type) || (craneLib.filterCargoSources path type);
+          # Source tree used by web / Android builds.
           filteredSrc = pkgs.lib.cleanSourceWith {
             src = craneLib.path ./.;
             filter = sourceFilter;
+          };
+          # Source tree for the server build: includes the example exercise database.
+          filteredSrcServer = pkgs.lib.cleanSourceWith {
+            src = craneLib.path ./.;
+            filter = path: type: (serverAssetFilter path type) || (craneLib.filterCargoSources path type);
           };
           wasm-bindgen-cli = rustPlatform.buildRustPackage rec {
             pname = "wasm-bindgen-cli";
@@ -172,6 +185,7 @@
             rustPlatform
             craneLib
             filteredSrc
+            filteredSrcServer
             cargoArtifactsHost
             cargoArtifactsServer
             cargoArtifactsWeb
@@ -211,7 +225,9 @@
             in
             env.craneLib.buildPackage {
               inherit cargoArtifacts;
-              src = env.filteredSrc;
+              # The server build needs the example exercise database in its source tree
+              # so it can be copied into the output alongside the binary.
+              src = if platform == "server" then env.filteredSrcServer else env.filteredSrc;
               pname = "logout-${platform}";
               version = env.projectVersion;
               nativeBuildInputs = env.commonNativeBuildInputs ++ env.webNativeBuildInputs;
@@ -226,6 +242,10 @@
               installPhase = ''
                 mkdir --parents --verbose ${out}
                 cp --recursive --verbose ${target} ${out}
+              '' + env.pkgs.lib.optionalString (platform == "server") ''
+                # Bundle the example exercise database with the server so it can be
+                # used as a self-hosted default (serve from ./database.example/).
+                cp --recursive --verbose database.example ${out}
               '';
               doCheck = false;
             };
@@ -251,7 +271,22 @@
                 echo "- Dioxus CLI $(dx --version)"
                 echo "- Android SDK $ANDROID_HOME"
                 echo "- Android NDK $ANDROID_NDK_HOME"
+                # Stash web-only public assets so they are not bundled into the APK.
+                # These files (service worker, web icons, 404 page) are irrelevant on
+                # the Android platform and would only inflate the APK size.
+                _web_stash=$(mktemp -d)
+                for _f in public/sw.js public/404.html public/icon-*.png; do
+                  [ -f "$_f" ] && mv "$_f" "$_web_stash/"
+                done
+                # Ensure web-only assets are always restored, even on failure.
+                _restore_web_assets() {
+                  mv "$_web_stash"/* public/ 2>/dev/null || true
+                  rmdir "$_web_stash" 2>/dev/null || true
+                }
+                trap _restore_web_assets EXIT
                 dx build --android --release --target ${target}
+                _restore_web_assets
+                trap - EXIT
                 "${self}/.script/apk-sign.sh"
               '';
             };
