@@ -1,0 +1,23 @@
+LogOut est une application de journal d'entraînement simple, efficace et multiplateforme.
+
+Fermez votre ordinateur, enregistrez votre entraînement.
+
+FONCTIONNALITÉS
+
+• Enregistrez vos séances avec séries, répétitions, poids, distances et durées
+• Plus de 870 exercices intégrés avec images et instructions
+• Ajoutez des exercices personnalisés ou modifiez les exercices existants
+• Recherche textuelle puissante et filtrage par attributs
+• Suivez vos progrès dans la vue analytique
+• Interface responsive et navigation ergonomique
+• Local-first : toutes vos données restent sur votre appareil
+• Fonctionne hors ligne
+
+CONFIDENTIALITÉ
+
+LogOut est local-first : vos données d'entraînement ne quittent jamais votre appareil, sauf si vous les exportez explicitement. Aucun compte requis, pas de synchronisation cloud, pas de suivi.
+
+OPEN SOURCE
+
+LogOut est un logiciel libre sous licence EUPL-1.2.
+Code source : https://github.com/gfauredev/LogOut

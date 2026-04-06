@@ -36,6 +36,8 @@
   display: flex;
   border-radius: var(--radius) var(--radius) 0 0;
   z-index: var(--z-nav);
+  // Leave room for the Android / iOS gesture-navigation pill
+  padding-bottom: env(safe-area-inset-bottom, 0);
 
   a {
     padding: var(--spacing);

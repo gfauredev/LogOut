@@ -1,0 +1,1 @@
+Simple, efficient, local-first workout logger with 800+ built-in exercises.

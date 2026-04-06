@@ -1,0 +1,23 @@
+LogOut is a simple, efficient and cross-platform workout logging application.
+
+Close your laptop, log your workout.
+
+FEATURES
+
+• Log workout sessions with sets, reps, weights, distances and durations
+• 870+ built-in exercises with images and instructions
+• Add custom exercises or customise existing ones
+• Powerful text search and attribute-based filtering
+• Track your progress over time in the analytics view
+• Responsive design, ergonomic navigation
+• Local-first: all your data stays on your device
+• Works offline
+
+PRIVACY
+
+LogOut is local-first: your workout data never leaves your device unless you explicitly export it. No account required, no cloud sync, no tracking.
+
+OPEN SOURCE
+
+LogOut is free and open-source software, licensed under the EUPL-1.2.
+Source code: https://github.com/gfauredev/LogOut
