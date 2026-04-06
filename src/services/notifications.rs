@@ -74,63 +74,61 @@ fn check_android_notification_permission() -> Result<bool, String> {
 }
 
 /// Opens the system notification settings for the application.
+#[cfg(target_os = "android")]
 pub fn open_notification_settings() {
-    #[cfg(target_os = "android")]
-    {
-        use jni::{objects::JObject, JavaVM};
-        use ndk_context::android_context;
+    use jni::{objects::JObject, JavaVM};
+    use ndk_context::android_context;
 
-        let result = (|| -> Result<(), String> {
-            let ctx = android_context();
-            let vm = unsafe { JavaVM::from_raw(ctx.vm().cast()) }
-                .map_err(|e| format!("JavaVM::from_raw: {e}"))?;
-            let mut env = vm
-                .attach_current_thread()
-                .map_err(|e| format!("attach_current_thread: {e}"))?;
-            let activity = unsafe { JObject::from_raw(ctx.context() as jni::sys::jobject) };
+    let result = (|| -> Result<(), String> {
+        let ctx = android_context();
+        let vm = unsafe { JavaVM::from_raw(ctx.vm().cast()) }
+            .map_err(|e| format!("JavaVM::from_raw: {e}"))?;
+        let mut env = vm
+            .attach_current_thread()
+            .map_err(|e| format!("attach_current_thread: {e}"))?;
+        let activity = unsafe { JObject::from_raw(ctx.context() as jni::sys::jobject) };
 
-            let intent_cls = env
-                .find_class("android/content/Intent")
-                .map_err(|e| format!("find Intent class: {e}"))?;
-            let action = env
-                .new_string("android.settings.APP_NOTIFICATION_SETTINGS")
-                .map_err(|e| format!("new_string action: {e}"))?;
-            let intent = env
-                .new_object(&intent_cls, "(Ljava/lang/String;)V", &[(&action).into()])
-                .map_err(|e| format!("new Intent: {e}"))?;
+        let intent_cls = env
+            .find_class("android/content/Intent")
+            .map_err(|e| format!("find Intent class: {e}"))?;
+        let action = env
+            .new_string("android.settings.APP_NOTIFICATION_SETTINGS")
+            .map_err(|e| format!("new_string action: {e}"))?;
+        let intent = env
+            .new_object(&intent_cls, "(Ljava/lang/String;)V", &[(&action).into()])
+            .map_err(|e| format!("new Intent: {e}"))?;
 
-            let pkg_name = env
-                .call_method(&activity, "getPackageName", "()Ljava/lang/String;", &[])
-                .map_err(|e| format!("getPackageName: {e}"))?
-                .l()
-                .map_err(|e| format!("getPackageName as object: {e}"))?;
+        let pkg_name = env
+            .call_method(&activity, "getPackageName", "()Ljava/lang/String;", &[])
+            .map_err(|e| format!("getPackageName: {e}"))?
+            .l()
+            .map_err(|e| format!("getPackageName as object: {e}"))?;
 
-            let extra_pkg = env
-                .new_string("android.provider.extra.APP_PACKAGE")
-                .map_err(|e| format!("new_string extra_pkg: {e}"))?;
+        let extra_pkg = env
+            .new_string("android.provider.extra.APP_PACKAGE")
+            .map_err(|e| format!("new_string extra_pkg: {e}"))?;
 
-            env.call_method(
-                &intent,
-                "putExtra",
-                "(Ljava/lang/String;Ljava/lang/String;)Landroid/content/Intent;",
-                &[(&extra_pkg).into(), (&pkg_name).into()],
-            )
-            .map_err(|e| format!("putExtra: {e}"))?;
+        env.call_method(
+            &intent,
+            "putExtra",
+            "(Ljava/lang/String;Ljava/lang/String;)Landroid/content/Intent;",
+            &[(&extra_pkg).into(), (&pkg_name).into()],
+        )
+        .map_err(|e| format!("putExtra: {e}"))?;
 
-            env.call_method(
-                &activity,
-                "startActivity",
-                "(Landroid/content/Intent;)V",
-                &[(&intent).into()],
-            )
-            .map_err(|e| format!("startActivity: {e}"))?;
+        env.call_method(
+            &activity,
+            "startActivity",
+            "(Landroid/content/Intent;)V",
+            &[(&intent).into()],
+        )
+        .map_err(|e| format!("startActivity: {e}"))?;
 
-            Ok(())
-        })();
+        Ok(())
+    })();
 
-        if let Err(e) = result {
-            log::error!("Failed to open Android notification settings: {e}");
-        }
+    if let Err(e) = result {
+        log::error!("Failed to open Android notification settings: {e}");
     }
 }
 
