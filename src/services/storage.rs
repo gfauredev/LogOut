@@ -820,6 +820,7 @@ pub(crate) mod native_storage {
         use jni::{objects::JObject, JavaVM};
         let ctx = ndk_context::android_context();
         if ctx.vm().is_null() || ctx.context().is_null() {
+            log::error!("android_external_files_dir: Context or VM is NULL!");
             return None;
         }
         let vm = match unsafe { JavaVM::from_raw(ctx.vm().cast()) } {
@@ -854,7 +855,7 @@ pub(crate) mod native_storage {
             }
         };
         if files_dir.is_null() {
-            log::error!("android_external_files_dir: getExternalFilesDir returned null");
+            log::warn!("android_external_files_dir: getExternalFilesDir returned null (external storage not mounted?)");
             return None;
         }
         let path_jobj = match env
@@ -1110,16 +1111,24 @@ pub(crate) mod native_storage {
             static DATA_DIR: std::sync::OnceLock<PathBuf> = std::sync::OnceLock::new();
             DATA_DIR
                 .get_or_init(|| {
-                    if let Ok(custom) = std::env::var("LOGOUT_DATA_DIR") {
-                        return PathBuf::from(custom);
-                    }
-                    #[cfg(target_os = "android")]
-                    if let Some(dir) = android_files_dir() {
-                        return dir;
-                    }
-                    dirs::data_local_dir()
-                        .unwrap_or_else(|| PathBuf::from("."))
-                        .join(APP_DATA_DIR_NAME)
+                    let dir = if let Ok(custom) = std::env::var("LOGOUT_DATA_DIR") {
+                        PathBuf::from(custom)
+                    } else {
+                        #[cfg(target_os = "android")]
+                        if let Some(dir) = android_files_dir() {
+                            dir
+                        } else {
+                            dirs::data_local_dir()
+                                .unwrap_or_else(|| PathBuf::from("."))
+                                .join(APP_DATA_DIR_NAME)
+                        }
+                        #[cfg(not(target_os = "android"))]
+                        dirs::data_local_dir()
+                            .unwrap_or_else(|| PathBuf::from("."))
+                            .join(APP_DATA_DIR_NAME)
+                    };
+                    log::info!("Resolved data_dir: {}", dir.display());
+                    dir
                 })
                 .clone()
         }
@@ -1153,11 +1162,18 @@ pub(crate) mod native_storage {
         static IMAGES_DIR: std::sync::OnceLock<PathBuf> = std::sync::OnceLock::new();
         IMAGES_DIR
             .get_or_init(|| {
-                #[cfg(target_os = "android")]
-                if let Some(dir) = android_external_files_dir() {
-                    return dir.join("images");
-                }
-                data_dir().join("images")
+                let dir = {
+                    #[cfg(target_os = "android")]
+                    if let Some(dir) = android_external_files_dir() {
+                        dir.join("images")
+                    } else {
+                        data_dir().join("images")
+                    }
+                    #[cfg(not(target_os = "android"))]
+                    data_dir().join("images")
+                };
+                log::info!("Resolved images_dir: {}", dir.display());
+                dir
             })
             .clone()
     }

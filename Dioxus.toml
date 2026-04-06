@@ -35,6 +35,7 @@ short_description = "Workout Logger"
 # motion.description = "Tracking cardio exercises distance?" 
 # nerby-wifi.description = "P2P Syncing?" 
 notifications.description = "Rest/Exercise duration alerts"
+# TODO Consider removing in favor of just the Photo Picker
 photos = { access = "read", description = "Custom exercises images" } 
 
 [android]
@@ -48,6 +49,12 @@ target_sdk = 36
 
 [android.permissions]
 "android.permission.WAKE_LOCK".description = "Keep screen on during workouts"
+# TODO Consider removing in favor of just the Storage Access Framework
+"android.permission.READ_EXTERNAL_STORAGE".description = "Import JSON data"
+# "android.permission.READ_MEDIA_IMAGES".description = "Access exercise images"
+# "android.permission.READ_MEDIA_VIDEO".description = "Access exercise videos"
+# "android.permission.POST_NOTIFICATIONS".description = "Rest/Exercise duration alerts"
+# "android.permission.READ_MEDIA_AUDIO".description = "Access exercise audio"
 
 [android.application]
 # Ensure WebView reports system dark/light setting to CSS `prefers-color-scheme`

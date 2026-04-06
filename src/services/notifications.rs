@@ -10,6 +10,130 @@
 #[cfg(target_os = "android")]
 pub const WORKOUT_CHANNEL_ID: &str = "workout_reminders";
 
+/// Returns `true` if notification permission has been granted by the user.
+///
+/// On Android, this checks `NotificationManager.areNotificationsEnabled()`.
+/// On Web, this checks `web_sys::Notification::permission()`.
+pub fn is_notification_permission_granted() -> bool {
+    #[cfg(target_os = "android")]
+    {
+        check_android_notification_permission().unwrap_or(true)
+    }
+    #[cfg(target_arch = "wasm32")]
+    {
+        use web_sys::NotificationPermission;
+        web_sys::Notification::permission() == NotificationPermission::Granted
+    }
+    #[cfg(all(not(target_os = "android"), not(target_arch = "wasm32")))]
+    {
+        true
+    }
+}
+
+#[cfg(target_os = "android")]
+fn check_android_notification_permission() -> Result<bool, String> {
+    use jni::{objects::JObject, JavaVM};
+    use ndk_context::android_context;
+
+    let ctx = android_context();
+    let vm = unsafe { JavaVM::from_raw(ctx.vm().cast()) }
+        .map_err(|e| format!("JavaVM::from_raw: {e}"))?;
+    let mut env = vm
+        .attach_current_thread()
+        .map_err(|e| format!("attach_current_thread: {e}"))?;
+    let activity = unsafe { JObject::from_raw(ctx.context() as jni::sys::jobject) };
+
+    let notif_service_str = env
+        .get_static_field(
+            "android/content/Context",
+            "NOTIFICATION_SERVICE",
+            "Ljava/lang/String;",
+        )
+        .map_err(|e| format!("get NOTIFICATION_SERVICE: {e}"))?
+        .l()
+        .map_err(|e| format!("NOTIFICATION_SERVICE obj: {e}"))?;
+    let nm = env
+        .call_method(
+            &activity,
+            "getSystemService",
+            "(Ljava/lang/String;)Ljava/lang/Object;",
+            &[(&notif_service_str).into()],
+        )
+        .map_err(|e| format!("getSystemService: {e}"))?
+        .l()
+        .map_err(|e| format!("NotificationManager obj: {e}"))?;
+
+    let enabled = env
+        .call_method(&nm, "areNotificationsEnabled", "()Z", &[])
+        .map_err(|e| format!("areNotificationsEnabled: {e}"))?
+        .z()
+        .map_err(|e| format!("areNotificationsEnabled as bool: {e}"))?;
+
+    log::debug!("Android notification permission: enabled={}", enabled);
+    Ok(enabled)
+}
+
+/// Opens the system notification settings for the application.
+pub fn open_notification_settings() {
+    #[cfg(target_os = "android")]
+    {
+        use jni::{objects::JObject, JavaVM};
+        use ndk_context::android_context;
+
+        let result = (|| -> Result<(), String> {
+            let ctx = android_context();
+            let vm = unsafe { JavaVM::from_raw(ctx.vm().cast()) }
+                .map_err(|e| format!("JavaVM::from_raw: {e}"))?;
+            let mut env = vm
+                .attach_current_thread()
+                .map_err(|e| format!("attach_current_thread: {e}"))?;
+            let activity = unsafe { JObject::from_raw(ctx.context() as jni::sys::jobject) };
+
+            let intent_cls = env
+                .find_class("android/content/Intent")
+                .map_err(|e| format!("find Intent class: {e}"))?;
+            let action = env
+                .new_string("android.settings.APP_NOTIFICATION_SETTINGS")
+                .map_err(|e| format!("new_string action: {e}"))?;
+            let intent = env
+                .new_object(&intent_cls, "(Ljava/lang/String;)V", &[(&action).into()])
+                .map_err(|e| format!("new Intent: {e}"))?;
+
+            let pkg_name = env
+                .call_method(&activity, "getPackageName", "()Ljava/lang/String;", &[])
+                .map_err(|e| format!("getPackageName: {e}"))?
+                .l()
+                .map_err(|e| format!("getPackageName as object: {e}"))?;
+
+            let extra_pkg = env
+                .new_string("android.provider.extra.APP_PACKAGE")
+                .map_err(|e| format!("new_string extra_pkg: {e}"))?;
+
+            env.call_method(
+                &intent,
+                "putExtra",
+                "(Ljava/lang/String;Ljava/lang/String;)Landroid/content/Intent;",
+                &[(&extra_pkg).into(), (&pkg_name).into()],
+            )
+            .map_err(|e| format!("putExtra: {e}"))?;
+
+            env.call_method(
+                &activity,
+                "startActivity",
+                "(Landroid/content/Intent;)V",
+                &[(&intent).into()],
+            )
+            .map_err(|e| format!("startActivity: {e}"))?;
+
+            Ok(())
+        })();
+
+        if let Err(e) = result {
+            log::error!("Failed to open Android notification settings: {e}");
+        }
+    }
+}
+
 /// Cross-platform notification dispatch.
 ///
 /// Dispatches the request to the best available platform-specific implementation.

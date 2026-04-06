@@ -215,17 +215,25 @@ pub fn More() -> Element {
         }
     };
     let on_sessions_file_change = move |_| {
+        log::debug!("on_sessions_file_change triggered");
         spawn(async move {
             if let Some(json) = read_file_input("import-sessions-input").await {
+                log::info!("Successfully read sessions JSON ({} bytes)", json.len());
                 handle_sessions_json(json);
+            } else {
+                log::warn!("Failed to read sessions JSON or no file selected");
             }
         });
     };
     let on_exercises_file_change = move |_| {
+        log::debug!("on_exercises_file_change triggered");
         let mut handler = handle_exercises_json;
         spawn(async move {
             if let Some(json) = read_file_input("import-exercises-input").await {
+                log::info!("Successfully read exercises JSON ({} bytes)", json.len());
                 handler(json);
+            } else {
+                log::warn!("Failed to read exercises JSON or no file selected");
             }
         });
     };
@@ -263,8 +271,9 @@ pub fn More() -> Element {
                     div { class: "file-upload-btn",
                         label {
                             class: "label more",
+                            r#for: "import-exercises-input",
                             onclick: move |_| {
-                                document::eval("document.getElementById('import-exercises-input').click()");
+                                log::debug!("Label clicked: import-exercises-input");
                             },
                             {t!("more-import-exercises-btn")}
                         }
@@ -278,8 +287,9 @@ pub fn More() -> Element {
                     div { class: "file-upload-btn",
                         label {
                             class: "label more",
+                            r#for: "import-sessions-input",
                             onclick: move |_| {
-                                document::eval("document.getElementById('import-sessions-input').click()");
+                                log::debug!("Label clicked: import-sessions-input");
                             },
                             {t!("more-import-sessions-btn")}
                         }
@@ -538,25 +548,35 @@ async fn read_file_input(id: &str) -> Option<String> {
     }
     #[cfg(not(target_arch = "wasm32"))]
     {
+        log::debug!("Native read_file_input(id={id}) called");
         // Use the WebView's FileReader API via eval; send the text (or null) back.
         let js = format!(
             r"(function(){{
   var input=document.getElementById('{id}');
   var file=input&&input.files&&input.files[0];
-  if(!file){{dioxus.send(null);return;}}
+  if(!file){{console.warn('read_file_input: no file found for id={id}');dioxus.send(null);return;}}
+  console.log('read_file_input: reading file ' + file.name + ' for id={id}');
   var r=new FileReader();
-  r.onload=function(e){{dioxus.send(e.target.result);}};
-  r.onerror=function(){{dioxus.send(null);}};
+  r.onload=function(e){{console.log('read_file_input: load successful');dioxus.send(e.target.result);}};
+  r.onerror=function(){{console.warn('read_file_input: read error');dioxus.send(null);}};
   r.readAsText(file);
 }})();"
         );
         let mut eval = document::eval(&js);
-        eval.recv::<serde_json::Value>().await.ok().and_then(|v| {
-            if v.is_null() {
-                None
-            } else {
-                v.as_str().map(str::to_owned)
+        log::debug!("read_file_input: eval dispatched, waiting for recv...");
+        match eval.recv::<serde_json::Value>().await {
+            Ok(v) => {
+                log::debug!("read_file_input: recv success: is_null={}", v.is_null());
+                if v.is_null() {
+                    None
+                } else {
+                    v.as_str().map(str::to_owned)
+                }
             }
-        })
+            Err(e) => {
+                log::error!("read_file_input: recv error: {e:?}");
+                None
+            }
+        }
     }
 }

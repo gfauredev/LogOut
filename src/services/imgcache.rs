@@ -41,7 +41,7 @@ pub(crate) fn handle_imgcache_request(
     let images_dir = crate::services::storage::native_storage::images_dir();
     let file_path = images_dir.join(&rel);
 
-    log::debug!(
+    log::info!(
         "imgcache: request for {}, resolving to {}",
         rel,
         file_path.display()
