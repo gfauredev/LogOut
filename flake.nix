@@ -275,9 +275,12 @@
                 # These files (service worker, web icons, 404 page) are irrelevant on
                 # the Android platform and would only inflate the APK size.
                 _web_stash=$(mktemp -d)
+                # nullglob ensures the loop is skipped when no icons exist.
+                shopt -s nullglob
                 for _f in public/sw.js public/404.html public/icon-*.png; do
                   [ -f "$_f" ] && mv "$_f" "$_web_stash/"
                 done
+                shopt -u nullglob
                 # Ensure web-only assets are always restored, even on failure.
                 _restore_web_assets() {
                   mv "$_web_stash"/* public/ 2>/dev/null || true
