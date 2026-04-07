@@ -72,6 +72,13 @@ pub struct ImageDownloadProgressSignal(pub Signal<Option<(usize, usize)>>);
 /// currently active session are refused.
 #[derive(Clone, Copy)]
 pub struct ScreenLockedSignal(pub Signal<bool>);
+/// Holds the raw URL query string captured in [`App`] **before** the Dioxus
+/// [`Router`] calls `history.replaceState` during its initialisation, which
+/// strips the query parameters from `window.location`.  Deep-link parameters
+/// (`dl_db_url`, `dl_session`, …) must be read from this preserved string
+/// rather than from `window.location.search` directly.
+#[derive(Clone, Copy)]
+pub struct InitialQuerySignal(pub Signal<String>);
 #[derive(Clone, Routable, Debug, PartialEq)]
 #[rustfmt::skip]
 enum Route {
@@ -180,6 +187,18 @@ fn App() -> Element {
     use_context_provider(|| ShowRestInputSignal(Signal::new(false)));
     use_context_provider(|| RestDurationSignal(Signal::new(DEFAULT_REST_SECONDS)));
     use_context_provider(|| ScreenLockedSignal(Signal::new(false)));
+    // Capture the URL query string now, before the Router's WebHistory::new()
+    // calls history.replaceState() and strips it from window.location.
+    #[cfg(target_arch = "wasm32")]
+    use_context_provider(|| {
+        let q = web_sys::window()
+            .and_then(|w| w.location().search().ok())
+            .filter(|s| !s.is_empty())
+            .unwrap_or_default();
+        InitialQuerySignal(Signal::new(q))
+    });
+    #[cfg(not(target_arch = "wasm32"))]
+    use_context_provider(|| InitialQuerySignal(Signal::new(String::new())));
 
     // Services that consume contexts (must run after context providers above).
     services::storage::provide_app_state();
@@ -289,7 +308,12 @@ fn DeepLinkLayout() -> Element {
         let mut search_signal = consume_context::<ExerciseSearchSignal>().0;
         let mut pending = consume_context::<PendingDeepLinkSignal>().0;
         use_hook(move || {
-            let Some(action) = utils::parse_web_deep_link() else {
+            // Use the query string captured in App() before the Router's
+            // WebHistory::new() stripped it from window.location.
+            let initial_query = consume_context::<InitialQuerySignal>().0;
+            let query_str = initial_query.read().clone();
+            let query = query_str.trim_start_matches('?');
+            let Some(action) = utils::parse_web_deep_link_query(query) else {
                 return;
             };
             match action {

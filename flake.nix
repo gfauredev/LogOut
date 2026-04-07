@@ -293,11 +293,48 @@
                 "${self}/.script/apk-sign.sh"
               '';
             };
+          webStaticServer = env.pkgs.writeText "logout-web-static-server.py" ''
+            import os, sys, mimetypes
+            from http.server import HTTPServer, BaseHTTPRequestHandler
+            web_dir, db_dir = sys.argv[1], sys.argv[2]
+            class Handler(BaseHTTPRequestHandler):
+                def do_GET(self):
+                    p = self.path.split('?')[0]
+                    if p.startswith('/db/') or p == '/db':
+                        fp = os.path.join(db_dir, p[4:].lstrip('/'))
+                    elif p.startswith('/LogOut') or p == '/':
+                        fp = os.path.join(web_dir, p.lstrip('/'))
+                        if not os.path.isfile(fp):
+                            fp = os.path.join(web_dir, 'LogOut', 'index.html')
+                    else:
+                        self.send_error(404)
+                        return
+                    try:
+                        with open(fp, 'rb') as f:
+                            d = f.read()
+                    except OSError:
+                        self.send_error(404)
+                        return
+                    ct = mimetypes.guess_type(fp)[0] or 'application/octet-stream'
+                    if fp.endswith('.wasm'):
+                        ct = 'application/wasm'
+                    self.send_response(200)
+                    self.send_header('Content-Type', ct)
+                    self.send_header('Content-Length', str(len(d)))
+                    self.end_headers()
+                    self.wfile.write(d)
+                def log_message(self, *a):
+                    pass
+            HTTPServer(("", 8080), Handler).serve_forever()
+          '';
         in
         {
           web = mkLogOut { };
           preWeb = mkLogOut { basePath = "LogOut/preview"; };
           server = mkLogOut { platform = "server"; };
+          # Python script for a single-origin static server:
+          # - Serves the WASM web app under /LogOut/ with SPA fallback to index.html
+          # - Serves the exercise database under /db/ (same origin → no CORS)
           webE2eTest = env.pkgs.writeShellApplication {
             name = "logout-web-e2e-test-${env.projectVersion}";
             runtimeInputs = env.webTestInputs ++ [
@@ -307,27 +344,22 @@
             text = ''
               export SE_CHROME_PATH="${chromiumWrapper}/bin/google-chrome"
               APP_SERVER_PID=""
-              DB_SERVER_PID=""
               cleanup() {
                 [ -n "$APP_SERVER_PID" ] && kill "$APP_SERVER_PID" 2>/dev/null || true
-                [ -n "$DB_SERVER_PID" ] && kill "$DB_SERVER_PID" 2>/dev/null || true
               }
               trap cleanup EXIT
-              # Start the Dioxus SSR server for the web app on port 8080
-              ${self.packages.${system}.server}/bin/server &
-              APP_SERVER_PID=$!
-              # Start a static HTTP server for the exercise database on port 8081
-              python3 -m http.server 8081 \
-                --directory "${self.packages.${system}.server}/bin/database.example" \
+              # Static server: WASM web app at /LogOut/, exercise DB at /db/ (same origin)
+              python3 ${webStaticServer} \
+                "${self.packages.${system}.web}" \
+                "${self.packages.${system}.server}/bin/database.example" \
                 >/dev/null 2>&1 &
-              DB_SERVER_PID=$!
+              APP_SERVER_PID=$!
               timeout 60 bash -c 'until curl -sf http://localhost:8080/LogOut/ > /dev/null 2>&1; do sleep 1; done'
-              timeout 10 bash -c 'until curl -sf http://localhost:8081/exercises.json > /dev/null 2>&1; do sleep 1; done'
               maestro test --headless \
                 --env APP_URL=http://localhost:8080/LogOut/ \
                 --env APP_URL_ENCODED=http%3A%2F%2Flocalhost%3A8080%2FLogOut%2F \
-                --env DB_URL=http://localhost:8081/ \
-                --env DB_URL_ENCODED=http%3A%2F%2Flocalhost%3A8081%2F \
+                --env DB_URL=http://localhost:8080/db/ \
+                --env DB_URL_ENCODED=http%3A%2F%2Flocalhost%3A8080%2Fdb%2F \
                 "${self}/maestro/web"
             '';
           };

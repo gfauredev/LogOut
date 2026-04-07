@@ -7,7 +7,7 @@ url: ${APP_URL}?dl_db_url=${DB_URL_ENCODED}
 # Wait for exercises to load
 - assertVisible: "Ring Dip"
 # Type a search term in the search input
-- tapOn: "Search exercises, muscles, or categories..."
+- tapOn: "Search exercises names or attributes"
 - inputText: "ring"
 - assertVisible: "Ring Dip"
 - assertNotVisible: "Romanian Deadlift"

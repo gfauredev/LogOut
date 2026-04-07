@@ -166,6 +166,15 @@ pub fn parse_web_deep_link() -> Option<DeepLinkAction> {
     let location = window.location();
     let search = location.search().ok()?;
     let query = search.trim_start_matches('?');
+    parse_web_deep_link_query(query)
+}
+/// Parse deep-link actions from an already-extracted query string (without the
+/// leading `?`).  Extracted so callers that have saved the query string before
+/// the Dioxus router strips `window.location` can still process deep links.
+pub fn parse_web_deep_link_query(query: &str) -> Option<DeepLinkAction> {
+    if query.is_empty() {
+        return None;
+    }
     if let Some(dl) = get_query_param(query, "deeplink") {
         if let Some(action) = parse_deep_link(&dl) {
             return Some(action);
