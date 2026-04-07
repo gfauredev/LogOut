@@ -302,22 +302,32 @@
             name = "logout-web-e2e-test-${env.projectVersion}";
             runtimeInputs = env.webTestInputs ++ [
               chromiumWrapper
+              env.pkgs.python3
             ];
             text = ''
               export SE_CHROME_PATH="${chromiumWrapper}/bin/google-chrome"
-              SERVER_PID=""
+              APP_SERVER_PID=""
+              DB_SERVER_PID=""
               cleanup() {
-                if [ -n "$SERVER_PID" ]; then
-                  kill "$SERVER_PID" 2>/dev/null || true
-                fi
+                [ -n "$APP_SERVER_PID" ] && kill "$APP_SERVER_PID" 2>/dev/null || true
+                [ -n "$DB_SERVER_PID" ] && kill "$DB_SERVER_PID" 2>/dev/null || true
               }
               trap cleanup EXIT
+              # Start the Dioxus SSR server for the web app on port 8080
               ${self.packages.${system}.server}/bin/server &
-              SERVER_PID=$!
+              APP_SERVER_PID=$!
+              # Start a static HTTP server for the exercise database on port 8081
+              python3 -m http.server 8081 \
+                --directory "${self.packages.${system}.server}/bin/database.example" \
+                >/dev/null 2>&1 &
+              DB_SERVER_PID=$!
               timeout 60 bash -c 'until curl -sf http://localhost:8080/LogOut/ > /dev/null 2>&1; do sleep 1; done'
+              timeout 10 bash -c 'until curl -sf http://localhost:8081/exercises.json > /dev/null 2>&1; do sleep 1; done'
               maestro test --headless \
                 --env APP_URL=http://localhost:8080/LogOut/ \
                 --env APP_URL_ENCODED=http%3A%2F%2Flocalhost%3A8080%2FLogOut%2F \
+                --env DB_URL=http://localhost:8081/ \
+                --env DB_URL_ENCODED=http%3A%2F%2Flocalhost%3A8081%2F \
                 "${self}/maestro/web"
             '';
           };
@@ -334,9 +344,14 @@
                 exit 1
               fi
               APP_URL_ENCODED=$(python3 -c 'import urllib.parse, sys; print(urllib.parse.quote(sys.argv[1], safe=""))' "$APP_URL")
+              # Default DB_URL to the free exercise database for preview tests
+              DB_URL="''${DB_URL:-https://gfauredev.github.io/free-exercise-db/}"
+              DB_URL_ENCODED=$(python3 -c 'import urllib.parse, sys; print(urllib.parse.quote(sys.argv[1], safe=""))' "$DB_URL")
               maestro test --headless \
                 --env APP_URL="$APP_URL" \
                 --env APP_URL_ENCODED="$APP_URL_ENCODED" \
+                --env DB_URL="$DB_URL" \
+                --env DB_URL_ENCODED="$DB_URL_ENCODED" \
                 "${self}/maestro/web"
             '';
           };

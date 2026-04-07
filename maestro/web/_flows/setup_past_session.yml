@@ -1,4 +1,4 @@
-url: ${APP_URL}?dl_db_url=${APP_URL_ENCODED}
+url: ${APP_URL}?dl_db_url=${DB_URL_ENCODED}
 ---
 # Sub-flow: set up a completed past session with two exercises (ring_dip and
 # romanian_deadlift). Works standalone and as a runFlow setup step in other tests.

@@ -1,4 +1,4 @@
-url: ${APP_URL}?dl_db_url=${APP_URL_ENCODED}
+url: ${APP_URL}?dl_db_url=${DB_URL_ENCODED}
 ---
 # User Story: Be Astonished by Your Incredible Progress
 # Precondition: Two past sessions with ring_dip at different rep counts.
