@@ -315,7 +315,29 @@
               ${self.packages.${system}.server}/bin/server &
               SERVER_PID=$!
               timeout 60 bash -c 'until curl -sf http://localhost:8080/LogOut/ > /dev/null 2>&1; do sleep 1; done'
-              maestro test --headless "${self}/maestro/web"
+              maestro test --headless \
+                --env APP_URL=http://localhost:8080/LogOut/ \
+                --env APP_URL_ENCODED=http%3A%2F%2Flocalhost%3A8080%2FLogOut%2F \
+                "${self}/maestro/web"
+            '';
+          };
+          webE2eTestPreview = env.pkgs.writeShellApplication {
+            name = "logout-web-e2e-test-preview-${env.projectVersion}";
+            runtimeInputs = env.webTestInputs ++ [
+              chromiumWrapper
+              env.pkgs.python3
+            ];
+            text = ''
+              export SE_CHROME_PATH="${chromiumWrapper}/bin/google-chrome"
+              if [ -z "''${APP_URL:-}" ]; then
+                echo "ERROR: APP_URL env var must be set to the deployed preview URL" >&2
+                exit 1
+              fi
+              APP_URL_ENCODED=$(python3 -c 'import urllib.parse, sys; print(urllib.parse.quote(sys.argv[1], safe=""))' "$APP_URL")
+              maestro test --headless \
+                --env APP_URL="$APP_URL" \
+                --env APP_URL_ENCODED="$APP_URL_ENCODED" \
+                "${self}/maestro/web"
             '';
           };
           androidBuild = mkAndroidBuilder { };
@@ -333,9 +355,9 @@
               self.packages.${system}.androidBuild
               # self.packages.${system}.androidE2eTest
               self.packages.${system}.preWeb
-              self.packages.${system}.server
+              # self.packages.${system}.server
               # self.packages.${system}.web
-              self.packages.${system}.webE2eTest
+              # self.packages.${system}.webE2eTest
             ];
           };
         }

@@ -1,4 +1,4 @@
-url: http://localhost:8080/LogOut/ # Navigate to Analytics
+url: ${APP_URL} # Navigate to Analytics
 ---
 # User Story: Navigate to Analytics
 - launchApp

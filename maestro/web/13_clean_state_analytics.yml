@@ -1,4 +1,4 @@
-url: http://localhost:8080/LogOut/ # Clean State Analytics
+url: ${APP_URL} # Clean State Analytics
 ---
 # User Story: Clean State Analytics
 # Precondition: No sessions (launchApp clears IndexedDB)

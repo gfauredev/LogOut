@@ -153,41 +153,43 @@ jobs:
   #       issue-number: ${{ github.event.pull_request.number }}
   #       body: ${{ steps.lighthouse_results.outputs.BODY }}
 
-  e2e-web:
-    if: github.event_name != 'pull_request' || github.event.pull_request.draft == false
-    needs: coverage
-    runs-on: ubuntu-latest
-    timeout-minutes: 40
-    steps:
-    - uses: actions/checkout@v6
-    - uses: cachix/install-nix-action@v31
-      with:
-        github_access_token: ${{ secrets.GITHUB_TOKEN }}
-        extra_nix_config: | # TODO Ensure nix uses the most performant cache between Garnix and Cachix every time
-          extra-substituters = https://cache.garnix.io
-          extra-trusted-public-keys = cache.garnix.io:CTFPyKSLcx5RMJKfLo5EEPUObbA78b0YQ2DTCJXqr9g=
-    - uses: cachix/cachix-action@v17
-      with:
-        name: gfauredev
-        authToken: '${{ secrets.CACHIX_AUTH_TOKEN }}'
-    - name: Remove system Chrome to prevent version mismatch with nixpkgs chromedriver
-      run: sudo apt-get remove -y google-chrome-stable
-    - run: |
-        set -o pipefail
-        nix run .#webE2eTest |& tee maestro_console.log
-    - if: failure() && github.event_name == 'pull_request'
-      env:
-        CLOUDINARY_CLOUD_NAME: ${{ secrets.CLOUDINARY_CLOUD_NAME }}
-        CLOUDINARY_UPLOAD_PRESET: ${{ secrets.CLOUDINARY_UPLOAD_PRESET }}
-      run: .script/e2e-web-report.sh
-      id: upload_screenshots
-    - if: failure() && github.event_name == 'pull_request' && steps.upload_screenshots.outputs.REPORT_BODY != ''
-      uses: peter-evans/create-or-update-comment@v5
-      with:
-        issue-number: ${{ github.event.pull_request.number }}
-        body: ${{ steps.upload_screenshots.outputs.REPORT_BODY }}
-    - if: failure() || cancelled()
-      uses: actions/upload-artifact@v7
-      with:
-        name: maestro-web-report
-        path: ~/.maestro/tests/
+  # e2e-web: Moved to CD pipeline — runs against the public preview URL
+  #   after every successful Pages deployment (see cd.yml e2e-web-preview job).
+  # e2e-web:
+  #   if: github.event_name != 'pull_request' || github.event.pull_request.draft == false
+  #   needs: coverage
+  #   runs-on: ubuntu-latest
+  #   timeout-minutes: 40
+  #   steps:
+  #   - uses: actions/checkout@v6
+  #   - uses: cachix/install-nix-action@v31
+  #     with:
+  #       github_access_token: ${{ secrets.GITHUB_TOKEN }}
+  #       extra_nix_config: | # TODO Ensure nix uses the most performant cache between Garnix and Cachix every time
+  #         extra-substituters = https://cache.garnix.io
+  #         extra-trusted-public-keys = cache.garnix.io:CTFPyKSLcx5RMJKfLo5EEPUObbA78b0YQ2DTCJXqr9g=
+  #   - uses: cachix/cachix-action@v17
+  #     with:
+  #       name: gfauredev
+  #       authToken: '${{ secrets.CACHIX_AUTH_TOKEN }}'
+  #   - name: Remove system Chrome to prevent version mismatch with nixpkgs chromedriver
+  #     run: sudo apt-get remove -y google-chrome-stable
+  #   - run: |
+  #       set -o pipefail
+  #       nix run .#webE2eTest |& tee maestro_console.log
+  #   - if: failure() && github.event_name == 'pull_request'
+  #     env:
+  #       CLOUDINARY_CLOUD_NAME: ${{ secrets.CLOUDINARY_CLOUD_NAME }}
+  #       CLOUDINARY_UPLOAD_PRESET: ${{ secrets.CLOUDINARY_UPLOAD_PRESET }}
+  #     run: .script/e2e-web-report.sh
+  #     id: upload_screenshots
+  #   - if: failure() && github.event_name == 'pull_request' && steps.upload_screenshots.outputs.REPORT_BODY != ''
+  #     uses: peter-evans/create-or-update-comment@v5
+  #     with:
+  #       issue-number: ${{ github.event.pull_request.number }}
+  #       body: ${{ steps.upload_screenshots.outputs.REPORT_BODY }}
+  #   - if: failure() || cancelled()
+  #     uses: actions/upload-artifact@v7
+  #     with:
+  #       name: maestro-web-report
+  #       path: ~/.maestro/tests/

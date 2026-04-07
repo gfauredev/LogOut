@@ -1,4 +1,4 @@
-url: http://localhost:8080/LogOut/ # Navigate to Exercise List
+url: ${APP_URL} # Navigate to Exercise List
 ---
 # User Story: Navigate to Exercise List
 - launchApp

@@ -1,4 +1,4 @@
-url: http://localhost:8080/LogOut/?dl_db_url=http%3A%2F%2Flocalhost%3A8080%2FLogOut%2F
+url: ${APP_URL}?dl_db_url=${APP_URL_ENCODED}
 ---
 # User Story: Edit a Cloned Exercise
 - launchApp

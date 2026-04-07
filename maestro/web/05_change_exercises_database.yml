@@ -1,4 +1,4 @@
-url: http://localhost:8080/LogOut/ # Change Exercises Database
+url: ${APP_URL} # Change Exercises Database
 ---
 # User Story: Change Exercises Database
 - launchApp

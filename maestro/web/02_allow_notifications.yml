@@ -1,4 +1,4 @@
-url: http://localhost:8080/LogOut/ # Allow Notifications
+url: ${APP_URL} # Allow Notifications
 ---
 # User Story: Allow Notifications
 - launchApp

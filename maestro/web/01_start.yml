@@ -1,4 +1,4 @@
-url: http://localhost:8080/LogOut/ # Clean State Home
+url: ${APP_URL} # Clean State Home
 ---
 # User Story: Clean State Home
 - launchApp

@@ -1,4 +1,4 @@
-url: http://localhost:8080/LogOut/?dl_db_url=https%3A%2F%2Fgfauredev.github.io%2Ffree-exercise-db%2F # Clean State More
+url: ${APP_URL}?dl_db_url=https%3A%2F%2Fgfauredev.github.io%2Ffree-exercise-db%2F # Clean State More
 ---
 # User Story: Clean State More
 # Precondition: No custom DB URL set (launchApp clears localStorage)
