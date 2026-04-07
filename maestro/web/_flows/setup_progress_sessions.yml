@@ -1,12 +1,12 @@
-url: http://localhost:8080/LogOut/?dl_db_url=http%3A%2F%2Flocalhost%3A8080%2FLogOut%2F
+url: ${APP_URL}?dl_db_url=${APP_URL_ENCODED}
 ---
 # Sub-flow: set up two past sessions with the same exercise (ring_dip) logged at
 # different rep counts to demonstrate progress in analytics. Works standalone and
 # as a runFlow setup step in the "Be Astonished" test.
 - launchApp
 # Create first session: ring_dip, 10 reps
-- openLink: "http://localhost:8080/LogOut/?dl_session=ring_dip%3A80%3A10"
+- openLink: "${APP_URL}?dl_session=ring_dip%3A80%3A10"
 - assertVisible: "Today"
 # Create second session: ring_dip, 12 reps (improvement)
-- openLink: "http://localhost:8080/LogOut/?dl_session=ring_dip%3A80%3A12"
+- openLink: "${APP_URL}?dl_session=ring_dip%3A80%3A12"
 - assertVisible: "Today"

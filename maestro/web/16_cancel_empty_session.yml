@@ -1,4 +1,4 @@
-url: http://localhost:8080/LogOut/ # Cancel Empty Session
+url: ${APP_URL} # Cancel Empty Session
 ---
 # User Story: Cancel Empty Session
 # Precondition: An empty active session is started here (no external setup needed)

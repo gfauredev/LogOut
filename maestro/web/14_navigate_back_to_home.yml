@@ -1,4 +1,4 @@
-url: http://localhost:8080/LogOut/ # Navigate Back to Home
+url: ${APP_URL} # Navigate Back to Home
 ---
 # User Story: Navigate Back to Home
 - launchApp
