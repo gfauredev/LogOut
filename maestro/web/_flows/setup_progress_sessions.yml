@@ -1,4 +1,4 @@
-url: ${APP_URL}?dl_db_url=${APP_URL_ENCODED}
+url: ${APP_URL}?dl_db_url=${DB_URL_ENCODED}
 ---
 # Sub-flow: set up two past sessions with the same exercise (ring_dip) logged at
 # different rep counts to demonstrate progress in analytics. Works standalone and
