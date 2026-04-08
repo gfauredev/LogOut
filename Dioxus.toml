@@ -1,5 +1,5 @@
 [application]
-# android_main_activity = "android/MainActivity.kt"
+android_main_activity = "android/MainActivity.kt"
 asset_dir = "public"
 # ios_entitlements = ""
 # ios_info_plist = ""
