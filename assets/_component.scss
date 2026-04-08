@@ -421,3 +421,27 @@ ul.results {
     transform: translateX(-50%) translateY(0);
   }
 }
+
+// ── Hold-to-delete button ──────────────────────────────────────────────────
+.hold-del {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
+  svg.hold-del-ring {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    transform: rotate(-90deg);
+    pointer-events: none;
+
+    circle {
+      fill: none;
+      stroke: var(--less);
+      stroke-width: 3;
+      transition: stroke-dashoffset 0.1s linear;
+    }
+  }
+}

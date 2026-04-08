@@ -12,6 +12,7 @@ session-repeat-title = Démarrer une nouvelle séance basée sur celle-ci
 session-repeat-weekday-title = Répéter la séance du même jour de la semaine
 session-delete-title = Supprimer la séance
 session-show-more = +{ $count } autres
+hold-to-delete-hint = Maintenir 3s pour supprimer
 session-delete-confirm = Supprimer cette séance ?
 session-delete-confirm-btn = 🗑️ Supprimer
 cancel-btn = ❌ Annuler

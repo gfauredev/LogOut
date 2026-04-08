@@ -1,4 +1,4 @@
-use crate::components::{ActiveTab, BottomNav, SessionView};
+use crate::components::{ActiveTab, BottomNav, HoldDeleteButton, SessionView};
 use crate::models::{format_time, WorkoutSession};
 use crate::services::{exercise_db, storage};
 use crate::{ExerciseSearchSignal, Route};
@@ -185,7 +185,6 @@ pub fn Home() -> Element {
 #[component]
 fn SessionCard(session: WorkoutSession, on_delete: EventHandler<String>) -> Element {
     const MAX_VISIBLE: usize = 9;
-    let mut show_delete_confirm = use_signal(|| false);
     let mut show_all_exercises = use_signal(|| false);
     let mut show_notes = use_signal(|| false);
     let session_id = session.id.clone();
@@ -272,11 +271,12 @@ fn SessionCard(session: WorkoutSession, on_delete: EventHandler<String>) -> Elem
                         "🔁"
                     }
                 }
-                button {
-                    class: "del",
-                    onclick: move |_| show_delete_confirm.set(true),
-                    title: t!("session-delete-title"),
-                    "🗑️"
+                HoldDeleteButton {
+                    title: t!("session-delete-title").to_string(),
+                    on_delete: move |()| {
+                        storage::delete_session(&session_id);
+                        on_delete.call(session_id.clone());
+                    },
                 }
             }
             if !unique_exercises.is_empty() {
@@ -311,34 +311,6 @@ fn SessionCard(session: WorkoutSession, on_delete: EventHandler<String>) -> Elem
                         title: t!("session-notes-unfold"),
                         onclick: move |_| show_notes.set(true),
                         "📝"
-                    }
-                }
-            }
-            if *show_delete_confirm.read() {
-                div {
-                    class: "backdrop",
-                    onclick: move |_| show_delete_confirm.set(false),
-                }
-                dialog { open: true, onclick: move |evt| evt.stop_propagation(),
-                    p { {t!("session-delete-confirm")} }
-                    div {
-                        button {
-                            onclick: {
-                                let id = session_id.clone();
-                                move |_| {
-                                    storage::delete_session(&id);
-                                    on_delete.call(id.clone());
-                                    show_delete_confirm.set(false);
-                                }
-                            },
-                            class: "del label",
-                            {t!("session-delete-confirm-btn")}
-                        }
-                        button {
-                            onclick: move |_| show_delete_confirm.set(false),
-                            class: "back label",
-                            {t!("cancel-btn")}
-                        }
                     }
                 }
             }
