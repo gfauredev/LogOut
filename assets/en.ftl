@@ -12,6 +12,7 @@ session-repeat-title = Start a new session based on this one
 session-repeat-weekday-title = Repeat same-weekday session
 session-delete-title = Delete session
 session-show-more = +{ $count } more
+hold-to-delete-hint = Hold for 3s to delete
 session-delete-confirm = Delete this session?
 session-delete-confirm-btn = 🗑️ Delete
 cancel-btn = ❌ Cancel

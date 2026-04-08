@@ -170,6 +170,17 @@ fn acquire_android_wake_lock() {
 static SCREEN_WAKE_LOCK: std::sync::Mutex<Option<jni::objects::GlobalRef>> =
     std::sync::Mutex::new(None);
 
+/// JNI global reference to the `PROXIMITY_SCREEN_OFF_WAKE_LOCK` held while a
+/// session is active over the lock screen.
+///
+/// When this lock is held, Android's power manager monitors the proximity
+/// sensor and automatically turns off the screen (and disables touch input)
+/// when the phone is placed in a pocket or bag, preventing accidental touches.
+/// The screen turns back on as soon as proximity is no longer detected.
+#[cfg(target_os = "android")]
+static PROXIMITY_WAKE_LOCK: std::sync::Mutex<Option<jni::objects::GlobalRef>> =
+    std::sync::Mutex::new(None);
+
 /// Configure Android lock-screen behaviour based on whether a session is active.
 ///
 /// When `active` is `true`:
@@ -279,6 +290,42 @@ pub fn set_active_session_lock_screen(active: bool) {
                     .new_global_ref(&wake_lock)
                     .map_err(|e| format!("new_global_ref: {e}"))?;
                 *guard = Some(global);
+
+                // Acquire PROXIMITY_SCREEN_OFF_WAKE_LOCK (0x20) so that
+                // Android automatically turns off the screen (and disables
+                // touch input) whenever the proximity sensor fires — e.g.
+                // when the phone is slipped into a pocket — preventing
+                // accidental touches while the session is running.
+                let mut prox_guard = PROXIMITY_WAKE_LOCK.lock().unwrap();
+                if prox_guard.is_none() {
+                    // PowerManager.PROXIMITY_SCREEN_OFF_WAKE_LOCK = 32 (0x20)
+                    let prox_tag = env
+                        .new_string("logout:proximity")
+                        .map_err(|e| format!("new_string proximity: {e}"))?;
+                    let prox_lock = env
+                        .call_method(
+                            &pm,
+                            "newWakeLock",
+                            "(ILjava/lang/String;)Landroid/os/PowerManager$WakeLock;",
+                            &[JValue::Int(0x20i32), (&prox_tag).into()],
+                        )
+                        .map_err(|e| format!("newWakeLock proximity: {e}"))?
+                        .l()
+                        .map_err(|e| format!("ProximityWakeLock obj: {e}"))?;
+                    env.call_method(
+                        &prox_lock,
+                        "setReferenceCounted",
+                        "(Z)V",
+                        &[JValue::Bool(0u8)],
+                    )
+                    .map_err(|e| format!("setReferenceCounted proximity: {e}"))?;
+                    env.call_method(&prox_lock, "acquire", "()V", &[])
+                        .map_err(|e| format!("acquire proximity: {e}"))?;
+                    let prox_global = env
+                        .new_global_ref(&prox_lock)
+                        .map_err(|e| format!("new_global_ref proximity: {e}"))?;
+                    *prox_guard = Some(prox_global);
+                }
             }
         } else {
             let mut guard = SCREEN_WAKE_LOCK.lock().unwrap();
@@ -286,6 +333,13 @@ pub fn set_active_session_lock_screen(active: bool) {
                 // Release the screen wake lock.
                 let wake_lock = global.as_obj();
                 let _ = env.call_method(wake_lock, "release", "()V", &[]);
+            }
+            // Release the proximity wake lock so normal screen-off behaviour
+            // is restored (the screen will time out as usual).
+            let mut prox_guard = PROXIMITY_WAKE_LOCK.lock().unwrap();
+            if let Some(prox_global) = prox_guard.take() {
+                let prox_lock = prox_global.as_obj();
+                let _ = env.call_method(prox_lock, "release", "()V", &[]);
             }
             // Restore normal lock-screen behaviour.
             env.call_method(&activity, "setShowWhenLocked", "(Z)V", &[JValue::Bool(0u8)])

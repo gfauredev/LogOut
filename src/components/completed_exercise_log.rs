@@ -1,4 +1,5 @@
 use super::session_exercise_form::ExerciseInputForm;
+use crate::components::HoldDeleteButton;
 use crate::models::{
     format_time, parse_distance_km, parse_duration_seconds, parse_weight_kg, Category, ExerciseLog,
     Force, Weight, WorkoutSession, HG_PER_KG, M_PER_KM,
@@ -79,15 +80,13 @@ pub fn CompletedExerciseLog(
                         title: t!("log-edit-title"),
                         "✏️"
                     }
-                    button {
-                        class: "del",
-                        title: t!("log-delete-title"),
-                        onclick: move |_| {
+                    HoldDeleteButton {
+                        title: t!("log-delete-title").to_string(),
+                        on_delete: move |()| {
                             let mut current_session = session.read().clone();
                             current_session.exercise_logs.remove(idx);
                             storage::save_session(current_session);
                         },
-                        "🗑️"
                     }
                 }
             }
