@@ -40,16 +40,41 @@ fn ExerciseImage(exercise: Arc<Exercise>, display_name: String) -> Element {
     let mut img_index = use_signal(|| 0usize);
     let image_count = exercise.images.len();
 
+    // Number of downloads completed so far in this session.  Incremented
+    // whenever the progress signal transitions from Some(...) to None (i.e.
+    // the download batch finishes) so the URL memo re-evaluates and picks up
+    // newly-cached images without flickering on every individual file.
+    #[cfg(not(target_arch = "wasm32"))]
+    let mut completed_batches: Signal<u32> = use_signal(|| 0);
+    #[cfg(not(target_arch = "wasm32"))]
+    {
+        let progress = use_context::<crate::ImageDownloadProgressSignal>().0;
+        use_effect(move || {
+            let current = *progress.read();
+            if current.is_none() {
+                // A batch just finished – bump the counter so sync_url
+                // re-evaluates and can switch to the imgcache:// URL.
+                let prev = *completed_batches.peek();
+                completed_batches.set(prev + 1);
+            }
+        });
+    }
+
     // Synchronous URL via the shared model method (covers all non-idb: keys).
-    // Only re-evaluated when the user cycles through images (img_index changes).
-    // Deliberately does NOT subscribe to the download-progress signal: switching
-    // the src from a remote URL to an imgcache:// URL mid-display causes the
-    // Android WebView to blank the image briefly while the custom protocol handler
-    // serves the new request.  Images cached during this session are picked up on
-    // the next component mount (e.g. after scrolling or the next app launch).
+    // Re-evaluated when the user cycles images OR when a download batch ends.
     let sync_url = {
         let ex = exercise.clone();
-        use_memo(move || ex.get_image_url(*img_index.read()))
+        #[cfg(not(target_arch = "wasm32"))]
+        {
+            use_memo(move || {
+                let _batch = *completed_batches.read(); // subscribe to batch completions
+                ex.get_image_url(*img_index.read())
+            })
+        }
+        #[cfg(target_arch = "wasm32")]
+        {
+            use_memo(move || ex.get_image_url(*img_index.read()))
+        }
     };
 
     // Async blob URL for `idb:`-prefixed keys (web only).

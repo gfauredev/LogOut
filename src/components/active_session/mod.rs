@@ -129,26 +129,44 @@ pub fn SessionView() -> Element {
     let pending_ids = use_memo(move || session.read().pending_exercise_ids.clone());
     let lang_str = use_memo(move || i18n().language().to_string());
     let mut notes_input = use_signal(|| session.read().notes.clone());
-    // Keep the notes signal in sync when the session changes from an external
-    // source (e.g. a different session is loaded or the active session is
-    // reloaded from storage).  We compare against `notes_input` — which is
-    // kept up-to-date on every `oninput` event — so that a save triggered by
-    // the debounce coroutine does NOT cause an eval-based DOM update (which
-    // would reset the cursor position on Android).
-    use_effect(move || {
-        let session_notes = session.read().notes.clone();
-        if session_notes != *notes_input.peek() {
-            notes_input.set(session_notes.clone());
-            // Update the textarea value via JavaScript so the DOM is updated
-            // without a full re-render.  A full re-render would reset the
-            // cursor to the end of the text on Android's WebView.
+    // Initialise the uncontrolled textarea on first mount.  Because we never
+    // bind `value:` to the textarea, the DOM starts blank even when the
+    // session already has notes (e.g. after reopening the app).  This hook
+    // fires once and sets the initial DOM value via JavaScript.
+    let initial_notes = session.peek().notes.clone();
+    use_hook(move || {
+        if !initial_notes.is_empty() {
+            let val_js = serde_json::to_string(&initial_notes).unwrap_or_default();
             spawn(async move {
-                let val_js = serde_json::to_string(&session_notes).unwrap_or_default();
                 document::eval(&format!(
                     "var el=document.getElementById('session-notes-input');if(el)el.value={val_js};"
                 ));
             });
         }
+    });
+    // Track the session ID so we can distinguish between:
+    //   (a) the debounce saving the user's own input for the *same* session
+    //       → do NOT touch the DOM (would reset cursor on Android)
+    //   (b) a *different* session being loaded
+    //       → update both the signal and the DOM
+    let mut last_synced_session_id = use_signal(|| session.read().id.clone());
+    use_effect(move || {
+        let s = session.read();
+        let new_id = s.id.clone();
+        let new_notes = s.notes.clone();
+        if new_id != *last_synced_session_id.peek() {
+            // Different session loaded – update signal and DOM.
+            last_synced_session_id.set(new_id);
+            notes_input.set(new_notes.clone());
+            spawn(async move {
+                let val_js = serde_json::to_string(&new_notes).unwrap_or_default();
+                document::eval(&format!(
+                    "var el=document.getElementById('session-notes-input');if(el)el.value={val_js};"
+                ));
+            });
+        }
+        // Same session: notes changed because the debounce saved the user's
+        // own input.  Leave the DOM alone to avoid resetting the cursor.
     });
     let notes_debounce = use_coroutine(move |mut rx: UnboundedReceiver<String>| async move {
         use futures_util::StreamExt as _;

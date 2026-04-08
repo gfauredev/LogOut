@@ -75,6 +75,10 @@ pub(crate) fn handle_imgcache_request(
 }
 
 /// Returns an empty response with the given status code.
+///
+/// Error responses always include `Cache-Control: no-store` so that the
+/// Android WebView never permanently caches a "not found" result for an image
+/// that may be downloaded later in the same session.
 #[cfg(feature = "mobile-platform")]
 fn error_response(
     status: dioxus::mobile::wry::http::StatusCode,
@@ -82,6 +86,7 @@ fn error_response(
     use std::borrow::Cow;
     dioxus::mobile::wry::http::Response::builder()
         .status(status)
+        .header("Cache-Control", "no-store")
         .body(Cow::Borrowed(b"" as &[u8]))
         .unwrap()
 }
