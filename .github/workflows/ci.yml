@@ -116,46 +116,7 @@ jobs:
     - uses: actions/upload-artifact@v4
       with: { name: android, path: '*.apk' }
 
-  # lighthouse: FIXME
-  #   if: github.event_name != 'pull_request' || github.event.pull_request.draft == false
-  #   needs: coverage
-  #   runs-on: ubuntu-latest
-  #   timeout-minutes: 20
-  #   steps:
-  #   - uses: actions/checkout@v6
-  #   - uses: cachix/install-nix-action@v31
-  #     with:
-  #       github_access_token: ${{ secrets.GITHUB_TOKEN }}
-  #       extra_nix_config: | # TODO Ensure nix uses the most performant cache between Garnix and Cachix every time
-  #         extra-substituters = https://cache.garnix.io
-  #         extra-trusted-public-keys = cache.garnix.io:CTFPyKSLcx5RMJKfLo5EEPUObbA78b0YQ2DTCJXqr9g=
-  #   - uses: cachix/cachix-action@v17
-  #     with:
-  #       name: gfauredev
-  #       authToken: '${{ secrets.CACHIX_AUTH_TOKEN }}'
-  #   - name: Start web app server
-  #     run: |
-  #       nix run &
-  #       timeout 60 bash -c 'until curl -sf http://localhost:8080/LogOut/ > /dev/null 2>&1; do sleep 1; done'
-  #   - uses: treosh/lighthouse-ci-action@v12
-  #     with:
-  #       urls: http://localhost:8080/LogOut/
-  #       uploadArtifacts: true
-  #       temporaryPublicStorage: true
-  #       configPath: .lighthouserc.json
-  #     id: lighthouse_audit
-  #   - if: always() && github.event_name == 'pull_request'
-  #     run: .script/lighthouse-report.sh '${{ steps.lighthouse_audit.outputs.links }}'
-  #     id: lighthouse_results
-  #   - if: always() && github.event_name == 'pull_request'
-  #     uses: peter-evans/create-or-update-comment@v5
-  #     with:
-  #       issue-number: ${{ github.event.pull_request.number }}
-  #       body: ${{ steps.lighthouse_results.outputs.BODY }}
-
-  # e2e-web: Moved to CD pipeline — runs against the public preview URL
-  #   after every successful Pages deployment (see cd.yml e2e-web-preview job).
-  # e2e-web:
+  # e2e-web: # Moved to CD to run against the public preview URL on Pages deploy
   #   if: github.event_name != 'pull_request' || github.event.pull_request.draft == false
   #   needs: coverage
   #   runs-on: ubuntu-latest

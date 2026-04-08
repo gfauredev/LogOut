@@ -233,7 +233,6 @@ PRs) must pass (for some, at a certain level) for it to be merged into `main`.
   - Check that more than `80%` of code (excluding `components`) is covered,
     publish the full coverage summary table as a PR comment
   - Slower checks, only if above pass _and_ branch is up-to-date with `main`
-    - **PageSpeed** Lighthouse audit on PWA, publish report as a PR comment
     - Web Maestro **end-to-end tests** with `maestro test maestro/web`
     - Publish a report with screenshots of failed E2E tests as a PR comment
 
@@ -253,6 +252,9 @@ a “Stable” GitHub Release with a production Android APK built on this `tag`.
 
 Additionally, [renovate] GitHub app is used to monitor the freshness of
 project’s dependencies.
+
+The site can also be analysed with [PageSpeed Insights] and [Yellow Labs] to
+further improve its quality.
 
 ### Heavier Checks
 
@@ -303,6 +305,7 @@ The [exercise database] is under the Unlicense (public domain).
 [nextest]: https://nexte.st
 [Nix]: https://nixos.org
 [pwa]: https://developer.mozilla.org/en-US/docs/Web/Progressive_web_apps
+[pagespeed insights]: https://pagespeed.web.dev/analysis/https-gfauredev-github-io-LogOut-preview/0wfwmlcief
 [renovate]: https://www.mend.io/renovate
 [rust-analyzer]: https://rust-analyzer.github.io
 [rust]: https://www.rust-lang.org
@@ -319,4 +322,5 @@ The [exercise database] is under the Unlicense (public domain).
 [Reqwest]: https://github.com/seanmonstar/reqwest
 [Time]: https://github.com/time-rs/time
 [Tokio]: https://tokio.rs
+[yellow labs]: https://yellowlab.tools/result/hhereygo8j
 [Web-sys]: https://rustwasm.github.io/wasm-bindgen/web-sys/index.html
