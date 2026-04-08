@@ -6,6 +6,9 @@ use dioxus_i18n::t;
 /// Number of 100 ms ticks that must elapse while the button is held before the
 /// delete action fires (30 × 100 ms = 3 s).
 const HOLD_STEPS: u32 = 30;
+/// `HOLD_STEPS` as `f32` for progress computations; no precision loss for this
+/// small value.
+const HOLD_STEPS_F32: f32 = 30.0;
 /// Duration of each tick in milliseconds.
 const HOLD_TICK_MS: u32 = 100;
 /// SVG viewBox half-side (the SVG is `RING_SIZE × RING_SIZE`).
@@ -52,7 +55,9 @@ pub fn HoldDeleteButton(on_delete: EventHandler<()>, title: String) -> Element {
                     let hint = hint_msg.clone();
                     let mut toast = consume_context::<ToastSignal>().0;
                     spawn(async move {
-                        for step in 1..=HOLD_STEPS {
+                        let increment = 1.0_f32 / HOLD_STEPS_F32;
+                        let mut cur_progress = 0.0_f32;
+                        for _ in 0..HOLD_STEPS {
                             sleep_ms(HOLD_TICK_MS).await;
                             if *gen.peek() != next {
                                 // Released early – show the hint toast.
@@ -60,7 +65,8 @@ pub fn HoldDeleteButton(on_delete: EventHandler<()>, title: String) -> Element {
                                 progress.set(0.0);
                                 return;
                             }
-                            progress.set(step as f32 / HOLD_STEPS as f32);
+                            cur_progress += increment;
+                            progress.set(cur_progress);
                         }
                         // Full 3 s elapsed – fire the delete action.
                         if *gen.peek() == next {
