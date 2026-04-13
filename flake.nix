@@ -73,9 +73,7 @@
           # Extra assets only needed by the server build: the bundled example
           # exercise database served alongside the binary.
           serverAssetFilter =
-            path: type:
-            (assetFilter path type)
-            || (builtins.match ".*/database\\.example(/.*)?$" path != null);
+            path: type: (assetFilter path type) || (builtins.match ".*/database\\.example(/.*)?$" path != null);
           sourceFilter = path: type: (assetFilter path type) || (craneLib.filterCargoSources path type);
           # Source tree used by web / Android builds.
           filteredSrc = pkgs.lib.cleanSourceWith {
@@ -89,12 +87,14 @@
           };
           wasm-bindgen-cli = rustPlatform.buildRustPackage rec {
             pname = "wasm-bindgen-cli";
-            version = "0.2.117";
+            version = "0.2.118";
             src = pkgs.fetchCrate {
               inherit pname version;
-              hash = "sha256-vtDQXL8FSgdutqXG7/rBUWgrYCtzdmeVQQkWkjasvZU=";
+              hash = "sha256-ve783oYH0TGv8Z8lIPdGjItzeLDQLOT5uv/jbFOlZpI=";
+              # hash = pkgs.lib.fakeHash;
             };
-            cargoHash = "sha256-eKe7uwneUYxejSbG/1hKqg6bSmtL0KQ9ojlazeqTi88=";
+            cargoHash = "sha256-EYDfuBlH3zmTxACBL+sjicRna84CvoesKSQVcYiG9P0=";
+            # cargoHash = pkgs.lib.fakeHash;
             nativeBuildInputs = [ pkgs.pkg-config ];
             buildInputs = [
               pkgs.openssl
@@ -242,7 +242,8 @@
               installPhase = ''
                 mkdir --parents --verbose ${out}
                 cp --recursive --verbose ${target} ${out}
-              '' + env.pkgs.lib.optionalString (platform == "server") ''
+              ''
+              + env.pkgs.lib.optionalString (platform == "server") ''
                 # Bundle the example exercise database with the server so it can be
                 # used as a self-hosted default (serve from ./database.example/).
                 cp --recursive --verbose database.example ${out}
