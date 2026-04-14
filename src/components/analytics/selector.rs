@@ -58,7 +58,7 @@ pub fn MetricSelector(
                     pairs[i].1 = if value.is_empty() { None } else { Some(value) };
                 },
                 option { value: "", {t!("analytics-select-exercise")} }
-                for (id , name) in exercises_for_slot.iter() {
+                for (id, name) in exercises_for_slot.iter() {
                     option { value: "{id}", "{name}" }
                 }
             }

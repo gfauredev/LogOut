@@ -240,7 +240,7 @@ pub fn Exercises() -> Element {
             }
             if !active_filters.read().is_empty() {
                 div { class: "filter-chips",
-                    for (i , filter) in active_filters.read().iter().enumerate() {
+                    for (i, filter) in active_filters.read().iter().enumerate() {
                         button {
                             class: "filter-chip active",
                             title: t!("filter-remove"),
@@ -280,7 +280,7 @@ pub fn Exercises() -> Element {
             }
         }
         main { class: "exercises",
-            for (exercise , is_custom , show_instructions) in visible_items() {
+            for (exercise, is_custom, show_instructions) in visible_items() {
                 ExerciseCard {
                     key: "{exercise.id}",
                     exercise,

@@ -372,7 +372,7 @@ pub fn ExerciseFormFields(
             }
             if !instructions_list.read().is_empty() {
                 ol {
-                    for (idx , instruction) in instructions_list.read().iter().enumerate() {
+                    for (idx, instruction) in instructions_list.read().iter().enumerate() {
                         li { key: "{idx}",
                             span { "{instruction}" }
                             button {
@@ -399,7 +399,7 @@ pub fn ExerciseFormFields(
             {image_upload_widget}
             if !images_list.read().is_empty() {
                 ul { class: "tags",
-                    for (idx , url) in images_list.read().iter().enumerate() {
+                    for (idx, url) in images_list.read().iter().enumerate() {
                         li { key: "{idx}",
                             button {
                                 class: "del label",

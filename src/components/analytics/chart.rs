@@ -312,7 +312,7 @@ pub fn ChartView(data: SeriesData, colors: Vec<&'static str>) -> Element {
                     }
                 }
             }
-            for (slot_idx , _ , metric , points) in data.iter() {
+            for (slot_idx, _, metric, points) in data.iter() {
                 {
                     let mi = metric.to_index();
                     if let Some((_, scale, _, _)) = axis_data[mi] {
@@ -350,7 +350,7 @@ pub fn ChartView(data: SeriesData, colors: Vec<&'static str>) -> Element {
                                         stroke_linecap: "round",
                                         opacity: "0.7",
                                     }
-                                    for (x , y) in points.iter() {
+                                    for (x, y) in points.iter() {
                                         circle {
                                             cx: "{scale_x(*x)}",
                                             cy: "{y_svg(y * scale, mi)}",
@@ -454,7 +454,7 @@ pub fn ChartView(data: SeriesData, colors: Vec<&'static str>) -> Element {
         }
         if !cursor_values.is_empty() {
             div { class: "cursor-values",
-                for (slot_idx , name , value , unit) in cursor_values.iter() {
+                for (slot_idx, name, value, unit) in cursor_values.iter() {
                     div { class: "cursor-value-row",
                         span {
                             class: "cursor-swatch",

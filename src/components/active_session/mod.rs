@@ -12,6 +12,8 @@ use dioxus::prelude::*;
 use dioxus_i18n::prelude::i18n;
 use dioxus_i18n::t;
 use futures_channel::mpsc::UnboundedReceiver;
+#[cfg(target_arch = "wasm32")]
+use gloo_timers::future::TimeoutFuture;
 use std::sync::Arc;
 
 mod completed_exercises;
@@ -129,21 +131,6 @@ pub fn SessionView() -> Element {
     let pending_ids = use_memo(move || session.read().pending_exercise_ids.clone());
     let lang_str = use_memo(move || i18n().language().to_string());
     let mut notes_input = use_signal(|| session.read().notes.clone());
-    // Initialise the uncontrolled textarea on first mount.  Because we never
-    // bind `value:` to the textarea, the DOM starts blank even when the
-    // session already has notes (e.g. after reopening the app).  This hook
-    // fires once and sets the initial DOM value via JavaScript.
-    let initial_notes = session.peek().notes.clone();
-    use_hook(move || {
-        if !initial_notes.is_empty() {
-            let val_js = serde_json::to_string(&initial_notes).unwrap_or_default();
-            spawn(async move {
-                document::eval(&format!(
-                    "var el=document.getElementById('session-notes-input');if(el)el.value={val_js};"
-                ));
-            });
-        }
-    });
     // Track the session ID so we can distinguish between:
     //   (a) the debounce saving the user's own input for the *same* session
     //       → do NOT touch the DOM (would reset cursor on Android)
@@ -384,7 +371,7 @@ pub fn SessionView() -> Element {
                 }
                 if !active_filters.read().is_empty() {
                     div { class: "filter-chips",
-                        for (i , filter) in active_filters.read().iter().enumerate() {
+                        for (i, filter) in active_filters.read().iter().enumerate() {
                             button {
                                 class: "filter-chip active",
                                 title: t!("session-filter-remove"),
@@ -459,9 +446,20 @@ pub fn SessionView() -> Element {
                 // Dioxus to overwrite the DOM value on every re-render, which
                 // resets the cursor position to the end on Android's WebView
                 // (especially visible when typing fast with the IME).
-                // Instead we drive the initial / external value via eval in the
-                // `use_effect` above, and keep `notes_input` in sync via
-                // `oninput` so the effect can detect external changes.
+                // Instead we set the initial DOM value via `onmounted` (fires
+                // once the element is in the DOM) and keep `notes_input` in
+                // sync via `oninput` so the effect can detect session changes.
+                onmounted: move |_| {
+                    let notes = notes_input.peek().clone();
+                    if !notes.is_empty() {
+                        let val_js = serde_json::to_string(&notes).unwrap_or_default();
+                        document::eval(
+                            &format!(
+                                "var el=document.getElementById('session-notes-input');if(el)el.value={val_js};",
+                            ),
+                        );
+                    }
+                },
                 oninput: move |evt| {
                     let text = evt.value();
                     notes_input.set(text.clone());
@@ -480,6 +478,98 @@ pub fn GlobalSessionHeader() -> Element {
     let rest_duration = use_context::<RestDurationSignal>().0;
     let mut rest_input_value = use_signal(|| DEFAULT_REST_SECONDS.to_string());
     let mut congratulations = use_context::<crate::CongratulationsSignal>().0;
+
+    // A memo that captures the (rest_start_time, rest_duration) pair so the
+    // notification effect only re-fires when the rest period actually changes.
+    let rest_key = use_memo(move || {
+        let rd = *rest_duration.read();
+        session()
+            .and_then(|s| s.rest_start_time)
+            .map(|start| (start, rd))
+    });
+
+    // Track how many rest-exceeded intervals have fired for the current rest
+    // period.  Reset to 0 each time a new rest period begins.
+    let mut rest_bell_count = use_signal(|| 0u64);
+
+    // Pre-localise the notification strings in the reactive context so they
+    // can be moved into async closures without requiring i18n context access.
+    let rest_notif_title = use_memo(move || t!("notif-rest-title").to_string());
+    let rest_notif_body = use_memo(move || t!("notif-rest-body").to_string());
+
+    // Schedule a precise one-shot rest-over notification whenever a new rest
+    // period begins.  Fires ~250 ms early to compensate for jitter.
+    use_effect(move || {
+        let Some((start, duration)) = rest_key() else {
+            return;
+        };
+        if duration == 0 {
+            return;
+        }
+        // Reset the exceeded-interval counter for the new rest period.
+        rest_bell_count.set(0);
+
+        let title = rest_notif_title.peek().clone();
+        let body = rest_notif_body.peek().clone();
+        let fire_at_secs = start + duration;
+
+        #[cfg(not(target_arch = "wasm32"))]
+        {
+            let now = crate::models::get_current_timestamp();
+            if fire_at_secs > now {
+                let delay_ms = ((fire_at_secs - now) * 1_000)
+                    .saturating_sub(crate::components::session_timers::NOTIF_EARLY_MS);
+                tokio::spawn(async move {
+                    tokio::time::sleep(std::time::Duration::from_millis(delay_ms)).await;
+                    crate::services::notifications::send_notification(&title, &body, "logout-rest");
+                });
+            } else {
+                crate::services::notifications::send_notification(&title, &body, "logout-rest");
+            }
+        }
+        #[cfg(target_arch = "wasm32")]
+        {
+            let now = crate::models::get_current_timestamp();
+            let delay_ms = if fire_at_secs > now {
+                ((fire_at_secs - now) * 1_000)
+                    .saturating_sub(crate::components::session_timers::NOTIF_EARLY_MS)
+                    .min(u32::MAX as u64) as u32
+            } else {
+                0
+            };
+            wasm_bindgen_futures::spawn_local(async move {
+                gloo_timers::future::TimeoutFuture::new(delay_ms).await;
+                crate::services::notifications::send_notification(&title, &body, "logout-rest");
+            });
+        }
+    });
+
+    // Tick-based coroutine: fires a notification for every completed exceeded
+    // interval (2nd, 3rd, … ring) so the user keeps being reminded.
+    use_coroutine(move |_: UnboundedReceiver<()>| async move {
+        loop {
+            crate::utils::sleep_ms(1_000).await;
+            let Some((start, duration)) = *rest_key.peek() else {
+                continue;
+            };
+            if duration == 0 {
+                continue;
+            }
+            let now = crate::models::get_current_timestamp();
+            let elapsed = now.saturating_sub(start);
+            let intervals = elapsed / duration;
+            let prev = *rest_bell_count.peek();
+            if intervals > prev {
+                rest_bell_count.set(intervals);
+                crate::services::notifications::send_notification(
+                    &rest_notif_title.peek(),
+                    &rest_notif_body.peek(),
+                    "logout-rest",
+                );
+            }
+        }
+    });
+
     use_effect(move || {
         if *show_rest.read() {
             rest_input_value.set(rest_duration.read().to_string());
