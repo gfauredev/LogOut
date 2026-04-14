@@ -2,16 +2,71 @@ use crate::models::{format_time, format_time_i64, get_current_timestamp, Force};
 use dioxus::prelude::*;
 use dioxus_i18n::t;
 
-/// Timer tick interval in milliseconds
+/// Timer tick interval in milliseconds.
 #[cfg(target_arch = "wasm32")]
 const TIMER_TICK_MS: u32 = 1_000;
 
-/// Renders the rest-timer with a countdown and fires a notification when the
-/// rest duration is reached.
+/// How many milliseconds ahead of the target time to fire notifications.
 ///
-/// The notification is scheduled precisely when the component mounts (so it
-/// fires even when the page is backgrounded).  The tick-based check is kept
-/// as a belt-and-suspenders fallback for consecutive intervals.
+/// Sending slightly early compensates for scheduling jitter so the alert
+/// arrives as close to the target moment as possible.
+pub const NOTIF_EARLY_MS: u64 = 250;
+
+/// Schedule a one-shot duration-reached notification for the given exercise.
+///
+/// * On **WASM**: uses `gloo_timers` in a `spawn_local` task so the timeout
+///   fires accurately without blocking the UI.  `duration_bell_rung` is set
+///   inside the callback to prevent the tick-based fallback from sending a
+///   duplicate.
+/// * On **native**: the tick-based path is accurate enough (±1 s) and avoids
+///   the complexity of crossing Dioxus signal boundaries from a `tokio::spawn`
+///   thread; no extra task is spawned here.
+#[allow(unused_mut)]
+fn schedule_duration_notification(
+    exercise_start: Option<u64>,
+    last_duration: Option<u64>,
+    mut duration_bell_rung: Signal<bool>,
+) {
+    #[cfg(target_arch = "wasm32")]
+    {
+        let Some(start) = exercise_start else { return };
+        let Some(dur) = last_duration else { return };
+        if dur == 0 || *duration_bell_rung.read() {
+            return;
+        }
+        let fire_at_secs = start + dur;
+        let now = get_current_timestamp();
+        // Only schedule if the duration hasn't already elapsed; the tick-based
+        // fallback fires immediately when elapsed >= dur on the next tick.
+        if fire_at_secs <= now {
+            return;
+        }
+        let delay_ms = ((fire_at_secs - now) * 1_000)
+            .saturating_sub(NOTIF_EARLY_MS)
+            .min(u32::MAX as u64) as u32;
+        let title = t!("notif-duration-title").to_string();
+        let body = t!("notif-duration-body").to_string();
+        wasm_bindgen_futures::spawn_local(async move {
+            gloo_timers::future::TimeoutFuture::new(delay_ms).await;
+            // Re-check to avoid a duplicate if the tick fired first.
+            if !*duration_bell_rung.peek() {
+                duration_bell_rung.set(true);
+                crate::services::notifications::send_notification(&title, &body, "logout-duration");
+            }
+        });
+    }
+    // On native, suppress unused-variable warnings; the tick handles it.
+    #[cfg(not(target_arch = "wasm32"))]
+    let _ = (exercise_start, last_duration, duration_bell_rung);
+}
+
+/// Renders the rest-timer with a countdown.
+///
+/// Notification scheduling (one-shot + repeated-exceed) is handled by
+/// [`GlobalSessionHeader`](super::active_session::GlobalSessionHeader) which
+/// has access to the rest context.  This component is kept for cases where a
+/// standalone rest timer with notification is needed independently of the
+/// session header.
 #[component]
 pub fn RestTimer(
     start_time: Option<u64>,
@@ -30,38 +85,6 @@ pub fn RestTimer(
         }
     });
 
-    use_effect(move || {
-        // On WASM, schedule through the service worker (PWA) so it fires in background.
-        #[cfg(target_arch = "wasm32")]
-        if let Some(start) = start_time {
-            if rest_duration > 0 {
-                let _target_unix_ms = (start as f64 + rest_duration as f64) * 1_000.0;
-                let title = t!("notif-rest-title").to_string();
-                let body = t!("notif-rest-body").to_string();
-                crate::services::notifications::send_notification(&title, &body, "logout-rest");
-                // For PWA background scheduling, we rely on the service worker
-                // or the precise timeout in the unified service.
-            }
-        }
-        // On native (Android), schedule a precise one-shot notification via tokio.
-        #[cfg(not(target_arch = "wasm32"))]
-        if let Some(start) = start_time {
-            if rest_duration > 0 {
-                let title = t!("notif-rest-title").to_string();
-                let body = t!("notif-rest-body").to_string();
-                let fire_at_secs = start + rest_duration;
-                tokio::spawn(async move {
-                    let now = crate::models::get_current_timestamp();
-                    if fire_at_secs > now {
-                        let delay = std::time::Duration::from_secs(fire_at_secs - now);
-                        tokio::time::sleep(delay).await;
-                    }
-                    crate::services::notifications::send_notification(&title, &body, "logout-rest");
-                });
-            }
-        }
-    });
-
     let Some(start) = start_time else {
         return rsx! {
             div { class: "rest-timer", "🛋️ {format_time(rest_duration)}" }
@@ -72,7 +95,7 @@ pub fn RestTimer(
     let elapsed = effective_now.saturating_sub(start);
     let rd = rest_duration;
 
-    // Tick-based fallback for 2nd+ intervals.
+    // Tick-based check for 2nd+ exceeded intervals.
     if rd > 0 && elapsed > 0 {
         let intervals = elapsed / rd;
         let prev_count = *bell_count.read();
@@ -96,7 +119,7 @@ pub fn RestTimer(
 }
 
 /// Renders the exercise elapsed timer and fires a notification when the
-/// target duration from the last log is reached.
+/// All Time High duration from the last log is reached.
 #[component]
 pub fn ExerciseElapsedTimer(
     exercise_start: Option<u64>,
@@ -107,35 +130,9 @@ pub fn ExerciseElapsedTimer(
     /// `Force::Static` exercises.
     force: Option<Force>,
 ) -> Element {
+    // Schedule a precise one-shot notification (WASM only; native uses tick).
     use_effect(move || {
-        #[cfg(target_arch = "wasm32")]
-        if let (Some(_start), Some(dur)) = (exercise_start, last_duration) {
-            if dur > 0 && !*duration_bell_rung.read() {
-                let title = t!("notif-duration-title").to_string();
-                let body = t!("notif-duration-body").to_string();
-                crate::services::notifications::send_notification(&title, &body, "logout-duration");
-            }
-        }
-        #[cfg(not(target_arch = "wasm32"))]
-        if let (Some(start), Some(dur)) = (exercise_start, last_duration) {
-            if dur > 0 && !*duration_bell_rung.read() {
-                let title = t!("notif-duration-title").to_string();
-                let body = t!("notif-duration-body").to_string();
-                let fire_at_secs = start + dur;
-                tokio::spawn(async move {
-                    let now = crate::models::get_current_timestamp();
-                    if fire_at_secs > now {
-                        let delay = std::time::Duration::from_secs(fire_at_secs - now);
-                        tokio::time::sleep(delay).await;
-                    }
-                    crate::services::notifications::send_notification(
-                        &title,
-                        &body,
-                        "logout-duration",
-                    );
-                });
-            }
-        }
+        schedule_duration_notification(exercise_start, last_duration, duration_bell_rung);
     });
 
     let mut now_tick = use_signal(get_current_timestamp);
@@ -156,7 +153,7 @@ pub fn ExerciseElapsedTimer(
         0
     };
 
-    // Tick-based fallback.
+    // Tick-based: fires immediately on native, or as a fallback on WASM.
     if !*duration_bell_rung.read() {
         if let Some(dur) = last_duration {
             if dur > 0 && elapsed >= dur {
@@ -188,35 +185,9 @@ pub(super) fn InlineExerciseTimer(
     paused_at: Option<u64>,
     force: Option<Force>,
 ) -> Element {
+    // Schedule a precise one-shot notification (WASM only; native uses tick).
     use_effect(move || {
-        #[cfg(target_arch = "wasm32")]
-        if let (Some(_start), Some(dur)) = (exercise_start, last_duration) {
-            if dur > 0 && !*duration_bell_rung.read() {
-                let title = t!("notif-duration-title").to_string();
-                let body = t!("notif-duration-body").to_string();
-                crate::services::notifications::send_notification(&title, &body, "logout-duration");
-            }
-        }
-        #[cfg(not(target_arch = "wasm32"))]
-        if let (Some(start), Some(dur)) = (exercise_start, last_duration) {
-            if dur > 0 && !*duration_bell_rung.read() {
-                let title = t!("notif-duration-title").to_string();
-                let body = t!("notif-duration-body").to_string();
-                let fire_at_secs = start + dur;
-                tokio::spawn(async move {
-                    let now = crate::models::get_current_timestamp();
-                    if fire_at_secs > now {
-                        let delay = std::time::Duration::from_secs(fire_at_secs - now);
-                        tokio::time::sleep(delay).await;
-                    }
-                    crate::services::notifications::send_notification(
-                        &title,
-                        &body,
-                        "logout-duration",
-                    );
-                });
-            }
-        }
+        schedule_duration_notification(exercise_start, last_duration, duration_bell_rung);
     });
 
     let mut now_tick = use_signal(get_current_timestamp);

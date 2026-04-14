@@ -11,6 +11,7 @@ start-new-workout = Nuevo entrenamiento
 session-repeat-title = Iniciar nueva sesión basada en esta
 session-repeat-weekday-title = Repetir la sesión del mismo día de la semana
 session-delete-title = Eliminar sesión
+session-resume-last-title = Reanudar la última sesión
 session-show-more = +{ $count } más
 hold-to-delete-hint = Mantener 3s para eliminar
 session-delete-confirm = ¿Eliminar esta sesión?
@@ -144,7 +145,7 @@ congratulations = 🎉 ¡Buen entrenamiento! ¡Sesión completada!
 notif-permission-blocked = ⚠️ Notificaciones bloqueadas
 notif-permission-enable = ⚠️ Pulsa aquí para activar las notificaciones
 notif-duration-title = Duración alcanzada
-notif-duration-body = ¡Duración objetivo del ejercicio alcanzada!
+notif-duration-body = ¡Duración récord personal del ejercicio alcanzada!
 notif-rest-title = Descanso terminado
 notif-rest-body = ¡Es hora de tu próxima serie!
 

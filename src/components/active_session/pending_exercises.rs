@@ -54,7 +54,7 @@ pub fn PendingExercisesSection(
             if resolved.len() > 1 {
                 details {
                     summary { {t!("pending-more", count : (resolved.len() - 1).to_string())} }
-                    for (id , name , category) in resolved.iter().skip(1).cloned() {
+                    for (id, name, category) in resolved.iter().skip(1).cloned() {
                         {
                             let id2 = id.clone();
                             rsx! {

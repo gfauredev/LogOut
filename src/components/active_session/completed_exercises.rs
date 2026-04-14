@@ -63,7 +63,7 @@ pub fn CompletedExercisesSection(
             }
             {
                 rsx! {
-                    for (idx , log) in session.read().exercise_logs.iter().enumerate().rev() {
+                    for (idx, log) in session.read().exercise_logs.iter().enumerate().rev() {
                         CompletedExerciseLog {
                             key: "{idx}",
                             idx,

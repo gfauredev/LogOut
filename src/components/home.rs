@@ -84,6 +84,14 @@ pub fn Home() -> Element {
         let new_session = WorkoutSession::new();
         storage::save_session(new_session);
     };
+    // The most recently completed session (for the "resume" button).
+    let last_session = use_memo(move || {
+        completed_sessions
+            .read()
+            .first()
+            .filter(|s| !s.exercise_logs.is_empty())
+            .cloned()
+    });
     // Find the most recent completed session performed on the same weekday as today
     // (from those already loaded in the viewport) to show a quick-repeat button.
     let same_weekday_session = use_memo(move || {
@@ -142,6 +150,26 @@ pub fn Home() -> Element {
                     onclick: start_new_session,
                     title: t!("start-new-workout"),
                     "+"
+                }
+                if let Some(ref last_sess) = *last_session.read() {
+                    {
+                        let session_to_resume = {
+                            let mut s = last_sess.clone();
+                            s.end_time = None;
+                            s.paused_at = None;
+                            s
+                        };
+                        rsx! {
+                            button {
+                                class: "icon edit",
+                                onclick: move |_| {
+                                    storage::save_session(session_to_resume.clone());
+                                },
+                                title: t!("session-resume-last-title"),
+                                "▶️"
+                            }
+                        }
+                    }
                 }
                 if let Some(ref sw_session) = *same_weekday_session.read() {
                     {
@@ -281,7 +309,7 @@ fn SessionCard(session: WorkoutSession, on_delete: EventHandler<String>) -> Elem
             }
             if !unique_exercises.is_empty() {
                 ul {
-                    for (_ , name , tag_class , tag_icon) in unique_exercises.iter().take(visible_count) {
+                    for (_, name, tag_class, tag_icon) in unique_exercises.iter().take(visible_count) {
                         li {
                             class: "{tag_class}",
                             onclick: {

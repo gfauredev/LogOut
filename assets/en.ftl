@@ -11,6 +11,7 @@ start-new-workout = Start New Workout
 session-repeat-title = Start a new session based on this one
 session-repeat-weekday-title = Repeat same-weekday session
 session-delete-title = Delete session
+session-resume-last-title = Resume last session
 session-show-more = +{ $count } more
 hold-to-delete-hint = Hold for 3s to delete
 session-delete-confirm = Delete this session?
@@ -145,7 +146,7 @@ congratulations = 🎉 Great workout! Session complete!
 notif-permission-blocked = ⚠️ Notifications blocked
 notif-permission-enable = ⚠️ Tap here to enable notifications
 notif-duration-title = Duration reached
-notif-duration-body = Target exercise duration reached!
+notif-duration-body = All Time High duration reached!
 notif-rest-title = Rest over
 notif-rest-body = Time to start your next set!
 
