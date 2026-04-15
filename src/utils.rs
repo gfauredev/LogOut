@@ -56,28 +56,7 @@ pub fn normalize_db_url(url: &str) -> String {
 /// Falls back to [`EXERCISE_DB_BASE_URL`] if not set.
 #[must_use]
 pub fn get_exercise_db_url() -> String {
-    #[cfg(target_arch = "wasm32")]
-    {
-        if let Some(window) = web_sys::window() {
-            if let Ok(Some(storage)) = window.local_storage() {
-                if let Ok(Some(url)) = storage.get_item(EXERCISE_DB_URL_STORAGE_KEY) {
-                    if !url.is_empty() {
-                        return url;
-                    }
-                }
-            }
-        }
-    }
-    #[cfg(not(target_arch = "wasm32"))]
-    {
-        use crate::services::storage::native_storage;
-        if let Some(url) = native_storage::get_config_value(EXERCISE_DB_URL_STORAGE_KEY) {
-            if !url.is_empty() {
-                return url;
-            }
-        }
-    }
-    EXERCISE_DB_BASE_URL.to_string()
+    configured_exercise_db_url().unwrap_or_else(|| EXERCISE_DB_BASE_URL.to_string())
 }
 /// Returns the base URL used for exercise images.
 ///
@@ -87,28 +66,23 @@ pub fn get_exercise_db_url() -> String {
 /// the release assets.
 #[must_use]
 pub fn get_exercise_images_base_url() -> String {
+    configured_exercise_db_url().unwrap_or_else(|| EXERCISE_IMAGES_BASE_URL.to_string())
+}
+
+#[must_use]
+fn configured_exercise_db_url() -> Option<String> {
     #[cfg(target_arch = "wasm32")]
     {
-        if let Some(window) = web_sys::window() {
-            if let Ok(Some(storage)) = window.local_storage() {
-                if let Ok(Some(url)) = storage.get_item(EXERCISE_DB_URL_STORAGE_KEY) {
-                    if !url.is_empty() {
-                        return url;
-                    }
-                }
-            }
-        }
+        web_sys::window()
+            .and_then(|window| window.local_storage().ok().flatten())
+            .and_then(|storage| storage.get_item(EXERCISE_DB_URL_STORAGE_KEY).ok().flatten())
+            .filter(|url| !url.is_empty())
     }
     #[cfg(not(target_arch = "wasm32"))]
     {
         use crate::services::storage::native_storage;
-        if let Some(url) = native_storage::get_config_value(EXERCISE_DB_URL_STORAGE_KEY) {
-            if !url.is_empty() {
-                return url;
-            }
-        }
+        native_storage::get_config_value(EXERCISE_DB_URL_STORAGE_KEY).filter(|url| !url.is_empty())
     }
-    EXERCISE_IMAGES_BASE_URL.to_string()
 }
 /// A pending exercise entry parsed from a deep-link session-creation URL.
 ///
@@ -171,6 +145,7 @@ pub fn parse_web_deep_link() -> Option<DeepLinkAction> {
 /// Parse deep-link actions from an already-extracted query string (without the
 /// leading `?`).  Extracted so callers that have saved the query string before
 /// the Dioxus router strips `window.location` can still process deep links.
+#[must_use]
 pub fn parse_web_deep_link_query(query: &str) -> Option<DeepLinkAction> {
     if query.is_empty() {
         return None;
@@ -194,12 +169,7 @@ pub fn parse_web_deep_link_query(query: &str) -> Option<DeepLinkAction> {
         return Some(DeepLinkAction::CreateSession(entries));
     }
     if let Some(exercises) = get_query_param(query, "dl_start") {
-        let ids = exercises
-            .split(',')
-            .filter(|s| !s.is_empty())
-            .map(std::string::ToString::to_string)
-            .collect();
-        return Some(DeepLinkAction::StartSession(ids));
+        return Some(DeepLinkAction::StartSession(parse_csv_ids(&exercises)));
     }
     None
 }
@@ -223,15 +193,9 @@ fn parse_deep_link_path(path: &str, query: &str) -> Option<DeepLinkAction> {
             }
         }
         "exercise/add" => Some(DeepLinkAction::Navigate("/add-exercise".to_string())),
-        "session/start" => {
-            let ids: Vec<String> = get_query_param(query, "exercises")
-                .unwrap_or_default()
-                .split(',')
-                .filter(|s| !s.is_empty())
-                .map(std::string::ToString::to_string)
-                .collect();
-            Some(DeepLinkAction::StartSession(ids))
-        }
+        "session/start" => Some(DeepLinkAction::StartSession(parse_csv_ids(
+            &get_query_param(query, "exercises").unwrap_or_default(),
+        ))),
         "session/create" => {
             let exercises_str = get_query_param(query, "exercises")?;
             Some(DeepLinkAction::CreateSession(parse_session_exercises(
@@ -282,6 +246,13 @@ pub fn parse_session_exercises(s: &str) -> Vec<SessionExerciseEntry> {
         })
         .collect()
 }
+
+fn parse_csv_ids(s: &str) -> Vec<String> {
+    s.split(',')
+        .filter(|id| !id.is_empty())
+        .map(std::string::ToString::to_string)
+        .collect()
+}
 /// Look up a single parameter value from a URL query string.
 #[must_use]
 pub fn get_query_param(query: &str, name: &str) -> Option<String> {
@@ -298,9 +269,13 @@ pub fn get_query_param(query: &str, name: &str) -> Option<String> {
 /// `percent-encoding` crate.  `+` is treated as a space per the
 /// `application/x-www-form-urlencoded` convention.
 fn percent_decode(s: &str) -> String {
-    // Replace `+` with `%20` before decoding so the standard decoder treats
-    // it as a space, matching the `application/x-www-form-urlencoded` convention.
-    let s = s.replace('+', "%20");
+    use std::borrow::Cow;
+    // Replace `+` with `%20` only when needed so we avoid an allocation in the common case.
+    let s = if s.contains('+') {
+        Cow::Owned(s.replace('+', "%20"))
+    } else {
+        Cow::Borrowed(s)
+    };
     percent_encoding::percent_decode_str(&s)
         .decode_utf8_lossy()
         .into_owned()

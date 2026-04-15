@@ -47,7 +47,7 @@ pub fn format_time(seconds: u64) -> String {
 #[must_use]
 pub fn format_time_i64(seconds: i64) -> String {
     if seconds < 0 {
-        format!("-{}", format_time((-seconds).cast_unsigned()))
+        format!("-{}", format_time(seconds.unsigned_abs()))
     } else {
         format_time(seconds.cast_unsigned())
     }
@@ -57,12 +57,10 @@ pub(crate) fn exercise_type_tag(
     category: Category,
     force: Option<Force>,
 ) -> (&'static str, &'static str) {
-    if category == Category::Cardio {
-        ("tag-cardio", "🏃")
-    } else if force.is_some_and(Force::has_reps) {
-        ("tag-strength", "💪")
-    } else {
-        ("tag-static", "⏱️")
+    match (category, force.is_some_and(Force::has_reps)) {
+        (Category::Cardio, _) => ("tag-cardio", "🏃"),
+        (_, true) => ("tag-strength", "💪"),
+        _ => ("tag-static", "⏱️"),
     }
 }
 #[cfg(test)]
