@@ -14,7 +14,10 @@ use dioxus_i18n::t;
 use futures_channel::mpsc::UnboundedReceiver;
 #[cfg(target_arch = "wasm32")]
 use gloo_timers::future::TimeoutFuture;
-use std::sync::Arc;
+use std::sync::{
+    atomic::{AtomicBool, AtomicU64, Ordering},
+    Arc,
+};
 
 mod completed_exercises;
 mod header;
@@ -488,14 +491,32 @@ pub fn GlobalSessionHeader() -> Element {
             .map(|start| (start, rd))
     });
 
-    // Track how many rest-exceeded intervals have fired for the current rest
-    // period.  Reset to 0 each time a new rest period begins.
-    let mut rest_bell_count = use_signal(|| 0u64);
+    // How many rest-exceeded intervals have fired for the current rest period.
+    // Stored as an Arc<AtomicU64> so it can be read/written from both the
+    // Dioxus thread and spawned async tasks without Signal's !Send constraint.
+    let rest_bell_count = use_hook(|| Arc::new(AtomicU64::new(0)));
+    // Clone used by the tick coroutine (the scheduling effect takes the original).
+    let bc_tick = rest_bell_count.clone();
+
+    // Cancel token for the current one-shot scheduled notification.
+    // Set to `true` to invalidate a pending spawn before it fires.
+    let mut rest_cancel = use_signal(|| Arc::new(AtomicBool::new(false)));
+
+    // Memo tracking whether the session is currently paused.
+    let session_paused_at = use_memo(move || session().and_then(|s| s.paused_at));
 
     // Pre-localise the notification strings in the reactive context so they
     // can be moved into async closures without requiring i18n context access.
     let rest_notif_title = use_memo(move || t!("notif-rest-title").to_string());
     let rest_notif_body = use_memo(move || t!("notif-rest-body").to_string());
+
+    // When the session is paused, cancel any pending one-shot notification so
+    // it doesn't fire at a wall-clock time that ignores the pause duration.
+    use_effect(move || {
+        if session_paused_at().is_some() {
+            rest_cancel.peek().store(true, Ordering::Relaxed);
+        }
+    });
 
     // Schedule a precise one-shot rest-over notification whenever a new rest
     // period begins.  Fires ~250 ms early to compensate for jitter.
@@ -507,7 +528,12 @@ pub fn GlobalSessionHeader() -> Element {
             return;
         }
         // Reset the exceeded-interval counter for the new rest period.
-        rest_bell_count.set(0);
+        rest_bell_count.store(0, Ordering::Relaxed);
+
+        // Invalidate any previously scheduled notification and issue a new token.
+        rest_cancel.peek().store(true, Ordering::Relaxed);
+        let cancel = Arc::new(AtomicBool::new(false));
+        rest_cancel.set(cancel.clone());
 
         let title = rest_notif_title.peek().clone();
         let body = rest_notif_body.peek().clone();
@@ -519,11 +545,23 @@ pub fn GlobalSessionHeader() -> Element {
             if fire_at_secs > now {
                 let delay_ms = ((fire_at_secs - now) * 1_000)
                     .saturating_sub(crate::components::session_timers::NOTIF_EARLY_MS);
+                let bc = rest_bell_count.clone();
                 tokio::spawn(async move {
                     tokio::time::sleep(std::time::Duration::from_millis(delay_ms)).await;
-                    crate::services::notifications::send_notification(&title, &body, "logout-rest");
+                    if !cancel.load(Ordering::Relaxed) {
+                        // Mark first interval done so the tick coroutine doesn't
+                        // fire a duplicate for interval 1.
+                        bc.store(1, Ordering::Relaxed);
+                        crate::services::notifications::send_notification(
+                            &title,
+                            &body,
+                            "logout-rest",
+                        );
+                    }
                 });
             } else {
+                // Already past; send immediately and mark interval 1 done.
+                rest_bell_count.store(1, Ordering::Relaxed);
                 crate::services::notifications::send_notification(&title, &body, "logout-rest");
             }
         }
@@ -537,35 +575,50 @@ pub fn GlobalSessionHeader() -> Element {
             } else {
                 0
             };
+            let bc = rest_bell_count.clone();
             wasm_bindgen_futures::spawn_local(async move {
                 gloo_timers::future::TimeoutFuture::new(delay_ms).await;
-                crate::services::notifications::send_notification(&title, &body, "logout-rest");
+                if !cancel.load(Ordering::Relaxed) {
+                    // Mark first interval done so the tick coroutine doesn't
+                    // fire a duplicate for interval 1.
+                    bc.store(1, Ordering::Relaxed);
+                    crate::services::notifications::send_notification(&title, &body, "logout-rest");
+                }
             });
         }
     });
 
     // Tick-based coroutine: fires a notification for every completed exceeded
     // interval (2nd, 3rd, … ring) so the user keeps being reminded.
-    use_coroutine(move |_: UnboundedReceiver<()>| async move {
-        loop {
-            crate::utils::sleep_ms(1_000).await;
-            let Some((start, duration)) = *rest_key.peek() else {
-                continue;
-            };
-            if duration == 0 {
-                continue;
-            }
-            let now = crate::models::get_current_timestamp();
-            let elapsed = now.saturating_sub(start);
-            let intervals = elapsed / duration;
-            let prev = *rest_bell_count.peek();
-            if intervals > prev {
-                rest_bell_count.set(intervals);
-                crate::services::notifications::send_notification(
-                    &rest_notif_title.peek(),
-                    &rest_notif_body.peek(),
-                    "logout-rest",
-                );
+    // Also handles the first notification on native (as a fallback).
+    use_coroutine(move |_: UnboundedReceiver<()>| {
+        // Clone inside the FnMut closure so each invocation gets its own Arc.
+        let bc = bc_tick.clone();
+        async move {
+            loop {
+                crate::utils::sleep_ms(1_000).await;
+                // Skip all checks while the session is paused.
+                if session_paused_at.peek().is_some() {
+                    continue;
+                }
+                let Some((start, duration)) = *rest_key.peek() else {
+                    continue;
+                };
+                if duration == 0 {
+                    continue;
+                }
+                let now = crate::models::get_current_timestamp();
+                let elapsed = now.saturating_sub(start);
+                let intervals = elapsed / duration;
+                let prev = bc.load(Ordering::Relaxed);
+                if intervals > prev {
+                    bc.store(intervals, Ordering::Relaxed);
+                    crate::services::notifications::send_notification(
+                        &rest_notif_title.peek(),
+                        &rest_notif_body.peek(),
+                        "logout-rest",
+                    );
+                }
             }
         }
     });
