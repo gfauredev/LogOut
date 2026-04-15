@@ -66,10 +66,28 @@ pub fn Home() -> Element {
             .filter(|s| !s.is_active() && !viewed_ids.contains(&s.id))
             .cloned()
             .collect();
-        if !newly_completed.is_empty() {
+
+        // Sessions that became active again (e.g. resumed from completed state).
+        let active_ids: std::collections::HashSet<String> = sessions
+            .peek()
+            .iter()
+            .filter(|s| s.is_active())
+            .map(|s| s.id.clone())
+            .collect();
+        let has_resumed = !active_ids.is_empty()
+            && completed_sessions
+                .peek()
+                .iter()
+                .any(|s| active_ids.contains(&s.id));
+
+        if !newly_completed.is_empty() || has_resumed {
             newly_completed.sort_by(|a, b| b.start_time.cmp(&a.start_time));
             let new_len = {
                 let mut cs = completed_sessions.write();
+                // Remove sessions that have been re-activated.
+                if has_resumed {
+                    cs.retain(|s| !active_ids.contains(&s.id));
+                }
                 let mut new_cs = Vec::with_capacity(newly_completed.len() + cs.len());
                 new_cs.extend(newly_completed);
                 new_cs.extend(cs.drain(..));
@@ -157,6 +175,11 @@ pub fn Home() -> Element {
                             let mut s = last_sess.clone();
                             s.end_time = None;
                             s.paused_at = None;
+                            // Clear transient fields that are stale after the
+                            // session was completed (rest/exercise timers).
+                            s.rest_start_time = None;
+                            s.current_exercise_id = None;
+                            s.current_exercise_start = None;
                             s
                         };
                         rsx! {
