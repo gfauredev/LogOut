@@ -39,8 +39,14 @@ impl Metric {
 /// Returns `(short_unit, scale_factor)` where `scale_factor` is applied to
 /// the raw values to produce display values.
 pub fn adapt_metric_unit(metric: Metric, values: &[f64]) -> (&'static str, f64) {
-    #[allow(clippy::cast_precision_loss)]
-    let avg = values.iter().sum::<f64>() / (values.len().max(1) as f64);
+    let avg = if values.is_empty() {
+        0.0
+    } else {
+        #[allow(clippy::cast_precision_loss)]
+        {
+            values.iter().sum::<f64>() / (values.len() as f64)
+        }
+    };
     match metric {
         Metric::Weight => ("kg", 1.0),
         Metric::Reps => ("reps", 1.0),
