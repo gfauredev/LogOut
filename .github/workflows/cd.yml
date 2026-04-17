@@ -212,7 +212,7 @@ jobs:
 
   prerelease:
     if: github.ref == 'refs/heads/main'
-    needs: [no-concurrent-tag-workflow, android-build]
+    needs: [android-build]
     runs-on: ubuntu-latest
     timeout-minutes: 3
     permissions:
