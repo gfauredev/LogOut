@@ -249,8 +249,9 @@ pub fn parse_session_exercises(s: &str) -> Vec<SessionExerciseEntry> {
 
 fn parse_csv_ids(s: &str) -> Vec<String> {
     s.split(',')
+        .map(str::trim)
         .filter(|id| !id.is_empty())
-        .map(std::string::ToString::to_string)
+        .map(ToOwned::to_owned)
         .collect()
 }
 /// Look up a single parameter value from a URL query string.
