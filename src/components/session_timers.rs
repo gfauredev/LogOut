@@ -1,6 +1,37 @@
 use crate::models::{format_time, format_time_i64, get_current_timestamp, Force};
 use dioxus::prelude::*;
 use dioxus_i18n::t;
+use std::sync::{
+    atomic::{AtomicBool, Ordering},
+    Arc,
+};
+
+/// A RAII guard that sets an [`AtomicBool`] cancel flag to `true` when the
+/// **owner** (the value stored by `use_hook`) is dropped on component unmount.
+///
+/// Clones produced by `use_hook` for each render have `is_owner: false`, so
+/// dropping them at the end of a render does not prematurely cancel.  Only the
+/// original, stored value (`is_owner: true`) triggers cancellation on unmount.
+struct CancelOnDrop {
+    cancel: Arc<AtomicBool>,
+    /// Only the stored hook value should cancel; clones must not.
+    is_owner: bool,
+}
+impl Clone for CancelOnDrop {
+    fn clone(&self) -> Self {
+        CancelOnDrop {
+            cancel: self.cancel.clone(),
+            is_owner: false,
+        }
+    }
+}
+impl Drop for CancelOnDrop {
+    fn drop(&mut self) {
+        if self.is_owner {
+            self.cancel.store(true, Ordering::Relaxed);
+        }
+    }
+}
 
 /// Timer tick interval in milliseconds.
 #[cfg(target_arch = "wasm32")]
@@ -21,11 +52,16 @@ pub const NOTIF_EARLY_MS: u64 = 250;
 /// * On **native**: the tick-based path is accurate enough (±1 s) and avoids
 ///   the complexity of crossing Dioxus signal boundaries from a `tokio::spawn`
 ///   thread; no extra task is spawned here.
+///
+/// The `cancel` token is checked before firing: if it is `true` the task exits
+/// silently.  The token is set to `true` by [`CancelOnDrop`] when the owning
+/// component unmounts, preventing stale notifications for completed exercises.
 #[allow(unused_mut)]
 fn schedule_duration_notification(
     exercise_start: Option<u64>,
     last_duration: Option<u64>,
     mut duration_bell_rung: Signal<bool>,
+    cancel: Arc<AtomicBool>,
 ) {
     #[cfg(target_arch = "wasm32")]
     {
@@ -48,16 +84,18 @@ fn schedule_duration_notification(
         let body = t!("notif-duration-body").to_string();
         wasm_bindgen_futures::spawn_local(async move {
             gloo_timers::future::TimeoutFuture::new(delay_ms).await;
-            // Re-check to avoid a duplicate if the tick fired first.
-            if !*duration_bell_rung.peek() {
-                duration_bell_rung.set(true);
-                crate::services::notifications::send_notification(&title, &body, "logout-duration");
+            // Bail out if the component was unmounted (exercise finished or
+            // cancelled) or if the tick-based fallback already fired.
+            if cancel.load(Ordering::Relaxed) || *duration_bell_rung.peek() {
+                return;
             }
+            duration_bell_rung.set(true);
+            crate::services::notifications::send_notification(&title, &body, "logout-duration");
         });
     }
     // On native, suppress unused-variable warnings; the tick handles it.
     #[cfg(not(target_arch = "wasm32"))]
-    let _ = (exercise_start, last_duration, duration_bell_rung);
+    let _ = (exercise_start, last_duration, duration_bell_rung, cancel);
 }
 
 /// Renders the rest-timer with a countdown.
@@ -130,9 +168,21 @@ pub fn ExerciseElapsedTimer(
     /// `Force::Static` exercises.
     force: Option<Force>,
 ) -> Element {
+    // Cancel token: set to `true` when this component unmounts so any pending
+    // `spawn_local` duration notification is discarded.
+    let cancel = use_hook(|| Arc::new(AtomicBool::new(false)));
+    let _cancel_guard = use_hook(|| CancelOnDrop {
+        cancel: cancel.clone(),
+        is_owner: true,
+    });
     // Schedule a precise one-shot notification (WASM only; native uses tick).
     use_effect(move || {
-        schedule_duration_notification(exercise_start, last_duration, duration_bell_rung);
+        schedule_duration_notification(
+            exercise_start,
+            last_duration,
+            duration_bell_rung,
+            cancel.clone(),
+        );
     });
 
     let mut now_tick = use_signal(get_current_timestamp);
@@ -185,9 +235,22 @@ pub(super) fn InlineExerciseTimer(
     paused_at: Option<u64>,
     force: Option<Force>,
 ) -> Element {
+    // Cancel token: set to `true` when this component unmounts (exercise
+    // completed or cancelled) so any pending `spawn_local` notification for
+    // the finished exercise is discarded and does not fire spuriously.
+    let cancel = use_hook(|| Arc::new(AtomicBool::new(false)));
+    let _cancel_guard = use_hook(|| CancelOnDrop {
+        cancel: cancel.clone(),
+        is_owner: true,
+    });
     // Schedule a precise one-shot notification (WASM only; native uses tick).
     use_effect(move || {
-        schedule_duration_notification(exercise_start, last_duration, duration_bell_rung);
+        schedule_duration_notification(
+            exercise_start,
+            last_duration,
+            duration_bell_rung,
+            cancel.clone(),
+        );
     });
 
     let mut now_tick = use_signal(get_current_timestamp);
