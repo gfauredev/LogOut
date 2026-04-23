@@ -83,6 +83,10 @@ pub fn CompletedExerciseLog(
                     HoldDeleteButton {
                         title: t!("log-delete-title").to_string(),
                         on_delete: move |()| {
+                            consume_context::<crate::ToastSignal>()
+                                .0
+                                .write()
+                                .push_back(t!("toast-log-deleted").to_string());
                             let mut current_session = session.read().clone();
                             current_session.exercise_logs.remove(idx);
                             storage::save_session(current_session);

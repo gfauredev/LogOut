@@ -6,6 +6,10 @@ use crate::services::{exercise_db, storage};
 use dioxus::prelude::*;
 use dioxus_i18n::prelude::i18n;
 use dioxus_i18n::t;
+/// Initial hold delay before continuous increment/decrement starts (ms).
+const HOLD_INITIAL_DELAY_MS: u32 = 400;
+/// Interval between repeated increments/decrements while holding (ms).
+const HOLD_REPEAT_INTERVAL_MS: u32 = 100;
 /// Shared exercise input form used both for performing a new set and for
 /// editing a completed log entry.
 ///
@@ -66,11 +70,18 @@ pub(super) fn ExerciseInputForm(
         is_editing_time && !time_str.is_empty() && parse_duration_seconds(&time_str).is_none();
     let weight_valid = !show_weight || weight.is_empty() || parse_weight_kg(&weight).is_some();
     let reps_valid = !show_reps || reps.parse::<u32>().is_ok();
-    let distance_valid = !is_cardio || parse_distance_km(&dist).is_some();
+    // Empty distance is allowed for cardio (logged as None = time-only tracking).
+    let distance_valid = !is_cardio || dist.is_empty() || parse_distance_km(&dist).is_some();
     let time_valid = !time_invalid;
     let complete_disabled = !weight_valid || !reps_valid || !distance_valid || !time_valid;
     // Show the ⏱️ row when editing (edit mode), when performing (perform mode), or when an ATH exists.
     let show_duration_row = is_editing_time || is_perform_mode || bests.duration.is_some();
+    // Per-field generation counters for hold-to-repeat behaviour on ±  buttons.
+    // Incrementing cancels any in-flight hold task for that field.
+    let mut time_btn_gen = use_signal(|| 0u32);
+    let mut weight_btn_gen = use_signal(|| 0u32);
+    let mut dist_btn_gen = use_signal(|| 0u32);
+    let mut reps_btn_gen = use_signal(|| 0u32);
     rsx! {
         div { class: "exercise-edit",
             h3 { "{exercise_name}" }
@@ -84,11 +95,39 @@ pub(super) fn ExerciseInputForm(
                             class: "less",
                             r#type: "button",
                             tabindex: -1,
-                            onclick: move |_| {
+                            onpointerdown: move |_| {
                                 if let Some(mut ti) = time_input {
                                     let secs = parse_duration_seconds(&ti.read()).unwrap_or(0);
                                     ti.set(format_time(secs.saturating_sub(5)));
                                 }
+                                let next_gen = time_btn_gen.peek().wrapping_add(1);
+                                time_btn_gen.set(next_gen);
+                                spawn(async move {
+                                    crate::utils::sleep_ms(HOLD_INITIAL_DELAY_MS).await;
+                                    loop {
+                                        if *time_btn_gen.peek() != next_gen {
+                                            break;
+                                        }
+                                        if let Some(mut ti) = time_input {
+                                            let secs =
+                                                parse_duration_seconds(&ti.read()).unwrap_or(0);
+                                            ti.set(format_time(secs.saturating_sub(5)));
+                                        }
+                                        crate::utils::sleep_ms(HOLD_REPEAT_INTERVAL_MS).await;
+                                    }
+                                });
+                            },
+                            onpointerup: move |_| {
+                                let next = time_btn_gen.peek().wrapping_add(1);
+                                time_btn_gen.set(next);
+                            },
+                            onpointerleave: move |_| {
+                                let next = time_btn_gen.peek().wrapping_add(1);
+                                time_btn_gen.set(next);
+                            },
+                            onpointercancel: move |_| {
+                                let next = time_btn_gen.peek().wrapping_add(1);
+                                time_btn_gen.set(next);
                             },
                             "−"
                         }
@@ -126,18 +165,50 @@ pub(super) fn ExerciseInputForm(
                             class: "more",
                             r#type: "button",
                             tabindex: -1,
-                            onclick: move |_| {
+                            onpointerdown: move |_| {
                                 if let Some(mut ti) = time_input {
                                     let secs = parse_duration_seconds(&ti.read()).unwrap_or(0);
                                     ti.set(format_time(secs + 5));
                                 }
+                                let next_gen = time_btn_gen.peek().wrapping_add(1);
+                                time_btn_gen.set(next_gen);
+                                spawn(async move {
+                                    crate::utils::sleep_ms(HOLD_INITIAL_DELAY_MS).await;
+                                    loop {
+                                        if *time_btn_gen.peek() != next_gen {
+                                            break;
+                                        }
+                                        if let Some(mut ti) = time_input {
+                                            let secs =
+                                                parse_duration_seconds(&ti.read()).unwrap_or(0);
+                                            ti.set(format_time(secs + 5));
+                                        }
+                                        crate::utils::sleep_ms(HOLD_REPEAT_INTERVAL_MS).await;
+                                    }
+                                });
+                            },
+                            onpointerup: move |_| {
+                                let next = time_btn_gen.peek().wrapping_add(1);
+                                time_btn_gen.set(next);
+                            },
+                            onpointerleave: move |_| {
+                                let next = time_btn_gen.peek().wrapping_add(1);
+                                time_btn_gen.set(next);
+                            },
+                            onpointercancel: move |_| {
+                                let next = time_btn_gen.peek().wrapping_add(1);
+                                time_btn_gen.set(next);
                             },
                             "+"
                         }
                     } else {
                         span {}
                     }
-                    time { "{format_time(bests.duration.unwrap_or(0))}" }
+                    if let Some(dur) = bests.duration {
+                        time { "{format_time(dur)}" }
+                    } else {
+                        time { "–" }
+                    }
                 }
             }
             // ⚖️ Weight input and ATH (not shown for stretching exercises)
@@ -148,7 +219,7 @@ pub(super) fn ExerciseInputForm(
                         class: "less",
                         r#type: "button",
                         tabindex: -1,
-                        onclick: move |_| {
+                        onpointerdown: move |_| {
                             let cur: f64 = weight_input.read().parse().unwrap_or(0.0);
                             let next = cur - 0.5;
                             if next <= 0.0 {
@@ -156,6 +227,36 @@ pub(super) fn ExerciseInputForm(
                             } else {
                                 weight_input.set(format!("{next:.1}"));
                             }
+                            let next_gen = weight_btn_gen.peek().wrapping_add(1);
+                            weight_btn_gen.set(next_gen);
+                            spawn(async move {
+                                crate::utils::sleep_ms(HOLD_INITIAL_DELAY_MS).await;
+                                loop {
+                                    if *weight_btn_gen.peek() != next_gen {
+                                        break;
+                                    }
+                                    let cur: f64 = weight_input.read().parse().unwrap_or(0.0);
+                                    let next = cur - 0.5;
+                                    if next <= 0.0 {
+                                        weight_input.set(String::new());
+                                    } else {
+                                        weight_input.set(format!("{next:.1}"));
+                                    }
+                                    crate::utils::sleep_ms(HOLD_REPEAT_INTERVAL_MS).await;
+                                }
+                            });
+                        },
+                        onpointerup: move |_| {
+                            let next = weight_btn_gen.peek().wrapping_add(1);
+                            weight_btn_gen.set(next);
+                        },
+                        onpointerleave: move |_| {
+                            let next = weight_btn_gen.peek().wrapping_add(1);
+                            weight_btn_gen.set(next);
+                        },
+                        onpointercancel: move |_| {
+                            let next = weight_btn_gen.peek().wrapping_add(1);
+                            weight_btn_gen.set(next);
                         },
                         "−"
                     }
@@ -177,16 +278,41 @@ pub(super) fn ExerciseInputForm(
                         class: "more",
                         r#type: "button",
                         tabindex: -1,
-                        onclick: move |_| {
+                        onpointerdown: move |_| {
                             let cur: f64 = weight_input.read().parse().unwrap_or(0.0);
                             weight_input.set(format!("{:.1}", cur + 0.5));
+                            let next_gen = weight_btn_gen.peek().wrapping_add(1);
+                            weight_btn_gen.set(next_gen);
+                            spawn(async move {
+                                crate::utils::sleep_ms(HOLD_INITIAL_DELAY_MS).await;
+                                loop {
+                                    if *weight_btn_gen.peek() != next_gen {
+                                        break;
+                                    }
+                                    let cur: f64 = weight_input.read().parse().unwrap_or(0.0);
+                                    weight_input.set(format!("{:.1}", cur + 0.5));
+                                    crate::utils::sleep_ms(HOLD_REPEAT_INTERVAL_MS).await;
+                                }
+                            });
+                        },
+                        onpointerup: move |_| {
+                            let next = weight_btn_gen.peek().wrapping_add(1);
+                            weight_btn_gen.set(next);
+                        },
+                        onpointerleave: move |_| {
+                            let next = weight_btn_gen.peek().wrapping_add(1);
+                            weight_btn_gen.set(next);
+                        },
+                        onpointercancel: move |_| {
+                            let next = weight_btn_gen.peek().wrapping_add(1);
+                            weight_btn_gen.set(next);
                         },
                         "+"
                     }
                     if let Some(best) = bests.weight_hg {
                         span { "{best}" }
                     } else {
-                        span { "0" }
+                        span { "–" }
                     }
                 }
             }
@@ -198,10 +324,45 @@ pub(super) fn ExerciseInputForm(
                         class: "less",
                         r#type: "button",
                         tabindex: -1,
-                        onclick: move |_| {
+                        onpointerdown: move |_| {
                             let cur: f64 = distance_input.read().parse().unwrap_or(0.0);
                             let next = (cur - 0.1).max(0.0);
-                            distance_input.set(format!("{next:.2}"));
+                            // Clear the field when reaching 0 to allow time-only logging.
+                            if next < 0.005 {
+                                distance_input.set(String::new());
+                            } else {
+                                distance_input.set(format!("{next:.2}"));
+                            }
+                            let next_gen = dist_btn_gen.peek().wrapping_add(1);
+                            dist_btn_gen.set(next_gen);
+                            spawn(async move {
+                                crate::utils::sleep_ms(HOLD_INITIAL_DELAY_MS).await;
+                                loop {
+                                    if *dist_btn_gen.peek() != next_gen {
+                                        break;
+                                    }
+                                    let cur: f64 = distance_input.read().parse().unwrap_or(0.0);
+                                    let next = (cur - 0.1).max(0.0);
+                                    if next < 0.005 {
+                                        distance_input.set(String::new());
+                                    } else {
+                                        distance_input.set(format!("{next:.2}"));
+                                    }
+                                    crate::utils::sleep_ms(HOLD_REPEAT_INTERVAL_MS).await;
+                                }
+                            });
+                        },
+                        onpointerup: move |_| {
+                            let next = dist_btn_gen.peek().wrapping_add(1);
+                            dist_btn_gen.set(next);
+                        },
+                        onpointerleave: move |_| {
+                            let next = dist_btn_gen.peek().wrapping_add(1);
+                            dist_btn_gen.set(next);
+                        },
+                        onpointercancel: move |_| {
+                            let next = dist_btn_gen.peek().wrapping_add(1);
+                            dist_btn_gen.set(next);
                         },
                         "−"
                     }
@@ -223,16 +384,41 @@ pub(super) fn ExerciseInputForm(
                         class: "more",
                         r#type: "button",
                         tabindex: -1,
-                        onclick: move |_| {
+                        onpointerdown: move |_| {
                             let cur: f64 = distance_input.read().parse().unwrap_or(0.0);
                             distance_input.set(format!("{:.2}", cur + 0.1));
+                            let next_gen = dist_btn_gen.peek().wrapping_add(1);
+                            dist_btn_gen.set(next_gen);
+                            spawn(async move {
+                                crate::utils::sleep_ms(HOLD_INITIAL_DELAY_MS).await;
+                                loop {
+                                    if *dist_btn_gen.peek() != next_gen {
+                                        break;
+                                    }
+                                    let cur: f64 = distance_input.read().parse().unwrap_or(0.0);
+                                    distance_input.set(format!("{:.2}", cur + 0.1));
+                                    crate::utils::sleep_ms(HOLD_REPEAT_INTERVAL_MS).await;
+                                }
+                            });
+                        },
+                        onpointerup: move |_| {
+                            let next = dist_btn_gen.peek().wrapping_add(1);
+                            dist_btn_gen.set(next);
+                        },
+                        onpointerleave: move |_| {
+                            let next = dist_btn_gen.peek().wrapping_add(1);
+                            dist_btn_gen.set(next);
+                        },
+                        onpointercancel: move |_| {
+                            let next = dist_btn_gen.peek().wrapping_add(1);
+                            dist_btn_gen.set(next);
                         },
                         "+"
                     }
                     if let Some(best) = bests.distance_m {
                         span { "{best}" }
                     } else {
-                        span { "0" }
+                        span { "–" }
                     }
                 }
             }
@@ -244,9 +430,34 @@ pub(super) fn ExerciseInputForm(
                         class: "less",
                         r#type: "button",
                         tabindex: -1,
-                        onclick: move |_| {
+                        onpointerdown: move |_| {
                             let cur: u32 = reps_input.read().parse().unwrap_or(0);
                             reps_input.set(cur.saturating_sub(1).to_string());
+                            let next_gen = reps_btn_gen.peek().wrapping_add(1);
+                            reps_btn_gen.set(next_gen);
+                            spawn(async move {
+                                crate::utils::sleep_ms(HOLD_INITIAL_DELAY_MS).await;
+                                loop {
+                                    if *reps_btn_gen.peek() != next_gen {
+                                        break;
+                                    }
+                                    let cur: u32 = reps_input.read().parse().unwrap_or(0);
+                                    reps_input.set(cur.saturating_sub(1).to_string());
+                                    crate::utils::sleep_ms(HOLD_REPEAT_INTERVAL_MS).await;
+                                }
+                            });
+                        },
+                        onpointerup: move |_| {
+                            let next = reps_btn_gen.peek().wrapping_add(1);
+                            reps_btn_gen.set(next);
+                        },
+                        onpointerleave: move |_| {
+                            let next = reps_btn_gen.peek().wrapping_add(1);
+                            reps_btn_gen.set(next);
+                        },
+                        onpointercancel: move |_| {
+                            let next = reps_btn_gen.peek().wrapping_add(1);
+                            reps_btn_gen.set(next);
                         },
                         "−"
                     }
@@ -267,16 +478,41 @@ pub(super) fn ExerciseInputForm(
                         class: "more",
                         r#type: "button",
                         tabindex: -1,
-                        onclick: move |_| {
+                        onpointerdown: move |_| {
                             let cur: u32 = reps_input.read().parse().unwrap_or(0);
                             reps_input.set((cur + 1).to_string());
+                            let next_gen = reps_btn_gen.peek().wrapping_add(1);
+                            reps_btn_gen.set(next_gen);
+                            spawn(async move {
+                                crate::utils::sleep_ms(HOLD_INITIAL_DELAY_MS).await;
+                                loop {
+                                    if *reps_btn_gen.peek() != next_gen {
+                                        break;
+                                    }
+                                    let cur: u32 = reps_input.read().parse().unwrap_or(0);
+                                    reps_input.set((cur + 1).to_string());
+                                    crate::utils::sleep_ms(HOLD_REPEAT_INTERVAL_MS).await;
+                                }
+                            });
+                        },
+                        onpointerup: move |_| {
+                            let next = reps_btn_gen.peek().wrapping_add(1);
+                            reps_btn_gen.set(next);
+                        },
+                        onpointerleave: move |_| {
+                            let next = reps_btn_gen.peek().wrapping_add(1);
+                            reps_btn_gen.set(next);
+                        },
+                        onpointercancel: move |_| {
+                            let next = reps_btn_gen.peek().wrapping_add(1);
+                            reps_btn_gen.set(next);
                         },
                         "+"
                     }
                     if let Some(best) = bests.reps {
                         span { class: "ath", "{best}" }
                     } else {
-                        span { "0" }
+                        span { "–" }
                     }
                 }
             }

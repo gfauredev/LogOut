@@ -313,7 +313,10 @@ pub fn delete_session(id: &str) {
         recompute_bests_for_exercises(exercise_ids, cache_sig);
     }
     let id = id.to_owned();
-    let toast = consume_context::<ToastSignal>().0;
+    let mut toast = consume_context::<ToastSignal>().0;
+    toast
+        .write()
+        .push_back(dioxus_i18n::t!("toast-session-deleted").to_string());
     super::storage::enqueue_delete_session(id, toast, sig, snapshot);
 }
 /// Mark `exercise_id` as the active exercise in the current session.

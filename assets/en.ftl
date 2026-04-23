@@ -134,6 +134,8 @@ toast-export-sessions-failed = ⚠️ Failed to export sessions
 toast-sessions-invalid = ⚠️ Invalid sessions JSON
 toast-exercises-invalid = ⚠️ Invalid exercises JSON
 toast-screen-locked = 🔒 Screen locked – only active session edits allowed
+toast-session-deleted = 🗑️ Session deleted
+toast-log-deleted = 🗑️ Exercise log deleted
 db-empty-toast = 📥 Exercise database empty — tap to download
 
 ## Relative date labels
