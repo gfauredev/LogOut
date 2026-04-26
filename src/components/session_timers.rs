@@ -40,8 +40,9 @@ pub const NOTIF_EARLY_MS: u64 = 250;
 ///   thread; no extra task is spawned here.
 ///
 /// The `cancel` token is checked before firing: if it is `true` the task exits
-/// silently.  The token is set to `true` by [`CancelOnDrop`] when the owning
-/// component unmounts, preventing stale notifications for completed exercises.
+/// silently. The token is set to `true` by [`use_cancel_token`]'s `use_drop`
+/// closure when the owning component unmounts, preventing stale notifications
+/// for completed exercises.
 #[allow(unused_mut)]
 fn schedule_duration_notification(
     exercise_start: Option<u64>,
