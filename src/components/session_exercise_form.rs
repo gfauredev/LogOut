@@ -104,10 +104,10 @@ pub(super) fn ExerciseInputForm(
     let show_duration_row = is_editing_time || is_perform_mode || bests.duration.is_some();
     // Per-field generation counters for hold-to-repeat behaviour on ±  buttons.
     // Incrementing cancels any in-flight hold task for that field.
-    let mut time_btn_gen = use_signal(|| 0u32);
-    let mut weight_btn_gen = use_signal(|| 0u32);
-    let mut dist_btn_gen = use_signal(|| 0u32);
-    let mut reps_btn_gen = use_signal(|| 0u32);
+    let time_btn_gen = use_signal(|| 0u32);
+    let weight_btn_gen = use_signal(|| 0u32);
+    let dist_btn_gen = use_signal(|| 0u32);
+    let reps_btn_gen = use_signal(|| 0u32);
     rsx! {
         div { class: "exercise-edit",
             h3 { "{exercise_name}" }
@@ -122,12 +122,15 @@ pub(super) fn ExerciseInputForm(
                             r#type: "button",
                             tabindex: -1,
                             onpointerdown: move |_| {
-                                start_hold_repeat(time_btn_gen, move || {
-                                    if let Some(mut ti) = time_input {
-                                        let secs = parse_duration_seconds(&ti.read()).unwrap_or(0);
-                                        ti.set(format_time(secs.saturating_sub(5)));
-                                    }
-                                });
+                                start_hold_repeat(
+                                    time_btn_gen,
+                                    move || {
+                                        if let Some(mut ti) = time_input {
+                                            let secs = parse_duration_seconds(&ti.read()).unwrap_or(0);
+                                            ti.set(format_time(secs.saturating_sub(5)));
+                                        }
+                                    },
+                                );
                             },
                             onpointerup: move |_| cancel_hold_repeat(time_btn_gen),
                             onpointerleave: move |_| cancel_hold_repeat(time_btn_gen),
@@ -169,12 +172,15 @@ pub(super) fn ExerciseInputForm(
                             r#type: "button",
                             tabindex: -1,
                             onpointerdown: move |_| {
-                                start_hold_repeat(time_btn_gen, move || {
-                                    if let Some(mut ti) = time_input {
-                                        let secs = parse_duration_seconds(&ti.read()).unwrap_or(0);
-                                        ti.set(format_time(secs + 5));
-                                    }
-                                });
+                                start_hold_repeat(
+                                    time_btn_gen,
+                                    move || {
+                                        if let Some(mut ti) = time_input {
+                                            let secs = parse_duration_seconds(&ti.read()).unwrap_or(0);
+                                            ti.set(format_time(secs + 5));
+                                        }
+                                    },
+                                );
                             },
                             onpointerup: move |_| cancel_hold_repeat(time_btn_gen),
                             onpointerleave: move |_| cancel_hold_repeat(time_btn_gen),
@@ -200,15 +206,18 @@ pub(super) fn ExerciseInputForm(
                         r#type: "button",
                         tabindex: -1,
                         onpointerdown: move |_| {
-                            start_hold_repeat(weight_btn_gen, move || {
-                                let cur: f64 = weight_input.read().parse().unwrap_or(0.0);
-                                let next = cur - 0.5;
-                                if next <= 0.0 {
-                                    weight_input.set(String::new());
-                                } else {
-                                    weight_input.set(format!("{next:.1}"));
-                                }
-                            });
+                            start_hold_repeat(
+                                weight_btn_gen,
+                                move || {
+                                    let cur: f64 = weight_input.read().parse().unwrap_or(0.0);
+                                    let next = cur - 0.5;
+                                    if next <= 0.0 {
+                                        weight_input.set(String::new());
+                                    } else {
+                                        weight_input.set(format!("{next:.1}"));
+                                    }
+                                },
+                            );
                         },
                         onpointerup: move |_| cancel_hold_repeat(weight_btn_gen),
                         onpointerleave: move |_| cancel_hold_repeat(weight_btn_gen),
@@ -234,10 +243,13 @@ pub(super) fn ExerciseInputForm(
                         r#type: "button",
                         tabindex: -1,
                         onpointerdown: move |_| {
-                            start_hold_repeat(weight_btn_gen, move || {
-                                let cur: f64 = weight_input.read().parse().unwrap_or(0.0);
-                                weight_input.set(format!("{:.1}", cur + 0.5));
-                            });
+                            start_hold_repeat(
+                                weight_btn_gen,
+                                move || {
+                                    let cur: f64 = weight_input.read().parse().unwrap_or(0.0);
+                                    weight_input.set(format!("{:.1}", cur + 0.5));
+                                },
+                            );
                         },
                         onpointerup: move |_| cancel_hold_repeat(weight_btn_gen),
                         onpointerleave: move |_| cancel_hold_repeat(weight_btn_gen),
@@ -260,16 +272,18 @@ pub(super) fn ExerciseInputForm(
                         r#type: "button",
                         tabindex: -1,
                         onpointerdown: move |_| {
-                            start_hold_repeat(dist_btn_gen, move || {
-                                let cur: f64 = distance_input.read().parse().unwrap_or(0.0);
-                                let next = (cur - 0.1).max(0.0);
-                                // Clear the field when reaching 0 to allow time-only logging.
-                                if next < 0.005 {
-                                    distance_input.set(String::new());
-                                } else {
-                                    distance_input.set(format!("{next:.2}"));
-                                }
-                            });
+                            start_hold_repeat(
+                                dist_btn_gen,
+                                move || {
+                                    let cur: f64 = distance_input.read().parse().unwrap_or(0.0);
+                                    let next = (cur - 0.1).max(0.0);
+                                    if next < 0.005 {
+                                        distance_input.set(String::new());
+                                    } else {
+                                        distance_input.set(format!("{next:.2}"));
+                                    }
+                                },
+                            );
                         },
                         onpointerup: move |_| cancel_hold_repeat(dist_btn_gen),
                         onpointerleave: move |_| cancel_hold_repeat(dist_btn_gen),
@@ -295,10 +309,13 @@ pub(super) fn ExerciseInputForm(
                         r#type: "button",
                         tabindex: -1,
                         onpointerdown: move |_| {
-                            start_hold_repeat(dist_btn_gen, move || {
-                                let cur: f64 = distance_input.read().parse().unwrap_or(0.0);
-                                distance_input.set(format!("{:.2}", cur + 0.1));
-                            });
+                            start_hold_repeat(
+                                dist_btn_gen,
+                                move || {
+                                    let cur: f64 = distance_input.read().parse().unwrap_or(0.0);
+                                    distance_input.set(format!("{:.2}", cur + 0.1));
+                                },
+                            );
                         },
                         onpointerup: move |_| cancel_hold_repeat(dist_btn_gen),
                         onpointerleave: move |_| cancel_hold_repeat(dist_btn_gen),
@@ -321,10 +338,13 @@ pub(super) fn ExerciseInputForm(
                         r#type: "button",
                         tabindex: -1,
                         onpointerdown: move |_| {
-                            start_hold_repeat(reps_btn_gen, move || {
-                                let cur: u32 = reps_input.read().parse().unwrap_or(0);
-                                reps_input.set(cur.saturating_sub(1).to_string());
-                            });
+                            start_hold_repeat(
+                                reps_btn_gen,
+                                move || {
+                                    let cur: u32 = reps_input.read().parse().unwrap_or(0);
+                                    reps_input.set(cur.saturating_sub(1).to_string());
+                                },
+                            );
                         },
                         onpointerup: move |_| cancel_hold_repeat(reps_btn_gen),
                         onpointerleave: move |_| cancel_hold_repeat(reps_btn_gen),
@@ -349,10 +369,13 @@ pub(super) fn ExerciseInputForm(
                         r#type: "button",
                         tabindex: -1,
                         onpointerdown: move |_| {
-                            start_hold_repeat(reps_btn_gen, move || {
-                                let cur: u32 = reps_input.read().parse().unwrap_or(0);
-                                reps_input.set((cur + 1).to_string());
-                            });
+                            start_hold_repeat(
+                                reps_btn_gen,
+                                move || {
+                                    let cur: u32 = reps_input.read().parse().unwrap_or(0);
+                                    reps_input.set((cur + 1).to_string());
+                                },
+                            );
                         },
                         onpointerup: move |_| cancel_hold_repeat(reps_btn_gen),
                         onpointerleave: move |_| cancel_hold_repeat(reps_btn_gen),
