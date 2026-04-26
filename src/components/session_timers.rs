@@ -6,31 +6,17 @@ use std::sync::{
     Arc,
 };
 
-/// A RAII guard that sets an [`AtomicBool`] cancel flag to `true` when the
-/// **owner** (the value stored by `use_hook`) is dropped on component unmount.
+/// Shared helper to create a cancel token that is set to `true` on component unmount.
 ///
-/// Clones produced by `use_hook` for each render have `is_owner: false`, so
-/// dropping them at the end of a render does not prematurely cancel.  Only the
-/// original, stored value (`is_owner: true`) triggers cancellation on unmount.
-struct CancelOnDrop {
-    cancel: Arc<AtomicBool>,
-    /// Only the stored hook value should cancel; clones must not.
-    is_owner: bool,
-}
-impl Clone for CancelOnDrop {
-    fn clone(&self) -> Self {
-        CancelOnDrop {
-            cancel: self.cancel.clone(),
-            is_owner: false,
-        }
-    }
-}
-impl Drop for CancelOnDrop {
-    fn drop(&mut self) {
-        if self.is_owner {
-            self.cancel.store(true, Ordering::Relaxed);
-        }
-    }
+/// Returns an `Arc<AtomicBool>` that starts as `false` and is flipped to `true`
+/// when the component unmounts via `use_drop`.
+fn use_cancel_token() -> Arc<AtomicBool> {
+    let cancel = use_hook(|| Arc::new(AtomicBool::new(false)));
+    let cancel_clone = cancel.clone();
+    use_drop(move || {
+        cancel_clone.store(true, Ordering::Relaxed);
+    });
+    cancel
 }
 
 /// Timer tick interval in milliseconds.
@@ -170,20 +156,18 @@ pub fn ExerciseElapsedTimer(
 ) -> Element {
     // Cancel token: set to `true` when this component unmounts so any pending
     // `spawn_local` duration notification is discarded.
-    let cancel = use_hook(|| Arc::new(AtomicBool::new(false)));
-    let _cancel_guard = use_hook(|| CancelOnDrop {
-        cancel: cancel.clone(),
-        is_owner: true,
-    });
+    let cancel = use_cancel_token();
     // Schedule a precise one-shot notification (WASM only; native uses tick).
-    use_effect(move || {
+    // Only run when exercise_start or last_duration changes to avoid spawning
+    // duplicate tasks on re-renders.
+    use_effect(use_reactive!(|(exercise_start, last_duration)| {
         schedule_duration_notification(
             exercise_start,
             last_duration,
             duration_bell_rung,
             cancel.clone(),
         );
-    });
+    }));
 
     let mut now_tick = use_signal(get_current_timestamp);
     use_coroutine(move |_: UnboundedReceiver<()>| async move {
@@ -238,20 +222,18 @@ pub(super) fn InlineExerciseTimer(
     // Cancel token: set to `true` when this component unmounts (exercise
     // completed or cancelled) so any pending `spawn_local` notification for
     // the finished exercise is discarded and does not fire spuriously.
-    let cancel = use_hook(|| Arc::new(AtomicBool::new(false)));
-    let _cancel_guard = use_hook(|| CancelOnDrop {
-        cancel: cancel.clone(),
-        is_owner: true,
-    });
+    let cancel = use_cancel_token();
     // Schedule a precise one-shot notification (WASM only; native uses tick).
-    use_effect(move || {
+    // Only run when exercise_start or last_duration changes to avoid spawning
+    // duplicate tasks on re-renders.
+    use_effect(use_reactive!(|(exercise_start, last_duration)| {
         schedule_duration_notification(
             exercise_start,
             last_duration,
             duration_bell_rung,
             cancel.clone(),
         );
-    });
+    }));
 
     let mut now_tick = use_signal(get_current_timestamp);
     use_coroutine(move |_: UnboundedReceiver<()>| async move {
