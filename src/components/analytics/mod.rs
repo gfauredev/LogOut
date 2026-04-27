@@ -58,6 +58,9 @@ pub fn Analytics() -> Element {
         let lang = lang_str.read();
         let mut maps: [std::collections::HashMap<String, String>; 7] =
             std::array::from_fn(|_| std::collections::HashMap::new());
+        // maps indices mirror Metric::to_index():
+        // 0: Weight, 1: Reps, 2: Distance, 3: Duration,
+        // 4: SessionVolume, 5: AverageSessionWeight, 6: SessionReps
         for session in sessions {
             for log in &session.exercise_logs {
                 let name = exercise_db::resolve_exercise(&all, &custom, &log.exercise_id)
@@ -164,7 +167,10 @@ pub fn Analytics() -> Element {
                                     let is_weighted = log.weight_hg.0 > 0;
                                     let include = match metric {
                                         Metric::Weight => is_weighted,
-                                        _ => !is_weighted,
+                                        Metric::Reps | Metric::Distance | Metric::Duration => {
+                                            !is_weighted
+                                        }
+                                        _ => false,
                                     };
                                     if include {
                                         if let Some(value) = metric.extract_value(log) {
