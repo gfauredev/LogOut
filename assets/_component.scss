@@ -364,6 +364,11 @@ ul.results {
   span {
     text-align: center;
   }
+
+  .ath {
+    cursor: pointer;
+    text-decoration: underline dotted;
+  }
 }
 
 .exercise-edit>.input-row {

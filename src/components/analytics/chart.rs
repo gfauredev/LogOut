@@ -14,12 +14,14 @@ const SVG_COORD_X: &str = r#"
     dioxus.send((clientX - r.left) / r.width * vb.width);
 "#;
 
-/// Canonical metric order: [Weight(0), Reps(1), Distance(2), Duration(3)]
-const ALL_METRICS: [Metric; 4] = [
+/// Canonical metric order: [Weight(0), Reps(1), Distance(2), Duration(3), DailyVolume(4), AverageDailyWeight(5)]
+const ALL_METRICS: [Metric; 6] = [
     Metric::Weight,
     Metric::Reps,
     Metric::Distance,
     Metric::Duration,
+    Metric::DailyVolume,
+    Metric::AverageDailyWeight,
 ];
 
 /// Update the cursor timestamp from a client-space X coordinate.
@@ -62,12 +64,13 @@ pub fn ChartView(data: SeriesData, colors: Vec<&'static str>) -> Element {
     let chart2_bottom_margin = 5.0_f64;
 
     // ── Metric availability ───────────────────────────────────────────────────
-    let metric_has_data: [bool; 4] = ALL_METRICS.map(|m| {
+    let metric_has_data: [bool; 6] = ALL_METRICS.map(|m| {
         data.iter()
             .any(|(_, _, dm, pts)| *dm == m && !pts.is_empty())
     });
     let has_chart2 = metric_has_data[2] || metric_has_data[3];
-    let has_right_axis = metric_has_data[1] || metric_has_data[3];
+    let has_chart3 = metric_has_data[4] || metric_has_data[5];
+    let has_right_axis = metric_has_data[1] || metric_has_data[3] || metric_has_data[5];
     let right_pad = if has_right_axis { axis_slot } else { 10.0_f64 };
     let left_pad = axis_slot;
     let chart_width = (width - left_pad - right_pad).max(50.0);
@@ -77,7 +80,11 @@ pub fn ChartView(data: SeriesData, colors: Vec<&'static str>) -> Element {
     let chart1_bottom = top_pad + chart_height;
     let chart2_top = chart1_bottom + x_gap;
     let chart2_bottom = chart2_top + chart_height;
-    let total_height = if has_chart2 {
+    let chart3_top = chart2_bottom + x_gap;
+    let chart3_bottom = chart3_top + chart_height;
+    let total_height = if has_chart3 {
+        chart3_bottom + chart2_bottom_margin
+    } else if has_chart2 {
         chart2_bottom + chart2_bottom_margin
     } else {
         chart1_bottom + 28.0
@@ -102,7 +109,7 @@ pub fn ChartView(data: SeriesData, colors: Vec<&'static str>) -> Element {
 
     // ── Per-metric Y-axis data ────────────────────────────────────────────────
     #[allow(clippy::cast_precision_loss)]
-    let axis_data: [Option<(&'static str, f64, f64, f64)>; 4] = std::array::from_fn(|i| {
+    let axis_data: [Option<(&'static str, f64, f64, f64)>; 6] = std::array::from_fn(|i| {
         if !metric_has_data[i] {
             return None;
         }
@@ -132,8 +139,10 @@ pub fn ChartView(data: SeriesData, colors: Vec<&'static str>) -> Element {
         };
         let (ct, cb) = if mi < 2 {
             (chart1_top, chart1_bottom)
-        } else {
+        } else if mi < 4 {
             (chart2_top, chart2_bottom)
+        } else {
+            (chart3_top, chart3_bottom)
         };
         let h = cb - ct;
         if (max_y - min_y).abs() < f64::EPSILON {
@@ -181,7 +190,9 @@ pub fn ChartView(data: SeriesData, colors: Vec<&'static str>) -> Element {
         Vec::new()
     };
 
-    let interact_height = if has_chart2 {
+    let interact_height = if has_chart3 {
+        chart3_bottom - chart1_top
+    } else if has_chart2 {
         chart2_bottom - chart1_top
     } else {
         chart_height
@@ -221,15 +232,27 @@ pub fn ChartView(data: SeriesData, colors: Vec<&'static str>) -> Element {
                     stroke_width: "1",
                 }
             }
-            for i in 0..4_usize {
+            if has_chart3 {
+                line {
+                    x1: "{left_pad}",
+                    y1: "{chart3_bottom}",
+                    x2: "{left_pad + chart_width}",
+                    y2: "{chart3_bottom}",
+                    stroke: "#555",
+                    stroke_width: "1",
+                }
+            }
+            for i in 0..6_usize {
                 if let Some((unit, _, min_y, max_y)) = axis_data[i] {
                     {
                         let is_right = i % 2 == 1;
                         let x_pos = if is_right { left_pad + chart_width } else { left_pad };
                         let (ct, cb) = if i < 2 {
                             (chart1_top, chart1_bottom)
-                        } else {
+                        } else if i < 4 {
                             (chart2_top, chart2_bottom)
+                        } else {
+                            (chart3_top, chart3_bottom)
                         };
                         let tick_x1 = if is_right { x_pos } else { x_pos - 4.0 };
                         let tick_x2 = if is_right { x_pos + 4.0 } else { x_pos };
@@ -404,6 +427,19 @@ pub fn ChartView(data: SeriesData, colors: Vec<&'static str>) -> Element {
                                 y1: "{chart2_top}",
                                 x2: "{cx}",
                                 y2: "{chart2_bottom}",
+                                stroke: "#fff",
+                                stroke_width: "1",
+                                stroke_opacity: "0.5",
+                                stroke_dasharray: "4 3",
+                                pointer_events: "none",
+                            }
+                        }
+                        if has_chart3 {
+                            line {
+                                x1: "{cx}",
+                                y1: "{chart3_top}",
+                                x2: "{cx}",
+                                y2: "{chart3_bottom}",
                                 stroke: "#fff",
                                 stroke_width: "1",
                                 stroke_opacity: "0.5",

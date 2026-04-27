@@ -10,6 +10,10 @@ pub enum Metric {
     Reps,
     Distance,
     Duration,
+    /// Sum of (weight × reps) across all sets within a single session.
+    DailyVolume,
+    /// Average weight across all weighted sets within a single session.
+    AverageDailyWeight,
 }
 
 impl Metric {
@@ -20,9 +24,16 @@ impl Metric {
             Metric::Reps => 1,
             Metric::Distance => 2,
             Metric::Duration => 3,
+            Metric::DailyVolume => 4,
+            Metric::AverageDailyWeight => 5,
         }
     }
 
+    /// Extract a per-set value from a single exercise log.
+    ///
+    /// Returns `None` for aggregated metrics ([`Metric::DailyVolume`] and
+    /// [`Metric::AverageDailyWeight`]), which must be computed across all logs
+    /// in a session rather than from a single log entry.
     #[allow(clippy::cast_precision_loss)]
     pub fn extract_value(self, log: &ExerciseLog) -> Option<f64> {
         match self {
@@ -30,6 +41,7 @@ impl Metric {
             Metric::Reps => log.reps.map(f64::from),
             Metric::Distance => log.distance_m.map(|d| f64::from(d.0) / M_PER_KM),
             Metric::Duration => log.duration_seconds().map(|d| d as f64 / 60.0),
+            Metric::DailyVolume | Metric::AverageDailyWeight => None,
         }
     }
 }
@@ -48,7 +60,7 @@ pub fn adapt_metric_unit(metric: Metric, values: &[f64]) -> (&'static str, f64) 
         }
     };
     match metric {
-        Metric::Weight => ("kg", 1.0),
+        Metric::Weight | Metric::AverageDailyWeight => ("kg", 1.0),
         Metric::Reps => ("reps", 1.0),
         Metric::Distance => {
             if avg < 1.0 {
@@ -66,5 +78,6 @@ pub fn adapt_metric_unit(metric: Metric, values: &[f64]) -> (&'static str, f64) 
                 ("h", 1.0 / 60.0)
             }
         }
+        Metric::DailyVolume => ("kg·reps", 1.0),
     }
 }

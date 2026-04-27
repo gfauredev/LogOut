@@ -1,6 +1,7 @@
 use super::session_timers::InlineExerciseTimer;
 use crate::models::{
     format_time, parse_distance_km, parse_duration_seconds, parse_weight_kg, Category, Force,
+    HG_PER_KG, M_PER_KM,
 };
 use crate::services::{exercise_db, storage};
 use dioxus::prelude::*;
@@ -191,7 +192,15 @@ pub(super) fn ExerciseInputForm(
                         span {}
                     }
                     if let Some(dur) = bests.duration {
-                        time { "{format_time(dur)}" }
+                        time {
+                            class: "ath",
+                            onclick: move |_| {
+                                if let Some(mut ti) = time_input {
+                                    ti.set(format_time(dur));
+                                }
+                            },
+                            "{format_time(dur)}"
+                        }
                     } else {
                         time { "–" }
                     }
@@ -257,7 +266,14 @@ pub(super) fn ExerciseInputForm(
                         "+"
                     }
                     if let Some(best) = bests.weight_hg {
-                        span { "{best}" }
+                        span {
+                            class: "ath",
+                            onclick: move |_| {
+                                weight_input
+                                    .set(format!("{:.1}", f64::from(best.0) / HG_PER_KG));
+                            },
+                            "{best}"
+                        }
                     } else {
                         span { "–" }
                     }
@@ -323,7 +339,14 @@ pub(super) fn ExerciseInputForm(
                         "+"
                     }
                     if let Some(best) = bests.distance_m {
-                        span { "{best}" }
+                        span {
+                            class: "ath",
+                            onclick: move |_| {
+                                distance_input
+                                    .set(format!("{:.2}", f64::from(best.0) / M_PER_KM));
+                            },
+                            "{best}"
+                        }
                     } else {
                         span { "–" }
                     }
@@ -383,7 +406,13 @@ pub(super) fn ExerciseInputForm(
                         "+"
                     }
                     if let Some(best) = bests.reps {
-                        span { class: "ath", "{best}" }
+                        span {
+                            class: "ath",
+                            onclick: move |_| {
+                                reps_input.set(best.to_string());
+                            },
+                            "{best}"
+                        }
                     } else {
                         span { "–" }
                     }

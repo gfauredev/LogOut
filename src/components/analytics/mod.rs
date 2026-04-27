@@ -1,5 +1,6 @@
 use crate::components::{ActiveTab, BottomNav};
 use crate::models::analytics::Metric;
+use crate::models::HG_PER_KG;
 use crate::services::{exercise_db, storage};
 use dioxus::prelude::*;
 use dioxus_i18n::prelude::i18n;
@@ -55,7 +56,7 @@ pub fn Analytics() -> Element {
         let all = all_exercises.read();
         let custom = custom_exercises.read();
         let lang = lang_str.read();
-        let mut maps: [std::collections::HashMap<String, String>; 4] =
+        let mut maps: [std::collections::HashMap<String, String>; 6] =
             std::array::from_fn(|_| std::collections::HashMap::new());
         for session in sessions {
             for log in &session.exercise_logs {
@@ -64,16 +65,25 @@ pub fn Analytics() -> Element {
                         || log.exercise_name.clone(),
                         |ex| ex.name_for_lang(&lang).to_owned(),
                     );
-                if log.weight_hg.0 > 0 {
+                let is_weighted = log.weight_hg.0 > 0;
+                if is_weighted {
                     maps[0].insert(log.exercise_id.clone(), name.clone());
                 }
-                if log.reps.is_some() {
+                if log.reps.is_some() && !is_weighted {
                     maps[1].insert(log.exercise_id.clone(), name.clone());
                 }
-                if log.distance_m.is_some() {
+                if log.distance_m.is_some() && !is_weighted {
                     maps[2].insert(log.exercise_id.clone(), name.clone());
                 }
-                maps[3].insert(log.exercise_id.clone(), name);
+                if !is_weighted {
+                    maps[3].insert(log.exercise_id.clone(), name.clone());
+                }
+                if is_weighted && log.reps.is_some() {
+                    maps[4].insert(log.exercise_id.clone(), name.clone());
+                }
+                if is_weighted {
+                    maps[5].insert(log.exercise_id.clone(), name.clone());
+                }
             }
         }
         maps.map(|m| {
@@ -91,12 +101,61 @@ pub fn Analytics() -> Element {
             .filter_map(|(i, (metric, opt_id))| opt_id.as_ref().map(|id| (i, *metric, id.clone())))
             .map(|(i, metric, exercise_id)| {
                 let mut points = Vec::new();
-                for session in &sessions {
-                    for log in &session.exercise_logs {
-                        if log.exercise_id == exercise_id {
-                            if let Some(value) = metric.extract_value(log) {
+                match metric {
+                    Metric::DailyVolume => {
+                        for session in &sessions {
+                            let mut total_volume = 0.0f64;
+                            let mut has_data = false;
+                            for log in &session.exercise_logs {
+                                if log.exercise_id == exercise_id && log.weight_hg.0 > 0 {
+                                    if let Some(reps) = log.reps {
+                                        #[allow(clippy::cast_precision_loss)]
+                                        {
+                                            total_volume += f64::from(log.weight_hg.0) / HG_PER_KG
+                                                * f64::from(reps);
+                                        }
+                                        has_data = true;
+                                    }
+                                }
+                            }
+                            if has_data {
                                 #[allow(clippy::cast_precision_loss)]
-                                points.push((log.start_time as f64, value));
+                                points.push((session.start_time as f64, total_volume));
+                            }
+                        }
+                    }
+                    Metric::AverageDailyWeight => {
+                        for session in &sessions {
+                            let weights: Vec<f64> = session
+                                .exercise_logs
+                                .iter()
+                                .filter(|log| log.exercise_id == exercise_id && log.weight_hg.0 > 0)
+                                .map(|log| f64::from(log.weight_hg.0) / HG_PER_KG)
+                                .collect();
+                            if !weights.is_empty() {
+                                #[allow(clippy::cast_precision_loss)]
+                                let avg = weights.iter().sum::<f64>() / weights.len() as f64;
+                                #[allow(clippy::cast_precision_loss)]
+                                points.push((session.start_time as f64, avg));
+                            }
+                        }
+                    }
+                    _ => {
+                        for session in &sessions {
+                            for log in &session.exercise_logs {
+                                if log.exercise_id == exercise_id {
+                                    let is_weighted = log.weight_hg.0 > 0;
+                                    let include = match metric {
+                                        Metric::Weight => is_weighted,
+                                        _ => !is_weighted,
+                                    };
+                                    if include {
+                                        if let Some(value) = metric.extract_value(log) {
+                                            #[allow(clippy::cast_precision_loss)]
+                                            points.push((log.start_time as f64, value));
+                                        }
+                                    }
+                                }
                             }
                         }
                     }

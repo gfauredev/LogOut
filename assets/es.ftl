@@ -160,5 +160,7 @@ analytics-metric-weight = Peso (kg)
 analytics-metric-reps = Repeticiones
 analytics-metric-distance = Distancia
 analytics-metric-duration = Duración
+analytics-metric-daily-volume = Volumen diario (kg·reps)
+analytics-metric-avg-daily-weight = Peso medio diario (kg)
 analytics-select-exercise = -- Seleccionar ejercicio --
 analytics-remove-series = Eliminar esta serie
