@@ -140,7 +140,7 @@ pub fn Analytics() -> Element {
                             }
                         }
                     }
-                    _ => {
+                    Metric::Weight | Metric::Reps | Metric::Distance | Metric::Duration => {
                         for session in &sessions {
                             for log in &session.exercise_logs {
                                 if log.exercise_id == exercise_id {
