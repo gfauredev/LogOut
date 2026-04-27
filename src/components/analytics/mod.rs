@@ -56,7 +56,7 @@ pub fn Analytics() -> Element {
         let all = all_exercises.read();
         let custom = custom_exercises.read();
         let lang = lang_str.read();
-        let mut maps: [std::collections::HashMap<String, String>; 6] =
+        let mut maps: [std::collections::HashMap<String, String>; 7] =
             std::array::from_fn(|_| std::collections::HashMap::new());
         for session in sessions {
             for log in &session.exercise_logs {
@@ -84,6 +84,9 @@ pub fn Analytics() -> Element {
                 if is_weighted {
                     maps[5].insert(log.exercise_id.clone(), name.clone());
                 }
+                if log.reps.is_some() {
+                    maps[6].insert(log.exercise_id.clone(), name.clone());
+                }
             }
         }
         maps.map(|m| {
@@ -102,7 +105,7 @@ pub fn Analytics() -> Element {
             .map(|(i, metric, exercise_id)| {
                 let mut points = Vec::new();
                 match metric {
-                    Metric::DailyVolume => {
+                    Metric::SessionVolume => {
                         for session in &sessions {
                             let mut total_volume = 0.0f64;
                             let mut has_data = false;
@@ -124,7 +127,7 @@ pub fn Analytics() -> Element {
                             }
                         }
                     }
-                    Metric::AverageDailyWeight => {
+                    Metric::AverageSessionWeight => {
                         for session in &sessions {
                             let weights: Vec<f64> = session
                                 .exercise_logs
@@ -137,6 +140,20 @@ pub fn Analytics() -> Element {
                                 let avg = weights.iter().sum::<f64>() / weights.len() as f64;
                                 #[allow(clippy::cast_precision_loss)]
                                 points.push((session.start_time as f64, avg));
+                            }
+                        }
+                    }
+                    Metric::SessionReps => {
+                        for session in &sessions {
+                            let total_reps: u32 = session
+                                .exercise_logs
+                                .iter()
+                                .filter(|log| log.exercise_id == exercise_id)
+                                .filter_map(|log| log.reps)
+                                .sum();
+                            if total_reps > 0 {
+                                #[allow(clippy::cast_precision_loss)]
+                                points.push((session.start_time as f64, f64::from(total_reps)));
                             }
                         }
                     }
