@@ -76,18 +76,17 @@ pub fn Analytics() -> Element {
                 let is_weighted = log.weight_hg.0 > 0;
                 if is_weighted {
                     maps[0].insert(log.exercise_id.clone(), name.clone());
-                }
-                if log.reps.is_some() && !is_weighted {
-                    maps[1].insert(log.exercise_id.clone(), name.clone());
-                }
-                if log.distance_m.is_some() && !is_weighted {
-                    maps[2].insert(log.exercise_id.clone(), name.clone());
-                }
-                if !is_weighted {
+                    if log.reps.is_some() {
+                        maps[4].insert(log.exercise_id.clone(), name.clone());
+                    }
+                } else {
                     maps[3].insert(log.exercise_id.clone(), name.clone());
-                }
-                if is_weighted && log.reps.is_some() {
-                    maps[4].insert(log.exercise_id.clone(), name.clone());
+                    if log.reps.is_some() {
+                        maps[1].insert(log.exercise_id.clone(), name.clone());
+                    }
+                    if log.distance_m.is_some() {
+                        maps[2].insert(log.exercise_id.clone(), name.clone());
+                    }
                 }
             }
         }
@@ -109,24 +108,27 @@ pub fn Analytics() -> Element {
             .filter_map(|(i, (metric, opt_id))| opt_id.as_ref().map(|id| (i, *metric, id.clone())))
             .map(|(i, metric, exercise_id)| {
                 let mut points = Vec::new();
+                // Returns true if a log entry should contribute to this metric's series.
+                // Weight: weighted sets only. Reps/Distance/Duration: non-weighted sets.
+                let log_matches = |log: &crate::models::ExerciseLog| -> bool {
+                    if log.exercise_id != exercise_id {
+                        return false;
+                    }
+                    let w = log.weight_hg.0 > 0;
+                    match metric {
+                        Metric::Weight => w,
+                        Metric::Reps | Metric::Distance | Metric::Duration => !w,
+                        Metric::Volume => false,
+                    }
+                };
                 match mode {
                     AnalyticsMode::Set => {
                         for session in &sessions {
                             for log in &session.exercise_logs {
-                                if log.exercise_id == exercise_id {
-                                    let is_weighted = log.weight_hg.0 > 0;
-                                    let include = match metric {
-                                        Metric::Weight => is_weighted,
-                                        Metric::Reps | Metric::Distance | Metric::Duration => {
-                                            !is_weighted
-                                        }
-                                        Metric::Volume => false,
-                                    };
-                                    if include {
-                                        if let Some(value) = metric.extract_value(log) {
-                                            #[allow(clippy::cast_precision_loss)]
-                                            points.push((log.start_time as f64, value));
-                                        }
+                                if log_matches(log) {
+                                    if let Some(value) = metric.extract_value(log) {
+                                        #[allow(clippy::cast_precision_loss)]
+                                        points.push((log.start_time as f64, value));
                                     }
                                 }
                             }
@@ -137,17 +139,7 @@ pub fn Analytics() -> Element {
                             let values: Vec<f64> = session
                                 .exercise_logs
                                 .iter()
-                                .filter(|log| {
-                                    if log.exercise_id != exercise_id {
-                                        return false;
-                                    }
-                                    let w = log.weight_hg.0 > 0;
-                                    match metric {
-                                        Metric::Weight => w,
-                                        Metric::Reps | Metric::Distance | Metric::Duration => !w,
-                                        Metric::Volume => false,
-                                    }
-                                })
+                                .filter(|log| log_matches(log))
                                 .filter_map(|log| metric.extract_value(log))
                                 .collect();
                             if !values.is_empty() {
@@ -163,17 +155,7 @@ pub fn Analytics() -> Element {
                             let values: Vec<f64> = session
                                 .exercise_logs
                                 .iter()
-                                .filter(|log| {
-                                    if log.exercise_id != exercise_id {
-                                        return false;
-                                    }
-                                    let w = log.weight_hg.0 > 0;
-                                    match metric {
-                                        Metric::Weight => w,
-                                        Metric::Reps | Metric::Distance | Metric::Duration => !w,
-                                        Metric::Volume => false,
-                                    }
-                                })
+                                .filter(|log| log_matches(log))
                                 .filter_map(|log| metric.extract_value(log))
                                 .collect();
                             if !values.is_empty() {
