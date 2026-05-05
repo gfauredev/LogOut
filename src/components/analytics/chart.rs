@@ -14,15 +14,13 @@ const SVG_COORD_X: &str = r#"
     dioxus.send((clientX - r.left) / r.width * vb.width);
 "#;
 
-/// Canonical metric order: [Weight(0), Reps(1), Distance(2), Duration(3), SessionVolume(4), AverageSessionWeight(5), SessionReps(6)]
-const ALL_METRICS: [Metric; 7] = [
+/// Canonical metric order: [Weight(0), Reps(1), Distance(2), Duration(3), Volume(4)]
+const ALL_METRICS: [Metric; 5] = [
     Metric::Weight,
     Metric::Reps,
     Metric::Distance,
     Metric::Duration,
-    Metric::SessionVolume,
-    Metric::AverageSessionWeight,
-    Metric::SessionReps,
+    Metric::Volume,
 ];
 
 /// Update the cursor timestamp from a client-space X coordinate.
@@ -65,14 +63,13 @@ pub fn ChartView(data: SeriesData, colors: Vec<&'static str>) -> Element {
     let chart2_bottom_margin = 5.0_f64;
 
     // ── Metric availability ───────────────────────────────────────────────────
-    let metric_has_data: [bool; 7] = ALL_METRICS.map(|m| {
+    let metric_has_data: [bool; 5] = ALL_METRICS.map(|m| {
         data.iter()
             .any(|(_, _, dm, pts)| *dm == m && !pts.is_empty())
     });
     let has_chart2 = metric_has_data[2] || metric_has_data[3];
-    let has_chart3 = metric_has_data[4] || metric_has_data[5] || metric_has_data[6];
-    let has_right_axis =
-        metric_has_data[1] || metric_has_data[3] || metric_has_data[5] || metric_has_data[6];
+    let has_chart3 = metric_has_data[4];
+    let has_right_axis = metric_has_data[1] || metric_has_data[3];
     let right_pad = if has_right_axis { axis_slot } else { 10.0_f64 };
     let left_pad = axis_slot;
     let chart_width = (width - left_pad - right_pad).max(50.0);
@@ -111,7 +108,7 @@ pub fn ChartView(data: SeriesData, colors: Vec<&'static str>) -> Element {
 
     // ── Per-metric Y-axis data ────────────────────────────────────────────────
     #[allow(clippy::cast_precision_loss)]
-    let axis_data: [Option<(&'static str, f64, f64, f64)>; 7] = std::array::from_fn(|i| {
+    let axis_data: [Option<(&'static str, f64, f64, f64)>; 5] = std::array::from_fn(|i| {
         if !metric_has_data[i] {
             return None;
         }
@@ -244,7 +241,7 @@ pub fn ChartView(data: SeriesData, colors: Vec<&'static str>) -> Element {
                     stroke_width: "1",
                 }
             }
-            for i in 0..7_usize {
+            for i in 0..5_usize {
                 if let Some((unit, _, min_y, max_y)) = axis_data[i] {
                     {
                         let is_right = i % 2 == 1;

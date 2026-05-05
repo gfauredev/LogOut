@@ -1,5 +1,5 @@
 use crate::components::{ActiveTab, BottomNav};
-use crate::models::analytics::Metric;
+use crate::models::analytics::{AnalyticsMode, Metric};
 use crate::models::HG_PER_KG;
 use crate::services::{exercise_db, storage};
 use dioxus::prelude::*;
@@ -12,14 +12,20 @@ mod selector;
 pub use chart::{ChartView, SeriesData};
 pub use selector::MetricSelector;
 
-const COLORS: [&str; 8] = [
+/// Slot index reserved for the Volume series (beyond the 8 exercise pairs).
+const VOLUME_SLOT: usize = 8;
+
+const COLORS: [&str; 9] = [
     "#3498db", "#e74c3c", "#2ecc71", "#9b59b6", "#e67e22", "#f1c40f", "#16a085", "#e91e63",
+    "#1abc9c", // volume series (chart 3)
 ];
 
 #[component]
 pub fn Analytics() -> Element {
     let selected_pairs: Signal<Vec<(Metric, Option<String>)>> =
         use_signal(|| vec![(Metric::Weight, None); 8]);
+    let mut analytics_mode: Signal<AnalyticsMode> = use_signal(|| AnalyticsMode::Set);
+    let mut volume_exercise: Signal<Option<String>> = use_signal(|| None);
     let all_exercises = exercise_db::use_exercises();
     let custom_exercises = storage::use_custom_exercises();
     let lang_str = use_memo(move || i18n().language().to_string());
@@ -56,11 +62,10 @@ pub fn Analytics() -> Element {
         let all = all_exercises.read();
         let custom = custom_exercises.read();
         let lang = lang_str.read();
-        let mut maps: [std::collections::HashMap<String, String>; 7] =
+        let mut maps: [std::collections::HashMap<String, String>; 5] =
             std::array::from_fn(|_| std::collections::HashMap::new());
         // maps indices mirror Metric::to_index():
-        // 0: Weight, 1: Reps, 2: Distance, 3: Duration,
-        // 4: SessionVolume, 5: AverageSessionWeight, 6: SessionReps
+        // 0: Weight, 1: Reps, 2: Distance, 3: Duration, 4: Volume
         for session in sessions {
             for log in &session.exercise_logs {
                 let name = exercise_db::resolve_exercise(&all, &custom, &log.exercise_id)
@@ -84,12 +89,6 @@ pub fn Analytics() -> Element {
                 if is_weighted && log.reps.is_some() {
                     maps[4].insert(log.exercise_id.clone(), name.clone());
                 }
-                if is_weighted {
-                    maps[5].insert(log.exercise_id.clone(), name.clone());
-                }
-                if log.reps.is_some() {
-                    maps[6].insert(log.exercise_id.clone(), name.clone());
-                }
             }
         }
         maps.map(|m| {
@@ -99,68 +98,19 @@ pub fn Analytics() -> Element {
         })
     });
 
+    let mode = *analytics_mode.read();
+    let vol_id = volume_exercise.read().clone();
+
     let chart_data: SeriesData = {
-        selected_pairs
+        let mut data: SeriesData = selected_pairs
             .read()
             .iter()
             .enumerate()
             .filter_map(|(i, (metric, opt_id))| opt_id.as_ref().map(|id| (i, *metric, id.clone())))
             .map(|(i, metric, exercise_id)| {
                 let mut points = Vec::new();
-                match metric {
-                    Metric::SessionVolume => {
-                        for session in &sessions {
-                            let mut total_volume = 0.0f64;
-                            let mut has_data = false;
-                            for log in &session.exercise_logs {
-                                if log.exercise_id == exercise_id && log.weight_hg.0 > 0 {
-                                    if let Some(reps) = log.reps {
-                                        #[allow(clippy::cast_precision_loss)]
-                                        {
-                                            total_volume += f64::from(log.weight_hg.0) / HG_PER_KG
-                                                * f64::from(reps);
-                                        }
-                                        has_data = true;
-                                    }
-                                }
-                            }
-                            if has_data {
-                                #[allow(clippy::cast_precision_loss)]
-                                points.push((session.start_time as f64, total_volume));
-                            }
-                        }
-                    }
-                    Metric::AverageSessionWeight => {
-                        for session in &sessions {
-                            let weights: Vec<f64> = session
-                                .exercise_logs
-                                .iter()
-                                .filter(|log| log.exercise_id == exercise_id && log.weight_hg.0 > 0)
-                                .map(|log| f64::from(log.weight_hg.0) / HG_PER_KG)
-                                .collect();
-                            if !weights.is_empty() {
-                                #[allow(clippy::cast_precision_loss)]
-                                let avg = weights.iter().sum::<f64>() / weights.len() as f64;
-                                #[allow(clippy::cast_precision_loss)]
-                                points.push((session.start_time as f64, avg));
-                            }
-                        }
-                    }
-                    Metric::SessionReps => {
-                        for session in &sessions {
-                            let total_reps: u32 = session
-                                .exercise_logs
-                                .iter()
-                                .filter(|log| log.exercise_id == exercise_id)
-                                .filter_map(|log| log.reps)
-                                .sum();
-                            if total_reps > 0 {
-                                #[allow(clippy::cast_precision_loss)]
-                                points.push((session.start_time as f64, f64::from(total_reps)));
-                            }
-                        }
-                    }
-                    Metric::Weight | Metric::Reps | Metric::Distance | Metric::Duration => {
+                match mode {
+                    AnalyticsMode::Set => {
                         for session in &sessions {
                             for log in &session.exercise_logs {
                                 if log.exercise_id == exercise_id {
@@ -170,7 +120,7 @@ pub fn Analytics() -> Element {
                                         Metric::Reps | Metric::Distance | Metric::Duration => {
                                             !is_weighted
                                         }
-                                        _ => false,
+                                        Metric::Volume => false,
                                     };
                                     if include {
                                         if let Some(value) = metric.extract_value(log) {
@@ -179,6 +129,68 @@ pub fn Analytics() -> Element {
                                         }
                                     }
                                 }
+                            }
+                        }
+                    }
+                    AnalyticsMode::SessionAverage => {
+                        for session in &sessions {
+                            let values: Vec<f64> = session
+                                .exercise_logs
+                                .iter()
+                                .filter(|log| {
+                                    if log.exercise_id != exercise_id {
+                                        return false;
+                                    }
+                                    let w = log.weight_hg.0 > 0;
+                                    match metric {
+                                        Metric::Weight => w,
+                                        Metric::Reps | Metric::Distance | Metric::Duration => !w,
+                                        Metric::Volume => false,
+                                    }
+                                })
+                                .filter_map(|log| metric.extract_value(log))
+                                .collect();
+                            if !values.is_empty() {
+                                #[allow(clippy::cast_precision_loss)]
+                                let avg = values.iter().sum::<f64>() / values.len() as f64;
+                                #[allow(clippy::cast_precision_loss)]
+                                points.push((session.start_time as f64, avg));
+                            }
+                        }
+                    }
+                    AnalyticsMode::SessionTotal => {
+                        for session in &sessions {
+                            let values: Vec<f64> = session
+                                .exercise_logs
+                                .iter()
+                                .filter(|log| {
+                                    if log.exercise_id != exercise_id {
+                                        return false;
+                                    }
+                                    let w = log.weight_hg.0 > 0;
+                                    match metric {
+                                        Metric::Weight => w,
+                                        Metric::Reps | Metric::Distance | Metric::Duration => !w,
+                                        Metric::Volume => false,
+                                    }
+                                })
+                                .filter_map(|log| metric.extract_value(log))
+                                .collect();
+                            if !values.is_empty() {
+                                // Weight: show max per session (sum is not meaningful)
+                                // All other metrics: show sum per session
+                                #[allow(clippy::cast_precision_loss)]
+                                let total = match metric {
+                                    Metric::Weight => {
+                                        values.iter().copied().fold(f64::NEG_INFINITY, f64::max)
+                                    }
+                                    Metric::Reps | Metric::Distance | Metric::Duration => {
+                                        values.iter().sum()
+                                    }
+                                    Metric::Volume => 0.0,
+                                };
+                                #[allow(clippy::cast_precision_loss)]
+                                points.push((session.start_time as f64, total));
                             }
                         }
                     }
@@ -192,13 +204,139 @@ pub fn Analytics() -> Element {
                     .map_or_else(|| exercise_id.clone(), |(_, name)| name.clone());
                 (i, exercise_name, metric, points)
             })
-            .collect()
+            .collect();
+
+        // Volume series: chart 3, aggregated according to the global mode
+        if let Some(exercise_id) = vol_id {
+            let mut points = Vec::new();
+            match mode {
+                AnalyticsMode::Set => {
+                    for session in &sessions {
+                        for log in &session.exercise_logs {
+                            if log.exercise_id == exercise_id && log.weight_hg.0 > 0 {
+                                if let Some(reps) = log.reps {
+                                    #[allow(clippy::cast_precision_loss)]
+                                    let vol =
+                                        f64::from(log.weight_hg.0) / HG_PER_KG * f64::from(reps);
+                                    #[allow(clippy::cast_precision_loss)]
+                                    points.push((log.start_time as f64, vol));
+                                }
+                            }
+                        }
+                    }
+                }
+                AnalyticsMode::SessionAverage => {
+                    for session in &sessions {
+                        let vols: Vec<f64> = session
+                            .exercise_logs
+                            .iter()
+                            .filter(|log| log.exercise_id == exercise_id && log.weight_hg.0 > 0)
+                            .filter_map(|log| {
+                                log.reps
+                                    .map(|r| f64::from(log.weight_hg.0) / HG_PER_KG * f64::from(r))
+                            })
+                            .collect();
+                        if !vols.is_empty() {
+                            #[allow(clippy::cast_precision_loss)]
+                            let avg = vols.iter().sum::<f64>() / vols.len() as f64;
+                            #[allow(clippy::cast_precision_loss)]
+                            points.push((session.start_time as f64, avg));
+                        }
+                    }
+                }
+                AnalyticsMode::SessionTotal => {
+                    for session in &sessions {
+                        let total: f64 = session
+                            .exercise_logs
+                            .iter()
+                            .filter(|log| log.exercise_id == exercise_id && log.weight_hg.0 > 0)
+                            .filter_map(|log| {
+                                log.reps
+                                    .map(|r| f64::from(log.weight_hg.0) / HG_PER_KG * f64::from(r))
+                            })
+                            .sum();
+                        if total > 0.0 {
+                            #[allow(clippy::cast_precision_loss)]
+                            points.push((session.start_time as f64, total));
+                        }
+                    }
+                }
+            }
+            points.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap_or(std::cmp::Ordering::Equal));
+            let exercise_name = available_by_metric
+                .read()
+                .get(Metric::Volume.to_index())
+                .and_then(|list| list.iter().find(|(id, _)| *id == exercise_id))
+                .map_or_else(|| exercise_id.clone(), |(_, name)| name.clone());
+            data.push((VOLUME_SLOT, exercise_name, Metric::Volume, points));
+        }
+        data
     };
+
+    let volume_exercises: Vec<(String, String)> =
+        available_by_metric.read()[Metric::Volume.to_index()].clone();
+    let vol_is_locked = volume_exercise.read().is_some();
 
     rsx! {
         header {
             h1 { {t!("analytics-title")} }
             p { {t!("analytics-subtitle")} }
+            fieldset { class: "analytics-mode",
+                legend { {t!("analytics-mode-label")} }
+                div { class: "mode-options",
+                    label {
+                        input {
+                            r#type: "radio",
+                            name: "analytics-mode",
+                            checked: mode == AnalyticsMode::Set,
+                            onchange: move |_| analytics_mode.set(AnalyticsMode::Set),
+                        }
+                        {t!("analytics-mode-set")}
+                    }
+                    label {
+                        input {
+                            r#type: "radio",
+                            name: "analytics-mode",
+                            checked: mode == AnalyticsMode::SessionAverage,
+                            onchange: move |_| analytics_mode.set(AnalyticsMode::SessionAverage),
+                        }
+                        {t!("analytics-mode-session-avg")}
+                    }
+                    label {
+                        input {
+                            r#type: "radio",
+                            name: "analytics-mode",
+                            checked: mode == AnalyticsMode::SessionTotal,
+                            onchange: move |_| analytics_mode.set(AnalyticsMode::SessionTotal),
+                        }
+                        {t!("analytics-mode-session-total")}
+                    }
+                }
+            }
+            div { class: "exercise-selector",
+                div { style: "background: {COLORS[VOLUME_SLOT]};" }
+                select {
+                    value: "{volume_exercise.read().as_deref().unwrap_or(\"\")}",
+                    disabled: vol_is_locked,
+                    onchange: move |evt| {
+                        let value = evt.value();
+                        volume_exercise.set(if value.is_empty() { None } else { Some(value) });
+                    },
+                    option { value: "", {t!("analytics-volume-exercise-label")} }
+                    for (id, name) in volume_exercises.iter() {
+                        option { value: "{id}", "{name}" }
+                    }
+                }
+                if vol_is_locked {
+                    button {
+                        class: "back",
+                        r#type: "button",
+                        title: t!("analytics-remove-series"),
+                        onclick: move |_| volume_exercise.set(None),
+                        "✕"
+                    }
+                }
+            }
             label { {t!("analytics-pairs-label")} }
             for i in 0..8 {
                 MetricSelector {
