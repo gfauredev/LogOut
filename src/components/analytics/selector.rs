@@ -7,7 +7,7 @@ pub fn MetricSelector(
     i: usize,
     color: &'static str,
     selected_pairs: Signal<Vec<(Metric, Option<String>)>>,
-    available_by_metric: Memo<[Vec<(String, String)>; 7]>,
+    available_by_metric: Memo<[Vec<(String, String)>; 5]>,
 ) -> Element {
     let pairs = selected_pairs.read().clone();
     let is_visible = i == 0 || pairs.get(i - 1).is_some_and(|(_, opt_id)| opt_id.is_some());
@@ -40,9 +40,6 @@ pub fn MetricSelector(
                         "Reps" => Metric::Reps,
                         "Distance" => Metric::Distance,
                         "Duration" => Metric::Duration,
-                        "SessionVolume" => Metric::SessionVolume,
-                        "AverageSessionWeight" => Metric::AverageSessionWeight,
-                        "SessionReps" => Metric::SessionReps,
                         _ => Metric::Weight,
                     };
                     pairs[i].1 = None;
@@ -51,9 +48,6 @@ pub fn MetricSelector(
                 option { value: "Reps", {t!("analytics-metric-reps")} }
                 option { value: "Distance", {t!("analytics-metric-distance")} }
                 option { value: "Duration", {t!("analytics-metric-duration")} }
-                option { value: "SessionVolume", {t!("analytics-metric-session-volume")} }
-                option { value: "AverageSessionWeight", {t!("analytics-metric-avg-session-weight")} }
-                option { value: "SessionReps", {t!("analytics-metric-session-reps")} }
             }
             select {
                 value: "{current_exercise.as_deref().unwrap_or(\"\")}",
