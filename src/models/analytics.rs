@@ -6,6 +6,10 @@ const DURATION_HOURS_MINS_THRESHOLD: f64 = 180.0;
 
 /// Global aggregation mode for the Analytics view.
 /// Applies uniformly to all exercise series and to the Volume chart.
+///
+/// Note: in [`AnalyticsMode::SessionTotal`] mode, [`crate::models::analytics::Metric::Weight`]
+/// shows the **maximum** weight per session rather than the sum, because summing weights
+/// across sets is not a meaningful fitness metric.
 #[derive(Clone, Copy, PartialEq, Debug, Default, serde::Serialize, serde::Deserialize)]
 pub enum AnalyticsMode {
     /// One data point per set (timestamp = set start time).

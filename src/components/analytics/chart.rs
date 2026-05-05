@@ -244,6 +244,8 @@ pub fn ChartView(data: SeriesData, colors: Vec<&'static str>) -> Element {
             for i in 0..5_usize {
                 if let Some((unit, _, min_y, max_y)) = axis_data[i] {
                     {
+                        // Axis side: odd indices (Reps=1, Duration=3) → right axis;
+                        // even indices (Weight=0, Distance=2, Volume=4) → left axis.
                         let is_right = i % 2 == 1;
                         let x_pos = if is_right { left_pad + chart_width } else { left_pad };
                         let (ct, cb) = if i < 2 {
