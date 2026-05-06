@@ -39,6 +39,11 @@ pub struct WorkoutSession {
     #[serde(default)]
     /// Free-form session notes written by the user (Markdown supported).
     pub notes: String,
+    #[serde(default)]
+    /// Whether the currently-active exercise was started from the pre-added
+    /// (pending) list.  Used by `cancel_exercise_in_session` to decide whether
+    /// to put the exercise back into `pending_exercise_ids`.
+    pub current_exercise_from_pending: bool,
 }
 impl WorkoutSession {
     /// Create a new session with current timestamp and a unique ID.
@@ -56,6 +61,7 @@ impl WorkoutSession {
             paused_at: None,
             total_paused_duration: 0,
             notes: String::new(),
+            current_exercise_from_pending: false,
         }
     }
     /// Returns true if the session is currently active (no end time).
@@ -157,6 +163,7 @@ mod tests {
             paused_at: None,
             total_paused_duration: 0,
             notes: String::new(),
+            current_exercise_from_pending: false,
         };
         let json = serde_json::to_string(&session).unwrap();
         let back: WorkoutSession = serde_json::from_str(&json).unwrap();
@@ -178,6 +185,7 @@ mod tests {
             paused_at: None,
             total_paused_duration: 0,
             notes: String::new(),
+            current_exercise_from_pending: false,
         };
         let json = serde_json::to_string(&session).unwrap();
         let back: WorkoutSession = serde_json::from_str(&json).unwrap();
@@ -206,6 +214,7 @@ mod tests {
             paused_at: None,
             total_paused_duration: 0,
             notes: String::new(),
+            current_exercise_from_pending: false,
         };
         assert_eq!(s.duration_seconds(), 1000);
         s.paused_at = Some(1500);
@@ -226,6 +235,7 @@ mod tests {
             paused_at: Some(1500),
             total_paused_duration: 0,
             notes: String::new(),
+            current_exercise_from_pending: false,
         };
         // Simulate resume at t=1700: pause_duration = 200s
         // Manually set total_paused_duration as resume() uses get_current_timestamp()
