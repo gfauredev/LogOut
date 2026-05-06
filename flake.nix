@@ -87,13 +87,13 @@
           };
           wasm-bindgen-cli = rustPlatform.buildRustPackage rec {
             pname = "wasm-bindgen-cli";
-            version = "0.2.118";
+            version = "0.2.120";
             src = pkgs.fetchCrate {
               inherit pname version;
-              hash = "sha256-ve783oYH0TGv8Z8lIPdGjItzeLDQLOT5uv/jbFOlZpI=";
+              hash = "sha256-Dkkx8Bhfk+y/jEz9Fzwytmv2N3Gj/7ST+5MlPRzzetU=";
               # hash = pkgs.lib.fakeHash;
             };
-            cargoHash = "sha256-EYDfuBlH3zmTxACBL+sjicRna84CvoesKSQVcYiG9P0=";
+            cargoHash = "sha256-5Zu/Sh9aBMxB+KGC1MHWJAQ8PuE40M6lsenkpFEwJ6A=";
             # cargoHash = pkgs.lib.fakeHash;
             nativeBuildInputs = [ pkgs.pkg-config ];
             buildInputs = [
