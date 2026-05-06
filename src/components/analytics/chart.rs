@@ -79,7 +79,11 @@ pub fn ChartView(data: SeriesData, colors: Vec<&'static str>) -> Element {
     let chart1_bottom = top_pad + chart_height;
     let chart2_top = chart1_bottom + x_gap;
     let chart2_bottom = chart2_top + chart_height;
-    let chart3_top = chart2_bottom + x_gap;
+    let chart3_top = if has_chart2 {
+        chart2_bottom + x_gap
+    } else {
+        chart1_bottom + x_gap
+    };
     let chart3_bottom = chart3_top + chart_height;
     let total_height = if has_chart3 {
         chart3_bottom + chart2_bottom_margin
