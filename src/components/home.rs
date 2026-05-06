@@ -238,6 +238,7 @@ fn SessionCard(session: WorkoutSession, on_delete: EventHandler<String>) -> Elem
     const MAX_VISIBLE: usize = 9;
     let mut show_all_exercises = use_signal(|| false);
     let mut show_notes = use_signal(|| false);
+    let mut show_detail = use_signal(|| false);
     let session_id = session.id.clone();
     let has_notes = !session.notes.is_empty();
     let session_notes = session.notes.clone();
@@ -299,8 +300,26 @@ fn SessionCard(session: WorkoutSession, on_delete: EventHandler<String>) -> Elem
         total_unique.min(MAX_VISIBLE)
     };
     let hidden_count = total_unique.saturating_sub(visible_count);
+    // Resolved exercise logs for the detail view (name + metrics, reverse chronological).
+    let resolved_logs: Vec<(String, crate::models::ExerciseLog)> = {
+        let all = all_exercises.read();
+        let custom = custom_exercises.read();
+        let lang = lang_str.read();
+        session
+            .exercise_logs
+            .iter()
+            .map(|log| {
+                let name = exercise_db::resolve_exercise(&all, &custom, &log.exercise_id)
+                    .map_or_else(
+                        || log.exercise_name.clone(),
+                        |ex| ex.name_for_lang(&lang).to_owned(),
+                    );
+                (name, log.clone())
+            })
+            .collect()
+    };
     rsx! {
-        article {
+        article { onclick: move |_| show_detail.toggle(),
             header {
                 time { "{date_str}" }
                 div {
@@ -312,7 +331,8 @@ fn SessionCard(session: WorkoutSession, on_delete: EventHandler<String>) -> Elem
                         class: "edit",
                         onclick: {
                             let pending_ids = pending_ids.clone();
-                            move |_| {
+                            move |evt: Event<MouseData>| {
+                                evt.stop_propagation();
                                 let mut new_session = WorkoutSession::new();
                                 new_session.pending_exercise_ids.clone_from(&pending_ids);
                                 storage::save_session(new_session);
@@ -322,12 +342,14 @@ fn SessionCard(session: WorkoutSession, on_delete: EventHandler<String>) -> Elem
                         "🔁"
                     }
                 }
-                HoldDeleteButton {
-                    title: t!("session-delete-title").to_string(),
-                    on_delete: move |()| {
-                        storage::delete_session(&session_id);
-                        on_delete.call(session_id.clone());
-                    },
+                span { onclick: move |evt| evt.stop_propagation(),
+                    HoldDeleteButton {
+                        title: t!("session-delete-title").to_string(),
+                        on_delete: move |()| {
+                            storage::delete_session(&session_id);
+                            on_delete.call(session_id.clone());
+                        },
+                    }
                 }
             }
             if !unique_exercises.is_empty() {
@@ -337,7 +359,8 @@ fn SessionCard(session: WorkoutSession, on_delete: EventHandler<String>) -> Elem
                             class: "{tag_class}",
                             onclick: {
                                 let name = name.clone();
-                                move |_| {
+                                move |evt: Event<MouseData>| {
+                                    evt.stop_propagation();
                                     search_signal.set(Some(name.clone()));
                                     navigator.push(Route::Exercises {});
                                 }
@@ -348,8 +371,34 @@ fn SessionCard(session: WorkoutSession, on_delete: EventHandler<String>) -> Elem
                     if hidden_count > 0 {
                         li {
                             class: "more",
-                            onclick: move |_| show_all_exercises.set(true),
+                            onclick: move |evt: Event<MouseData>| {
+                                evt.stop_propagation();
+                                show_all_exercises.set(true);
+                            },
                             {t!("session-show-more", count : hidden_count.to_string())}
+                        }
+                    }
+                }
+            }
+            if *show_detail.read() {
+                for (idx, (name, log)) in resolved_logs.iter().enumerate().rev() {
+                    article { key: "{idx}",
+                        header {
+                            h4 { "{name}" }
+                        }
+                        ul {
+                            if log.weight_hg.0 > 0 {
+                                li { "{log.weight_hg}" }
+                            }
+                            if let Some(reps) = log.reps {
+                                li { "{reps} reps" }
+                            }
+                            if let Some(d) = log.distance_m {
+                                li { "{d}" }
+                            }
+                            if let Some(dur) = log.duration_seconds() {
+                                li { "{crate::models::format_time(dur)}" }
+                            }
                         }
                     }
                 }
@@ -360,7 +409,10 @@ fn SessionCard(session: WorkoutSession, on_delete: EventHandler<String>) -> Elem
                 } else {
                     button {
                         title: t!("session-notes-unfold"),
-                        onclick: move |_| show_notes.set(true),
+                        onclick: move |evt: Event<MouseData>| {
+                            evt.stop_propagation();
+                            show_notes.set(true);
+                        },
                         "📝"
                     }
                 }

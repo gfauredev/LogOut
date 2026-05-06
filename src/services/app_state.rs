@@ -333,6 +333,7 @@ pub fn begin_exercise_in_session(exercise_id: String, exercise_start: u64) {
     updated.rest_start_time = None;
     updated.current_exercise_id = Some(exercise_id);
     updated.current_exercise_start = Some(exercise_start);
+    updated.current_exercise_from_pending = false;
     save_session(updated);
 }
 /// Append a completed exercise log to the active session and start the rest timer.
@@ -362,6 +363,7 @@ pub fn append_exercise_log(log: ExerciseLog) {
     updated.rest_start_time = Some(get_current_timestamp());
     updated.current_exercise_id = None;
     updated.current_exercise_start = None;
+    updated.current_exercise_from_pending = false;
     save_session(updated);
 }
 /// Discard the in-progress exercise in the active session (no log is written).
@@ -374,8 +376,14 @@ pub fn cancel_exercise_in_session() {
         return;
     };
     let mut updated = session;
+    if updated.current_exercise_from_pending {
+        if let Some(ref ex_id) = updated.current_exercise_id.clone() {
+            updated.pending_exercise_ids.insert(0, ex_id.clone());
+        }
+    }
     updated.current_exercise_id = None;
     updated.current_exercise_start = None;
+    updated.current_exercise_from_pending = false;
     save_session(updated);
 }
 /// Remove `exercise_id` from the pending list and make it the active exercise.
@@ -402,6 +410,7 @@ pub fn start_pending_exercise_in_session(exercise_id: String, exercise_start: u6
     updated.rest_start_time = None;
     updated.current_exercise_id = Some(exercise_id);
     updated.current_exercise_start = Some(exercise_start);
+    updated.current_exercise_from_pending = true;
     save_session(updated);
 }
 /// Append `exercise` to the custom-exercises signal and persist it to the backend.

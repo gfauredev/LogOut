@@ -1698,6 +1698,7 @@ mod tests {
             paused_at: None,
             total_paused_duration: 0,
             notes: String::new(),
+            current_exercise_from_pending: false,
         };
         native_storage::put_item(native_storage::STORE_SESSIONS, &session.id, &session).unwrap();
         let loaded: Vec<WorkoutSession> =
@@ -1724,6 +1725,7 @@ mod tests {
             paused_at: None,
             total_paused_duration: 0,
             notes: String::new(),
+            current_exercise_from_pending: false,
         };
         let s2 = WorkoutSession {
             id: id.into(),
@@ -1737,6 +1739,7 @@ mod tests {
             paused_at: None,
             total_paused_duration: 0,
             notes: String::new(),
+            current_exercise_from_pending: false,
         };
         native_storage::put_item(native_storage::STORE_SESSIONS, id, &s1).unwrap();
         native_storage::put_item(native_storage::STORE_SESSIONS, id, &s2).unwrap();
@@ -1770,6 +1773,7 @@ mod tests {
             paused_at: None,
             total_paused_duration: 0,
             notes: String::new(),
+            current_exercise_from_pending: false,
         };
         native_storage::put_item(native_storage::STORE_SESSIONS, id, &session).unwrap();
         native_storage::delete_item(native_storage::STORE_SESSIONS, id).unwrap();
@@ -1948,6 +1952,7 @@ mod tests {
             paused_at: None,
             total_paused_duration: 0,
             notes: String::new(),
+            current_exercise_from_pending: false,
         };
         native_storage::put_item(native_storage::STORE_SESSIONS, &session.id, &session).unwrap();
         let loaded: Vec<WorkoutSession> =
@@ -2002,6 +2007,7 @@ mod tests {
             paused_at: None,
             total_paused_duration: 0,
             notes: String::new(),
+            current_exercise_from_pending: false,
         };
         let done = WorkoutSession {
             id: "paged_done".into(),
@@ -2015,6 +2021,7 @@ mod tests {
             paused_at: None,
             total_paused_duration: 0,
             notes: String::new(),
+            current_exercise_from_pending: false,
         };
         native_storage::put_item(native_storage::STORE_SESSIONS, &active.id, &active).unwrap();
         native_storage::put_item(native_storage::STORE_SESSIONS, &done.id, &done).unwrap();
@@ -2047,6 +2054,7 @@ mod tests {
                 paused_at: None,
                 total_paused_duration: 0,
                 notes: String::new(),
+                current_exercise_from_pending: false,
             };
             native_storage::put_item(native_storage::STORE_SESSIONS, &s.id, &s).unwrap();
         }
@@ -2094,6 +2102,7 @@ mod tests {
             paused_at: None,
             total_paused_duration: 0,
             notes: String::new(),
+            current_exercise_from_pending: false,
         }
     }
     fn make_exercise_log(exercise_id: &str, start: u64, end: Option<u64>) -> ExerciseLog {
@@ -2126,6 +2135,7 @@ mod tests {
             paused_at: None,
             total_paused_duration: 0,
             notes: String::new(),
+            current_exercise_from_pending: false,
         };
         let done = WorkoutSession {
             id: id_done.into(),
@@ -2139,6 +2149,7 @@ mod tests {
             paused_at: None,
             total_paused_duration: 0,
             notes: String::new(),
+            current_exercise_from_pending: false,
         };
         native_storage::put_item(native_storage::STORE_SESSIONS, id_active, &active).unwrap();
         native_storage::put_item(native_storage::STORE_SESSIONS, id_done, &done).unwrap();
@@ -2192,6 +2203,7 @@ mod tests {
             paused_at: None,
             total_paused_duration: 0,
             notes: String::new(),
+            current_exercise_from_pending: false,
         };
         native_storage::put_item(native_storage::STORE_SESSIONS, id, &session).unwrap();
         let rows = native_storage::compute_bests_rows().expect("compute_bests_rows failed");
