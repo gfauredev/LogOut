@@ -381,7 +381,7 @@ fn SessionCard(session: WorkoutSession, on_delete: EventHandler<String>) -> Elem
                 }
             }
             if *show_detail.read() {
-                for (idx, (name, log)) in resolved_logs.iter().enumerate().rev() {
+                for (idx, (name, log)) in resolved_logs.iter().rev().enumerate() {
                     article { key: "{idx}",
                         header {
                             h4 { "{name}" }
