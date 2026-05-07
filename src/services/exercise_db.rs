@@ -488,7 +488,7 @@ where
             }
         })
         .collect();
-    scored.sort_by(|a, b| b.0.cmp(&a.0));
+    scored.sort_by_key(|entry| std::cmp::Reverse(entry.0));
     scored.into_iter().map(|(_, ex)| ex).collect()
 }
 /// A hard filter that restricts the exercise list to a specific attribute value.

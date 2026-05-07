@@ -139,7 +139,7 @@ pub fn More() -> Element {
                     }
                 }
             }
-            all.sort_by(|a, b| a.start_time.cmp(&b.start_time));
+            all.sort_by_key(|session| session.start_time);
             match serde_json::to_string_pretty(&all) {
                 Ok(json) => {
                     if let Some(msg) = trigger_download("sessions.json", &json) {

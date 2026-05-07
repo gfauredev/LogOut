@@ -105,7 +105,7 @@ pub fn RestTimer(
             #[cfg(target_arch = "wasm32")]
             gloo_timers::future::TimeoutFuture::new(TIMER_TICK_MS).await;
             #[cfg(not(target_arch = "wasm32"))]
-            tokio::time::sleep(std::time::Duration::from_millis(1_000)).await;
+            tokio::time::sleep(std::time::Duration::from_secs(1)).await;
             now_tick.set(get_current_timestamp());
         }
     });
@@ -176,7 +176,7 @@ pub fn ExerciseElapsedTimer(
             #[cfg(target_arch = "wasm32")]
             gloo_timers::future::TimeoutFuture::new(TIMER_TICK_MS).await;
             #[cfg(not(target_arch = "wasm32"))]
-            tokio::time::sleep(std::time::Duration::from_millis(1_000)).await;
+            tokio::time::sleep(std::time::Duration::from_secs(1)).await;
             now_tick.set(get_current_timestamp());
         }
     });
@@ -242,7 +242,7 @@ pub(super) fn InlineExerciseTimer(
             #[cfg(target_arch = "wasm32")]
             gloo_timers::future::TimeoutFuture::new(TIMER_TICK_MS).await;
             #[cfg(not(target_arch = "wasm32"))]
-            tokio::time::sleep(std::time::Duration::from_millis(1_000)).await;
+            tokio::time::sleep(std::time::Duration::from_secs(1)).await;
             now_tick.set(get_current_timestamp());
         }
     });
@@ -289,7 +289,7 @@ pub fn RestTimerDisplay(
             #[cfg(target_arch = "wasm32")]
             gloo_timers::future::TimeoutFuture::new(TIMER_TICK_MS).await;
             #[cfg(not(target_arch = "wasm32"))]
-            tokio::time::sleep(std::time::Duration::from_millis(1_000)).await;
+            tokio::time::sleep(std::time::Duration::from_secs(1)).await;
             now_tick.set(get_current_timestamp());
         }
     });
@@ -326,7 +326,7 @@ pub fn SessionDurationDisplay(
             #[cfg(target_arch = "wasm32")]
             gloo_timers::future::TimeoutFuture::new(TIMER_TICK_MS).await;
             #[cfg(not(target_arch = "wasm32"))]
-            tokio::time::sleep(std::time::Duration::from_millis(1_000)).await;
+            tokio::time::sleep(std::time::Duration::from_secs(1)).await;
             now_tick.set(get_current_timestamp());
         }
     });

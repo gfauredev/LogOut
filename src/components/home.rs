@@ -81,7 +81,7 @@ pub fn Home() -> Element {
                 .any(|s| active_ids.contains(&s.id));
 
         if !newly_completed.is_empty() || has_resumed {
-            newly_completed.sort_by(|a, b| b.start_time.cmp(&a.start_time));
+            newly_completed.sort_by_key(|session| std::cmp::Reverse(session.start_time));
             let new_len = {
                 let mut cs = completed_sessions.write();
                 // Remove sessions that have been re-activated.
