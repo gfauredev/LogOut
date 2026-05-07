@@ -40,6 +40,7 @@ pub fn MetricSelector(
                         "Reps" => Metric::Reps,
                         "Distance" => Metric::Distance,
                         "Duration" => Metric::Duration,
+                        "Volume" => Metric::Volume,
                         _ => Metric::Weight,
                     };
                     pairs[i].1 = None;
@@ -48,6 +49,7 @@ pub fn MetricSelector(
                 option { value: "Reps", {t!("analytics-metric-reps")} }
                 option { value: "Distance", {t!("analytics-metric-distance")} }
                 option { value: "Duration", {t!("analytics-metric-duration")} }
+                option { value: "Volume", {t!("analytics-metric-volume")} }
             }
             select {
                 value: "{current_exercise.as_deref().unwrap_or(\"\")}",
