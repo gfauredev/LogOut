@@ -12,6 +12,7 @@ mod selector;
 pub use chart::{ChartView, SeriesData};
 pub use selector::MetricSelector;
 
+/// One color per metric–exercise pair selector slot (max 8 visible series).
 const COLORS: [&str; 8] = [
     "#3498db", "#e74c3c", "#2ecc71", "#9b59b6", "#e67e22", "#f1c40f", "#16a085", "#e91e63",
 ];
@@ -235,7 +236,9 @@ pub fn Analytics() -> Element {
                                         Metric::Reps | Metric::Distance | Metric::Duration => {
                                             values.iter().sum()
                                         }
-                                        Metric::Volume => 0.0,
+                                        Metric::Volume => unreachable!(
+                                            "volume is handled by the dedicated branch above"
+                                        ),
                                     };
                                     #[allow(clippy::cast_precision_loss)]
                                     points.push((session.start_time as f64, total));
