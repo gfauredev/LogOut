@@ -87,13 +87,13 @@
           };
           wasm-bindgen-cli = rustPlatform.buildRustPackage rec {
             pname = "wasm-bindgen-cli";
-            version = "0.2.120";
+            version = "0.2.121";
             src = pkgs.fetchCrate {
               inherit pname version;
-              hash = "sha256-Dkkx8Bhfk+y/jEz9Fzwytmv2N3Gj/7ST+5MlPRzzetU=";
+              hash = "sha256-ZOMgFNOcGkO66Jz/Z83eoIu+DIzo3Z/vq6Z5g6BDY/w=";
               # hash = pkgs.lib.fakeHash;
             };
-            cargoHash = "sha256-5Zu/Sh9aBMxB+KGC1MHWJAQ8PuE40M6lsenkpFEwJ6A=";
+            cargoHash = "sha256-DPdCDPTAPBrbqLUqnCwQu1dePs9lGg85JCJOCIr9qjU";
             # cargoHash = pkgs.lib.fakeHash;
             nativeBuildInputs = [ pkgs.pkg-config ];
             buildInputs = [
@@ -192,6 +192,7 @@
             androidComposition
             commonNativeBuildInputs
             webNativeBuildInputs
+            wasm-bindgen-cli
             androidNativeBuildInputs
             webTestInputs
             commonBuildInputs
@@ -294,6 +295,7 @@
                 "${self}/.script/apk-sign.sh"
               '';
             };
+          # TODO Why not directly use the Axum based Dioxus server build?
           webStaticServer = env.pkgs.writeText "logout-web-static-server.py" ''
             import os, sys, mimetypes
             from http.server import HTTPServer, BaseHTTPRequestHandler
@@ -397,6 +399,7 @@
               maestro test --headless "${self}/maestro/android"
             '';
           };
+          wasm-bindgen-cli = env.wasm-bindgen-cli;
           default = env.pkgs.symlinkJoin {
             name = "logout-all-${env.projectVersion}";
             paths = [
@@ -437,15 +440,14 @@
         {
           default = env.pkgs.mkShell {
             packages = devTools ++ [
-              # TODO: Uncomment when sourcehut is back up (jail-nix dependency)
-              # (agents-jail.lib.${system}.mkCrush {
-              #   extraPkgs =
-              #     devTools ++ env.commonNativeBuildInputs ++ env.webNativeBuildInputs ++ env.androidNativeBuildInputs;
-              # })
-              # (agents-jail.lib.${system}.mkOpencode {
-              #   extraPkgs =
-              #     devTools ++ env.commonNativeBuildInputs ++ env.webNativeBuildInputs ++ env.androidNativeBuildInputs;
-              # })
+              (agents-jail.lib.${system}.mkCrush {
+                extraPkgs =
+                  devTools ++ env.commonNativeBuildInputs ++ env.webNativeBuildInputs ++ env.androidNativeBuildInputs;
+              })
+              (agents-jail.lib.${system}.mkOpencode {
+                extraPkgs =
+                  devTools ++ env.commonNativeBuildInputs ++ env.webNativeBuildInputs ++ env.androidNativeBuildInputs;
+              })
             ];
             nativeBuildInputs =
               env.commonNativeBuildInputs ++ env.webNativeBuildInputs ++ env.androidNativeBuildInputs;

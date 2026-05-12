@@ -10,8 +10,8 @@ mobile-platform = ["dioxus/mobile"]  # Mobile renderer (Android / iOS)
 server-platform = ["dioxus/server"]  # Server renderer (native binary serving PWA)
 
 [dependencies]
-dioxus = { version = "0.7", features = ["router"] }
-dioxus-logger = "0.7"
+dioxus = { version = "=0.7.7", features = ["router"] }
+dioxus-logger = "=0.7.7"
 dioxus-i18n = "0.5.1"
 unic-langid = { version = "0.9", features = ["macros"] }
 serde = { version = "1.0", features = ["derive", "rc"] }
