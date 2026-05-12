@@ -70,20 +70,11 @@
             path: type:
             builtins.match ".*(/public/.*|/assets/.*|/icon/.*|Dioxus\\.toml|index\\.html|.*\\.png)$" path
             != null;
-          # Extra assets only needed by the server build: the bundled example
-          # exercise database served alongside the binary.
-          serverAssetFilter =
-            path: type: (assetFilter path type) || (builtins.match ".*/database\\.example(/.*)?$" path != null);
+          # exampleDbAssetFilter = path: type: (assetFilter path type) || (builtins.match ".*/database\\.example(/.*)?$" path != null);
           sourceFilter = path: type: (assetFilter path type) || (craneLib.filterCargoSources path type);
-          # Source tree used by web / Android builds.
           filteredSrc = pkgs.lib.cleanSourceWith {
             src = craneLib.path ./.;
             filter = sourceFilter;
-          };
-          # Source tree for the server build: includes the example exercise database.
-          filteredSrcServer = pkgs.lib.cleanSourceWith {
-            src = craneLib.path ./.;
-            filter = path: type: (serverAssetFilter path type) || (craneLib.filterCargoSources path type);
           };
           wasm-bindgen-cli = rustPlatform.buildRustPackage rec {
             pname = "wasm-bindgen-cli";
@@ -185,7 +176,6 @@
             rustPlatform
             craneLib
             filteredSrc
-            filteredSrcServer
             cargoArtifactsHost
             cargoArtifactsServer
             cargoArtifactsWeb
@@ -226,9 +216,7 @@
             in
             env.craneLib.buildPackage {
               inherit cargoArtifacts;
-              # The server build needs the example exercise database in its source tree
-              # so it can be copied into the output alongside the binary.
-              src = if platform == "server" then env.filteredSrcServer else env.filteredSrc;
+              src = env.filteredSrc;
               pname = "logout-${platform}";
               version = env.projectVersion;
               nativeBuildInputs = env.commonNativeBuildInputs ++ env.webNativeBuildInputs;
@@ -243,11 +231,6 @@
               installPhase = ''
                 mkdir --parents --verbose ${out}
                 cp --recursive --verbose ${target} ${out}
-              ''
-              + env.pkgs.lib.optionalString (platform == "server") ''
-                # Bundle the example exercise database with the server so it can be
-                # used as a self-hosted default (serve from ./database.example/).
-                cp --recursive --verbose database.example ${out}
               '';
               doCheck = false;
             };
@@ -295,7 +278,6 @@
                 "${self}/.script/apk-sign.sh"
               '';
             };
-          # TODO Why not directly use the Axum based Dioxus server build?
           webStaticServer = env.pkgs.writeText "logout-web-static-server.py" ''
             import os, sys, mimetypes
             from http.server import HTTPServer, BaseHTTPRequestHandler
@@ -335,9 +317,9 @@
           web = mkLogOut { };
           preWeb = mkLogOut { basePath = "LogOut/preview"; };
           server = mkLogOut { platform = "server"; };
-          # Python script for a single-origin static server:
-          # - Serves the WASM web app under /LogOut/ with SPA fallback to index.html
-          # - Serves the exercise database under /db/ (same origin → no CORS)
+          testDb = env.pkgs.runCommand "logout-test-db" { } ''
+            cp -r ${self}/database.example $out
+          '';
           webE2eTest = env.pkgs.writeShellApplication {
             name = "logout-web-e2e-test-${env.projectVersion}";
             runtimeInputs = env.webTestInputs ++ [
@@ -351,11 +333,9 @@
                 [ -n "$APP_SERVER_PID" ] && kill "$APP_SERVER_PID" 2>/dev/null || true
               }
               trap cleanup EXIT
-              # Static server: WASM web app at /LogOut/, exercise DB at /db/ (same origin)
               python3 ${webStaticServer} \
                 "${self.packages.${system}.web}" \
-                "${self.packages.${system}.server}/bin/database.example" \
-                >/dev/null 2>&1 &
+                "${self.packages.testDb}" >/dev/null 2>&1 &
               APP_SERVER_PID=$!
               timeout 60 bash -c 'until curl -sf http://localhost:8080/LogOut/ > /dev/null 2>&1; do sleep 1; done'
               maestro test --headless \
