@@ -335,7 +335,7 @@
               trap cleanup EXIT
               python3 ${webStaticServer} \
                 "${self.packages.${system}.web}" \
-                "${self.packages.testDb}" >/dev/null 2>&1 &
+                "${self.packages.${system}.testDb}" >/dev/null 2>&1 &
               APP_SERVER_PID=$!
               timeout 60 bash -c 'until curl -sf http://localhost:8080/LogOut/ > /dev/null 2>&1; do sleep 1; done'
               maestro test --headless \
