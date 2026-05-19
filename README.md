@@ -305,7 +305,7 @@ The [exercise database] is under the Unlicense (public domain).
 [nextest]: https://nexte.st
 [Nix]: https://nixos.org
 [pwa]: https://developer.mozilla.org/en-US/docs/Web/Progressive_web_apps
-[pagespeed insights]: https://pagespeed.web.dev/analysis/https-gfauredev-github-io-LogOut-preview/0wfwmlcief
+[pagespeed insights]: https://pagespeed.web.dev
 [renovate]: https://www.mend.io/renovate
 [rust-analyzer]: https://rust-analyzer.github.io
 [rust]: https://www.rust-lang.org
@@ -322,5 +322,5 @@ The [exercise database] is under the Unlicense (public domain).
 [Reqwest]: https://github.com/seanmonstar/reqwest
 [Time]: https://github.com/time-rs/time
 [Tokio]: https://tokio.rs
-[yellow labs]: https://yellowlab.tools/result/hhereygo8j
+[yellow labs]: https://yellowlab.tools
 [Web-sys]: https://rustwasm.github.io/wasm-bindgen/web-sys/index.html
