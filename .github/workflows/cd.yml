@@ -28,7 +28,7 @@ jobs:
 
   pwa-build-deploy:
     needs: no-concurrent-tag-workflow
-    timeout-minutes: 20
+    timeout-minutes: 30
     runs-on: ubuntu-latest
     environment:
       name: github-pages
@@ -91,7 +91,7 @@ jobs:
     if: github.ref == 'refs/heads/main' && needs.pwa-build-deploy.result == 'success'
     needs: pwa-build-deploy
     runs-on: ubuntu-latest
-    timeout-minutes: 40
+    timeout-minutes: 45
     steps:
     - uses: actions/checkout@v6
     - uses: cachix/install-nix-action@v31
@@ -132,7 +132,7 @@ jobs:
   android-build:
     needs: no-concurrent-tag-workflow
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 40
     permissions:
       checks: read    # Required by wait-on-check-action
       statuses: read  # Required by wait-on-check-action
