@@ -8,6 +8,7 @@ on:
       - '.envrc'
       - 'garnix.yaml'
       - '.github/workflows/ci.yml'
+      - dioxus/
     tags: [v*]
   workflow_dispatch:
 
