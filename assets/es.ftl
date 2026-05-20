@@ -50,6 +50,7 @@ rest-duration-label = Duración del descanso
 
 ## Sesión activa – ejercicios completados
 completed-exercises-title = Ejercicios completados
+completed-exercises-gestures-hint = Toca un registro para repetir · desliza a la derecha para editar · desliza a la izquierda y mantén 3s para eliminar
 
 ## Formulario de ejercicio
 exercise-complete-title = Completar ejercicio

@@ -54,6 +54,7 @@ rest-duration-label = Rest duration
 
 ## Active session – completed exercises
 completed-exercises-title = Completed Exercises
+completed-exercises-gestures-hint = Tap a log to replay · swipe right to edit · swipe left and hold 3s to delete
 
 ## Exercise input form
 exercise-complete-title = Complete Exercise
