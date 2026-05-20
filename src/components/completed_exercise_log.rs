@@ -24,6 +24,31 @@ const DELETE_HOLD_STEPS: u32 = 30;
 const DELETE_HOLD_STEPS_F32: f32 = 30.0;
 /// Duration of each hold tick in milliseconds.
 const DELETE_HOLD_TICK_MS: u32 = 100;
+
+/// Populate the inline edit form signals from a completed log and switch
+/// the component into edit mode.
+fn start_edit_from_log(
+    log: &ExerciseLog,
+    mut edit_weight_input: Signal<String>,
+    mut edit_reps_input: Signal<String>,
+    mut edit_distance_input: Signal<String>,
+    mut edit_time_input: Signal<String>,
+    mut is_editing: Signal<bool>,
+) {
+    edit_weight_input.set(if log.weight_hg.0 == 0 {
+        String::new()
+    } else {
+        format!("{:.1}", f64::from(log.weight_hg.0) / HG_PER_KG)
+    });
+    edit_reps_input.set(log.reps.map(|r| r.to_string()).unwrap_or_default());
+    edit_distance_input.set(
+        log.distance_m
+            .map(|d| format!("{:.2}", f64::from(d.0) / M_PER_KM))
+            .unwrap_or_default(),
+    );
+    edit_time_input.set(log.duration_seconds().map(format_time).unwrap_or_default());
+    is_editing.set(true);
+}
 /// A single completed exercise log entry with inline edit support.
 #[component]
 pub fn CompletedExerciseLog(
@@ -172,34 +197,14 @@ pub fn CompletedExerciseLog(
                     return;
                 }
                 if dx >= SWIPE_EDIT_PX {
-                    edit_weight_input
-                        .set(
-                            if log_for_touch_edit.weight_hg.0 == 0 {
-                                String::new()
-                            } else {
-                                format!(
-                                    "{:.1}",
-                                    f64::from(log_for_touch_edit.weight_hg.0) / HG_PER_KG,
-                                )
-                            },
-                        );
-                    edit_reps_input
-                        .set(log_for_touch_edit.reps.map(|r| r.to_string()).unwrap_or_default());
-                    edit_distance_input
-                        .set(
-                            log_for_touch_edit
-                                .distance_m
-                                .map(|d| format!("{:.2}", f64::from(d.0) / M_PER_KM))
-                                .unwrap_or_default(),
-                        );
-                    edit_time_input
-                        .set(
-                            log_for_touch_edit
-                                .duration_seconds()
-                                .map(format_time)
-                                .unwrap_or_default(),
-                        );
-                    is_editing.set(true);
+                    start_edit_from_log(
+                        &log_for_touch_edit,
+                        edit_weight_input,
+                        edit_reps_input,
+                        edit_distance_input,
+                        edit_time_input,
+                        is_editing,
+                    );
                     return;
                 }
                 if show_replay && dx.abs() <= TAP_SLOP_PX {
@@ -249,34 +254,14 @@ pub fn CompletedExerciseLog(
                         class: "edit",
                         title: t!("log-edit-title"),
                         onclick: move |_| {
-                            edit_weight_input
-                                .set(
-                                    if log_for_button_edit.weight_hg.0 == 0 {
-                                        String::new()
-                                    } else {
-                                        format!(
-                                            "{:.1}",
-                                            f64::from(log_for_button_edit.weight_hg.0) / HG_PER_KG,
-                                        )
-                                    },
-                                );
-                            edit_reps_input
-                                .set(log_for_button_edit.reps.map(|r| r.to_string()).unwrap_or_default());
-                            edit_distance_input
-                                .set(
-                                    log_for_button_edit
-                                        .distance_m
-                                        .map(|d| format!("{:.2}", f64::from(d.0) / M_PER_KM))
-                                        .unwrap_or_default(),
-                                );
-                            edit_time_input
-                                .set(
-                                    log_for_button_edit
-                                        .duration_seconds()
-                                        .map(format_time)
-                                        .unwrap_or_default(),
-                                );
-                            is_editing.set(true);
+                            start_edit_from_log(
+                                &log_for_button_edit,
+                                edit_weight_input,
+                                edit_reps_input,
+                                edit_distance_input,
+                                edit_time_input,
+                                is_editing,
+                            );
                         },
                         "✏️"
                     }
