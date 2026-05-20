@@ -1,4 +1,5 @@
 use super::session_exercise_form::ExerciseInputForm;
+use crate::components::HoldDeleteButton;
 use crate::models::{
     format_time, parse_distance_km, parse_duration_seconds, parse_weight_kg, Category, ExerciseLog,
     Force, Weight, WorkoutSession, HG_PER_KG, M_PER_KM,
@@ -37,11 +38,9 @@ pub fn CompletedExerciseLog(
     show_replay: bool,
 ) -> Element {
     let mut is_editing = use_signal(|| false);
-    let mut pointer_start_x = use_signal(|| None::<f64>);
-    let mut pointer_start_y = use_signal(|| None::<f64>);
-    let mut pointer_down = use_signal(|| false);
+    let mut touch_start_x = use_signal(|| None::<f64>);
+    let mut touch_active = use_signal(|| false);
     let mut drag_delta_x = use_signal(|| 0.0f64);
-    let mut drag_delta_y = use_signal(|| 0.0f64);
     let mut delete_armed = use_signal(|| false);
     let mut delete_progress = use_signal(|| 0.0f32);
     // Gesture generation token used to cancel in-flight hold tasks.
@@ -51,24 +50,6 @@ pub fn CompletedExerciseLog(
     let mut edit_distance_input = use_signal(String::new);
     let mut edit_time_input = use_signal(String::new);
     let mut toast = consume_context::<crate::ToastSignal>().0;
-    let mut start_edit = {
-        let log = log.clone();
-        move |()| {
-            edit_weight_input.set(if log.weight_hg.0 == 0 {
-                String::new()
-            } else {
-                format!("{:.1}", f64::from(log.weight_hg.0) / HG_PER_KG)
-            });
-            edit_reps_input.set(log.reps.map(|r| r.to_string()).unwrap_or_default());
-            edit_distance_input.set(
-                log.distance_m
-                    .map(|d| format!("{:.2}", f64::from(d.0) / M_PER_KM))
-                    .unwrap_or_default(),
-            );
-            edit_time_input.set(log.duration_seconds().map(format_time).unwrap_or_default());
-            is_editing.set(true);
-        }
-    };
     let all_exercises = exercise_db::use_exercises();
     let custom_exercises = storage::use_custom_exercises();
     let lang_str = use_memo(move || i18n().language().to_string());
@@ -86,65 +67,50 @@ pub fn CompletedExerciseLog(
     let force = log.force;
     let category = log.category;
     let exercise_id = log.exercise_id.clone();
+    let log_for_touch_edit = log.clone();
+    let log_for_button_edit = log.clone();
+    let mut toast_for_touch_delete = toast;
+    let mut toast_for_hold_delete = toast;
+    let session_for_touch_delete = session;
+    let session_for_hold_delete = session;
+    let on_replay_touch = on_replay;
+    let on_replay_button = on_replay;
     let display_dx = drag_delta_x
         .read()
         .clamp(-SWIPE_VISUAL_MAX_PX, SWIPE_VISUAL_MAX_PX);
-    let log_id = log.id;
     rsx! {
         article {
             class: "log log-tile",
             style: "transform: translateX({display_dx}px);",
-            tabindex: 0,
-            onkeydown: move |evt| {
+            ontouchstart: move |evt| {
                 if *is_editing.read() {
                     return;
                 }
-                match evt.key().as_str() {
-                    "Enter" | " " => {
-                        if show_replay {
-                            on_replay.call(());
-                        }
-                    }
-                    "e" | "E" => {
-                        start_edit(());
-                    }
-                    "Delete" | "Backspace" => {
-                        toast.write().push_back(t!("toast-log-deleted").to_string());
-                        let mut current_session = session.read().clone();
-                        current_session.exercise_logs.retain(|l| l.id != log_id);
-                        storage::save_session(current_session);
-                    }
-                    _ => {}
-                }
-            },
-            onpointerdown: move |evt| {
-                if *is_editing.read() {
+                let touches = evt.touches();
+                let Some(touch) = touches.first() else {
                     return;
-                }
+                };
                 let next = delete_hold_gen.peek().wrapping_add(1);
                 delete_hold_gen.set(next);
-                pointer_down.set(true);
-                pointer_start_x.set(Some(evt.client_coordinates().x));
-                pointer_start_y.set(Some(evt.client_coordinates().y));
+                touch_active.set(true);
+                touch_start_x.set(Some(touch.client_coordinates().x));
                 drag_delta_x.set(0.0);
-                drag_delta_y.set(0.0);
                 delete_armed.set(false);
                 delete_progress.set(0.0);
             },
-            onpointermove: move |evt| {
-                if *is_editing.read() || !*pointer_down.read() {
+            ontouchmove: move |evt| {
+                if *is_editing.read() || !*touch_active.read() {
                     return;
                 }
-                let Some(start_x) = *pointer_start_x.read() else {
+                let touches = evt.touches();
+                let Some(touch) = touches.first() else {
                     return;
                 };
-                let Some(start_y) = *pointer_start_y.read() else {
+                let Some(start_x) = *touch_start_x.read() else {
                     return;
                 };
-                let dx = evt.client_coordinates().x - start_x;
-                let dy = evt.client_coordinates().y - start_y;
+                let dx = touch.client_coordinates().x - start_x;
                 drag_delta_x.set(dx);
-                drag_delta_y.set(dy);
                 if dx <= -SWIPE_DELETE_PX && !*delete_armed.read() {
                     delete_armed.set(true);
                     let gen = delete_hold_gen.peek().wrapping_add(1);
@@ -155,7 +121,7 @@ pub fn CompletedExerciseLog(
                         for _ in 0..DELETE_HOLD_STEPS {
                             sleep_ms(DELETE_HOLD_TICK_MS).await;
                             if *delete_hold_gen.peek() != gen
-                                || !*pointer_down.peek()
+                                || !*touch_active.peek()
                                 || *drag_delta_x.peek() > -SWIPE_DELETE_PX
                             {
                                 delete_progress.set(0.0);
@@ -165,12 +131,14 @@ pub fn CompletedExerciseLog(
                             delete_progress.set(cur);
                         }
                         if *delete_hold_gen.peek() == gen
-                            && *pointer_down.peek()
+                            && *touch_active.peek()
                             && *drag_delta_x.peek() <= -SWIPE_DELETE_PX
                         {
-                            toast.write().push_back(t!("toast-log-deleted").to_string());
-                            let mut current_session = session.read().clone();
-                            current_session.exercise_logs.retain(|l| l.id != log_id);
+                            toast_for_touch_delete
+                                .write()
+                                .push_back(t!("toast-log-deleted").to_string());
+                            let mut current_session = session_for_touch_delete.read().clone();
+                            current_session.exercise_logs.remove(idx);
                             storage::save_session(current_session);
                         }
                         delete_progress.set(0.0);
@@ -182,18 +150,16 @@ pub fn CompletedExerciseLog(
                     delete_hold_gen.set(next);
                 }
             },
-            onpointerup: move |_| {
+            ontouchend: move |_| {
                 if *is_editing.read() {
                     return;
                 }
                 let dx = *drag_delta_x.read();
                 let armed_delete = *delete_armed.read();
                 let completed_delete = *delete_progress.read() >= 1.0;
-                pointer_down.set(false);
-                pointer_start_x.set(None);
-                pointer_start_y.set(None);
+                touch_active.set(false);
+                touch_start_x.set(None);
                 drag_delta_x.set(0.0);
-                drag_delta_y.set(0.0);
                 delete_armed.set(false);
                 delete_progress.set(0.0);
                 let next = delete_hold_gen.peek().wrapping_add(1);
@@ -206,37 +172,47 @@ pub fn CompletedExerciseLog(
                     return;
                 }
                 if dx >= SWIPE_EDIT_PX {
-                    start_edit(());
+                    edit_weight_input
+                        .set(
+                            if log_for_touch_edit.weight_hg.0 == 0 {
+                                String::new()
+                            } else {
+                                format!(
+                                    "{:.1}",
+                                    f64::from(log_for_touch_edit.weight_hg.0) / HG_PER_KG,
+                                )
+                            },
+                        );
+                    edit_reps_input
+                        .set(log_for_touch_edit.reps.map(|r| r.to_string()).unwrap_or_default());
+                    edit_distance_input
+                        .set(
+                            log_for_touch_edit
+                                .distance_m
+                                .map(|d| format!("{:.2}", f64::from(d.0) / M_PER_KM))
+                                .unwrap_or_default(),
+                        );
+                    edit_time_input
+                        .set(
+                            log_for_touch_edit
+                                .duration_seconds()
+                                .map(format_time)
+                                .unwrap_or_default(),
+                        );
+                    is_editing.set(true);
                     return;
                 }
-                let dy = *drag_delta_y.read();
-                if show_replay && dx.abs() <= TAP_SLOP_PX && dy.abs() <= TAP_SLOP_PX {
-                    on_replay.call(());
+                if show_replay && dx.abs() <= TAP_SLOP_PX {
+                    on_replay_touch.call(());
                 }
             },
-            onpointerleave: move |_| {
+            ontouchcancel: move |_| {
                 if *is_editing.read() {
                     return;
                 }
-                pointer_down.set(false);
-                pointer_start_x.set(None);
-                pointer_start_y.set(None);
+                touch_active.set(false);
+                touch_start_x.set(None);
                 drag_delta_x.set(0.0);
-                drag_delta_y.set(0.0);
-                delete_armed.set(false);
-                delete_progress.set(0.0);
-                let next = delete_hold_gen.peek().wrapping_add(1);
-                delete_hold_gen.set(next);
-            },
-            onpointercancel: move |_| {
-                if *is_editing.read() {
-                    return;
-                }
-                pointer_down.set(false);
-                pointer_start_x.set(None);
-                pointer_start_y.set(None);
-                drag_delta_x.set(0.0);
-                drag_delta_y.set(0.0);
                 delete_armed.set(false);
                 delete_progress.set(0.0);
                 let next = delete_hold_gen.peek().wrapping_add(1);
@@ -260,30 +236,60 @@ pub fn CompletedExerciseLog(
                         li { "{crate::models::format_time(duration)}" }
                     }
                 }
-                if !*is_editing.read() {
-                    div { class: "log-actions",
+                div { class: "inputs log-pointer-actions",
+                    if show_replay {
                         button {
-                            "aria-label": t!("edit-log"),
-                            onclick: move |_| start_edit(()),
-                            "Edit"
+                            class: "edit",
+                            title: t!("log-replay-title"),
+                            onclick: move |_| on_replay_button.call(()),
+                            "🔁"
                         }
-                        if show_replay {
-                            button {
-                                "aria-label": t!("log-replay-title"),
-                                onclick: move |_| on_replay.call(()),
-                                "Replay"
-                            }
-                        }
-                        button {
-                            "aria-label": t!("delete-log"),
-                            onclick: move |_| {
-                                toast.write().push_back(t!("toast-log-deleted").to_string());
-                                let mut current_session = session.read().clone();
-                                current_session.exercise_logs.retain(|l| l.id != log_id);
-                                storage::save_session(current_session);
-                            },
-                            "Delete"
-                        }
+                    }
+                    button {
+                        class: "edit",
+                        title: t!("log-edit-title"),
+                        onclick: move |_| {
+                            edit_weight_input
+                                .set(
+                                    if log_for_button_edit.weight_hg.0 == 0 {
+                                        String::new()
+                                    } else {
+                                        format!(
+                                            "{:.1}",
+                                            f64::from(log_for_button_edit.weight_hg.0) / HG_PER_KG,
+                                        )
+                                    },
+                                );
+                            edit_reps_input
+                                .set(log_for_button_edit.reps.map(|r| r.to_string()).unwrap_or_default());
+                            edit_distance_input
+                                .set(
+                                    log_for_button_edit
+                                        .distance_m
+                                        .map(|d| format!("{:.2}", f64::from(d.0) / M_PER_KM))
+                                        .unwrap_or_default(),
+                                );
+                            edit_time_input
+                                .set(
+                                    log_for_button_edit
+                                        .duration_seconds()
+                                        .map(format_time)
+                                        .unwrap_or_default(),
+                                );
+                            is_editing.set(true);
+                        },
+                        "✏️"
+                    }
+                    HoldDeleteButton {
+                        title: t!("log-delete-title").to_string(),
+                        on_delete: move |()| {
+                            toast_for_hold_delete
+                                .write()
+                                .push_back(t!("toast-log-deleted").to_string());
+                            let mut current_session = session_for_hold_delete.read().clone();
+                            current_session.exercise_logs.remove(idx);
+                            storage::save_session(current_session);
+                        },
                     }
                 }
             }

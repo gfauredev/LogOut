@@ -261,6 +261,13 @@ article.log {
         font-size: 0.85em;
       }
     }
+
+    >.log-pointer-actions {
+      display: flex;
+      align-items: center;
+      gap: calc(var(--spacing) / 2);
+      flex-shrink: 0;
+    }
   }
 
   >.log-delete-progress {
@@ -270,6 +277,7 @@ article.log {
     height: 3px;
     background: var(--less);
     transition: width 0.1s linear;
+    display: none;
   }
 
   >form {
@@ -286,9 +294,26 @@ article.log {
 }
 
 p.log-gestures-hint {
+  display: none;
   margin-top: 0;
   margin-bottom: var(--spacing);
   font-size: 0.9em;
+}
+
+@media (hover: none) and (pointer: coarse) {
+  article.log {
+    >header >.log-pointer-actions {
+      display: none;
+    }
+
+    >.log-delete-progress {
+      display: block;
+    }
+  }
+
+  p.log-gestures-hint {
+    display: block;
+  }
 }
 
 // ── Search results dropdown ────────────────────────────────────────────────
