@@ -223,7 +223,7 @@ article.log {
   position: relative;
   overflow: hidden;
   transition: transform 0.15s ease-out;
-  touch-action: pan-y;
+  touch-action: pan-y pinch-zoom;
   user-select: none;
 
   >header {

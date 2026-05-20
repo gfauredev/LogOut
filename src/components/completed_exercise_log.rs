@@ -13,6 +13,8 @@ use dioxus_i18n::t;
 const SWIPE_EDIT_PX: f64 = 56.0;
 /// Horizontal distance in pixels required to arm delete on swipe-left.
 const SWIPE_DELETE_PX: f64 = 56.0;
+/// Maximum visual drag offset applied to the tile while swiping.
+const SWIPE_VISUAL_MAX_PX: f64 = 96.0;
 /// Maximum horizontal movement still considered a tap.
 const TAP_SLOP_PX: f64 = 14.0;
 /// Delete hold duration in 100 ms ticks (30 × 100 ms = 3 s).
@@ -82,7 +84,9 @@ pub fn CompletedExerciseLog(
     let force = log.force;
     let category = log.category;
     let exercise_id = log.exercise_id.clone();
-    let display_dx = drag_delta_x.read().clamp(-96.0, 96.0);
+    let display_dx = drag_delta_x
+        .read()
+        .clamp(-SWIPE_VISUAL_MAX_PX, SWIPE_VISUAL_MAX_PX);
     rsx! {
         article {
             class: "log log-tile",
@@ -112,7 +116,6 @@ pub fn CompletedExerciseLog(
                     delete_armed.set(true);
                     let gen = delete_hold_gen.peek().wrapping_add(1);
                     delete_hold_gen.set(gen);
-                    let hint = t!("hold-to-delete-hint").to_string();
                     spawn(async move {
                         let step = 1.0_f32 / DELETE_HOLD_STEPS_F32;
                         let mut cur = 0.0_f32;
@@ -136,11 +139,8 @@ pub fn CompletedExerciseLog(
                             let mut current_session = session.read().clone();
                             current_session.exercise_logs.remove(idx);
                             storage::save_session(current_session);
-                            delete_progress.set(0.0);
-                        } else {
-                            delete_progress.set(0.0);
-                            toast.write().push_back(hint);
                         }
+                        delete_progress.set(0.0);
                     });
                 } else if dx > -SWIPE_DELETE_PX && *delete_armed.read() {
                     delete_armed.set(false);
