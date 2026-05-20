@@ -110,8 +110,8 @@
             unzip
           ];
           webNativeBuildInputs = [
-            # pkgs.esbuild
             wasm-bindgen-cli
+            # pkgs.esbuild
           ];
           commonBuildInputs = [
             pkgs.openssl
@@ -120,12 +120,17 @@
             pkgs.darwin.apple_sdk.frameworks.Security
             pkgs.darwin.apple_sdk.frameworks.SystemConfiguration
           ];
+          chromiumWrapper = pkgs.writeShellScriptBin "google-chrome" ''
+            exec "${pkgs.ungoogled-chromium}/bin/chromium" --no-sandbox "$@"
+          '';
+          SE_CHROME_PATH = "${chromiumWrapper}/bin/google-chrome";
           webTestInputs = with pkgs; [
             curl
             chromedriver
             maestro
             selenium-manager
-            ungoogled-chromium
+            chromiumWrapper
+            python3
           ];
           cargoArtifactsHost = craneLib.buildDepsOnly {
             src = filteredSrc;
@@ -186,6 +191,7 @@
             androidNativeBuildInputs
             webTestInputs
             commonBuildInputs
+            SE_CHROME_PATH
             ;
         };
     in
@@ -234,9 +240,6 @@
               '';
               doCheck = false;
             };
-          chromiumWrapper = env.pkgs.writeShellScriptBin "google-chrome" ''
-            exec "${env.pkgs.ungoogled-chromium}/bin/chromium" --no-sandbox "$@"
-          '';
           mkAndroidBuilder =
             {
               target ? "aarch64-linux-android",
@@ -322,12 +325,9 @@
           '';
           webE2eTest = env.pkgs.writeShellApplication {
             name = "logout-web-e2e-test-${env.projectVersion}";
-            runtimeInputs = env.webTestInputs ++ [
-              chromiumWrapper
-              env.pkgs.python3
-            ];
+            runtimeInputs = env.webTestInputs;
             text = ''
-              export SE_CHROME_PATH="${chromiumWrapper}/bin/google-chrome"
+              export SE_CHROME_PATH="${env.SE_CHROME_PATH}"
               APP_SERVER_PID=""
               cleanup() {
                 [ -n "$APP_SERVER_PID" ] && kill "$APP_SERVER_PID" 2>/dev/null || true
@@ -348,12 +348,9 @@
           };
           webE2eTestPreview = env.pkgs.writeShellApplication {
             name = "logout-web-e2e-test-preview-${env.projectVersion}";
-            runtimeInputs = env.webTestInputs ++ [
-              chromiumWrapper
-              env.pkgs.python3
-            ];
+            runtimeInputs = env.webTestInputs;
             text = ''
-              export SE_CHROME_PATH="${chromiumWrapper}/bin/google-chrome"
+              export SE_CHROME_PATH="${env.SE_CHROME_PATH}"
               if [ -z "''${APP_URL:-}" ]; then
                 echo "ERROR: APP_URL env var must be set to the deployed preview URL" >&2
                 exit 1
@@ -405,7 +402,7 @@
         let
           env = sharedEnvFor system;
           devTools = with env.pkgs; [
-            # biome python3 sass strace
+            # biome sass strace
             cachix # Nix binary cache
             fastlane # Mobile app publishing automation TODO
             kotlin-language-server # Kotlin LSP
@@ -430,7 +427,10 @@
               })
             ];
             nativeBuildInputs =
-              env.commonNativeBuildInputs ++ env.webNativeBuildInputs ++ env.androidNativeBuildInputs;
+              env.commonNativeBuildInputs
+              ++ env.webNativeBuildInputs
+              ++ env.androidNativeBuildInputs
+              ++ env.webTestInputs;
             buildInputs = env.commonBuildInputs;
             ANDROID_HOME = "${env.androidComposition.androidsdk}/libexec/android-sdk";
             ANDROID_NDK_HOME = "${env.androidComposition.ndk-bundle}/libexec/android-sdk/ndk-bundle";
