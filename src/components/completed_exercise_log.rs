@@ -47,9 +47,9 @@ pub fn CompletedExerciseLog(
     let mut edit_distance_input = use_signal(String::new);
     let mut edit_time_input = use_signal(String::new);
     let mut toast = consume_context::<crate::ToastSignal>().0;
-    let start_edit = {
+    let mut start_edit = {
         let log = log.clone();
-        move |_| {
+        move |()| {
             edit_weight_input.set(if log.weight_hg.0 == 0 {
                 String::new()
             } else {
