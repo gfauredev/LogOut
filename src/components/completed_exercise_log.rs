@@ -38,8 +38,10 @@ pub fn CompletedExerciseLog(
 ) -> Element {
     let mut is_editing = use_signal(|| false);
     let mut pointer_start_x = use_signal(|| None::<f64>);
+    let mut pointer_start_y = use_signal(|| None::<f64>);
     let mut pointer_down = use_signal(|| false);
     let mut drag_delta_x = use_signal(|| 0.0f64);
+    let mut drag_delta_y = use_signal(|| 0.0f64);
     let mut delete_armed = use_signal(|| false);
     let mut delete_progress = use_signal(|| 0.0f32);
     // Gesture generation token used to cancel in-flight hold tasks.
@@ -87,10 +89,34 @@ pub fn CompletedExerciseLog(
     let display_dx = drag_delta_x
         .read()
         .clamp(-SWIPE_VISUAL_MAX_PX, SWIPE_VISUAL_MAX_PX);
+    let log_id = log.id;
     rsx! {
         article {
             class: "log log-tile",
             style: "transform: translateX({display_dx}px);",
+            tabindex: 0,
+            onkeydown: move |evt| {
+                if *is_editing.read() {
+                    return;
+                }
+                match evt.key().as_str() {
+                    "Enter" | " " => {
+                        if show_replay {
+                            on_replay.call(());
+                        }
+                    }
+                    "e" | "E" => {
+                        start_edit(());
+                    }
+                    "Delete" | "Backspace" => {
+                        toast.write().push_back(t!("toast-log-deleted").to_string());
+                        let mut current_session = session.read().clone();
+                        current_session.exercise_logs.retain(|l| l.id != log_id);
+                        storage::save_session(current_session);
+                    }
+                    _ => {}
+                }
+            },
             onpointerdown: move |evt| {
                 if *is_editing.read() {
                     return;
@@ -99,7 +125,9 @@ pub fn CompletedExerciseLog(
                 delete_hold_gen.set(next);
                 pointer_down.set(true);
                 pointer_start_x.set(Some(evt.client_coordinates().x));
+                pointer_start_y.set(Some(evt.client_coordinates().y));
                 drag_delta_x.set(0.0);
+                drag_delta_y.set(0.0);
                 delete_armed.set(false);
                 delete_progress.set(0.0);
             },
@@ -110,8 +138,13 @@ pub fn CompletedExerciseLog(
                 let Some(start_x) = *pointer_start_x.read() else {
                     return;
                 };
+                let Some(start_y) = *pointer_start_y.read() else {
+                    return;
+                };
                 let dx = evt.client_coordinates().x - start_x;
+                let dy = evt.client_coordinates().y - start_y;
                 drag_delta_x.set(dx);
+                drag_delta_y.set(dy);
                 if dx <= -SWIPE_DELETE_PX && !*delete_armed.read() {
                     delete_armed.set(true);
                     let gen = delete_hold_gen.peek().wrapping_add(1);
@@ -137,7 +170,7 @@ pub fn CompletedExerciseLog(
                         {
                             toast.write().push_back(t!("toast-log-deleted").to_string());
                             let mut current_session = session.read().clone();
-                            current_session.exercise_logs.remove(idx);
+                            current_session.exercise_logs.retain(|l| l.id != log_id);
                             storage::save_session(current_session);
                         }
                         delete_progress.set(0.0);
@@ -158,7 +191,9 @@ pub fn CompletedExerciseLog(
                 let completed_delete = *delete_progress.read() >= 1.0;
                 pointer_down.set(false);
                 pointer_start_x.set(None);
+                pointer_start_y.set(None);
                 drag_delta_x.set(0.0);
+                drag_delta_y.set(0.0);
                 delete_armed.set(false);
                 delete_progress.set(0.0);
                 let next = delete_hold_gen.peek().wrapping_add(1);
@@ -174,7 +209,8 @@ pub fn CompletedExerciseLog(
                     start_edit(());
                     return;
                 }
-                if show_replay && dx.abs() <= TAP_SLOP_PX {
+                let dy = *drag_delta_y.read();
+                if show_replay && dx.abs() <= TAP_SLOP_PX && dy.abs() <= TAP_SLOP_PX {
                     on_replay.call(());
                 }
             },
@@ -184,7 +220,9 @@ pub fn CompletedExerciseLog(
                 }
                 pointer_down.set(false);
                 pointer_start_x.set(None);
+                pointer_start_y.set(None);
                 drag_delta_x.set(0.0);
+                drag_delta_y.set(0.0);
                 delete_armed.set(false);
                 delete_progress.set(0.0);
                 let next = delete_hold_gen.peek().wrapping_add(1);
@@ -196,7 +234,9 @@ pub fn CompletedExerciseLog(
                 }
                 pointer_down.set(false);
                 pointer_start_x.set(None);
+                pointer_start_y.set(None);
                 drag_delta_x.set(0.0);
+                drag_delta_y.set(0.0);
                 delete_armed.set(false);
                 delete_progress.set(0.0);
                 let next = delete_hold_gen.peek().wrapping_add(1);
@@ -218,6 +258,32 @@ pub fn CompletedExerciseLog(
                     }
                     if let Some(duration) = log.duration_seconds() {
                         li { "{crate::models::format_time(duration)}" }
+                    }
+                }
+                if !*is_editing.read() {
+                    div { class: "log-actions",
+                        button {
+                            "aria-label": t!("edit-log"),
+                            onclick: move |_| start_edit(()),
+                            "Edit"
+                        }
+                        if show_replay {
+                            button {
+                                "aria-label": t!("log-replay-title"),
+                                onclick: move |_| on_replay.call(()),
+                                "Replay"
+                            }
+                        }
+                        button {
+                            "aria-label": t!("delete-log"),
+                            onclick: move |_| {
+                                toast.write().push_back(t!("toast-log-deleted").to_string());
+                                let mut current_session = session.read().clone();
+                                current_session.exercise_logs.retain(|l| l.id != log_id);
+                                storage::save_session(current_session);
+                            },
+                            "Delete"
+                        }
                     }
                 }
             }
