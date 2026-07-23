@@ -1,12 +1,8 @@
 {
   description = "LogOut full development system & tooling";
   nixConfig = {
-    extra-substituters = [
-      "https://cache.garnix.io"
-      "https://gfauredev.cachix.org"
-    ];
+    extra-substituters = [ "https://gfauredev.cachix.org" ];
     extra-trusted-public-keys = [
-      "cache.garnix.io:CTFPyKSLcx5RMJKfLo5EEPUObbA78b0YQ2DTCJXqr9g="
       "gfauredev.cachix.org-1:mGOZ5I0bDVatgwLhbuTasIiWpVjgCyMFjfIZEPjmQfM="
     ];
   };
