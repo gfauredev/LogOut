@@ -10,7 +10,7 @@ mobile-platform = ["dioxus/mobile"]  # Mobile renderer (Android / iOS)
 server-platform = ["dioxus/server"]  # Server renderer (native binary serving PWA)
 
 [dependencies]
-dioxus = { version = "=0.7.9", features = ["router"] }
+dioxus = { version = "0.7.9", features = ["router"] }
 dioxus-logger = "0.7"
 dioxus-i18n = "0.5.1"
 unic-langid = { version = "0.9", features = ["macros"] }
@@ -39,7 +39,7 @@ web-sys = { version = "0.3", features = [
     "ProgressEvent",
     "IntersectionObserver", "IntersectionObserverInit", "IntersectionObserverEntry",
 ] }
-wasm-bindgen = "0.2"
+wasm-bindgen = "=0.2.126"
 wasm-bindgen-futures = "0.4"
 js-sys = "0.3"
 serde-wasm-bindgen = "0.6"

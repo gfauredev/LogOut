@@ -104,7 +104,7 @@
             unzip
           ];
           webNativeBuildInputs = with pkgs; [
-            wasm-bindgen-cli
+            wasm-bindgen-cli_0_2_126
           ];
           commonBuildInputs = [
             pkgs.openssl
