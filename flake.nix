@@ -105,10 +105,7 @@
             rustToolchain
             unzip
           ];
-          webNativeBuildInputs = [
-            wasm-bindgen-cli
-            # pkgs.esbuild
-          ];
+          webNativeBuildInputs = [ wasm-bindgen-cli ];
           commonBuildInputs = [
             pkgs.openssl
           ]
@@ -171,6 +168,8 @@
         in
         {
           projectVersion = "0.4.3";
+          projectName = "LogOut";
+          projectSlug = "log-out";
           inherit
             pkgs
             rustToolchain
@@ -198,18 +197,18 @@
           env = sharedEnvFor system;
           mkLogOut =
             {
-              basePath ? "LogOut", # Needed for GitHub Pages
+              basePath ? env.projectName, # Needed for GitHub Pages
               platform ? "web",
               cargoArtifacts ? (if platform == "server" then env.cargoArtifactsServer else env.cargoArtifactsWeb),
             }:
             let
               target =
                 if platform == "web" then
-                  "target/dx/log-out/release/${platform}/public/*"
+                  "target/dx/${env.projectSlug}/release/${platform}/public/*"
                 else if platform == "server" then
-                  "target/dx/log-out/release/web/*" # Server bin plus assets
+                  "target/dx/${env.projectSlug}/release/web/*" # Server bin plus assets
                 else
-                  "target/dx/log-out/release/${platform}/*";
+                  "target/dx/${env.projectSlug}/release/${platform}/*";
               out =
                 if platform == "server" then
                   "$out/bin/" # \n
@@ -219,7 +218,7 @@
             env.craneLib.buildPackage {
               inherit cargoArtifacts;
               src = env.filteredSrc;
-              pname = "logout-${platform}";
+              pname = "${env.projectSlug}-${platform}";
               version = env.projectVersion;
               nativeBuildInputs = env.commonNativeBuildInputs ++ env.webNativeBuildInputs;
               buildInputs = env.commonBuildInputs;
@@ -241,7 +240,7 @@
               target ? "aarch64-linux-android",
             }:
             env.pkgs.writeShellApplication {
-              name = "logout-android-build-${env.projectVersion}";
+              name = "${env.projectSlug}-android-build-${env.projectVersion}";
               runtimeInputs = env.commonNativeBuildInputs ++ env.androidNativeBuildInputs;
               # LD_LIBRARY_PATH = with env.pkgs; lib.makeLibraryPath [ stdenv.cc.cc.lib zlib ];
               text = ''
@@ -250,7 +249,7 @@
                 export ANDROID_NDK_HOME="${env.androidComposition.ndk-bundle}/libexec/android-sdk/ndk-bundle"
                 export GRADLE_USER_HOME="''${GRADLE_USER_HOME:-$PWD/.gradle}" 
                 export HOME="''${HOME:-$TMPDIR}"
-                echo "🤖 LogOut Build Environment Ready"
+                echo "🤖 ${env.projectName} Build Environment Ready"
                 echo "- Rust $(rustc --version)"
                 echo "- Dioxus CLI $(dx --version)"
                 echo "- Android SDK $ANDROID_HOME"
@@ -277,7 +276,7 @@
                 "${self}/.script/apk-sign.sh"
               '';
             };
-          webStaticServer = env.pkgs.writeText "logout-web-static-server.py" ''
+          webStaticServer = env.pkgs.writeText "${env.projectSlug}-web-static-server.py" ''
             import os, sys, mimetypes
             from http.server import HTTPServer, BaseHTTPRequestHandler
             web_dir, db_dir = sys.argv[1], sys.argv[2]
@@ -286,10 +285,10 @@
                     p = self.path.split('?')[0]
                     if p.startswith('/db/') or p == '/db':
                         fp = os.path.join(db_dir, p[4:].lstrip('/'))
-                    elif p.startswith('/LogOut') or p == '/':
+                    elif p.startswith('/${env.projectName}') or p == '/':
                         fp = os.path.join(web_dir, p.lstrip('/'))
                         if not os.path.isfile(fp):
-                            fp = os.path.join(web_dir, 'LogOut', 'index.html')
+                            fp = os.path.join(web_dir, '${env.projectName}', 'index.html')
                     else:
                         self.send_error(404)
                         return
@@ -314,13 +313,13 @@
         in
         {
           web = mkLogOut { };
-          preWeb = mkLogOut { basePath = "LogOut/preview"; };
+          preWeb = mkLogOut { basePath = "${env.projectName}/preview"; };
           server = mkLogOut { platform = "server"; };
-          testDb = env.pkgs.runCommand "logout-test-db" { } ''
+          testDb = env.pkgs.runCommand "${env.projectSlug}-test-db" { } ''
             cp -r ${self}/database.example $out
           '';
           webE2eTest = env.pkgs.writeShellApplication {
-            name = "logout-web-e2e-test-${env.projectVersion}";
+            name = "${env.projectSlug}-web-e2e-test-${env.projectVersion}";
             runtimeInputs = env.webTestInputs;
             text = ''
               export SE_CHROME_PATH="${env.SE_CHROME_PATH}"
@@ -333,9 +332,9 @@
                 "${self.packages.${system}.web}" \
                 "${self.packages.${system}.testDb}" >/dev/null 2>&1 &
               APP_SERVER_PID=$!
-              timeout 60 bash -c 'until curl -sf http://localhost:8080/LogOut/ > /dev/null 2>&1; do sleep 1; done'
+              timeout 60 bash -c 'until curl -sf http://localhost:8080/${env.projectName}/ > /dev/null 2>&1; do sleep 1; done'
               maestro test --headless \
-                --env APP_URL=http://localhost:8080/LogOut/ \
+                --env APP_URL=http://localhost:8080/${env.projectName}/ \
                 --env APP_URL_ENCODED=http%3A%2F%2Flocalhost%3A8080%2FLogOut%2F \
                 --env DB_URL=http://localhost:8080/db/ \
                 --env DB_URL_ENCODED=http%3A%2F%2Flocalhost%3A8080%2Fdb%2F \
@@ -343,7 +342,7 @@
             '';
           };
           webE2eTestPreview = env.pkgs.writeShellApplication {
-            name = "logout-web-e2e-test-preview-${env.projectVersion}";
+            name = "${env.projectSlug}-web-e2e-test-preview-${env.projectVersion}";
             runtimeInputs = env.webTestInputs;
             text = ''
               export SE_CHROME_PATH="${env.SE_CHROME_PATH}"
@@ -365,7 +364,7 @@
           };
           androidBuild = mkAndroidBuilder { };
           androidE2eTest = env.pkgs.writeShellApplication {
-            name = "logout-android-e2e-test-${env.projectVersion}";
+            name = "${env.projectSlug}-android-e2e-test-${env.projectVersion}";
             runtimeInputs = [ env.pkgs.maestro ];
             # TODO Android emulator…
             text = ''
@@ -374,7 +373,7 @@
           };
           wasm-bindgen-cli = env.wasm-bindgen-cli;
           default = env.pkgs.symlinkJoin {
-            name = "logout-all-${env.projectVersion}";
+            name = "${env.projectSlug}-all-${env.projectVersion}";
             paths = [
               self.packages.${system}.androidBuild
               # self.packages.${system}.androidE2eTest
@@ -390,7 +389,7 @@
         default = {
           type = "app";
           program = "${self.packages.${system}.server}/bin/server";
-          meta.description = "Serve the LogOut Progressive Web App with Axum Server";
+          meta.description = "Serve the Progressive Web App with Axum Server";
         };
       });
       devShells = forAllSystems (
@@ -461,7 +460,7 @@
                   patchelf --set-rpath "$LD_LIBRARY_PATH" "$aapt2" || true
                 fi
               done
-              echo "✅ LogOut Dev Environment Ready"
+              echo "✅ ${env.projectName} Dev Environment Ready"
               echo "- Rust $(rustc --version)"
               echo "- Dioxus CLI $(dx --version)"
               echo "- Android SDK $ANDROID_HOME"
@@ -477,7 +476,7 @@
         in
         {
           format =
-            env.pkgs.runCommand "logout-fmt-${env.projectVersion}"
+            env.pkgs.runCommand "${env.projectSlug}-fmt-${env.projectVersion}"
               {
                 nativeBuildInputs = env.commonNativeBuildInputs;
               }
@@ -491,7 +490,7 @@
           lint = env.craneLib.cargoClippy {
             cargoArtifacts = env.cargoArtifactsHost;
             src = env.filteredSrc;
-            pname = "logout"; # -clippy auto added by craneLib.cargoClippy
+            pname = env.projectSlug; # -clippy auto added by craneLib.cargoClippy
             version = env.projectVersion;
             nativeBuildInputs = env.commonNativeBuildInputs;
             buildInputs = env.commonBuildInputs;
@@ -500,7 +499,7 @@
           coverage = env.craneLib.buildPackage {
             cargoArtifacts = env.cargoArtifactsHost;
             src = env.filteredSrc;
-            pname = "logout-coverage";
+            pname = "${env.projectSlug}-coverage";
             version = env.projectVersion;
             nativeBuildInputs = env.commonNativeBuildInputs ++ [ env.pkgs.lcov ];
             buildInputs = env.commonBuildInputs;
@@ -508,7 +507,7 @@
             buildPhase = ''
               export HOME=$TMPDIR
               mkdir -p $out
-              cargo llvm-cov nextest --bin log-out \
+              cargo llvm-cov nextest --bin ${env.projectSlug} \
                 --ignore-filename-regex "(src/components/|\.cargo/registry/|nix/store)" \
                 --html --output-dir $out 2>&1 | tee $out/nextest.log
               cargo llvm-cov report \
@@ -518,7 +517,7 @@
             installPhase = "true";
             doCheck = false;
           };
-          default = env.pkgs.linkFarm "logout-quick-checks" [
+          default = env.pkgs.linkFarm "${env.projectSlug}-quick-checks" [
             {
               name = "format";
               path = self.checks.${system}.format; # dx fmt + cargo fmt
