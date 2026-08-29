@@ -72,25 +72,23 @@
             src = craneLib.path ./.;
             filter = sourceFilter;
           };
-          wasm-bindgen-cli = rustPlatform.buildRustPackage rec {
-            pname = "wasm-bindgen-cli";
-            version = "0.2.121";
-            src = pkgs.fetchCrate {
-              inherit pname version;
-              hash = "sha256-ZOMgFNOcGkO66Jz/Z83eoIu+DIzo3Z/vq6Z5g6BDY/w=";
-              # hash = pkgs.lib.fakeHash;
-            };
-            cargoHash = "sha256-DPdCDPTAPBrbqLUqnCwQu1dePs9lGg85JCJOCIr9qjU";
-            # cargoHash = pkgs.lib.fakeHash;
-            nativeBuildInputs = [ pkgs.pkg-config ];
-            buildInputs = [
-              pkgs.openssl
-            ]
-            ++ pkgs.lib.optionals pkgs.stdenv.isDarwin [
-              pkgs.darwin.apple_sdk.frameworks.Security
-              pkgs.darwin.apple_sdk.frameworks.SystemConfiguration
-            ];
-          };
+          # wasm-bindgen-cli = rustPlatform.buildRustPackage rec {
+          #   pname = "wasm-bindgen-cli";
+          #   version = "0.2.121";
+          #   src = pkgs.fetchCrate {
+          #     inherit pname version;
+          #     hash = pkgs.lib.fakeHash;
+          #   };
+          #   cargoHash = pkgs.lib.fakeHash;
+          #   nativeBuildInputs = [ pkgs.pkg-config ];
+          #   buildInputs = [
+          #     pkgs.openssl
+          #   ]
+          #   ++ pkgs.lib.optionals pkgs.stdenv.isDarwin [
+          #     pkgs.darwin.apple_sdk.frameworks.Security
+          #     pkgs.darwin.apple_sdk.frameworks.SystemConfiguration
+          #   ];
+          # };
           commonNativeBuildInputs = with pkgs; [
             binaryen
             cargo-binutils
@@ -105,7 +103,9 @@
             rustToolchain
             unzip
           ];
-          webNativeBuildInputs = [ wasm-bindgen-cli ];
+          webNativeBuildInputs = with pkgs; [
+            wasm-bindgen-cli
+          ];
           commonBuildInputs = [
             pkgs.openssl
           ]
@@ -182,7 +182,6 @@
             androidComposition
             commonNativeBuildInputs
             webNativeBuildInputs
-            wasm-bindgen-cli
             androidNativeBuildInputs
             webTestInputs
             commonBuildInputs
