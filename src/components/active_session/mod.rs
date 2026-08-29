@@ -300,7 +300,10 @@ pub fn SessionView() -> Element {
         } else {
             parse_weight_kg(&weight_input.read()).unwrap_or_default()
         };
-        let reps = if category != Category::Cardio && force.is_some_and(Force::has_reps) {
+        let reps = if category != Category::Cardio
+            && category != Category::Isometric
+            && force.is_some_and(Force::has_reps)
+        {
             reps_input.read().parse().ok()
         } else {
             None

@@ -454,7 +454,7 @@ where
         let weight_hg = entry.weight_hg.map_or(Weight::default(), |w| {
             Weight(w.min(u32::from(u16::MAX)) as u16)
         });
-        let reps = if force.is_some_and(Force::has_reps) {
+        let reps = if category != Category::Isometric && force.is_some_and(Force::has_reps) {
             entry.reps
         } else {
             None

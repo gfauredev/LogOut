@@ -1,6 +1,6 @@
 use crate::components::{ActiveTab, BottomNav};
 use crate::models::analytics::{AnalyticsMode, Metric};
-use crate::models::HG_PER_KG;
+use crate::models::{Category, HG_PER_KG};
 use crate::services::{exercise_db, storage};
 use dioxus::prelude::*;
 use dioxus_i18n::prelude::i18n;
@@ -74,6 +74,9 @@ pub fn Analytics() -> Element {
                     maps[0].insert(log.exercise_id.clone(), name.clone());
                     if log.reps.is_some() {
                         maps[4].insert(log.exercise_id.clone(), name.clone());
+                    }
+                    if log.category == Category::Isometric {
+                        maps[3].insert(log.exercise_id.clone(), name.clone());
                     }
                 } else {
                     maps[3].insert(log.exercise_id.clone(), name.clone());

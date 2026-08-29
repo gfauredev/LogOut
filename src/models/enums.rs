@@ -17,6 +17,8 @@ use serde::{Deserialize, Serialize};
 pub enum Category {
     #[serde(rename = "cardio")]
     Cardio,
+    #[serde(rename = "isometric")]
+    Isometric,
     #[serde(rename = "olympic weightlifting")]
     #[strum(to_string = "olympic weightlifting")]
     OlympicWeightlifting,
@@ -237,6 +239,7 @@ mod tests {
     #[test]
     fn category_display_all_variants() {
         assert_eq!(Category::Cardio.to_string(), "cardio");
+        assert_eq!(Category::Isometric.to_string(), "isometric");
         assert_eq!(
             Category::OlympicWeightlifting.to_string(),
             "olympic weightlifting"
@@ -301,7 +304,7 @@ mod tests {
     }
     #[test]
     fn category_all_contains_every_variant() {
-        assert_eq!(Category::iter().count(), 7);
+        assert_eq!(Category::iter().count(), 8);
     }
     #[test]
     fn force_all_contains_every_variant() {

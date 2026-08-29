@@ -80,8 +80,9 @@ pub(super) fn ExerciseInputForm(
     let mut reps_input = reps_input;
     let mut distance_input = distance_input;
     let is_cardio = category == Category::Cardio;
+    let is_isometric = category == Category::Isometric;
     let is_stretching = category == Category::Stretching;
-    let show_reps = !is_cardio && force.is_some_and(Force::has_reps);
+    let show_reps = !is_cardio && !is_isometric && force.is_some_and(Force::has_reps);
     let show_weight = !is_cardio && !is_stretching;
     let is_editing_time = time_input.is_some();
     let is_perform_mode = !is_editing_time && exercise_start.is_some();

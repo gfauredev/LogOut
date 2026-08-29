@@ -59,6 +59,7 @@ pub(crate) fn exercise_type_tag(
 ) -> (&'static str, &'static str) {
     match (category, force.is_some_and(Force::has_reps)) {
         (Category::Cardio, _) => ("tag-cardio", "🏃"),
+        (Category::Isometric, _) => ("tag-static", "⏱️"),
         (_, true) => ("tag-strength", "💪"),
         _ => ("tag-static", "⏱️"),
     }
@@ -121,6 +122,10 @@ mod tests {
         );
         assert_eq!(
             exercise_type_tag(Category::Stretching, None),
+            ("tag-static", "⏱️"),
+        );
+        assert_eq!(
+            exercise_type_tag(Category::Isometric, Some(Force::Push)),
             ("tag-static", "⏱️"),
         );
     }

@@ -372,6 +372,22 @@ pub fn format_short_date(timestamp_secs: u64, lang: &str) -> String {
         format!("{day:02}/{month:02}")
     }
 }
+/// Returns a locale-sensitive exact calendar date string for `timestamp_secs`.
+///
+/// The format is `MM/DD/YYYY` when `lang` starts with `"en"`, and `DD/MM/YYYY`
+/// for all other language tags.
+#[must_use]
+pub fn format_exact_date(timestamp_secs: u64, lang: &str) -> String {
+    let dt = ts_to_local_datetime(timestamp_secs);
+    let day = dt.day();
+    let month = dt.month() as u8;
+    let year = dt.year();
+    if lang.starts_with("en") {
+        format!("{month:02}/{day:02}/{year:04}")
+    } else {
+        format!("{day:02}/{month:02}/{year:04}")
+    }
+}
 /// Returns the number of elapsed calendar days between the local midnight of
 /// `timestamp`'s day and the local midnight of today, using system’s local TZ
 fn days_since(timestamp: u64) -> i64 {
@@ -749,5 +765,21 @@ mod tests {
         // Format should be DD/MM with two digits each.
         assert_eq!(s.len(), 5, "fr short date should be 5 chars: {s}");
         assert_eq!(&s[2..3], "/");
+    }
+    #[test]
+    fn format_exact_date_en() {
+        let midnight = today_midnight_local_secs();
+        let s = super::format_exact_date(midnight + SECONDS_IN_HOUR, "en");
+        assert_eq!(s.len(), 10, "en exact date should be 10 chars: {s}");
+        assert_eq!(&s[2..3], "/");
+        assert_eq!(&s[5..6], "/");
+    }
+    #[test]
+    fn format_exact_date_fr() {
+        let midnight = today_midnight_local_secs();
+        let s = super::format_exact_date(midnight + SECONDS_IN_HOUR, "fr");
+        assert_eq!(s.len(), 10, "fr exact date should be 10 chars: {s}");
+        assert_eq!(&s[2..3], "/");
+        assert_eq!(&s[5..6], "/");
     }
 }

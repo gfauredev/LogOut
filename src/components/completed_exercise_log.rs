@@ -113,6 +113,7 @@ pub fn CompletedExerciseLog(
                                 parse_weight_kg(&edit_weight_input.read()).unwrap_or_default()
                             };
                             log.reps = if category != Category::Cardio
+                                && category != Category::Isometric
                                 && force.is_some_and(Force::has_reps)
                             {
                                 edit_reps_input.read().parse().ok()

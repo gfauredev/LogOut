@@ -26,6 +26,29 @@ jobs:
     - if: github.ref == 'refs/heads/main' # Skip (pass) if triggered by tags: [v*]
       run: "! git describe --tags --exact-match HEAD" # Fail if on main and tag
 
+  rebuild-and-cache-nix:
+    if: github.ref == 'refs/heads/main'
+    needs: no-concurrent-tag-workflow
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+    - uses: actions/checkout@v6
+      with:
+        lfs: true
+    - uses: cachix/install-nix-action@v31
+      with:
+        github_access_token: ${{ secrets.GITHUB_TOKEN }}
+        extra_nix_config: |
+          extra-substituters = https://cache.garnix.io
+          extra-trusted-public-keys = cache.garnix.io:CTFPyKSLcx5RMJKfLo5EEPUObbA78b0YQ2DTCJXqr9g=
+    - uses: cachix/cachix-action@v17
+      with:
+        name: gfauredev
+        authToken: '${{ secrets.CACHIX_AUTH_TOKEN }}'
+    - run: nix flake check
+    - run: nix develop --command true
+    - run: nix build .#devShells.x86_64-linux.default.inputDerivation .#packages.x86_64-linux.default .#packages.x86_64-linux.web
+
   pwa-build-deploy:
     needs: no-concurrent-tag-workflow
     timeout-minutes: 30
@@ -270,4 +293,3 @@ jobs:
         gh release create "$TAG" $ASSETS --title "$TAG" --notes "$NOTES"
       env:
         GH_TOKEN: ${{ github.token }}
-

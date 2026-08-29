@@ -239,6 +239,7 @@ fn SessionCard(session: WorkoutSession, on_delete: EventHandler<String>) -> Elem
     let mut show_all_exercises = use_signal(|| false);
     let mut show_notes = use_signal(|| false);
     let mut show_detail = use_signal(|| false);
+    let mut show_exact_date = use_signal(|| false);
     let session_id = session.id.clone();
     let has_notes = !session.notes.is_empty();
     let session_notes = session.notes.clone();
@@ -256,6 +257,7 @@ fn SessionCard(session: WorkoutSession, on_delete: EventHandler<String>) -> Elem
             n => t!("date-days-ago", count: n.to_string()),
         }
     };
+    let exact_date = crate::utils::format_exact_date(session.start_time, lang_str.read());
     let unique_exercises: Vec<(String, String, &'static str, &'static str)> = {
         let mut seen = std::collections::HashSet::new();
         let all = all_exercises.read();
@@ -321,7 +323,17 @@ fn SessionCard(session: WorkoutSession, on_delete: EventHandler<String>) -> Elem
     rsx! {
         article { onclick: move |_| show_detail.toggle(),
             header {
-                time { "{date_str}" }
+                time {
+                    onclick: move |evt: Event<MouseData>| {
+                        evt.stop_propagation();
+                        show_exact_date.toggle();
+                    },
+                    if *show_exact_date.read() {
+                        "{exact_date}"
+                    } else {
+                        "{date_str}"
+                    }
+                }
                 div {
                     label { "⏱️" }
                     time { "{format_time(duration)}" }

@@ -39,7 +39,8 @@ pub fn ExerciseFormFields(
         if !value.is_empty() {
             if let Ok(muscle) = serde_json::from_value::<Muscle>(serde_json::Value::String(value)) {
                 let mut muscles = muscles_list.read().clone();
-                if !muscles.contains(&muscle) {
+                let secondary = secondary_muscles_list.read();
+                if !muscles.contains(&muscle) && !secondary.contains(&muscle) {
                     muscles.push(muscle);
                     muscles_list.set(muscles);
                     muscle_input.set(String::new());
@@ -57,7 +58,8 @@ pub fn ExerciseFormFields(
         if !value.is_empty() {
             if let Ok(muscle) = serde_json::from_value::<Muscle>(serde_json::Value::String(value)) {
                 let mut muscles = secondary_muscles_list.read().clone();
-                if !muscles.contains(&muscle) {
+                let primary = muscles_list.read();
+                if !muscles.contains(&muscle) && !primary.contains(&muscle) {
                     muscles.push(muscle);
                     secondary_muscles_list.set(muscles);
                     secondary_muscle_input.set(String::new());
@@ -230,6 +232,11 @@ pub fn ExerciseFormFields(
             button { class: "more", onclick: add_local_image, "📁" }
         }
     };
+    let selected_primary = muscles_list.read().clone();
+    let selected_secondary = secondary_muscles_list.read().clone();
+    let available_muscles: Vec<Muscle> = Muscle::iter()
+        .filter(|muscle| !selected_primary.contains(muscle) && !selected_secondary.contains(muscle))
+        .collect();
     rsx! {
         div {
             label { r#for: "exercise-name-input", {t!("form-name-label")} }
@@ -304,7 +311,7 @@ pub fn ExerciseFormFields(
                     value: "{muscle_input}",
                     oninput: move |evt| muscle_input.set(evt.value()),
                     option { value: "", {t!("form-muscle-select-default")} }
-                    for muscle in Muscle::iter() {
+                    for muscle in available_muscles.iter() {
                         option { value: "{muscle}", "{muscle}" }
                     }
                 }
@@ -335,7 +342,7 @@ pub fn ExerciseFormFields(
                     value: "{secondary_muscle_input}",
                     oninput: move |evt| secondary_muscle_input.set(evt.value()),
                     option { value: "", {t!("form-muscle-select-default")} }
-                    for muscle in Muscle::iter() {
+                    for muscle in available_muscles.iter() {
                         option { value: "{muscle}", "{muscle}" }
                     }
                 }
