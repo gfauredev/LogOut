@@ -370,7 +370,7 @@
               maestro test --headless "${self}/maestro/android"
             '';
           };
-          wasm-bindgen-cli = env.wasm-bindgen-cli;
+          wasm-bindgen-cli = env.pkgs.wasm-bindgen-cli_0_2_126;
           default = env.pkgs.symlinkJoin {
             name = "${env.projectSlug}-all-${env.projectVersion}";
             paths = [

@@ -616,6 +616,7 @@ fn DbEmptyToast() -> Element {
     let mut show = use_context::<DbEmptyToastSignal>().0;
     let exercises_sig = services::exercise_db::use_exercises();
     let toast = consume_context::<ToastSignal>().0;
+    #[cfg(not(target_arch = "wasm32"))]
     let img_progress = consume_context::<ImageDownloadProgressSignal>().0;
     // Hide automatically once exercises have been loaded (e.g. after a successful download).
     use_effect(move || {
@@ -711,6 +712,21 @@ mod tests {
                 images: vec![],
                 i18n: None,
             },
+            Exercise {
+                id: "Plank".into(),
+                name: "Plank".into(),
+                name_lower: String::new(),
+                force: Some(Force::Push),
+                level: None,
+                mechanic: None,
+                equipment: None,
+                primary_muscles: vec![],
+                secondary_muscles: vec![],
+                instructions: vec![],
+                category: Category::Isometric,
+                images: vec![],
+                i18n: None,
+            },
         ]
     }
     #[test]
@@ -743,6 +759,19 @@ mod tests {
         assert_eq!(log.category, Category::Cardio);
         assert_eq!(log.distance_m, Some(models::Distance(5)));
         assert_eq!(log.reps, None);
+    }
+    #[test]
+    fn build_session_from_dl_entries_isometric_ignores_reps_and_distance() {
+        let exercises = sample_exercises();
+        let entries = utils::parse_session_exercises("Plank:20:60");
+        let session = build_session_from_entries(&entries, &exercises);
+        assert_eq!(session.exercise_logs.len(), 1);
+        let log = &session.exercise_logs[0];
+        assert_eq!(log.exercise_name, "Plank");
+        assert_eq!(log.category, Category::Isometric);
+        assert_eq!(log.weight_hg, models::Weight(200));
+        assert_eq!(log.reps, None);
+        assert_eq!(log.distance_m, None);
     }
     #[test]
     fn build_session_from_dl_entries_unknown_exercise_falls_back() {

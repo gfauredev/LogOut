@@ -257,7 +257,7 @@ fn SessionCard(session: WorkoutSession, on_delete: EventHandler<String>) -> Elem
             n => t!("date-days-ago", count: n.to_string()),
         }
     };
-    let exact_date = crate::utils::format_exact_date(session.start_time, lang_str.read());
+    let exact_date = crate::utils::format_exact_date(session.start_time, &lang_str.read());
     let unique_exercises: Vec<(String, String, &'static str, &'static str)> = {
         let mut seen = std::collections::HashSet::new();
         let all = all_exercises.read();
