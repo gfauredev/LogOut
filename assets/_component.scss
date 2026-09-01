@@ -218,31 +218,66 @@ header.session {
 
 // ── Completed exercise log ─────────────────────────────────────────────────
 article.log {
-  padding: 15px;
+  padding: 12px;
   margin-bottom: var(--spacing);
+  position: relative;
+  overflow: hidden;
+  transition: transform 0.15s ease-out;
+  touch-action: pan-y pinch-zoom;
+  user-select: none;
 
   >header {
-    margin-bottom: 8px;
+    margin-bottom: 0;
+    min-width: 0;
+    gap: calc(var(--spacing) / 2);
+    align-items: center;
 
     h4 {
       margin: 0;
       padding: 0;
       color: var(--primary);
       flex: 1;
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
     }
 
-    >div {
+    >ul.log-stats {
       display: flex;
-      gap: var(--spacing);
-      align-items: center;
+      flex-wrap: nowrap;
+      gap: calc(var(--spacing) / 2);
+      list-style: none;
+      margin: 0;
       padding: 0;
+      min-width: 0;
+
+      >li {
+        padding: 3px 8px;
+        border-radius: var(--radius);
+        background: var(--separation);
+        color: var(--secondary);
+        white-space: nowrap;
+        font-size: 0.85em;
+      }
     }
 
-    button {
-      font-size: 1em;
-      padding: 2px 6px;
-      opacity: 0.7;
+    >.log-pointer-actions {
+      display: flex;
+      align-items: center;
+      gap: calc(var(--spacing) / 2);
+      flex-shrink: 0;
     }
+  }
+
+  >.log-delete-progress {
+    position: absolute;
+    left: 0;
+    bottom: 0;
+    height: 3px;
+    background: var(--less);
+    transition: width 0.1s linear;
+    display: none;
   }
 
   >form {
@@ -255,6 +290,29 @@ article.log {
   >.details {
     color: var(--secondary);
     font-size: 0.9em;
+  }
+}
+
+p.log-gestures-hint {
+  display: none;
+  margin-top: 0;
+  margin-bottom: var(--spacing);
+  font-size: 0.9em;
+}
+
+@media (hover: none) and (pointer: coarse) {
+  article.log {
+    >header >.log-pointer-actions {
+      display: none;
+    }
+
+    >.log-delete-progress {
+      display: block;
+    }
+  }
+
+  p.log-gestures-hint {
+    display: block;
   }
 }
 

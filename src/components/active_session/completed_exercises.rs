@@ -5,8 +5,8 @@ use dioxus::prelude::*;
 use dioxus_i18n::prelude::i18n;
 use dioxus_i18n::t;
 
-/// Antichronological list of completed exercise logs with replay and edit actions.
-/// Fires `on_replay` with the exercise ID when the user taps 🔁.
+/// Antichronological list of completed exercise logs with gesture-based replay/edit/delete actions.
+/// Fires `on_replay` with the exercise ID when the user taps a completed log tile.
 ///
 /// When no exercise is active and the last completed exercise was also done
 /// earlier in the session, a quick-action button is shown at the top suggesting
@@ -49,6 +49,9 @@ pub fn CompletedExercisesSection(
 
 
             h3 { {t!("completed-exercises-title")} }
+            if no_exercise_active {
+                p { class: "log-gestures-hint", {t!("completed-exercises-gestures-hint")} }
+            }
             if no_exercise_active {
                 if let Some((next_id, next_name)) = suggestion_label() {
                     button {

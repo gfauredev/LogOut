@@ -54,6 +54,7 @@ rest-duration-label = Durée du repos
 
 ## Séance active – exercices complétés
 completed-exercises-title = Exercices complétés
+completed-exercises-gestures-hint = Touchez une entrée pour rejouer · glissez à droite pour modifier · glissez à gauche et maintenez 3s pour supprimer
 
 ## Formulaire d'exercice
 exercise-complete-title = Valider l'exercice
